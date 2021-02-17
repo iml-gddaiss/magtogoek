@@ -35,7 +35,7 @@ def set_dataset_variables_attributes(
     return print("variables attributes set")
 
 
-def set_data_min_max():
+def set_data_min_max_attrs():
     """TODO"""
     return None
 
