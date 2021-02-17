@@ -2,9 +2,9 @@
 author: Jérôme Guay
 date: Feb. 12, 2021
 
-This script stores variables and coordinates static attributes in dictionnaries
-using their BODC names. The resulting dictionnary are exported in .json file
-for usage.
+This script stores variables static attributes in dictionnaries
+using their BODC names.
+The resulting dictionnary are exported in .json file which will be used to set attributes.
 
 import variables_attrs
 
@@ -19,11 +19,8 @@ Attributes for variables:
 -'sdn_uom_name'
 -'legacy_GF3_code'
 
-time coordinates comes with:
--'cf_role': 'profile_id'
 
 FIXME:
-- sensor_type and generic_name are not defined
 - Who needs to have -> sensor_type = 'adcp'
 TODO:
 -BODC PERCENTGOOD:
@@ -31,7 +28,7 @@ Only good for beam coordinates data.
 
 """
 import typing as tp
-import json 
+import json
 
 # --------------------------------------------------------------------------- #
 # ---------------- Functions to define variables attributes ----------------- #
@@ -310,10 +307,9 @@ variables_attrs = dict(
 # ------------------------- Making of the json file ------------------------- #
 # --------------------------------------------------------------------------- #
 
-def make_json_file(file_name: str,
-                   variables_attrs: tp.Dict) -> None:
-    """Makes json file from dictionnary
-    """
+
+def make_json_file(file_name: str, variables_attrs: tp.Dict) -> None:
+    """Makes json file from dictionnary"""
     with open(file_name, "w") as f:
         json.dump(variables_attrs, f, indent=4)
 
