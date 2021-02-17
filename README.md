@@ -3,4 +3,3 @@ Magtogoek is the Algonquin name for the Saint-Lawrence River which mean "the pat
 
 ## Package
 This package aim to process ocean data from the different instruments.
-(Instrument) -> [ Read -> Quality Control -> Write ] -> (Storage[nc, other])
