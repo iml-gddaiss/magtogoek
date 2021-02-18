@@ -2,13 +2,11 @@
 author: Jérôme Guay
 date: Feb. 12, 2021
 
-This script stores variables static attributes in dictionnaries
+This script stores Sea Data Net variables attributes in dictionnaries
 using their BODC names.
 The resulting dictionnary are exported in .json file which will be used to set attributes.
 
-import variables_attrs
-
-Attributes for variables:
+The SDN attributes for variables, if available, are:
 -'standard_name'
 -'units'
 -'long_name'
@@ -18,17 +16,32 @@ Attributes for variables:
 -'sdn_uom_urn'
 -'sdn_uom_name'
 -'legacy_GF3_code'
-
+Some may have additionals attributes, such has depth variables (position = 'down').
+In that case, using "depth" as standard_name implies that depth are measured from
+the surface and positive downward.
 
 FIXME:
-- Who needs to have -> sensor_type = 'adcp'
-TODO:
--BODC PERCENTGOOD:
-Only good for beam coordinates data.
+- The attributes "sensor_type" = 'adcp', should only be present for P01 name that explicitly
+refers to an adcp measuments. Otherwise, it should be added by the instruments subpackage.
+- Long name may also be added later. They could also be overwritten later.
+- It appears that, we do note have a depth variable for instrument depth.
+NOTE:
+- P01 parameter name for PERCENTGOOD are only good for beam coordinates data.
 
 """
 import typing as tp
 import json
+
+# --------------------------------------------------------------------------- #
+# ------------------- Making of the json attributes file -------------------- #
+# --------------------------------------------------------------------------- #
+
+
+def make_json_file(file_name: str, variables_attrs: tp.Dict) -> None:
+    """Makes json file from dictionnary"""
+    with open(file_name, "w") as f:
+        json.dump(variables_attrs, f, indent=4)
+
 
 # --------------------------------------------------------------------------- #
 # ---------------- Functions to define variables attributes ----------------- #
@@ -216,7 +229,7 @@ variables_attrs = dict(
     TEMPPR01=dict(
         units="degree_C",
         sensor_type="adcp",
-        long_name="ADCP Transducer Temp.",
+        # long_name="", #  the long_name should be added later
         sdn_parameter_urn="SDN:P01::TEMPPR01",
         sdn_parameter_name="Temperature of the water body",
         sdn_uom_urn="SDN:P06::UPAA",
@@ -243,15 +256,18 @@ variables_attrs = dict(
         sdn_uom_name="ISO8601",
         legacy_GF3_code="SDN:GF3::time_string",
     ),
-    PPSAADCP=dict(
+    PPSAADCP=dict(  # this also refers to depth vector, mesured by adcp
         standard_name="depth",
+        positive="down",  # depth as standard_name implies positive "down"
         units="m",
         sensor_type="adcp",
-        long_name="instrument depth",
+        # long_name="instrument depth", # this is wrong
         sdn_parameter_urn="SDN:P01::PPSAADCP",
-        sdn_parameter_name="Depth below surface of the water body",
-        # by acoustic doppler current profiler (ADCP) and computation from travel
-        # time averaged from all operational beams and unknown sound velocity profile
+        sdn_parameter_name=(
+            "Depth below surface of the water body"
+            "by acoustic doppler current profiler (ADCP) and computation from travel"
+            "time averaged from all operational beams and unknown sound velocity profile"
+        ),
         sdn_uom_urn="SDN:P06::ULAA",
         sdn_uom_name="Metres",
         legacy_GF3_code="SDN:GF3::DEPH",
@@ -295,24 +311,15 @@ variables_attrs = dict(
         long_name="depth",
         sdn_parameter_urn="SDN:P01::ADEPZZ01",
         sdn_parameter_name=(
-            "Depth (spatial coordinate) relative" "to water surface in the water body"
+            "Depth (spatial coordinate) relative " "to water surface in the water body"
         ),
-        sdn_uom_urn="SDN:P06::ULAA",
+        Sdn_uom_urn="SDN:P06::ULAA",
         sdn_uom_name="Metres",
         legacy_GF3_code="SDN:GF3::DEPH",
     ),
 )
 
-# --------------------------------------------------------------------------- #
-# ------------------------- Making of the json file ------------------------- #
-# --------------------------------------------------------------------------- #
 
-
-def make_json_file(file_name: str, variables_attrs: tp.Dict) -> None:
-    """Makes json file from dictionnary"""
-    with open(file_name, "w") as f:
-        json.dump(variables_attrs, f, indent=4)
-
-
-file_name = "BODC_static_attributes.json"
-make_json_file(file_name, variables_attrs)
+if __name__ == "__main__":
+    file_name = "BODC_attributes.json"
+    make_json_file(file_name, variables_attrs)

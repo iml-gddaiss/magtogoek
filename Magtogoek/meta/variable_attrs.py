@@ -1,3 +1,4 @@
+
 """
 author: Jérôme Guay
 date: Feb. 16, 2021
@@ -13,7 +14,7 @@ time:
 
 
 """
-
+import json
 import typing as tp
 import xarray as xr
 
@@ -32,8 +33,13 @@ def set_dataset_variables_attributes(
         remove_tmp:
             remove temporary attributes from dataset.
     """
+    var_list = list(dataset.variables)
     return print("variables attributes set")
 
+def open_json_file(json_file):
+    """
+    """
+    return json.read
 
 def set_data_min_max_attrs():
     """TODO"""
