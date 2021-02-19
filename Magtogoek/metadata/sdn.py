@@ -27,20 +27,9 @@ refers to an adcp measuments. Otherwise, it should be added by the instruments s
 - It appears that, we do note have a depth variable for instrument depth.
 NOTE:
 - P01 parameter name for PERCENTGOOD are only good for beam coordinates data.
-
 """
 import typing as tp
 import json
-
-# --------------------------------------------------------------------------- #
-# ------------------- Making of the json attributes file -------------------- #
-# --------------------------------------------------------------------------- #
-
-
-def make_json_file(file_name: str, variables_attrs: tp.Dict) -> None:
-    """Makes json file from dictionnary"""
-    with open(file_name, "w") as f:
-        json.dump(variables_attrs, f, indent=4)
 
 
 # --------------------------------------------------------------------------- #
@@ -55,7 +44,6 @@ def _L_AP01(s0: str, s1: str, s2: str, s3: str) -> tp.Dict[str, str]:
         units="m s-1",
         sensor_type="adcp",
         long_name=f"{s0}ward_sea_water_velocity",
-        # ancillary_variables = f'{s1}_QC',
         sdn_parameter_urn=f"SDN:P01::{s1}",
         sdn_parameter_name=(
             f"{s2}ward current velocity "
@@ -148,6 +136,7 @@ variables_attrs = dict(
     LRZAAP01=_L_AP01("up", "LRZAAP01", "Up", "VCSP"),
     LERRAP01=dict(
         units="m s-1",
+        sensor_type="adcp",
         long_name="error velocity in sea water",
         sdn_parameter_urn="SDN:P01::LERRAP01",
         sdn_parameter_name=(
@@ -214,7 +203,7 @@ variables_attrs = dict(
     SVELCV01=dict(
         standard_name="speed of sound in sea water",
         units="m s-1",
-        sensor_type="adcp",
+        # sensor_type="adcp",
         long_name="speed of sound",
         sdn_parameter_urn="SDN:P01::SVELCV01",
         sdn_parameter_name=(
@@ -228,8 +217,8 @@ variables_attrs = dict(
     ),
     TEMPPR01=dict(
         units="degree_C",
-        sensor_type="adcp",
-        # long_name="", #  the long_name should be added later
+        # sensor_type="adcp",
+        long_name="temperature",
         sdn_parameter_urn="SDN:P01::TEMPPR01",
         sdn_parameter_name="Temperature of the water body",
         sdn_uom_urn="SDN:P06::UPAA",
@@ -238,7 +227,7 @@ variables_attrs = dict(
     ),
     DISTTRAN=dict(
         units="m",
-        sensor_type="adcp",
+        # sensor_type="adcp",
         long_name="height of sea surface",
         sdn_parameter_urn="SDN:P01::DISTTRAN",
         sdn_uom_urn="SDN:P06::ULAA",
@@ -260,7 +249,7 @@ variables_attrs = dict(
         standard_name="depth",
         positive="down",  # depth as standard_name implies positive "down"
         units="m",
-        sensor_type="adcp",
+        # sensor_type="adcp",
         # long_name="instrument depth", # this is wrong
         sdn_parameter_urn="SDN:P01::PPSAADCP",
         sdn_parameter_name=(
@@ -275,7 +264,7 @@ variables_attrs = dict(
     PRESPR01=dict(
         standard_name="sea_water_pressure",
         units="dbar",
-        sensor_type="adcp",
+        # sensor_type="adcp",
         long_name="pressure",
         sdn_parameter_urn="SDN:P01::PRESPR01",
         sdn_parameter_name="",
@@ -307,7 +296,7 @@ variables_attrs = dict(
         standard_name="depth",  # depth as standard_name implies positive "down"
         positive="down",
         units="m",
-        sensor_type="adcp",
+        # sensor_type="adcp",
         long_name="depth",
         sdn_parameter_urn="SDN:P01::ADEPZZ01",
         sdn_parameter_name=(
@@ -316,6 +305,17 @@ variables_attrs = dict(
         Sdn_uom_urn="SDN:P06::ULAA",
         sdn_uom_name="Metres",
         legacy_GF3_code="SDN:GF3::DEPH",
+    ),
+    ELTMEP01=dict(
+        standard_name="time",
+        units="days since 1970-1-1 0:0:0",
+        long_name="time",
+        sdn_parameter_urn="SDN:P01::ELTMEP01",
+        sdn_parameter_name=("Elapsed time relative to 1970-01-01T00:00:00Z"),
+        Sdn_uom_urn="SDN:P06::UTBB",
+        sdn_uom_name="Seconds",
+        legacy_GF3_code="SDN:GF3::N/A",
+        calendar="gregorian",
     ),
 )
 

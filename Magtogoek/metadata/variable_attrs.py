@@ -1,26 +1,29 @@
-
 """
 author: Jérôme Guay
 date: Feb. 16, 2021
 
-var:
--serial_number: if sensor_type == 'adcp'.
-- data_min, data_max
-- sensor_depth,
-- ancillary_variables (in _QC function)
-
-time:
--units = seconds since 1992-10-8 15:15:42.5 -6:00
-
-
+:NOTE var_attrs:
+-:add sensor_type to specific variables:
+--:Make a default list by instruments:
+---:Ex:
+-:serial_number: if sensor_type == 'instrument':
+-:data_min, data_max:
+-:sensor_depth:
+-:ancillary_variables (in _QC function):
+-:time, time attributes are more encoding dependent, maybe move it in instrument/encoder.py:
+--:units = seconds since 1992-10-8 15:15:42.5 -6:00:
 """
+
 import json
 import typing as tp
 import xarray as xr
+from toolbox import dict2json
 
 
 def set_dataset_variables_attributes(
-    dataset: tp.Type[xr.Dataset], attrs_file: str, remove_tmp: bool = True
+    dataset: tp.Type[xr.Dataset],
+    attrs: tp.Tuple[str, tp.Dict],
+    drop_tmp: bool = True,
 ) -> None:
     """Set dataset variable attributes
 
@@ -28,18 +31,18 @@ def set_dataset_variables_attributes(
     -----------
         dataset:
             dataset to which add attributes to variables.
-        attrs_file:
-            json file containing the static variables attributes.
+        attrs:
+            dict or json file containing the sdn variables attributes.
         remove_tmp:
             remove temporary attributes from dataset.
     """
     var_list = list(dataset.variables)
+
+    # open attrs: check if type is dict or .json json2dict() or raise value error
+    # compare intersect var_list with dict(key)
+
     return print("variables attributes set")
 
-def open_json_file(json_file):
-    """
-    """
-    return json.read
 
 def set_data_min_max_attrs():
     """TODO"""
