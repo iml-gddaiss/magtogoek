@@ -4,13 +4,11 @@ date: Feb. 16, 2021
 
 :NOTE var_attrs:
 -:add sensor_type to specific variables:
---:Make a default list by instruments:
----:Ex:
--:serial_number: if sensor_type == 'instrument':
--:data_min, data_max:
--:sensor_depth:
--:ancillary_variables (in _QC function):
--:time, time attributes are encoding dependent, maybe move it in instrument/encoder.py:
+-:add sensor_depth and sensor_serial_number with _vartmp_
+-:add ancillary_variables:
+-:add attributes to accilary variables:
+:FIXME
+-:time coords, move to adcp encoding.
 --:units = seconds since 1992-10-8 15:15:42.5 -6:00:
 --:time variable need to have a "time_zone" attributes.
 """
