@@ -21,7 +21,7 @@ import xarray as xr
 from toolbox import json2dict
 
 
-def set_dataset_variables_attributes(
+def add_dataset_variables_attributes(
     dataset: tp.Type[xr.Dataset],
     sdn: tp.Tuple[str, tp.Dict],
     sensors_type: tp.Tuple[str, tp.Dict],
@@ -46,7 +46,14 @@ def set_dataset_variables_attributes(
     _add_sdn(dataset, sdn)
     _add_sensor_attributes(dataset, sensors_type)
     _add_long_name(dataset, long_names)
-    _set_data_min_max(dataset)
+    _add_data_min_max(dataset)
+    _add_ancillary_variables(dataset)
+    _add_attributes_to_ancillary_variables(dataset)
+
+    if drop_tmp is True:
+        for attrs in dataset.attrs.keys():
+            if "_vartmp_" in attrs:
+                del dataset.attrs[attrs]
 
     return print("variables attributes set")
 
@@ -69,19 +76,20 @@ def _add_sensor_attributes(dataset: tp.Type[xr.Dataset], sensors_type: tp.Dict) 
         _set_sensor_depth_and_serial_number()
         _set_sensor_serial_number()
     """
-    _set_sensor_type(dataset, sensors_type)
+    _add_sensor_type(dataset, sensors_type)
     _add_sensor_depth_and_serial_number()
 
 
-def _set_sensor_type(dataset: tp.Type[xr.Dataset], sensors_type: tp.Dict) -> None:
-    """set sensor_type from sensors_type dictionnary"""
+def _add_sensor_type(dataset: tp.Type[xr.Dataset], sensors_type: tp.Dict) -> None:
+    """add sensor_type from sensors_type dictionnary if in dataset variables"""
     for sensor, variables in sensors_type.items():
+        variables = set(dataset.variables).intersection(set(sensors_type.keys()))
         for var in variables:
             dataset[var].attrs["sensor_type"] = sensor
 
 
-def _add_sensor_depth_and_serial_number(dataset: tp.Type[xr.dataset]):
-    """set sensor_depth and sensor_serial_number from global attributes"""
+def _add_sensor_depth_and_serial_number(dataset: tp.Type[xr.dataset]) -> None:
+    """add sensor_depth and sensor_serial_number from global attributes"""
     for var in list(dataset.variables):
         if "sensor_type" in var.attrs:
             var.attrs["sensor_depth"] = dataset[
@@ -92,55 +100,46 @@ def _add_sensor_depth_and_serial_number(dataset: tp.Type[xr.dataset]):
             ]
 
 
-def _add_long_name(dataset: tp.Type[xr.Dataset], long_names: tp.Dict):
-    """TODO"""
-    print("todo")
+def _add_long_name(dataset: tp.Type[xr.Dataset], long_names: tp.Dict) -> None:
+    """add long_name from long_names dictionnary"""
+    for sensor_type, long_names in long_names.items():
+        variables = set(dataset.variables).intersection(set(long_names.keys()))
+        for var in variables:
+            dataset[var].attrs["long_name"] = long_names[var]
 
 
-def _add_ancillary():
-    """TODO"""
-    print("todo")
-
-
-def _add_attributes_to_Qcvars():
-    """TODO"""
-    print("todo")
-
-
-def make_QCvar_attributes(P01_name: str, comments: str) -> tp.Dict[str, str]:
-    """Set attributes for _QC variables.
-
-    Parameters:
-    -----------
-
-        P01_var_name:
-            long_name = 'Quality flag for ' + P01_var_name
-
-        comments:
-            Something like: 'Quality flag resulting from ...'
-    """
-    return dict(
-        long_name=f"Quality flag for {P01_name}",
-        comments=comments,
-        flag_meanings=(
-            "no_quality_control, "
-            "good_value, "
-            "probably_good_value, "
-            "probably_bad_value, "
-            "bad_value, "
-            "changed_value,"
-            "value_below_detection, "
-            "value_in_excess, "
-            "interpolated_value, "
-            "missing_value"
-        ),
-        flag_values="0, 1, 2, 3, 4, 5, 6, 7, 8, 9",
-        References="BODC SeaDataNet",
-    )
-
-
-def _set_data_min_max(dataset):
+def _add_data_min_max(dataset):
     """TODO check if it works"""
     for var in dataset.variables:
-        dataset[var].attrs["data_max"] = dataset[var].max()
-        dataset[var].attrs["data_min"] = dataset[var].min()
+        if "_QC" not in var:
+            dataset[var].attrs["data_max"] = dataset[var].max()
+            dataset[var].attrs["data_min"] = dataset[var].min()
+
+
+def _add_ancillary_variables(dataset: tp.Type[xr.Dataset]):
+    """add accillary_variables"""
+    for var in list(dataset.varibales()):
+        if "_QC" in var:
+            dataset[var.split("_")[0]].attrs["ancillary_variables"] = var
+
+
+def _add_attributes_to_ancillary_variables(dataset: tp.Type[xr.Dataset]) -> None:
+    """add attributes to  ancillary variables."""
+    for var in list(dataset.variables()):
+        if "_QC" in var:
+            dataset[var].attrs["long_name"] = (f"Quality flag for {var.split('_')[0]}",)
+            dataset[var].attrs["coomments"] = ("Quality flag resulting from ...",)
+            dataset[var].attrs["flag_meanings"] = [
+                "no_quality_control",
+                "good_value",
+                "probably_good_value",
+                "probably_bad_value",
+                "bad_value",
+                "changed_value",
+                "value_below_detection",
+                "value_in_excess",
+                "interpolated_value",
+                "missing_value",
+            ]
+            dataset[var].attrs["flag_values"] = ([0, 1, 2, 3, 4, 5, 6, 7, 8, 9],)
+            dataset[var].attrs["References"] = ("BODC SeaDataNet",)

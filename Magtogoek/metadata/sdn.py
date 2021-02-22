@@ -217,7 +217,7 @@ sdn = dict(
     ),
     TEMPPR01=dict(
         units="degree_C",
-        # sensor_type="adcp", # FIXME Is it ?
+        sensor_type="adcp",  # FIXME Is it ?
         long_name="temperature",
         sdn_parameter_urn="SDN:P01::TEMPPR01",
         sdn_parameter_name="Temperature of the water body",

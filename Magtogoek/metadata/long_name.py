@@ -12,7 +12,7 @@ TODO:
 import typing as tp
 from toolbox import dict2json
 
-long_name = dict()
+long_name = dict(adcp=dict(TEMPPR01="sea temperature at transducer"))
 
 if __name__ == "__main__":
     file_name = "files/long_name.json"

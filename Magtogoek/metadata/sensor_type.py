@@ -16,5 +16,5 @@ from toolbox import dict2json
 sensors_type = dict(adcp=["TEMPR01", "SVELCV01", "PRESPR01", "ADEPZZ01"])
 
 if __name__ == "__main__":
-    file_name = "files/long_name.json"
+    file_name = "files/sensor_type.json"
     dict2json(file_name, sensors_type)
