@@ -4,7 +4,8 @@ date: Feb. 12, 2021
 
 This script stores Sea Data Net variables attributes in dictionnaries
 using their BODC names.
-The resulting dictionnary are exported in .json file which will be used to set attributes.
+The resulting dictionnary are meant to be exported in .json.
+Json files are be used to set attributes.
 
 The SDN attributes for variables, if available, are:
 -'standard_name'
@@ -29,8 +30,7 @@ NOTE:
 - P01 parameter name for PERCENTGOOD are only good for beam coordinates data.
 """
 import typing as tp
-import json
-
+from toolbox import dict2json
 
 # --------------------------------------------------------------------------- #
 # ---------------- Functions to define variables attributes ----------------- #
@@ -96,13 +96,13 @@ def _PCGDAP(s0: str, s1: str) -> tp.Dict[str, str]:
     return dict(
         units="percent",
         sensor_type="adcp",
-        long_name=f"percent_good_beam_{s0}",  # This is not it.
+        long_name=f"percent_good_beam_{s0}",
         sdn_parameter_urn=f"SDN:P01::{s1}",
         sdn_parameter_name=(
             "Acceptable proportion of signal returns "
             "by moored acoustic doppler current profiler "
             f"(ADCP) beam {s0}"
-        ),  # Same this is not it.
+        ),
         sdn_uom_urn="SDN:P06::UPCT",
         sdn_uom_name="Percent",
         legacy_GF3_code=f"SDN:GF3::PGDP_0{s0}",
@@ -128,7 +128,7 @@ def _A_ZZ01(s0: str, s1: str, s2: str, s3: str, s4: str, s5: str) -> tp.Dict[str
 # --------------------------------------------------------------------------- #
 
 
-variables_attrs = dict(
+sdn = dict(
     Conventions="CF-1.8",
     naming_authority=["CF", "SDN:P01::", "SDN:P06::", "SDN:GF3"],
     LCEWAP01=_L_AP01("east", "LCEWAP01", "East", "EWCT"),
@@ -217,7 +217,7 @@ variables_attrs = dict(
     ),
     TEMPPR01=dict(
         units="degree_C",
-        # sensor_type="adcp",
+        # sensor_type="adcp", # FIXME Is it ?
         long_name="temperature",
         sdn_parameter_urn="SDN:P01::TEMPPR01",
         sdn_parameter_name="Temperature of the water body",
@@ -245,12 +245,12 @@ variables_attrs = dict(
         sdn_uom_name="ISO8601",
         legacy_GF3_code="SDN:GF3::time_string",
     ),
-    PPSAADCP=dict(  # this also refers to depth vector, mesured by adcp
+    PPSAADCP=dict(  # this refers to depth vector mesured by adcp
         standard_name="depth",
         positive="down",  # depth as standard_name implies positive "down"
         units="m",
-        # sensor_type="adcp",
-        # long_name="instrument depth", # this is wrong
+        sensor_type="adcp",
+        long_name="depth vector",
         sdn_parameter_urn="SDN:P01::PPSAADCP",
         sdn_parameter_name=(
             "Depth below surface of the water body"
@@ -264,7 +264,6 @@ variables_attrs = dict(
     PRESPR01=dict(
         standard_name="sea_water_pressure",
         units="dbar",
-        # sensor_type="adcp",
         long_name="pressure",
         sdn_parameter_urn="SDN:P01::PRESPR01",
         sdn_parameter_name="",
@@ -292,12 +291,11 @@ variables_attrs = dict(
             "by unspecified GPS system"
         ),
     ),
-    ADEPZZ01=dict(
+    ADEPZZ01=dict(  # depth below surface ?
         standard_name="depth",  # depth as standard_name implies positive "down"
         positive="down",
         units="m",
-        # sensor_type="adcp",
-        long_name="depth",
+        long_name="depth below surface",
         sdn_parameter_urn="SDN:P01::ADEPZZ01",
         sdn_parameter_name=(
             "Depth (spatial coordinate) relative " "to water surface in the water body"
@@ -321,5 +319,5 @@ variables_attrs = dict(
 
 
 if __name__ == "__main__":
-    file_name = "BODC_attributes.json"
-    make_json_file(file_name, variables_attrs)
+    file_name = "files/sdn.json"
+    dict2json(file_name, sdn)

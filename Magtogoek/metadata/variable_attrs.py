@@ -10,19 +10,22 @@ date: Feb. 16, 2021
 -:data_min, data_max:
 -:sensor_depth:
 -:ancillary_variables (in _QC function):
--:time, time attributes are more encoding dependent, maybe move it in instrument/encoder.py:
+-:time, time attributes are encoding dependent, maybe move it in instrument/encoder.py:
 --:units = seconds since 1992-10-8 15:15:42.5 -6:00:
+--:time variable need to have a "time_zone" attributes.
 """
 
 import json
 import typing as tp
 import xarray as xr
-from toolbox import dict2json
+from toolbox import json2dict
 
 
 def set_dataset_variables_attributes(
     dataset: tp.Type[xr.Dataset],
-    attrs: tp.Tuple[str, tp.Dict],
+    sdn: tp.Tuple[str, tp.Dict],
+    sensors_type: tp.Tuple[str, tp.Dict],
+    long_names: tp.Tuple[str, tp.Dict],
     drop_tmp: bool = True,
 ) -> None:
     """Set dataset variable attributes
@@ -30,56 +33,81 @@ def set_dataset_variables_attributes(
     Parameters:
     -----------
         dataset:
-            dataset to which add attributes to variables.
-        attrs:
-            dict or json file containing the sdn variables attributes.
-        remove_tmp:
-            remove temporary attributes from dataset.
+            dataset to which add attributes its variables.
+        sdn:
+            json file containing the sdn variables attributes.
+        sensor_type:
+            [optional] json file containing the sensor_type variables  attributes.
+        long_name:
+            [optional] json file containing the long_name variables  attributes.
+        drop_tmp:
+            if 'True', drops global attributes with the prefix: '_vartmp_'
     """
-    var_list = list(dataset.variables)
-
-    # open attrs: check if type is dict or .json json2dict() or raise value error
-    # compare intersect var_list with dict(key)
+    _add_sdn(dataset, sdn)
+    _add_sensor_attributes(dataset, sensors_type)
+    _add_long_name(dataset, long_names)
+    _set_data_min_max(dataset)
 
     return print("variables attributes set")
 
 
-def set_data_min_max_attrs():
+def _add_sdn(dataset: tp.Type[xr.Dataset], sdn: tp.Dict) -> None:
+    """add sdn (sea data net) attributes.
+
+    FIXME"""
+    variables = set(dataset.variables).intersection(set(sdn.keys()))
+    for var in variables:
+        dataset[var].attrs = sdn[var]
+
+
+def _add_sensor_attributes(dataset: tp.Type[xr.Dataset], sensors_type: tp.Dict) -> None:
+    """add sensors related attributes to variables.
+    FIXME
+    Runs:
+    -----
+        _set_sensor_type()
+        _set_sensor_depth_and_serial_number()
+        _set_sensor_serial_number()
+    """
+    _set_sensor_type(dataset, sensors_type)
+    _add_sensor_depth_and_serial_number()
+
+
+def _set_sensor_type(dataset: tp.Type[xr.Dataset], sensors_type: tp.Dict) -> None:
+    """set sensor_type from sensors_type dictionnary"""
+    for sensor, variables in sensors_type.items():
+        for var in variables:
+            dataset[var].attrs["sensor_type"] = sensor
+
+
+def _add_sensor_depth_and_serial_number(dataset: tp.Type[xr.dataset]):
+    """set sensor_depth and sensor_serial_number from global attributes"""
+    for var in list(dataset.variables):
+        if "sensor_type" in var.attrs:
+            var.attrs["sensor_depth"] = dataset[
+                f"_vartmp_{dataset.attrs['sensor_id']}_depth"
+            ]
+            var.attrs["sensor_serial_number"] = dataset[
+                f"_vartmp_{dataset.attrs['sensor_id']}_serial_number"
+            ]
+
+
+def _add_long_name(dataset: tp.Type[xr.Dataset], long_names: tp.Dict):
     """TODO"""
-    return None
+    print("todo")
 
 
-def set_sensor_attrs():
-    """TODO
-    NOTE: Look for sensor_type, make list[]
-    -add the following temporary attrs to dataset
-    -tmp_adcp_serial = 'adcp_serial' make list[]
-    -tmp_adcp_depth = adcp_depth make list[]
-    -Then add them to var with sensor_type corresponding.
-    """
-    return None
-
-
-def set_sensor_depth():
-    """TODO
-    NOTE May not be usefull
-    """
-    return None
-
-
-def set_sensor_serial_number():
-    """TODO
-    NOTE May not be usefull
-    """
-    return None
-
-
-def set_ancillary_attrs():
+def _add_ancillary():
     """TODO"""
-    return None
+    print("todo")
 
 
-def get_QCvar_attributes(P01_name: str, comments: str) -> tp.Dict[str, str]:
+def _add_attributes_to_Qcvars():
+    """TODO"""
+    print("todo")
+
+
+def make_QCvar_attributes(P01_name: str, comments: str) -> tp.Dict[str, str]:
     """Set attributes for _QC variables.
 
     Parameters:
@@ -109,3 +137,10 @@ def get_QCvar_attributes(P01_name: str, comments: str) -> tp.Dict[str, str]:
         flag_values="0, 1, 2, 3, 4, 5, 6, 7, 8, 9",
         References="BODC SeaDataNet",
     )
+
+
+def _set_data_min_max(dataset):
+    """TODO check if it works"""
+    for var in dataset.variables:
+        dataset[var].attrs["data_max"] = dataset[var].max()
+        dataset[var].attrs["data_min"] = dataset[var].min()
