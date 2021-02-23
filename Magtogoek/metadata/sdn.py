@@ -30,7 +30,7 @@ NOTE:
 - P01 parameter name for PERCENTGOOD are only good for beam coordinates data.
 """
 import typing as tp
-from toolbox import dict2json
+from .toolbox import dict2json
 
 # --------------------------------------------------------------------------- #
 # ---------------- Functions to define variables attributes ----------------- #
