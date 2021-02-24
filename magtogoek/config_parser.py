@@ -84,8 +84,10 @@ def _init_config(
     """init configparser"""
     date = pd.Timestamp.now().strftime("%Y-%m-%d")
     user = getpass.getuser()
+
     config = configparser.ConfigParser(allow_no_value=True)
     config.optionxform = str
+
     config["HEADER"] = {
         ";#".ljust(linewidth, "-") + "#": None,
         f";| Configurations file for {sensor_type} data processing".ljust(
@@ -237,7 +239,12 @@ def _adcp_config(config: tp.Type[configparser.ConfigParser], linewidth: int):
     config["ADCP_OUTPUT"] = {
         ";#".ljust(linewidth, "-") + "#": None,
         ";| Set True or False.".ljust(linewidth, " ") + "|": None,
+        ";| If BODC_variables_name False, comon variable names are used.".ljust(
+            linewidth, " "
+        )
+        + "|": None,
         ";#".ljust(linewidth, "-") + "# ": None,
+        "\t BODC_variable_name": True,
         "\t drop_percent_good": True,
         "\t drop_correlation": True,
         "\t drop_intensity": True,
