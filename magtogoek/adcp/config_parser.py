@@ -25,15 +25,7 @@ def make_adcp_parser(
     subparser: tp.Type[argparse._SubParsersAction],
     usage: str,
 ) -> tp.Type[argparse.ArgumentParser]:
-    """parser for adcp config
-
-    note:
-    ------
-
-    Arguments from
-
-    TODO: add more overwrites
-    """
+    """parser for adcp config"""
 
     adcp_parser = subparser.add_parser(
         "adcp",
@@ -48,9 +40,64 @@ def make_adcp_parser(
         metavar="2 - config_name",
         type=str,
         help="""Name for the configuration file.
-        The config file is created in the current
-        directory unless a path  is provided:
-        config_file = path/to/filename""",
+                The config file is created in the current
+                directory unless a path  is provided:
+                config_file = path/to/filename""",
+    )
+    # identifies files
+    adcp_parser.add_argument(
+        "-i",
+        "--input_files",
+        metavar="",
+        help="Expression identifying adcp files",
+        nargs="+",
+    )
+    # adcp type
+    adcp_parser.add_argument(
+        "-s",
+        "--sonar",
+        metavar="",
+        help="""String designating type of adcp. This
+                        is fed to CODAS Multiread or switches to the RTI
+                        binary reader. Must be one
+                        of `wh`, `os`, `bb`, `nb` or `sw`""",
+    )
+    # deployment nickname
+    adcp_parser.add_argument(
+        "-o",
+        "--output-file",
+        metavar="",
+        help="""Expression for output file or files name""",
+        nargs="+",
+    )
+    adcp_parser.add_argument(
+        "-m",
+        "--merge-output-file",
+        metavar="",
+        help="""Merge input into one output file.""",
+        nargs="+",
+    )
+    adcp_parser.add_argument(
+        "-p",
+        "--platform-file",
+        metavar="",
+        help="""path/to/platform_file""",
+        nargs="+",
+    )
+
+    adcp_parser.add_argument(
+        "-a",
+        "--amp-thres",
+        metavar="",
+        type=float,
+        help="Amplitude threshold (0-255). Defaults to 0.",
+    )
+    adcp_parser.add_argument(
+        "-c",
+        "--corr-thres",
+        metavar="",
+        type=float,
+        help="Correlation threshold (0-255). Defaults to 64.",
     )
 
     adcp_parser.add_argument(
@@ -60,7 +107,6 @@ def make_adcp_parser(
         type=str,
         help="Remove data before this date. Fomart (YYYYMMDDHHMM).",
     )
-
     adcp_parser.add_argument(
         "-e",
         "--end-time",
@@ -138,7 +184,7 @@ def _set_parameters(config, kwargs):
 def _adcp_title(version="0.0.1"):
     return (
         """
- ==============================================================================
+===============================================================================
        __  ___    ____    _____ ________ ______ _____  ______ _____  __ __
       /  |/   |  /    |  / ___//__  ___// __  // ___/ / __  //  __/ / // /
      / /|  /| | / /_| | / /_ \   / /   / /_/ // /_ \ / /_/ //  __/ / _  /
@@ -151,6 +197,8 @@ def _adcp_title(version="0.0.1"):
                     -Supports Teledyne and RowTech files
 ===================================================================== -CONFIG-"""
         + f"\nversion: {version}\n"
+        + "\n Usage:\n"
+        + "\n  $ magtogoek_config adcp ..."
     )
 
 
@@ -165,8 +213,9 @@ class CustomHelpFormatter(argparse.HelpFormatter):
     def _format_action_invocation(self, action):
         if not action.option_strings:
             default = self._get_default_metavar_for_positional(action)
+            default = 80
             (metavar,) = self._metavar_formatter(action, default)(1)
-            return ""  # metavar
+            return metavar
 
         else:
             parts = []

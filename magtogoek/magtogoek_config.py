@@ -3,6 +3,7 @@
 author: Jérôme Guay
 date: Mar. 1, 2021
 version: 0.0.1 #TODO AUTO UPDATE VERSION
+#TODO put the logos in a separate files.
 
 ==============================================================================
        __  ___    ____    _____ ________ ______ _____  ______ _____  __ __
@@ -142,7 +143,7 @@ def _help():
     return """Help:
   magotogoek_config requires 2 positional arguments: process and config_name.
 
-    $: magtogoek_config process configname
+    $: magtogoek_config process config_name
 
   For global help:
 
@@ -156,6 +157,13 @@ def _help():
 
 
 class CustomHelpFormatter(argparse.HelpFormatter):
+    """
+    This formats the help section for magtogoek_config when
+    no process is called with -h. When [process] [-h] is called,
+    formating from process sub-package are used.
+    NOTE: This is not well done.
+    """
+
     def add_usage(self, usage, actions, groups, prefix=None):
         if prefix is None:
             prefix = ""
@@ -182,14 +190,18 @@ class CustomHelpFormatter(argparse.HelpFormatter):
         elif type(action) == argparse._SubParsersAction:
             # process subcommand help section
             hspace = 20
-            msg = "\t1 - process".ljust(hspace, " ")
+            msg = "  1 - process".ljust(hspace, " ")
             msg += "Available process ["
             for subaction in action._get_subactions():
                 msg += self._format_action(subaction) + ", "
             msg += "]\n"
             msg += (
-                "\t2 - config_name".ljust(hspace, " ")
-                + "Name for the configuration file"
+                "  2 - config_name".ljust(hspace, " ")
+                + "Name for the configuration file. The config file is\n"
+                + "".ljust(hspace, " ")
+                + "created in the current directory unless a path is\n"
+                + "".ljust(hspace, " ")
+                + "provided: config_name = path/to/filename"
             )
             return msg
         else:
