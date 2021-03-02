@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 """
 author: Jérôme Guay
 date: Feb. 16, 2021
@@ -30,16 +31,20 @@ def add_dataset_variables_attributes(
 
     Parameters:
     -----------
-        dataset:
-            dataset to which add attributes its variables.
-        sdn:
-            json file containing the sdn variables attributes.
-        sensor_type:
-            [optional] json file containing the sensor_type variables  attributes.
-        long_name:
-            [optional] json file containing the long_name variables  attributes.
-        drop_tmp:
-            if 'True', drops global attributes with the prefix: '_vartmp_'
+    dataset :
+        dataset to which add attributes its variables.
+
+    sdn :
+        json file containing the sdn variables attributes.
+
+    sensor_type :
+        [optional] json file containing the sensor_type variables  attributes.
+
+    long_name :
+        [optional] json file containing the long_name variables  attributes.
+
+    drop_tmp :
+        if 'True', drops global attributes with the prefix: '_vartmp_'
     """
     _add_sdn(dataset, sdn)
     _add_sensor_attributes(dataset, sensors_type)
@@ -70,9 +75,9 @@ def _add_sensor_attributes(dataset: tp.Type[xr.Dataset], sensors_type: tp.Dict) 
     FIXME
     Runs:
     -----
-        _set_sensor_type()
-        _set_sensor_depth_and_serial_number()
-        _set_sensor_serial_number()
+    _set_sensor_type()
+    _set_sensor_depth_and_serial_number()
+    _set_sensor_serial_number()
     """
     _add_sensor_type(dataset, sensors_type)
     _add_sensor_depth_and_serial_number()

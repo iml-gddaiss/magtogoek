@@ -16,8 +16,8 @@ def dict2json(file_name: str, dictionnary: tp.Dict, indent: int = 4) -> None:
     """Makes json file from dictionnary
     Parameters:
     -----------
-        indent:
-            argument is passed to json.dump(..., indent=indent)
+    indent:
+        argument is passed to json.dump(..., indent=indent)
     """
     with open(file_name, "w") as f:
         json.dump(dictionnary, f, indent=indent)

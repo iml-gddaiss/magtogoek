@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 """
 author: Jérôme Guay
 date: Feb. 12, 2021
@@ -22,15 +23,20 @@ In that case, using "depth" as standard_name implies that depth are measured fro
 the surface and positive downward.
 
 FIXME:
-- The attributes "sensor_type" = 'adcp', should only be present for P01 name that explicitly
-refers to an adcp measuments. Otherwise, it should be added by the instruments subpackage.
+- The attributes "sensor_type" = 'adcp', should only be present for P01 name that explicitly refers to an adcp measuments. Otherwise, it should be added by the instruments subpackage.
 - Long name may also be added later. They could also be overwritten later.
+- Remove other score in long_name
 - It appears that, we do note have a depth variable for instrument depth.
+- PCGDAP01: missing GF3 code.
 NOTE:
-- P01 parameter name for PERCENTGOOD are only good for beam coordinates data.
+- PCGDAP01: Use for 4 beam solution, adcp or earth coordinate
+- PCGDAP00: Use for beam 1, beam coordinate
+- PCGDAP02: Use for beam 2, beam coordinate
+- PCGDAP03: Use for beam 3, beam coordinate
+- PCGDAP04: Use for beam 4, beam coordinate
 """
 import typing as tp
-from .toolbox import dict2json
+from magtogoek.metadata.toolbox import dict2json
 
 # --------------------------------------------------------------------------- #
 # ---------------- Functions to define variables attributes ----------------- #
@@ -60,6 +66,7 @@ def _L_AP01(s0: str, s1: str, s2: str, s3: str) -> tp.Dict[str, str]:
 def _TNIHCE(s0: str) -> tp.Dict[str, str]:
     """skeleton for TNIHCE(-) attributes dictionnary"""
     return dict(
+        standard_name="signal_intensity_from_multibeam_acoustic_doppler_velocity_sensor_in_sea_water",
         units="counts",
         sensor_type="adcp",
         long_name=f"ADCP_echo_intensity_beam_{s0}",
@@ -78,6 +85,7 @@ def _TNIHCE(s0: str) -> tp.Dict[str, str]:
 def _CMAGZZ(s0: str) -> tp.Dict[str, str]:
     """skeleton for CMAGZZ(-) attributes dictionnary"""
     return dict(
+        standard_name="beam_consistency_indicator_from_multibeam_acoustic_doppler_velocity_profiler_in_sea_water",
         units="counts",
         sensor_type="adcp",
         long_name=f"ADCP_correlation_magnitude_beam_{s0}",
@@ -94,6 +102,7 @@ def _CMAGZZ(s0: str) -> tp.Dict[str, str]:
 def _PCGDAP(s0: str, s1: str) -> tp.Dict[str, str]:
     """skeleton for PCGDAP(-) attributes dictionnary"""
     return dict(
+        standard_name="proportion_of_acceptable_signal_returns_from_acoustic_instrument_in_sea_water",
         units="percent",
         sensor_type="adcp",
         long_name=f"percent_good_beam_{s0}",
@@ -156,10 +165,29 @@ sdn = dict(
     CMAGZZ02=_CMAGZZ("2"),
     CMAGZZ03=_CMAGZZ("3"),
     CMAGZZ04=_CMAGZZ("4"),
-    PCGDAP00=_PCGDAP("1", "PCGDAP00"),
-    PCGDAP02=_PCGDAP("2", "PCGDAP02"),
-    PCGDAP03=_PCGDAP("3", "PCGDAP03"),
-    PCGDAP04=_PCGDAP("4", "PCGDAP04"),
+    PCGDAP00=_PCGDAP("1", "PCGDAP00"),  # beam 1 beam coordinate
+    PCGDAP02=_PCGDAP("2", "PCGDAP02"),  # beam 2 beam coordinate
+    PCGDAP03=_PCGDAP("3", "PCGDAP03"),  # beam 3 beam coordinate
+    PCGDAP04=_PCGDAP("4", "PCGDAP04"),  # beam 4 beam coordinate
+    PCGDAP01=dict(  # 4 beam solution earth coordinate
+        standard_name=(
+            "proportion_of_acceptable_signal"
+            "_returns_from_acoustic_instrument"
+            "_in_sea_water"
+        ),
+        units="percent",
+        sensor_type="adcp",
+        long_name="percent good for 4 beam solution",
+        sdn_parameter_urn="SDN:P01::PCGDA00",
+        sdn_parameter_name=(
+            "Acceptable proportion of signal returns "
+            "by moored acoustic doppler current profiler "
+            "(ADCP)"
+        ),
+        sdn_uom_urn="SDN:P06::UPCT",
+        sdn_uom_name="Percent",
+        legacy_GF3_code="FIXME",
+    ),
     ALATZZ01=_A_ZZ01("latitude", "north", "LAT", "Latitude", "DEGN", "lat"),
     ALONZZ01=_A_ZZ01("longitude", "east", "LON", "Longitude", "DEGE", "lon"),
     PTCHGP01=dict(
@@ -203,7 +231,6 @@ sdn = dict(
     SVELCV01=dict(
         standard_name="speed of sound in sea water",
         units="m s-1",
-        # sensor_type="adcp",
         long_name="speed of sound",
         sdn_parameter_urn="SDN:P01::SVELCV01",
         sdn_parameter_name=(
@@ -217,7 +244,6 @@ sdn = dict(
     ),
     TEMPPR01=dict(
         units="degree_C",
-        sensor_type="adcp",  # FIXME Is it ?
         long_name="temperature",
         sdn_parameter_urn="SDN:P01::TEMPPR01",
         sdn_parameter_name="Temperature of the water body",
@@ -227,7 +253,6 @@ sdn = dict(
     ),
     DISTTRAN=dict(
         units="m",
-        # sensor_type="adcp",
         long_name="height of sea surface",
         sdn_parameter_urn="SDN:P01::DISTTRAN",
         sdn_uom_urn="SDN:P06::ULAA",
@@ -319,5 +344,6 @@ sdn = dict(
 
 
 if __name__ == "__main__":
-    file_name = "files/sdn.json"
+    # probably not good practice. Relative path not working.
+    file_name = "/".join(__file__.split("/")[:-1]) + "/files/sdn.json"
     dict2json(file_name, sdn)

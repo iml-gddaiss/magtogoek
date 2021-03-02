@@ -1,46 +1,87 @@
 """
 author: Jérôme Guay
 date: Feb. 22, 2021
-"""
+based-on: https://github.com/jeanlucshaw/adcp2nc/.
 
+This script contains functions to read adcp data
+and to load them in xarray.Dataset.
+CODAS Multiread class is used pycurrents package
+is used to read RDI file formats.
+
+Accepted files are:
+-Teledyne RDI .000.(TODO .ENX, .ENS .LTA, etc.)
+-Rowetch files: (seawatch TODO)
+
+See Also
+--------
+   * pycurrents.adcp.rdiraw.Multiread
+
+"""
 import xarray as xr
 import numpy as np
-from pycurrents.adcp.rdiraw import Multiread
+import typing as tp
+from pycurrents.adcp.rdiraw import Multiread, rawfile
 
 
-def load_rdi_binary(
-    files, adcptype, force_dw=False, force_up=False, min_depth=0, t_offset=0
-):
-    """
-    Read Teledyne RDI binary ADCP data to xarray.
+def read_rdi_binary(
+    fnames: tp.Tuple[str, tp.List[str]], sonar: str, yearbase: int
+) -> tp.Type[Multiread]:
+    """Read Teledyne RDI binary ADCP data to xarray.
+
+    Reads data with Multiread().read() and also with
+    rawfile().read() to get the FixedLeader for all
+    pings.
+
     Parameters
     ----------
-    files : str or list of str
-        File(s) to read in.
-    adcptype : str
-        Sensor type passed to pycurrents.Multiread. ('wh', 'os')
-    force_dw : bool
-        Process as downward looking ADCP.
-    force_up : bool
-        Process as upward looking ADCP.
-    min_depth : float
-        Require instrument depth be greater that this value in meters.
+    fnames :
+        File(s) to read.
+    sonar :
+        sonar type passed to pycurrents.Multiread.
+        ('nb', 'bb', 'wh', 'sv', 'pn', or 'os')
+    yearbase :
+        start year of the sampling.
+
     Returns
     -------
-    xarray.Dataset
-        ADCP data.
+    data:
+        ADCP data from Multiread.read() with the `FixedLeader` added
+
+    Notes:
+    ------
+    Althought the fixed_leader is supposed to be
+    fixed, there is occurence of change in the
+    fixed_leader of some ping. A check up of some
+    the fixed_leader parameters is done in the
+    processing.
     """
 
-    data = Multiread(files, adcptype).read()
+    data = Multiread(fnames=fnames, sonar=sonar, yearbase=yearbase).read()
 
-    dataset = xr.Dataset()
+    # uses rawfile() to get the FixedLeader.
+    if isinstance(fnames, list):
+        fixed_leader = np.concatenate(
+            [
+                rawfile(fname=fname, sonar=sonar, yearbase=yearbase)
+                .read()
+                .raw.FixedLeader
+                for fname in fnames
+            ]
+        )
+    else:
+        fixed_leader = (
+            rawfile(fname=fnames, sonar=sonar, yearbase=yearbase).read().raw.FixedLeader
+        )
 
-    return dataset
+    data["FixedLeader"] = fixed_leader
+
+    return data
 
 
 def init_dataset(depth, time):
     """FIXME"""
     size_depth = len(depth)
+
     size_time = len(time)
     dataset = xr.Dataset(
         data_vars={
@@ -70,3 +111,13 @@ def init_dataset(depth, time):
         coords={"depth": (["Z"], depth), "time": (["T"], time)},
     )
     return dataset
+
+
+if __name__ == "__main__":
+    fn_raw = (
+        "/home/jeromejguay/ImlSpace/Projects/"
+        + "pycurrents_ADCP_processing/"
+        + "sample_data/a1_20050503_20050504_0221m.000"
+    )
+
+    data, fl = read_rdi_binary(fn_raw, "wh", 2018)
