@@ -35,8 +35,8 @@ setuptools.setup(
     python_requires="~=3.7",
     entry_points={
         "console_scripts": [
-            "mag_config=magtogoek.bin.magtogoek_command:magtogoek_config",
-            "mag_adcp_config=magtogoek.bin.magtogoek_command:magtogoek_adcp_config",
+            "magto_c=magtogoek.bin.magtogoek_command:magtogoek_config",
+            "magtogoek_adcp_config=magtogoek.bin.magtogoek_command:magtogoek_adcp_config",
         ]
     },
 )

@@ -2,9 +2,11 @@
 Author: JeromeJGuay
 Date: Mars 2
 
-This module contains the command line applications `magto_c` that run magtoek_config(). 
+This module contains the command line applications.
+It is not clean. But it works.
 
-Note: A simpler command interface would proably be better.
+FIXME: mag vs magtogoek.
+FIXME: COMPARTIMER PLUS
 
 ================================================================================
         __  ___    ____    _____ ________ ______ _____  ______ _____  __ __
@@ -16,9 +18,9 @@ Note: A simpler command interface would proably be better.
 ================================================================================
 
 Descriptions:
-  `magto_c` (magtogoek_config) is a command line applications that creates
-  a `.ini` configuration file. After calling `magto_c`, you have to provide
-  a `process` (type of date to be process) and a `config_name` for the
+  `magtogoek_config` is a command line applications that creates a `.ini`
+  configuration file. After the function is called, you have to provide a
+  `process` (type of date to be process) and a `config_name` for the
   configuration file. The configuration file can then be passed to
   magtogoek_process.
 
@@ -29,7 +31,7 @@ Descriptions:
 Usage:
   In terminal, typing,
 
-    $ magto_c `process` `config_name`
+    $ magtogoek_config `process` `config_name`
 
   should return,
 
@@ -37,15 +39,15 @@ Usage:
 
   Each process has specific `--optionals` arguments. Typing
 
-    $ magto_c `process`
+    $ magtogoek_config `process`
 
   will bring up the `process` page, where all the `--optionals` are listed.
 
-    $ magto_c process config_name [--optionals]
+    $ magtogoek_config process config_name [--optionals]
 
   You can also type,
 
-    $ magto_c
+    $ magtogoek_config
 
   And follow the instructions.
 """
@@ -56,8 +58,9 @@ import typing as tp
 
 from pathlib import Path
 from magtogoek.metadata.toolbox import json2dict
-from magtogoek.bin.config_parser import make_configparser
-
+from magtogoek.config_parser import make_configparser
+from magtogoek.adcp.config_parser import adcp_configparser
+from magtogoek.toolbox import query_yes_no
 
 ### Global variable used by some of the module functions.
 magtogoek_version = "0.0.1"
@@ -74,7 +77,6 @@ class GlobalHelp(click.Command):
         _print_doc(["Description", "Usage", "Parameters", "Help"])
 
 
-### magto_c command (magtogoek_config)
 @click.command(
     cls=GlobalHelp,
     context_settings=dict(
@@ -142,7 +144,6 @@ def magtogoek_config(process, config_name, options):
         exit()
 
 
-### adcp_config_command
 @click.command("adcp")
 @click.argument(
     "config_name", metavar="config_name", type=str
@@ -150,15 +151,15 @@ def magtogoek_config(process, config_name, options):
 @click.option(
     "-i",
     "--input-files",
-    nargs=1,
-    type=click.STRING,
+    # nargs=1,
+    type=str,
     help="Expression identifying adcp files",
 )
 @click.option(
     "-o",
     "--output-file",
     nargs=1,
-    type=click.STRING,
+    type=str,
     help="Expression for output file or files name",
 )
 @click.option(
@@ -168,165 +169,46 @@ def magtogoek_config(process, config_name, options):
     default=True,
 )
 @click.option(
-    "-F",
+    "-p",
     "--platform-file",
-    type=click.Path(exists=True),
+    type=str,
     help="path/to/platform_file",
     nargs=1,
 )
 @click.option(
-    "-G",
-    "--gps",
-    type=click.Path(exists=True),
-    help="""path/to/netcdf4 file containing the gps data,
-    `longitude`, `latitude`, of the platform. If provided,
-    they will be used instead of the GPS data in the adcp file""",
-)
-@click.option(
-    "-s",
-    "--sonar",
-    type=click.STRING,
-    help="""String designating type of adcp. This
-    is fed to CODAS Multiread or switches to the RTI
-    binary reader. Must be one
-    of `wh`, `os`, `bb`, `nb` or `sw`""",
-)
-@click.option(
-    "-y",
-    "--yearbase",
-    type=click.INT,
-    help="""year when the adcp sampling started. exL `1970`""",
-)
-@click.option(
-    "--up/--down",
-    help="""Vertical orientation of the adcp. Default [--down].""",
-    default=False,
-)
-@click.option(
-    "-l",
-    "--start-time",
-    type=click.STRING,
-    help="Remove leading data before this date. Fomart (YYYYMMDDHHMM).",
-    nargs=1,
-)
-@click.option(
-    "-t",
-    "--end-time",
-    metavar="metavar test",
-    type=click.STRING,
-    help="Remove trailling data after this date. Format (YYYYMMDDHHMM).",
-    nargs=1,
-)
-@click.option(
-    "--qc/--no-qc",
-    help="Do quality control. Default [--qc] (True)",
-    default=True,
-)
-@click.option(
     "-a",
-    "--amplitude-threshold",
-    type=click.FLOAT,
+    "--amp-thres",
+    type=float,
     help="Amplitude threshold (0-255). Defaults to 0.",
     nargs=1,
 )
 @click.option(
     "-p",
-    "--percentgood-threshold",
-    type=click.FLOAT,
-    help="Percentage of 4 beam threshold (0-100). Defaults to 90.",
+    "--pg-thres",
+    type=float,
+    help="Percentage of 4 beam threshold (0-100). Defaults to 80.",
 )
 @click.option(
     "-c",
-    "--correlation-threshold",
-    type=click.FLOAT,
+    "--corr-thres",
+    type=float,
     help="Correlation threshold (0-255). Defaults to 64.",
     nargs=1,
 )
 @click.option(
-    "-u",
-    "--horizontal-velocity-threshold",
-    type=click.FLOAT,
-    help="Horizontal velocity threshold (u,v).Defaults to 5.",
+    "-b",
+    "--start-time",
+    type=str,
+    help="Remove data before this date. Fomart (YYYYMMDDHHMM).",
     nargs=1,
 )
 @click.option(
-    "-w",
-    "--vertical-velocity-threshold",
-    type=click.FLOAT,
-    help="Vertial velocity threshold (u,v).Defaults to 5.",
+    "-e",
+    "--end-time",
+    metavar="metavar test",
+    type=str,
+    help="Remove data after this date. Format (YYYYMMDDHHMM).",
     nargs=1,
-)
-@click.option(
-    "-E",
-    "--error-velocity-threshold",
-    type=click.FLOAT,
-    help="Error velocity threshold (u,v).Defaults to 5.",
-    nargs=1,
-)
-@click.option(
-    "--side-lobe/--no-side-lobe",
-    help="Side lobe correction. Default [--side-lobe] (True))",
-    default=True,
-)
-@click.option(
-    "--m-corr/--no-m-corr",
-    help="""Motion correction. Default[-no-m-corr] (True).
-    Uses `bt` if available or GSP data. If the adcp
-    file does not contain GPS data. A netcdf
-    file with with variable named (`longitude`, `latitude`)
-    needs to be provided with options `-G`""",
-    default=False,
-)
-@click.option(
-    "-P",
-    "--pitch-threshold",
-    type=click.FLOAT,
-    help="Pitch threshold (0-180).Defaults to 20.",
-    nargs=1,
-)
-@click.option(
-    "-R",
-    "--roll-threshold",
-    type=click.FLOAT,
-    help="Roll threshold (0-180).Defaults to 20.",
-    nargs=1,
-)
-@click.option(
-    "--drop-pg/--keep-pg",
-    help="""Drop the percent good data from the output dataset.
-    Default [--drop-pg] (True)""",
-    default=True,
-)
-@click.option(
-    "--drop-corr/--keep-corr",
-    help="""Drop the correlation data from the output dataset.
-    Default [--drop-corr] (True)""",
-    default=True,
-)
-@click.option(
-    "--drop-amp/--keep-amp",
-    help="""Drop the amplitude data from the output dataset.
-    Default [--drop-amp] (True)""",
-    default=True,
-)
-@click.option(
-    "--mk-log/--no-mk-log",
-    help="""Make an output log of the processing.
-    Default [--mk-log] (True)""",
-    default=True,
-)
-@click.option(
-    "--mk-fig/--no-mk-fig",
-    help="""Make figures to inspect the data.
-    Default [--mk-fig] (True)""",
-    default=True,
-)
-@click.option(
-    "--bodc-name/--gen-name",
-    help="""Name of the output variables. Using --gen-name
-    outputs generic variables names instead of BODC P01 name.
-    Default [--bodc-name]""",
-    default=True,
 )
 @click.pass_context
 def magtogoek_adcp_config(
@@ -334,31 +216,13 @@ def magtogoek_adcp_config(
     config_name,
     input_files,
     output_file,
-    platform_file,
     merge,
-    gps,
-    sonar,
-    yearbase,
-    up,
+    platform_file,
+    amp_thres,
+    pg_thres,
+    corr_thres,
     start_time,
     end_time,
-    qc,
-    amplitude_threshold,
-    percentgood_threshold,
-    correlation_threshold,
-    horizontal_velocity_threshold,
-    vertical_velocity_threshold,
-    error_velocity_threshold,
-    side_lobe,
-    m_corr,
-    pitch_threshold,
-    roll_threshold,
-    drop_pg,
-    drop_corr,
-    drop_amp,
-    mk_fig,
-    mk_log,
-    bodc_name,
 ):
     """\033[F \033[F \033[K
     Positional argument:\n
@@ -405,7 +269,7 @@ def _print_invalid_process(valid_process: str):
     """print for invalid process"""
     click.echo(click.style("ERROR: Invalid process", fg="red"))
     click.echo(click.style(f"Valid process: {valid_process}"))
-    click.echo("Help: magto_c --help")
+    click.echo("Help: magtogoek_config --help")
 
 
 def _ask_for_config_name() -> str:
@@ -542,7 +406,7 @@ def _print_doc(docs: tp.List[str]):
 
 def _print_description():
     return """
-  `magto_c` is a command line applications that creates a `.ini`
+  `magtogoek_config` is a command line applications that creates a `.ini`
   configuration file. After the function is called, you have to provide a
   `process` (type of date to be process) and a `config_name` for the
   configuration file. The configuration file can then be passed to
@@ -564,7 +428,7 @@ def _print_parameters():
 
 def _print_help():
     return """
-    $ magto_c --help                                  (C-c C-c to quit)
+    $ magtogoek_config --help                                  (C-c C-c to quit)
     """
 
 
@@ -572,7 +436,7 @@ def _print_usage():
     return """
   Typing,
 
-    $ magto_c `process` `config_name`
+    $ magtogoek_config `process` `config_name`
 
   should return,
 
@@ -580,15 +444,15 @@ def _print_usage():
 
   Each process has specific `--optionals` arguments. Typing
 
-    $ magto_c `process`
+    $ magtogoek_config `process`
 
   will bring up the `process` page, where all the `--optionals` are listed.
 
-    $ magto_c process config_name [--optionals]
+    $ magtogoek_config process config_name [--optionals]
 
   You can also type,
 
-    $ magto_c
+    $ magtogoek_config
 
   And follow the instructions.
 """

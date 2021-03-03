@@ -2,7 +2,7 @@
 author: Jérôme Guay
 date: Feb. 22, 2021
 
-FIXME: RESTRUTURER TOUT CA.
+FIXME: RESTRUCTURER TOUT CA.
 This script is called by magtogoek_config.py
 
 This script strores functions to make the basic templates
@@ -12,11 +12,11 @@ import configparser
 import typing as tp
 import pandas as pd
 import getpass
-from magtogoek.adcp.config_parser import adcp_config
+from magtogoek.bin.adcp_config_parser import adcp_configparser
 
 
-def make_config_file(filename: str, sensor_type: str, kwargs: tp.Dict = None) -> None:
-    """make empty config_files.
+def make_configparser(filename: str, sensor_type: str, options: tp.Dict = None) -> None:
+    """make a configparser file.
 
     parameters:
     -----------
@@ -25,15 +25,17 @@ def make_config_file(filename: str, sensor_type: str, kwargs: tp.Dict = None) ->
 
     sensor_type:
         used to return sensor_type config.
+    options:
+        options to be set in the configparser file.
     """
     linewidth = 70  # width of the .ini comments sections
 
-    config = _init_config(sensor_type, linewidth)
+    config = _header(sensor_type, linewidth)
     _input_files(config, linewidth)
     _output_files(config, linewidth)
 
     if sensor_type == "adcp":
-        adcp_config(config, linewidth, kwargs)
+        adcp_configparser(config, linewidth, options)
     else:
         print("Invalid sensor_type. Must be one of: `adcp`")
         exit()
@@ -45,12 +47,9 @@ def make_config_file(filename: str, sensor_type: str, kwargs: tp.Dict = None) ->
     _additional_global_attributes(config, linewidth)
 
     configparser2ini(config, filename)
-    print(f"Config file created for {sensor_type} processing -> {filename}.ini")
 
 
-def _init_config(
-    sensor_type: str, linewidth: int
-) -> tp.Type[configparser.ConfigParser]:
+def _header(sensor_type: str, linewidth: int) -> tp.Type[configparser.ConfigParser]:
     """initialize the configparser"""
     date = pd.Timestamp.now().strftime("%Y-%m-%d")
     user = getpass.getuser()
