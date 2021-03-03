@@ -2,6 +2,7 @@
 author: Jérôme Guay
 date: Feb. 22, 2021
 
+FIXME: RESTRUTURER TOUT CA.
 This script is called by magtogoek_config.py
 
 This script strores functions to make the basic templates
@@ -14,7 +15,7 @@ import getpass
 from magtogoek.adcp.config_parser import adcp_config
 
 
-def make_config_file(filename: str, sensor_type: str, kwargs) -> None:
+def make_config_file(filename: str, sensor_type: str, kwargs: tp.Dict = None) -> None:
     """make empty config_files.
 
     parameters:
@@ -44,6 +45,7 @@ def make_config_file(filename: str, sensor_type: str, kwargs) -> None:
     _additional_global_attributes(config, linewidth)
 
     configparser2ini(config, filename)
+    print(f"Config file created for {sensor_type} processing -> {filename}.ini")
 
 
 def _init_config(

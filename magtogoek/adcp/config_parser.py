@@ -117,7 +117,9 @@ def make_adcp_parser(
     return adcp_parser
 
 
-def adcp_config(config: tp.Type[configparser.ConfigParser], linewidth: int, **kwargs):
+def adcp_config(
+    config: tp.Type[configparser.ConfigParser], linewidth: int, kwargs: tp.Dict = None
+) -> None:
     """set adcp config arguments for configparser"""
     config["ADCP_PROCESSING"] = {
         ";#".ljust(linewidth, "-") + "#": None,
@@ -176,7 +178,7 @@ def adcp_config(config: tp.Type[configparser.ConfigParser], linewidth: int, **kw
     return _set_parameters(config, kwargs)
 
 
-def _set_parameters(config, kwargs):
+def _set_parameters(config, kwargs=None):
     """EMPTY PIPE"""
     return config
 
