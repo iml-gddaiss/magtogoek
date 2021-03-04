@@ -8,11 +8,11 @@ Note: A simpler command interface would proably be better.
 
 ================================================================================
         __  ___    ____    _____ ________ ______ _____  ______ _____  __ __
-       /  |/   |  /    |  / ___//__  ___// __  // ___/ / __  //  __/ / // /
+       /  |/   |  / _  |  / ___//__  ___// __  // ___/ / __  //  __/ / // /
       / /|  /| | / /_| | / /_ \   / /   / /_/ // /_ \ / /_/ //  __/ / _  /
      /_/ |_/ |_|/_/  |_|/_____|  /_/   /_____//_____|/_____//_____//_/ \_\.
 
-                                                                       -CONFIG-
+
 ================================================================================
 
 Descriptions:
@@ -51,102 +51,112 @@ Usage:
 """
 import click
 import os
-import subprocess
 import typing as tp
+import sys
 
 from pathlib import Path
 from magtogoek.metadata.toolbox import json2dict
-from magtogoek.bin.config_parser import make_configparser
+from magtogoek.bin.configparser_templates import make_configparser
+import subprocess
 
 
 ### Global variable used by some of the module functions.
 magtogoek_version = "0.0.1"
-valid_process = ["adcp"]
-logo_json_path = "file/logo.json"
+valid_sensor_types = ["adcp"]
+logo_json_path = "files/logo.json"
 
 
-class GlobalHelp(click.Command):
+CONTEXT_SETTINGS = dict(
+    ignore_unknown_options=True,
+    allow_extra_args=True,
+    help_option_names=["-h", "--help"],
+)
+
+
+class HelpAsArgs(click.Group):
+    # change the section head of sub commands to "Arguments"
+
+    def format_commands(self, ctx, formatter):
+        rows = []
+        for subcommand in self.list_commands(ctx):
+            cmd = self.get_command(ctx, subcommand)
+            if cmd is None:
+                continue
+
+            help = cmd.short_help or ""
+            rows.append((subcommand, help))
+
+        if rows:
+            with formatter.section("Arguments"):
+                formatter.write_dl(rows)
+
+
+class MagtogoekHelp(click.Group):
     """Custom help for magtogoek_config"""
 
     def format_help(self, ctx, formatter):
         click.clear()
-        _print_logo(logojson=logo_json_path)
-        _print_doc(["Description", "Usage", "Parameters", "Help"])
+        _print_logo(logojson=logo_json_path, group="main")
+        _print_doc(["Description", "Help"])
 
 
-### magto_c command (magtogoek_config)
-@click.command(
-    cls=GlobalHelp,
-    context_settings=dict(
-        ignore_unknown_options=True,
-        allow_extra_args=True,
-    ),
-)
-@click.argument("process", required=False, default=None, type=str)
-@click.argument("config_name", required=False, default=None, type=str)
-@click.argument("options", nargs=-1)
-def magtogoek_config(process, config_name, options):
-    ### First we checks if a `config_name` was pass. This implies that a process was pass first.
-    if config_name:
-        if process not in valid_process:
-            _print_invalid_process(valid_process)
-            exit()
+# magtogoek main group
+@click.group(cls=MagtogoekHelp, context_settings=CONTEXT_SETTINGS)
+def magtogoek():
+    pass
 
-        # the command is then pass to subprocess to process the command.
-        command = [f"magtogoek_{process}_config"] + [config_name] + list(options)
-        subprocess.run(command)
-        exit()
 
-    ### if no config_name was pass, checks if a process was pass.
-    if process:
-        if process in valid_process:
-            # Quick terminal resize, this may not work on every linux. May
+class ConfigHelp(click.Group):
+    """Custom help for magtogoek_config"""
 
-            _print_porcess_page(process)
-
-            input_config_name = _ask_for_config_name()
-
-            input_options = _ask_for_options()
-
-            # the command is then pass to subprocess to the process command.
-            command = (
-                [f"magtogoek_{process}_config"] + [input_config_name] + input_options
-            )
-            subprocess.run(command)
-            exit()
-
-        else:
-            _print_invalid_process(valid_process)
-            exit()
-
-    ### if no argument was pass we get here.
-    else:
-
+    def format_help(self, ctx, formatter):
+        subprocess.run(["printf", "'\e[8;40;80t'"])
         click.clear()
-        _print_logo(logojson=logo_json_path)
-        _print_doc(["Description", "Parameters", "Help"])
-
-        input_process = _ask_for_process(valid_process)
-
-        _print_porcess_page(input_process)
-
-        input_config_name = _ask_for_config_name()
-
-        input_options = _ask_for_options()
-
-        # the command is then pass to subprocess to the process command.
-        command = (
-            [f"magtogoek_{input_process}_config"] + [input_config_name] + input_options
-        )
-        subprocess.run(command)
-        exit()
+        _print_logo(logojson=logo_json_path, group="config")
+        _print_doc(["Description", "Help"])
 
 
-### adcp_config_command
-@click.command("adcp")
+### config sub-group
+@magtogoek.group(cls=ConfigHelp, context_settings=CONTEXT_SETTINGS)
+def config():
+    pass
+
+
+class ProcessHelp(click.Group):
+    """Custom help for magtogoek_config"""
+
+    def format_help(self, ctx, formatter):
+        click.clear()
+        _print_logo(logojson=logo_json_path, group="config")
+        _print_doc(["Description", "Help"])
+
+
+class SetDirHelp(click.Group):
+    """Custom help for magtogoek_config"""
+
+    def format_help(self, ctx, formatter):
+        click.clear()
+        _print_logo(logojson=logo_json_path, group="config")
+        _print_doc(["Description", "Help"])
+
+
+@magtogoek.group(cls=ProcessHelp, context_settings=CONTEXT_SETTINGS)
+def process():
+    """TODO"""
+    pass
+
+
+@magtogoek.group(cls=SetDirHelp, context_settings=CONTEXT_SETTINGS)
+def setdir():
+    """TODO"""
+    pass
+
+
+### adcp: config sub-command
+@config.command("adcp")
 @click.argument(
-    "config_name", metavar="config_name", type=str
-)  # metavar="config_name", required=True)
+    "config_name", metavar="config_name", required=False, default=None, type=str
+)
 @click.option(
     "-i",
     "--input-files",
@@ -155,11 +165,18 @@ def magtogoek_config(process, config_name, options):
     help="Expression identifying adcp files",
 )
 @click.option(
-    "-o",
-    "--output-file",
+    "-n",
+    "--netcdf-output",
     nargs=1,
     type=click.STRING,
-    help="Expression for output file or files name",
+    help="Expression for netcdf output file or files name",
+)
+@click.option(
+    "-o",
+    "--odf-output",
+    nargs=1,
+    type=click.STRING,
+    help="Expression for odf file or files name",
 )
 @click.option(
     "--merge/--no-merge",
@@ -329,11 +346,12 @@ def magtogoek_config(process, config_name, options):
     default=True,
 )
 @click.pass_context
-def magtogoek_adcp_config(
+def adcp(
     ctx,
     config_name,
     input_files,
-    output_file,
+    netcdf_output,
+    odf_output,
     platform_file,
     merge,
     gps,
@@ -365,9 +383,13 @@ def magtogoek_adcp_config(
     1 - config_name\t\t file name (path/to/file) configuration file.
     """  # \033[F \033[F \033[K deletes default click help
 
+    if not config_name:
+        _print_logo(logojson=logo_json_path, process="adcp", group="config")
+        _print_help_msg(adcp)
+        exit()
     _print_passed_options(ctx.params)
 
-    config_name = _check_config_name(ctx.params["config_name"])
+    config_name = _validate_config_name(ctx.params["config_name"])
 
     make_configparser(
         filename=config_name,
@@ -417,10 +439,11 @@ def _ask_for_config_name() -> str:
     )
 
 
-def _check_config_name(config_name: str) -> str:
-    """Check if directory a file name exist.
+def _validate_config_name(config_name: str) -> str:
+    """Check if directory or/and file name exist.
 
-    Ask to make the directories and to file ovewrite.
+    Ask to make the directories if they don't exist.
+    Ask  to ovewrite the file if a file already exist.
 
     Appends a `.ini` suffix (extension) none was given.
     But keeps other suffixes.
@@ -478,12 +501,14 @@ def _print_porcess_page(process: str):
     _print_logo(process, logojson=logo_json_path)
     _print_help_msg(
         {
-            "adcp": magtogoek_adcp_config,
+            "adcp": adcp,
         }[process]
     )
 
 
-def _print_logo(process: str = None, logojson: str = "file/logo.json"):
+def _print_logo(
+    process: str = None, logojson: str = "file/logo.json", group: str = "ocean"
+):
     """open and print logo from logo.json
     If a process is given, prints the process logo.
     """
@@ -500,10 +525,12 @@ def _print_logo(process: str = None, logojson: str = "file/logo.json"):
         click.echo(click.style("WARNING: logo.json not found", fg="yellow"))
     except KeyError:
         click.echo(click.style("WARNING: key in logo.json not found", fg="yellow"))
+
     click.echo(
         click.style(
-            f"version: {magtogoek_version}".ljust(72, " ") + " config ",
+            f"version: {magtogoek_version}" + f" {group} ".rjust(67, " "),
             fg="green",
+            bold=True,
         )
     )
     click.echo(click.style("=" * 80, fg="white", bold=True))
@@ -564,7 +591,7 @@ def _print_parameters():
 
 def _print_help():
     return """
-    $ magto_c --help                                  (C-c C-c to quit)
+    $ magto_c -h/--help                                  (C-c C-c to quit)
     """
 
 
@@ -592,3 +619,12 @@ def _print_usage():
 
   And follow the instructions.
 """
+
+
+def add_options(options):
+    def _add_options(func):
+        for option in reversed(options):
+            func = option(func)
+        return func
+
+    return _add_options

@@ -35,8 +35,13 @@ def adcp_configparser(
         + "|": None,
         ";| sonar:  Must be one of `wh`, `os`, `bb`, `nb` or `sw".ljust(linewidth, " ")
         + "|": None,
-        """;| GPS_file: path/to/netcdf4 file containing the gps data, `longitude`, `latitude`, of the platform.\n
-        If provided, will be used instead of GPS data in the adcp file. (optional) """.ljust(
+        ";| GPS_file: path/to/netcdf4 containing the gps track,".ljust(linewidth, " ")
+        + "|": None,
+        ";| `longitude` and `latitude`, of the platform. If provided,".ljust(
+            linewidth, " "
+        )
+        + "|": None,
+        ";| will be used instead of GPS data in the adcp file.(optional) ".ljust(
             linewidth, " "
         )
         + "|": None,
@@ -65,19 +70,18 @@ def adcp_configparser(
         "\t roll_threshold": 20,
         "\t pitch_threshold": 20,
         "\t side_lobe_correction": True,
-        "\t remove_platform_velocity": True,
-        "\t trim_leading_start": "",
-        "\t trim_trailing_end": "",
+        "\t platform_motion_correction": True,
+        "\t trim_leading_data": "",
+        "\t trim_trailing_data": "",
     }
     config["ADCP_OUTPUT"] = {
         ";#".ljust(linewidth, "-") + "#": None,
         ";| Set True or False. (FIXME)".ljust(linewidth, " ") + "|": None,
-        ";| If BODC_variables_name False, comon variable names are used.".ljust(
-            linewidth, " "
-        )
+        ";| If bodc_name False, generic variable names are used.".ljust(linewidth, " ")
         + "|": None,
         ";#".ljust(linewidth, "-") + "# ": None,
-        "\t BODC_variable_name": True,
+        "\t merge_output_file": True,
+        "\t bodc_name": True,
         "\t drop_percent_good": True,
         "\t drop_correlation": True,
         "\t drop_amplitude": True,
@@ -85,9 +89,44 @@ def adcp_configparser(
         "\t make_log": True,
     }
 
-    return _set_parameters(config, options)
+    return config
 
 
 def _set_parameters(config, options=None):
     """EMPTY PIPE TODO"""
     return config
+
+
+base_parser_args = dict(
+    input_files=("input_files", str),
+    netcdf_output=("netcdf_output", str),
+    odf_output=("odf_output", str),
+    platform_file=("platform_file", str),
+)
+
+adcp_command_converts = dict(
+    GPS_file=("gps", str),
+    sonar=("sonar", str),
+    yearbase=("yearbase", str),
+    adcp_orientation=("up", lambda x: "up" * x + "down" * (not x)),
+    trim_leading_data=("start_time", str),
+    trim_trailling_data=("end_time", str),
+    quality_control=("qc", bool),
+    amplitude_threshold=("amplitude_threshold", float),
+    percentgood_threshold=("percentgood_threshold", float),
+    correlation_threshold=("correlation_threshold", float),
+    horizontal_velocity_threshol=("horizontal_velocity_threshol", float),
+    vertical_velocity_threshold=("vertical_velocity_threshold", float),
+    error_velocity_threshold=("error_velocity_threshold", float),
+    side_lobe_correction=("side_lobe", bool),
+    pitch_threshold=("pitch_threshold", float),
+    roll_threshold=("roll_threshold", float),
+    platform_motion_correction=("m_corr", bool),
+    merge_output_file=("merge", bool),
+    bodc_name=("bodc_name", bool),
+    drop_percent_good=("drop_pg", bool),
+    drop_correlation=("drop_corr", bool),
+    drop_amplitude=("drop_amp", bool),
+    make_figures=("mk_fig", bool),
+    make_log=("mk_log", bool),
+)

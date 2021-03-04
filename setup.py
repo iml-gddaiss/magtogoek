@@ -3,9 +3,11 @@ import setuptools
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
+version = "0.0.1"
+
 setuptools.setup(
     name="magtogoek",
-    version="0.0.1",
+    version=version,
     author="JeromeJGuay,",
     author_email="jerome.guay@dfo-mpo.gc.ca",
     description="""
@@ -19,7 +21,7 @@ setuptools.setup(
         "numpy",
         "xarray",
         "pandas",
-        "datetime",
+        # "datetime",
         #'gsw',
         "netCDF4",
         #'scipy',
@@ -35,8 +37,8 @@ setuptools.setup(
     python_requires="~=3.7",
     entry_points={
         "console_scripts": [
-            "magto_c=magtogoek.bin.magtogoek_command:magtogoek_config",
-            "magtogoek_adcp_config=magtogoek.bin.magtogoek_command:magtogoek_adcp_config",
+            "mtgk=magtogoek.bin.magtogoek_command:magtogoek",
+            # "magtogoek_config_adcp=magtogoek.bin.config_command:magtogoek_config_adcp",
         ]
     },
 )

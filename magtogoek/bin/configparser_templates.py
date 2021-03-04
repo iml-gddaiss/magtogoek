@@ -49,6 +49,12 @@ def make_configparser(filename: str, sensor_type: str, options: tp.Dict = None) 
     configparser2ini(config, filename)
 
 
+def configparser2ini(config: tp.Type[configparser.ConfigParser], filename: str):
+    """make .ini file"""
+    with open(filename, "w") as configfile:
+        config.write(configfile)
+
+
 def _header(sensor_type: str, linewidth: int) -> tp.Type[configparser.ConfigParser]:
     """initialize the configparser"""
     date = pd.Timestamp.now().strftime("%Y-%m-%d")
@@ -73,12 +79,14 @@ def _header(sensor_type: str, linewidth: int) -> tp.Type[configparser.ConfigPars
 def _input_files(config: tp.Type[configparser.ConfigParser], linewidth: int):
     config["INPUT"] = {
         ";#".ljust(linewidth, "-") + "#": None,
-        ";| data_file: (file name) Data to be process.".ljust(linewidth, " ")
+        ";| input file: Expression identifying the file or files to be process.".ljust(
+            linewidth, " "
+        )
         + "|": None,
         ";| platform file: (file name) Can be omitted.".ljust(linewidth, " ")
         + "|": None,
         ";#".ljust(linewidth, "-") + "# ": None,
-        "\t data_file": "",
+        "\t input_files": "",
         "\t platform_file": "",
     }
 
@@ -86,7 +94,9 @@ def _input_files(config: tp.Type[configparser.ConfigParser], linewidth: int):
 def _output_files(config: tp.Type[configparser.ConfigParser], linewidth: int):
     config["OUTPUT"] = {
         ";#".ljust(linewidth, "-") + "#": None,
-        "; (files name) Leave blank for `False`.".ljust(linewidth, " ") + "|": None,
+        ";| Expression for odf and netcdf output files names.".ljust(linewidth, " ")
+        + "|": None,
+        ";| Leave blank for `False`.".ljust(linewidth, " ") + "|": None,
         ";#".ljust(linewidth, "-") + "# ": None,
         "\t netcdf_output": "",
         "\t odf_output": "",
@@ -170,14 +180,3 @@ def _additional_global_attributes(
         ";| Insert addittional attributes below.".ljust(linewidth, " ") + "|": None,
         ";#".ljust(linewidth, "-") + "# ": None,
     }
-
-
-def _set_parameters(config, kwargs):
-    """EMPTY PIPE"""
-    return config
-
-
-def configparser2ini(config: tp.Type[configparser.ConfigParser], filename: str):
-    """make .ini file"""
-    with open(filename, "w") as configfile:
-        config.write(configfile)
