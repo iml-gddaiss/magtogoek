@@ -298,8 +298,10 @@ def setdir():
     "-P",
     "--pitch-threshold",
     type=click.FLOAT,
-    help="Pitch threshold (0-180).Defaults to 20.",
+    help="Pitch threshold (0-180).",
     nargs=1,
+    default=20,
+    show_default=True,
 )
 @click.option(
     "-R",
@@ -313,6 +315,7 @@ def setdir():
     help="""Drop the percent good data from the output dataset.
     Default [--drop-pg] (True)""",
     default=True,
+    show_default=True,
 )
 @click.option(
     "--drop-corr/--keep-corr",
@@ -385,11 +388,34 @@ def adcp(
 
     if not config_name:
         _print_logo(logojson=logo_json_path, process="adcp", group="config")
-        _print_help_msg(adcp)
+        _print_command_help(adcp)
         exit()
+    click.secho("Options:", fg="green")
     _print_passed_options(ctx.params)
 
     config_name = _validate_config_name(ctx.params["config_name"])
+
+    # Change 'up' value from bool to str.
+    ctx.params["up"] = (lambda x: "up" * x + "down" * (not x))(ctx.params["up"])
+
+    # Translate options names to those used in the configparser.
+    translator = dict(
+        adcp_orientation="up",
+        GPS_file="gps",
+        quality_control="qc",
+        side_lobe_correction="side_lobe",
+        trim_leading_data="start_time",
+        trim_trailling_data="end_time",
+        platform_motion_correction="m_corr",
+        merge_output_file="merge",
+        drop_percent_good="drop_pg",
+        drop_correlation="drop_corr",
+        drop_amplitude="drop_amp",
+        make_figures="mk_fig",
+        make_log="mk_log",
+    )
+    for key, item in translator.items():
+        ctx.params[key] = ctx.params.pop(item)
 
     make_configparser(
         filename=config_name,
@@ -492,14 +518,21 @@ def _ask_for_options() -> tp.List[str]:
 def _print_passed_options(ctx_params: tp.Dict):
     for key, item in ctx_params.items():
         if item is not None:
-            print(key, item)
+            if item is True:
+                click.echo(key + ": " + click.style(str(item), fg="green"))
+            elif item is False:
+                click.echo(key + ": " + click.style(str(item), fg="red"))
+            elif type(item) is str:
+                click.echo(key + ": " + click.style(str(item), fg="yellow"))
+            else:
+                click.echo(key + ": " + click.style(str(item), fg="blue"))
 
 
 def _print_porcess_page(process: str):
     """clear terminal and print process page"""
     click.clear()
     _print_logo(process, logojson=logo_json_path)
-    _print_help_msg(
+    _print_command_help(
         {
             "adcp": adcp,
         }[process]
@@ -536,7 +569,7 @@ def _print_logo(
     click.echo(click.style("=" * 80, fg="white", bold=True))
 
 
-def _print_help_msg(command):
+def _print_command_help(command):
     """print command help"""
     with click.Context(command) as ctx:
         click.echo(command.get_help(ctx))

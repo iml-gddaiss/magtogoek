@@ -1,22 +1,95 @@
 """
 author: Jérôme Guay
-date: Feb. 22, 2021
+date: March 4, 2021
 
-FIXME: RESTRUCTURER TOUT CA.
-This script is called by magtogoek_config.py
+This script is called by magtogoek_command.py
 
-This script strores functions to make the basic templates
-and imports specific templates to make the configparser.
+This modules has functions to make the different sections of
+the configparser files and to produce it.
+
+NOTE: More comments should be added in the configparser files.
+NOTE: Missing,fonctions to open the config files.
 """
 import configparser
 import typing as tp
-import pandas as pd
+from pandas import Timestamp
 import getpass
-from magtogoek.bin.adcp_config_parser import adcp_configparser
+
+# Defaults attrs and value of the parser sections
+default_input_attrs = {"input_files": "", "platform_file": ""}
+default_output_attrs = {"netcdf_output": "", "odf_output": ""}
+default_netcdf_cf_attrs = {
+    "Conventions": "CF 1.8",
+    "title": "",
+    "institution": "",
+    "summary": "",
+    "references": "https://github.com/JeromeJGuay/magtogoek",
+    "comments": "",
+    "naming_authority": "BODC, SDC, CF, MEDS",
+}
+default_project_attrs = {
+    "project": "",
+    "sea_name": "",
+    "sea_code": "",
+}
+default_cruise_attrs = {
+    "country_institue_code": "",
+    "cruise_number": "",
+    "organization": "",
+    "chief_scientist": "",
+    "start_date": "",
+    "end_date": "",
+}
+default_global_attrs = {
+    "date_created": "",
+    "date_created": "",
+    "data_type": "",
+    "data_subtype": "",
+    "country_code": "",
+    "keywords": "",
+    "publisher_email": "",
+    "creator_type": "",
+    "publisher_name": "",
+    "keywords_vocabulary": "",
+    "standard_name_vocabulary": "CF v.52",  # NOTE update ?
+    "aknowledgment": "",
+}
+default_adcp_attrs = dict(
+    ADCP_PROCESSING=dict(
+        yearbase=("", str),
+        adcp_orientation=("down", str),
+        sonar=("", str),
+        GPS_file=("", str),
+    ),
+    ADCP_QUALITY_CONTROL=dict(
+        quality_control=(True, bool),
+        amplitude_threshold=(0, float),
+        percentgood_threshold=(64, float),
+        correlation_threshold=(90, float),
+        horizontal_velocity_threshold=(5, float),
+        vertical_velocity_threshold=(5, float),
+        error_velocity_threshold=(5, float),
+        side_lobe_correction=(True, bool),
+        pitch_threshold=(20, float),
+        roll_threshold=(20, float),
+        trim_leading_data=("", str),
+        trim_trailling_data=("", str),
+        platform_motion_correction=(True, bool),
+    ),
+    ADCP_OUTPUT=dict(
+        merge_output_file=(True, bool),
+        bodc_name=(True, bool),
+        drop_percent_good=(True, bool),
+        drop_correlation=(True, bool),
+        drop_amplitude=(True, bool),
+        make_figures=(True, bool),
+        make_log=(True, bool),
+    ),
+)
 
 
 def make_configparser(filename: str, sensor_type: str, options: tp.Dict = None) -> None:
-    """make a configparser file.
+    """make a configparser `.ini` file.
 
     parameters:
     -----------
@@ -30,26 +103,55 @@ def make_configparser(filename: str, sensor_type: str, options: tp.Dict = None) 
     """
     linewidth = 70  # width of the .ini comments sections
 
-    config = _header(sensor_type, linewidth)
-    _input_files(config, linewidth)
-    _output_files(config, linewidth)
+    # updates input and ouput sections from the options.
+    if options:
+        for key in default_input_attrs.keys():
+            if options[key] is not None:
+                default_input_attrs[key] = options[key]
+        for key in default_output_attrs.keys():
+            if options[key] is not None:
+                default_input_attrs[key] = options[key]
 
+    # making config and adding sections
+    config = _header(sensor_type, linewidth)
+    _input_files(config, default_input_attrs, linewidth)
+    _output_files(config, default_output_attrs, linewidth)
+
+    # adding the sensor_type sections
     if sensor_type == "adcp":
-        adcp_configparser(config, linewidth, options)
+        if options:
+            _update_adcp_values(default_adcp_attrs, options)
+        adcp_configparser(config, default_adcp_attrs, linewidth)
     else:
         print("Invalid sensor_type. Must be one of: `adcp`")
         exit()
 
-    _project(config, linewidth)
-    _cruise(config, linewidth)
-    _netcdf_cf(config, linewidth)
-    _gloabal_attributes(config, linewidth)
+    # adding some more global attrs sections to the configparser.
+    _project(config, default_project_attrs, linewidth)
+    _cruise(config, default_cruise_attrs, linewidth)
+    _netcdf_cf(config, default_netcdf_cf_attrs, linewidth)
+    _gloabal_attributes(config, default_global_attrs, linewidth)
     _additional_global_attributes(config, linewidth)
 
-    configparser2ini(config, filename)
+    # make the configfile
+    _configparser2ini(config, filename)
 
 
-def configparser2ini(config: tp.Type[configparser.ConfigParser], filename: str):
+def _update_adcp_values(config: tp.Type[configparser.ConfigParser], options: tp.Dict):
+    """updates adcp config sections with command line options.
+
+    structure: [section][attrs] = (value, type)
+    """
+    for section in ["ADCP_PROCESSING", "ADCP_QUALITY_CONTROL", "ADCP_OUTPUT"]:
+        for key in default_adcp_attrs[section].keys():
+            if options[key] is not None:
+                default_adcp_attrs[section][key] = (
+                    options[key],
+                    default_adcp_attrs[section][key][1],
+                )
+
+
+def _configparser2ini(config: tp.Type[configparser.ConfigParser], filename: str):
     """make .ini file"""
     with open(filename, "w") as configfile:
         config.write(configfile)
@@ -57,7 +159,7 @@ def configparser2ini(config: tp.Type[configparser.ConfigParser], filename: str):
 
 def _header(sensor_type: str, linewidth: int) -> tp.Type[configparser.ConfigParser]:
     """initialize the configparser"""
-    date = pd.Timestamp.now().strftime("%Y-%m-%d")
+    date = Timestamp.now().strftime("%Y-%m-%d")
     user = getpass.getuser()
 
     config = configparser.ConfigParser(allow_no_value=True)
@@ -76,8 +178,12 @@ def _header(sensor_type: str, linewidth: int) -> tp.Type[configparser.ConfigPars
     return config
 
 
-def _input_files(config: tp.Type[configparser.ConfigParser], linewidth: int):
-    config["INPUT"] = {
+def _input_files(
+    config: tp.Type[configparser.ConfigParser], attrs: tp.Dict, linewidth: int
+):
+    """adds input sections with attrs"""
+    section_name = "INPUT"
+    config[section_name] = {
         ";#".ljust(linewidth, "-") + "#": None,
         ";| input file: Expression identifying the file or files to be process.".ljust(
             linewidth, " "
@@ -86,54 +192,61 @@ def _input_files(config: tp.Type[configparser.ConfigParser], linewidth: int):
         ";| platform file: (file name) Can be omitted.".ljust(linewidth, " ")
         + "|": None,
         ";#".ljust(linewidth, "-") + "# ": None,
-        "\t input_files": "",
-        "\t platform_file": "",
     }
+    for key, item in attrs.items():
+        config[section_name][f"\t {key}"] = str(item)
 
 
-def _output_files(config: tp.Type[configparser.ConfigParser], linewidth: int):
-    config["OUTPUT"] = {
+def _output_files(
+    config: tp.Type[configparser.ConfigParser], attrs: tp.Dict, linewidth: int
+):
+    """add output secionts with attrs"""
+    section_name = "OUTPUT"
+    config[section_name] = {
         ";#".ljust(linewidth, "-") + "#": None,
         ";| Expression for odf and netcdf output files names.".ljust(linewidth, " ")
         + "|": None,
         ";| Leave blank for `False`.".ljust(linewidth, " ") + "|": None,
         ";#".ljust(linewidth, "-") + "# ": None,
-        "\t netcdf_output": "",
-        "\t odf_output": "",
     }
+    for key, item in attrs.items():
+        config[section_name][f"\t {key}"] = str(item)
 
 
-def _netcdf_cf(config: tp.Type[configparser.ConfigParser], linewidth: int):
-    """add netcdf config"""
-    config["NETCDF_CF"] = {
+def _netcdf_cf(
+    config: tp.Type[configparser.ConfigParser], attrs: tp.Dict, linewidth: int
+):
+    """add netcdf CF conventions sections with attrs"""
+    section_name = "NETCDF_CF"
+    config[section_name] = {
         ";#".ljust(linewidth, "-") + "#": None,
         ";| Global attibutes for CF conventions".ljust(linewidth, " ") + "|": None,
         ";| Blanks are omitted.".ljust(linewidth, " ") + "|": None,
         ";#".ljust(linewidth, "-") + "# ": None,
-        "\t Conventions": "CF 1.8",
-        "\t title": "",
-        "\t institution": "",
-        "\t summary": "",
-        "\t references": "https://github.com/JeromeJGuay/magtogoek",
-        "\t comments": "",
-        "\t naming_authority": "BODC, SDC, CF, MEDS",
     }
+    for key, item in attrs.items():
+        config[section_name][f"\t {key}"] = item
 
 
-def _project(config: tp.Type[configparser.ConfigParser], linewidth: int):
-    config["PROJECT"] = {
+def _project(
+    config: tp.Type[configparser.ConfigParser], attrs: tp.Dict, linewidth: int
+):
+    """add project sections with attrs"""
+    section_name = "PROJECT"
+    config[section_name] = {
         ";#".ljust(linewidth, "-") + "#": None,
         ";| Global attributes for project".ljust(linewidth, " ") + "|": None,
         ";| Blanks are omitted.".ljust(linewidth, " ") + "|": None,
         ";#".ljust(linewidth, "-") + "# ": None,
-        "\t project": "",
-        "\t sea_name": "",
-        "\t sea_code": "",
     }
+    for key, item in attrs.items():
+        config[section_name][f"\t {key}"] = str(item)
 
 
-def _cruise(config: tp.Type[configparser.ConfigParser], linewidth: int):
-    config["CRUISE"] = {
+def _cruise(config: tp.Type[configparser.ConfigParser], attrs: tp.Dict, linewidth: int):
+    """add cruise sections with attrs"""
+    section_name = "CRUISE"
+    config[section_name] = {
         ";#".ljust(linewidth, "-") + "#": None,
         ";| Global attributes for cruise".ljust(linewidth, " ") + "|": None,
         ";| Blanks are omitted".ljust(linewidth, " ") + "|": None,
@@ -143,40 +256,90 @@ def _cruise(config: tp.Type[configparser.ConfigParser], linewidth: int):
         + "|": None,
         ";| Date format: YYYY-MM-DDTHH:MM:SS FIXME ".ljust(linewidth, " ") + "|": None,
         ";#".ljust(linewidth, "-") + "# ": None,
-        "\t country_institue_code": "",
-        "\t cruise_number": "",
-        "\t organization": "",
-        "\t chief_scientist": "",
-        "\t start_date": "",
-        "\t end_date": "",
     }
+    for key, item in attrs.items():
+        config[section_name][f"\t {key}"] = str(item)
 
 
-def _gloabal_attributes(config: tp.Type[configparser.ConfigParser], linewidth: int):
-    config["GLOBAL_ATTRIBUTES"] = {
+def _gloabal_attributes(
+    config: tp.Type[configparser.ConfigParser], attrs: tp.Dict, linewidth: int
+):
+    """add global attributes sections with attrs"""
+    section_name = "GLOBAL_ATTRIBUTES"
+    config[section_name] = {
         ";#".ljust(linewidth, "-") + "#": None,
         ";| Global attributes ".ljust(linewidth, " ") + "|": None,
         ";| Blanks are omitted".ljust(linewidth, " ") + "|": None,
         ";#".ljust(linewidth, "-") + "# ": None,
-        "\t date_created": "",
-        "\t data_type": "",
-        "\t data_subtype": "",
-        "\t country_code": "",
-        "\t keywords": "",
-        "\t publisher_email": "",
-        "\t creator_type": "",
-        "\t publisher_name": "",
-        "\t keywords_vocabulary": "",
-        "\t standard_name_vocabulary": "CF v.52",  # Note update ?
-        "\t aknowledgment": "",
     }
+    for key, item in attrs.items():
+        config[section_name][f"\t {key}"] = str(item)
 
 
 def _additional_global_attributes(
     config: tp.Type[configparser.ConfigParser], linewidth: int
 ):
+    """add addtionnal global attributes sections"""
     config["ADDITIONAL_GLOBAL_ATTRIBUTES"] = {
         ";#".ljust(linewidth, "-") + "#": None,
         ";| Insert addittional attributes below.".ljust(linewidth, " ") + "|": None,
         ";#".ljust(linewidth, "-") + "# ": None,
     }
+
+
+def adcp_configparser(
+    config: tp.Type[configparser.ConfigParser], attrs: tp.Dict, linewidth: int
+) -> None:
+    """add adcp sections with attributes"""
+    section_name = "ADCP_PROCESSING"
+    config[section_name] = {
+        ";#".ljust(linewidth, "-") + "#": None,
+        ";| yearbase: year that the sampling started. ex: `1970`".ljust(linewidth, " ")
+        + "|": None,
+        ";| adcp_orientation: `down` or `up`. (horizontal no supported)".ljust(
+            linewidth, " "
+        )
+        + "|": None,
+        ";| sonar:  Must be one of `wh`, `os`, `bb`, `nb` or `sw`".ljust(linewidth, " ")
+        + "|": None,
+        ";| GPS_file: path/to/netcdf4 containing the gps track,".ljust(linewidth, " ")
+        + "|": None,
+        ";|   `longitude` and `latitude`, of the platform. If provided,".ljust(
+            linewidth, " "
+        )
+        + "|": None,
+        ";|    will be used instead of GPS data in the adcp file.(optional) ".ljust(
+            linewidth, " "
+        )
+        + "|": None,
+        ";#".ljust(linewidth, "-") + "# ": None,
+    }
+    for key, item in attrs[section_name].items():
+        config[section_name][f"\t {key}"] = str(item[0])
+
+    section_name = "ADCP_QUALITY_CONTROL"
+    config[section_name] = {
+        ";#".ljust(linewidth, "-") + "#": None,
+        ";| If quality_control is `False`, no quality control is carried out .".ljust(
+            linewidth, " "
+        )
+        + "|": None,
+        ";| Blanks are omitted or set False.".ljust(linewidth, " ") + "|": None,
+        ";| Trims format `YYYYMMDDHHMMSS`".ljust(linewidth, " ") + "|": None,
+        ";#".ljust(linewidth, "-") + "# ": None,
+    }
+    for key, item in attrs[section_name].items():
+        config[section_name][f"\t {key}"] = str(item[0])
+
+    section_name = "ADCP_OUTPUT"
+    config[section_name] = {
+        ";#".ljust(linewidth, "-") + "#": None,
+        ";| Set True or False. (FIXME)".ljust(linewidth, " ") + "|": None,
+        ";| If bodc_name False, generic variable names are used.".ljust(linewidth, " ")
+        + "|": None,
+        ";#".ljust(linewidth, "-") + "# ": None,
+    }
+    for key, item in attrs[section_name].items():
+        config[section_name][f"\t {key}"] = str(item[0])
+
+    return config
