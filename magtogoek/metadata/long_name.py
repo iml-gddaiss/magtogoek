@@ -10,7 +10,7 @@ TODO:
 -everything
 """
 import typing as tp
-from toolbox import dict2json
+from magtogoek.metadata.toolbox import dict2json
 
 long_name = dict(adcp=dict(TEMPPR01="sea temperature at transducer"))
 

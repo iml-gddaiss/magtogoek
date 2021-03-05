@@ -17,7 +17,7 @@ date: Feb. 16, 2021
 import json
 import typing as tp
 import xarray as xr
-from toolbox import json2dict
+from magtogoek.metadata.toolbox import json2dict
 
 
 def add_dataset_variables_attributes(
