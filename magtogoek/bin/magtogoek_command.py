@@ -37,7 +37,7 @@ from magtogoek.bin.configparser_templates import make_configparser
 from magtogoek.bin.command_options import adcp_options, add_options
 
 ### Global variable used by some of the module functions.
-magtogoek_version = "0.0.1"
+magtogoek_version = "0.0.2"
 valid_sensor_types = ["adcp"]
 logo_json_path = "files/logo.json"
 
