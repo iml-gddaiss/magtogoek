@@ -2,9 +2,7 @@
 Author: JeromeJGuay
 Date: Mars 2
 
-This module contains the command line applications `magto_c` that run magtoek_config(). 
-
-Note: A simpler command interface would proably be better.
+This module contains the command line applications `mtgk`.
 
 ================================================================================
         __  ___    ____    _____ ________ ______ _____  ______ _____  __ __
@@ -12,24 +10,15 @@ Note: A simpler command interface would proably be better.
       / /|  /| | / /_| | / /_ \   / /   / /_/ // /_ \ / /_/ //  __/ / _  /
      /_/ |_/ |_|/_/  |_|/_____|  /_/   /_____//_____|/_____//_____//_/ \_\.
 
-
 ================================================================================
 
 Descriptions:
-  `magto_c` (magtogoek_config) is a command line applications that creates
-  a `.ini` configuration file. After calling `magto_c`, you have to provide
-  a `process` (type of date to be process) and a `config_name` for the
-  configuration file. The configuration file can then be passed to
-  magtogoek_process.
-
-  The created `.ini` file will contains  global and process specific parameters.
-  These parameters can be edited afterward in a text editor or set here with
-  optionals arguments
+  TODO
 
 Usage:
   In terminal, typing,
 
-    $ magto_c `process` `config_name`
+    $ mtgk [`config`/`process`] `config_name`
 
   should return,
 
@@ -50,9 +39,11 @@ Usage:
   And follow the instructions.
 """
 import click
-import os
+
+# import os
 import typing as tp
-import sys
+
+# import sys
 
 from pathlib import Path
 from magtogoek.metadata.toolbox import json2dict
@@ -73,82 +64,38 @@ CONTEXT_SETTINGS = dict(
 )
 
 
-class HelpAsArgs(click.Group):
-    # change the section head of sub commands to "Arguments"
-
-    def format_commands(self, ctx, formatter):
-        rows = []
-        for subcommand in self.list_commands(ctx):
-            cmd = self.get_command(ctx, subcommand)
-            if cmd is None:
-                continue
-
-            help = cmd.short_help or ""
-            rows.append((subcommand, help))
-
-        if rows:
-            with formatter.section("Arguments"):
-                formatter.write_dl(rows)
-
-
-class MagtogoekHelp(click.Group):
+class GroupHelp(click.Group):
     """Custom help for magtogoek_config"""
 
     def format_help(self, ctx, formatter):
+
+        print()
+        subprocess.run(["printf", "'\e[8;40;80t'"])
         click.clear()
-        _print_logo(logojson=logo_json_path, group="main")
-        _print_doc(["Description", "Help"])
+        _print_logo(logojson=logo_json_path, group=ctx.info_name)
+        click.secho("Descriptions:", fg="red")
+        _print_description(ctx.info_name)
+        click.secho("Arguments:", fg="red")
+        _print_arguments(ctx.info_name)
+        click.secho("\nTo show options", fg="cyan")
+        _print_help_commands()
 
 
-# magtogoek main group
-@click.group(cls=MagtogoekHelp, context_settings=CONTEXT_SETTINGS)
+### magtogoek entry point
+@click.group(cls=GroupHelp, context_settings=CONTEXT_SETTINGS)
 def magtogoek():
     pass
 
 
-class ConfigHelp(click.Group):
-    """Custom help for magtogoek_config"""
-
-    def format_help(self, ctx, formatter):
-        subprocess.run(["printf", "'\e[8;40;80t'"])
-        click.clear()
-        _print_logo(logojson=logo_json_path, group="config")
-        _print_doc(["Description", "Help"])
-
-
 ### config sub-group
-@magtogoek.group(cls=ConfigHelp, context_settings=CONTEXT_SETTINGS)
+@magtogoek.group(cls=GroupHelp, context_settings=CONTEXT_SETTINGS)
 def config():
     pass
 
 
-class ProcessHelp(click.Group):
-    """Custom help for magtogoek_config"""
-
-    def format_help(self, ctx, formatter):
-        click.clear()
-        _print_logo(logojson=logo_json_path, group="config")
-        _print_doc(["Description", "Help"])
-
-
-class SetDirHelp(click.Group):
-    """Custom help for magtogoek_config"""
-
-    def format_help(self, ctx, formatter):
-        click.clear()
-        _print_logo(logojson=logo_json_path, group="config")
-        _print_doc(["Description", "Help"])
-
-
-@magtogoek.group(cls=ProcessHelp, context_settings=CONTEXT_SETTINGS)
+### config sub-group
+@magtogoek.group(cls=GroupHelp, context_settings=CONTEXT_SETTINGS)
 def process():
-    """TODO"""
-    pass
-
-
-@magtogoek.group(cls=SetDirHelp, context_settings=CONTEXT_SETTINGS)
-def setdir():
-    """TODO"""
     pass
 
 
@@ -212,12 +159,13 @@ def setdir():
     "-y",
     "--yearbase",
     type=click.INT,
-    help="""year when the adcp sampling started. exL `1970`""",
+    help="""year when the adcp sampling started. ex: `1970`""",
 )
 @click.option(
     "--up/--down",
-    help="""Vertical orientation of the adcp. Default [--down].""",
+    help="""Vertical orientation of the adcp.""",
     default=False,
+    show_default=True,
 )
 @click.option(
     "-l",
@@ -236,8 +184,9 @@ def setdir():
 )
 @click.option(
     "--qc/--no-qc",
-    help="Do quality control. Default [--qc] (True)",
+    help="Do quality control.",
     default=True,
+    show_default=True,
 )
 @click.option(
     "-a",
@@ -245,45 +194,58 @@ def setdir():
     type=click.FLOAT,
     help="Amplitude threshold (0-255). Defaults to 0.",
     nargs=1,
+    default=0,
+    show_default=True,
 )
 @click.option(
     "-p",
     "--percentgood-threshold",
     type=click.FLOAT,
     help="Percentage of 4 beam threshold (0-100). Defaults to 90.",
+    default=90,
+    show_default=True,
 )
 @click.option(
     "-c",
     "--correlation-threshold",
     type=click.FLOAT,
-    help="Correlation threshold (0-255). Defaults to 64.",
+    help="Correlation threshold (0-255).",
     nargs=1,
+    default=64,
+    show_default=True,
 )
 @click.option(
     "-u",
     "--horizontal-velocity-threshold",
     type=click.FLOAT,
-    help="Horizontal velocity threshold (u,v).Defaults to 5.",
+    help="Horizontal velocity threshold (u,v). [m/s]",
     nargs=1,
+    default=5,
+    show_default=True,
 )
 @click.option(
     "-w",
     "--vertical-velocity-threshold",
     type=click.FLOAT,
-    help="Vertial velocity threshold (u,v).Defaults to 5.",
+    help="Vertial velocity threshold (w).  [m/s]",
     nargs=1,
+    default=5,
+    show_default=True,
 )
 @click.option(
     "-E",
     "--error-velocity-threshold",
     type=click.FLOAT,
-    help="Error velocity threshold (u,v).Defaults to 5.",
+    help="Error velocity threshold. [m/s]",
     nargs=1,
+    default=5,
+    show_default=True,
 )
 @click.option(
     "--side-lobe/--no-side-lobe",
-    help="Side lobe correction. Default [--side-lobe] (True))",
+    help="Do side lobe correction.",
     default=True,
+    show_default=True,
 )
 @click.option(
     "--m-corr/--no-m-corr",
@@ -309,43 +271,44 @@ def setdir():
     type=click.FLOAT,
     help="Roll threshold (0-180).Defaults to 20.",
     nargs=1,
+    default=20,
+    show_default=True,
 )
 @click.option(
     "--drop-pg/--keep-pg",
     help="""Drop the percent good data from the output dataset.
-    Default [--drop-pg] (True)""",
+    [default: --drop-pg]""",
     default=True,
-    show_default=True,
 )
 @click.option(
     "--drop-corr/--keep-corr",
     help="""Drop the correlation data from the output dataset.
-    Default [--drop-corr] (True)""",
+    [default: --drop-corr]""",
     default=True,
 )
 @click.option(
     "--drop-amp/--keep-amp",
     help="""Drop the amplitude data from the output dataset.
-    Default [--drop-amp] (True)""",
+    [default: --drop-amp]""",
     default=True,
 )
 @click.option(
     "--mk-log/--no-mk-log",
-    help="""Make an output log of the processing.
-    Default [--mk-log] (True)""",
+    help="""Make an output log of the processing.""",
     default=True,
+    show_default=True,
 )
 @click.option(
     "--mk-fig/--no-mk-fig",
-    help="""Make figures to inspect the data.
-    Default [--mk-fig] (True)""",
+    help="""Make figures to inspect the data.""",
     default=True,
+    show_default=True,
 )
 @click.option(
     "--bodc-name/--gen-name",
     help="""Name of the output variables. Using --gen-name
     outputs generic variables names instead of BODC P01 name.
-    Default [--bodc-name]""",
+    [default: --bodc-name]""",
     default=True,
 )
 @click.pass_context
@@ -381,15 +344,19 @@ def adcp(
     mk_log,
     bodc_name,
 ):
-    """\033[F \033[F \033[K
-    Positional argument:\n
-    1 - config_name\t\t file name (path/to/file) configuration file.
-    """  # \033[F \033[F \033[K deletes default click help
+    """\033[F \033[F \033[K"""  # \033[F \033[F \033[K deletes default click help
 
     if not config_name:
+        click.clear()
         _print_logo(logojson=logo_json_path, process="adcp", group="config")
-        _print_command_help(adcp)
+        click.secho("\nDescription:", fg="red")
+        _print_description("adcp")
+        click.secho("\nArgument:", fg="red")
+        click.secho("  config_name\t\t file name (path/to/file) configuration file.")
+        click.secho("\nTo show options", fg="cyan")
+        click.secho("  $ mtgk config adcp -h")
         exit()
+
     click.secho("Options:", fg="green")
     _print_passed_options(ctx.params)
 
@@ -430,41 +397,6 @@ def adcp(
     exit()
 
 
-def _ask_for_process(valid_process: tp.List[str]) -> str:
-    """ckick.prompt that ask for `process`"""
-    process = click.prompt(
-        click.style(
-            f"What type of data do you want to process: {valid_process} ",
-            bold=True,
-        )
-    )
-    while process not in valid_process:
-        click.echo(click.style("ERROR: Invalid process", fg="red"))
-        process = click.prompt(
-            click.style(
-                f"What type of data do you want to process. Choose from {valid_process}: ",
-                bold=True,
-            )
-        )
-    return process
-
-
-def _print_invalid_process(valid_process: str):
-    """print for invalid process"""
-    click.echo(click.style("ERROR: Invalid process", fg="red"))
-    click.echo(click.style(f"Valid process: {valid_process}"))
-    click.echo("Help: magto_c --help")
-
-
-def _ask_for_config_name() -> str:
-    """ckick.prompt that ask for `config_name`"""
-    return click.prompt(
-        click.style(
-            "\nEnter a filename (path/to/file) for the config `.ini` file. ", bold=True
-        )
-    )
-
-
 def _validate_config_name(config_name: str) -> str:
     """Check if directory or/and file name exist.
 
@@ -503,14 +435,11 @@ def _validate_config_name(config_name: str) -> str:
     return config_name
 
 
-def _ask_for_options() -> tp.List[str]:
-    """click.prompt that ask for `options`.
-    Removes any empty string from list"""
-    click.echo(click.style("\nEnter options or press enter to pass:", bold=True))
-    return list(
-        filter(
-            None,
-            click.prompt(click.style("\nOptions:", bold=True), default="").split(" "),
+def _ask_for_config_name() -> str:
+    """ckick.prompt that ask for `config_name`"""
+    return click.prompt(
+        click.style(
+            "\nEnter a filename (path/to/file) for the config `.ini` file. ", bold=True
         )
     )
 
@@ -528,20 +457,7 @@ def _print_passed_options(ctx_params: tp.Dict):
                 click.echo(key + ": " + click.style(str(item), fg="blue"))
 
 
-def _print_porcess_page(process: str):
-    """clear terminal and print process page"""
-    click.clear()
-    _print_logo(process, logojson=logo_json_path)
-    _print_command_help(
-        {
-            "adcp": adcp,
-        }[process]
-    )
-
-
-def _print_logo(
-    process: str = None, logojson: str = "file/logo.json", group: str = "ocean"
-):
+def _print_logo(process: str = None, logojson: str = "file/logo.json", group: str = ""):
     """open and print logo from logo.json
     If a process is given, prints the process logo.
     """
@@ -569,89 +485,46 @@ def _print_logo(
     click.echo(click.style("=" * 80, fg="white", bold=True))
 
 
+def _print_arguments(group):
+    """print group arguments(command)"""
+    if group == "magtogoek":
+        click.secho("TODO")
+    if group == "config":
+        click.secho("  adcp".ljust(20, " ") + "Config file for adcp data. ", fg="white")
+    if group == "process":
+        click.secho("TODO")
+
+
+def _print_description(group):
+    """print group/command desciptions"""
+    if group == "matogoek":
+        click.echo("""TODO""")
+    if group == "config":
+        click.echo(
+            """
+  The config command creates a `.ini`  configuration file. After the
+  command is called, a `sensor_type` (type of date to be process) and
+  a `config_name` for the configuration file. The configuration file
+  can then be passed to  to the process command.
+
+  The configuration `.ini` files  contain global and sensor specific
+  parameters. These parameters can be edited afterward in a text editor
+  or set here with optionals arguments."""
+        )
+    if group == "process":
+        click.echo("""TODO""")
+    if group == "adcp":
+        click.echo("""TODO""")
+
+
+def _print_help_commands():
+    click.echo("\n  -h/--help".ljust(20, " ") + "Show this help page")
+
+
 def _print_command_help(command):
     """print command help"""
     with click.Context(command) as ctx:
         click.echo(command.get_help(ctx))
-
-
-def _print_doc(docs: tp.List[str]):
-    """print formated doc using:
-
-    \t _print_description()
-    \t _print_usage()
-    \t _print_parameter()
-    \t _print_help()
-
-    paramters:
-    ----------
-    doc:
-        list of doc to print. Docs print in the order given.
-
-    """
-    doc_functions = dict(
-        Description=_print_description,
-        Usage=_print_usage,
-        Parameters=_print_parameters,
-        Help=_print_help,
-    )
-    for doc in docs:
-        click.echo(click.style(f"\n{doc}:", fg="red"))
-        click.echo(click.style(doc_functions[doc](), fg="white"))
-
-
-def _print_description():
-    return """
-  `magto_c` is a command line applications that creates a `.ini`
-  configuration file. After the function is called, you have to provide a
-  `process` (type of date to be process) and a `config_name` for the
-  configuration file. The configuration file can then be passed to
-  magtogoek_process.
-
-  The created `.ini` file will contains  global and process specific parameters.
-  These parameters can be edited afterward in a text editor or set here with
-  optionals arguments."""
-
-
-def _print_parameters():
-    return """
-    process       Type of data to be process. Choose one of `adcp`
-
-    config_name   Name for the configuration_file. The configuration
-                  file is made in the current directory unless a path
-                  is provided. ex:  `config_file` = path/to/filename"""
-
-
-def _print_help():
-    return """
-    $ magto_c -h/--help                                  (C-c C-c to quit)
-    """
-
-
-def _print_usage():
-    return """
-  Typing,
-
-    $ magto_c `process` `config_name`
-
-  should return,
-
-    Config file created for `process` processing -> `config_name`.ini
-
-  Each process has specific `--optionals` arguments. Typing
-
-    $ magto_c `process`
-
-  will bring up the `process` page, where all the `--optionals` are listed.
-
-    $ magto_c process config_name [--optionals]
-
-  You can also type,
-
-    $ magto_c
-
-  And follow the instructions.
-"""
 
 
 def add_options(options):
