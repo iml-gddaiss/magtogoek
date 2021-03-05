@@ -3,7 +3,7 @@ Author: JeromeJGuay
 Date: Mars 2
 
 This module contains the command line applications `mtgk`.
-
+TODO: change process var to sensor_type to avoid confusion
 ================================================================================
         __  ___    ____    _____ ________ ______ _____  ______ _____  __ __
        /  |/   |  / _  |  / ___//__  ___// __  // ___/ / __  //  __/ / // /
@@ -13,30 +13,19 @@ This module contains the command line applications `mtgk`.
 ================================================================================
 
 Descriptions:
-  TODO
+  FIXME
 
 Usage:
-  In terminal, typing,
+    $ mtgk config [adcp, ] [CONFIG_NAME] [OPTIONS]
 
-    $ mtgk [`config`/`process`] `config_name`
+    $ mtgk process [adcp, ] [CONFIG_FILE] [OPTIONS]
 
-  should return,
+Helps:
+    $ mtgk
 
-    Config file created for `process` processing -> `config_name`.ini
+    $ mtgk [config, process, ]
 
-  Each process has specific `--optionals` arguments. Typing
-
-    $ magto_c `process`
-
-  will bring up the `process` page, where all the `--optionals` are listed.
-
-    $ magto_c process config_name [--optionals]
-
-  You can also type,
-
-    $ magto_c
-
-  And follow the instructions.
+    $ mtgk [config, process] [adcp, ]
 """
 import click
 import typing as tp
@@ -65,16 +54,22 @@ class GroupHelp(click.Group):
 
     def format_help(self, ctx, formatter):
 
-        print()
         subprocess.run(["printf", "'\e[8;40;80t'"])
         click.clear()
         _print_logo(logojson=logo_json_path, group=ctx.info_name)
         click.secho("\nDescriptions:", fg="red")
         _print_description(ctx.info_name)
+        click.secho("\nUsage:", fg="red")
+        _print_usage(ctx.info_name)
         click.secho("\nCommands:", fg="red")
         _print_arguments(ctx.info_name)
         click.secho("\nHelp", fg="cyan")
-        _print_help_commands()
+        _print_help_command()
+        # msg for invalid options. valide option [-h/--help]
+        if (len(click.get_os_args()) > 0) and (
+            ("-h" not in click.get_os_args()) and ("--help" not in click.get_os_args())
+        ):
+            click.secho(f"Error: No such option as {click.get_os_args()[-1]}.")
 
 
 # ---------------------------#
@@ -100,7 +95,7 @@ def process():
 ### adcp: config sub-command
 @config.command("adcp")
 @click.argument(
-    "config_name", metavar="config_name", required=False, default=None, type=str
+    "config_name", metavar="[config_file]", required=False, default=None, type=str
 )
 @add_options(adcp_options())
 @click.pass_context
@@ -136,22 +131,23 @@ def config_adcp(
     mk_log,
     bodc_name,
 ):
-    """\033[F \033[F \033[K"""  # \033[F \033[F \033[K deletes default click help
+    """Command to make an adcp config files. The [OPTIONS] can be added
+    before or after the [config_name]."""  # \033[F \033[F \033[K deletes default click help
     if not config_name:
         click.clear()
         _print_logo(logojson=logo_json_path, process="adcp", group="config")
         click.secho("\nDescription:", fg="red")
         _print_description("adcp")
-        click.secho("\nRequired argument:", fg="red")
+        click.secho("\nUsage:", fg="red")
+        click.secho("  mtgk config adcp [config_name] [OPTIONS]")
+        click.secho("\nArguments:", fg="red")
         click.secho(
-            "  config_name\t\t file name (path/to/file) for the configuration file."
+            "  [config_name]\t\tfile name (path/to/file) for the new configuration file."
         )
         click.secho("\nTo show options", fg="cyan")
         click.secho("  $ mtgk config adcp -h")
         if len(click.get_os_args()) > 2:
-            click.secho(
-                "\nERROR: A `config_name` is required before the  options.\n", fg="red"
-            )
+            click.secho("\nError: A `config_name` is required.\n")
 
         exit()
 
@@ -253,7 +249,9 @@ def _print_passed_options(ctx_params: tp.Dict):
                 click.echo(key + ": " + click.style(str(item), fg="blue"))
 
 
-def _print_logo(process: str = None, logojson: str = "file/logo.json", group: str = ""):
+def _print_logo(
+    process: str = None, logojson: str = "files/logo.json", group: str = ""
+):
     """open and print logo from logo.json
     If a process is given, prints the process logo.
     """
@@ -292,13 +290,13 @@ def _print_arguments(group):
     if group == "config":
         click.secho("  adcp".ljust(20, " ") + "Config file for adcp data. ", fg="white")
     if group == "process":
-        click.secho("TODO")
+        click.secho("FIXME")
 
 
 def _print_description(group):
     """print group/command desciptions"""
     if group == "mtgk":
-        click.echo("""TODO""")
+        click.echo("""FIXME""")
     if group == "config":
         click.echo(
             """  The config command creates a `.ini`  configuration file. After the command is
@@ -311,16 +309,18 @@ def _print_description(group):
   optionals arguments.""",
         )
     if group == "process":
-        click.echo("""TODO""")
+        click.echo("""FIXME""")
     if group == "adcp":
-        click.echo("""TODO""")
+        click.echo(""" FIXME""")
 
 
-def _print_help_commands():
+def _print_usage(group):
+    """print group/command usage"""
+    if group in ["mtgk", "config"]:
+        click.echo("""    mtgk config [adcp, ] [CONFIG_NAME] [OPTIONS]""")
+    if group in ["mtgk", "process"]:
+        click.echo("""    mtgk process [adcp, ] [CONFIG_FILE] [OPTIONS]""")
+
+
+def _print_help_command():
     click.echo("\n  -h/--help".ljust(20, " ") + "Show this help page")
-
-
-def _print_command_help(command):
-    """print command help"""
-    with click.Context(command) as ctx:
-        click.echo(command.get_help(ctx))
