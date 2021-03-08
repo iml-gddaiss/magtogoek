@@ -2,14 +2,12 @@
 author: Jérôme Guay
 date: Feb. 19, 2021
 
-Toolbox for metadata-subpackage
+Functions toolbox.
+
+NOTE: move somewhere else ?
 """
 import typing as tp
 import json
-
-# --------------------------------------------------------------------------- #
-# ------------------- Making of the json attributes file -------------------- #
-# --------------------------------------------------------------------------- #
 
 
 def dict2json(file_name: str, dictionnary: tp.Dict, indent: int = 4) -> None:

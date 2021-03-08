@@ -4,6 +4,8 @@ Date: Mars 2
 
 This module contains the command line applications `mtgk`.
 TODO: change process var to sensor_type to avoid confusion
+TODO: move add_options here and to _add_options
+TODO: pathlib *.ext ? handling
 ================================================================================
         __  ___    ____    _____ ________ ______ _____  ______ _____  __ __
        /  |/   |  / _  |  / ___//__  ___// __  // ___/ / __  //  __/ / // /
@@ -33,67 +35,79 @@ import subprocess
 
 from pathlib import Path
 from magtogoek.metadata.toolbox import json2dict
-from magtogoek.bin.configparser_templates import make_configparser
+from magtogoek.bin.configparser_templates import ConfigFile  # make_configparser
 from magtogoek.bin.command_options import adcp_options, add_options
 
 ### Global variable used by some of the module functions.
-magtogoek_version = "0.0.2"
-valid_sensor_types = ["adcp"]
-logo_json_path = "files/logo.json"
+_magtogoek_version = "0.0.2"
+_valid_sensor_types = ["adcp"]
+_logo_path = "../files/logo.json"
 
 
-CONTEXT_SETTINGS = dict(
+_CONTEXT_SETTINGS = dict(
     ignore_unknown_options=True,
     allow_extra_args=True,
     help_option_names=["-h", "--help"],
 )
 
 
-class GroupHelp(click.Group):
-    """Custom help for magtogoek_config"""
-
-    def format_help(self, ctx, formatter):
-
-        subprocess.run(["printf", "'\e[8;40;80t'"])
+def _print_info(ctx, callback):
+    """Show command information"""
+    if callback:
+        subprocess.run(["printf", "\e[8;40;80t"])
         click.clear()
-        _print_logo(logojson=logo_json_path, group=ctx.info_name)
+        _print_logo(
+            logo_path=_logo_path, group=ctx.info_name, version=_magtogoek_version
+        )
         click.secho("\nDescriptions:", fg="red")
         _print_description(ctx.info_name)
         click.secho("\nUsage:", fg="red")
-        _print_usage(ctx.info_name)
-        click.secho("\nCommands:", fg="red")
+        _print_usage(ctx.info_name, ctx.parent.info_name)
+        if ctx.info_name in ["mtgk", "config", "process"]:
+            click.secho("\nCommands:", fg="red")
+        else:
+            click.secho("\nArguments:", fg="red")
         _print_arguments(ctx.info_name)
-        click.secho("\nHelp", fg="cyan")
-        _print_help_command()
-        # msg for invalid options. valide option [-h/--help]
-        if (len(click.get_os_args()) > 0) and (
-            ("-h" not in click.get_os_args()) and ("--help" not in click.get_os_args())
-        ):
-            click.secho(f"Error: No such option as {click.get_os_args()[-1]}.")
+        click.secho("\nOptions", fg="red")
+        click.echo("  Use  -h/--help to show the options")
+        click.echo("\n")
+        exit()
 
 
 # ---------------------------#
 #      mtgk entry point      #
 # ---------------------------#
-@click.group(cls=GroupHelp, context_settings=CONTEXT_SETTINGS)
-def magtogoek():
+@click.group(context_settings=_CONTEXT_SETTINGS)
+@click.option(
+    "--info", is_flag=True, callback=_print_info, help="Show command information"
+)
+def magtogoek(info):
     pass
 
 
 ### config sub-group
-@magtogoek.group(cls=GroupHelp, context_settings=CONTEXT_SETTINGS)
-def config():
+@magtogoek.group(context_settings=_CONTEXT_SETTINGS)
+@click.option(
+    "--info", is_flag=True, callback=_print_info, help="Show command information"
+)
+def config(info):
     pass
 
 
 ### process sub-group
-@magtogoek.group(cls=GroupHelp, context_settings=CONTEXT_SETTINGS)
-def process():
+@magtogoek.group(context_settings=_CONTEXT_SETTINGS)
+@click.option(
+    "--info", is_flag=True, callback=_print_info, help="Show command information"
+)
+def process(info):
     pass
 
 
 ### adcp: config sub-command
 @config.command("adcp")
+@click.option(
+    "--info", is_flag=True, callback=_print_info, help="Show command information"
+)
 @click.argument(
     "config_name", metavar="[config_file]", required=False, default=None, type=str
 )
@@ -102,93 +116,29 @@ def process():
 def config_adcp(
     ctx,
     config_name,
-    input_files,
-    netcdf_output,
-    odf_output,
-    platform_file,
-    merge,
-    gps,
-    sonar,
-    yearbase,
-    up,
-    start_time,
-    end_time,
-    qc,
-    amplitude_threshold,
-    percentgood_threshold,
-    correlation_threshold,
-    horizontal_velocity_threshold,
-    vertical_velocity_threshold,
-    error_velocity_threshold,
-    side_lobe,
-    m_corr,
-    pitch_threshold,
-    roll_threshold,
-    drop_pg,
-    drop_corr,
-    drop_amp,
-    mk_fig,
-    mk_log,
-    bodc_name,
+    **options,
 ):
     """Command to make an adcp config files. The [OPTIONS] can be added
-    before or after the [config_name]."""  # \033[F \033[F \033[K deletes default click help
-    if not config_name:
-        click.clear()
-        _print_logo(logojson=logo_json_path, process="adcp", group="config")
-        click.secho("\nDescription:", fg="red")
-        _print_description("adcp")
-        click.secho("\nUsage:", fg="red")
-        click.secho("  mtgk config adcp [config_name] [OPTIONS]")
-        click.secho("\nArguments:", fg="red")
-        click.secho(
-            "  [config_name]\t\tfile name (path/to/file) for the new configuration file."
-        )
-        click.secho("\nTo show options", fg="cyan")
-        click.secho("  $ mtgk config adcp -h")
-        if len(click.get_os_args()) > 2:
-            click.secho("\nError: A `config_name` is required.\n")
+    before or after the [config_name]."""
 
-        exit()
+    _print_passed_options(options)
 
-    click.secho("Options:", fg="green")
-    _print_passed_options(ctx.params)
+    config_name = _validate_config_name(config_name)
 
-    config_name = _validate_config_name(ctx.params["config_name"])
+    options = _translate_options_name(options)
 
-    # Change 'up' value from bool to str.
-    ctx.params["up"] = (lambda x: "up" * x + "down" * (not x))(ctx.params["up"])
-
-    # Translate options names to those used in the configparser.
-    translator = dict(
-        adcp_orientation="up",
-        GPS_file="gps",
-        quality_control="qc",
-        side_lobe_correction="side_lobe",
-        trim_leading_data="start_time",
-        trim_trailling_data="end_time",
-        platform_motion_correction="m_corr",
-        merge_output_file="merge",
-        drop_percent_good="drop_pg",
-        drop_correlation="drop_corr",
-        drop_amplitude="drop_amp",
-        make_figures="mk_fig",
-        make_log="mk_log",
-    )
-    for key, item in translator.items():
-        ctx.params[key] = ctx.params.pop(item)
-
-    make_configparser(
-        filename=config_name,
+    # make the ConfigFile.
+    config = ConfigFile(filename=config_name)
+    config.make(
         sensor_type="adcp",
-        options=ctx.params,
+        options=options,
     )
+    config.save()
     click.echo(
         click.style(
             f"Config file created for adcp processing -> {config_name}", bold=True
         )
     )
-    exit()
 
 
 def _validate_config_name(config_name: str) -> str:
@@ -227,6 +177,27 @@ def _validate_config_name(config_name: str) -> str:
     return config_name
 
 
+def _translate_options_name(options):
+    """Translate options name from commad names to the config file names"""
+    translator_dict = dict(
+        GPS_file="gps",
+        quality_control="qc",
+        side_lobe_correction="side_lobe",
+        trim_leading_data="start_time",
+        trim_trailling_data="end_time",
+        platform_motion_correction="m_corr",
+        merge_output_file="merge",
+        drop_percent_good="drop_pg",
+        drop_correlation="drop_corr",
+        drop_amplitude="drop_amp",
+        make_figures="mk_fig",
+        make_log="mk_log",
+    )
+    for key, item in translator_dict.items():
+        options[key] = options.pop(item)
+    return options
+
+
 def _ask_for_config_name() -> str:
     """ckick.prompt that ask for `config_name`"""
     return click.prompt(
@@ -237,6 +208,8 @@ def _ask_for_config_name() -> str:
 
 
 def _print_passed_options(ctx_params: tp.Dict):
+    """print pass and default options/paramsd"""
+    click.secho("Options:", fg="green")
     for key, item in ctx_params.items():
         if item is not None:
             if item is True:
@@ -250,18 +223,19 @@ def _print_passed_options(ctx_params: tp.Dict):
 
 
 def _print_logo(
-    process: str = None, logojson: str = "files/logo.json", group: str = ""
+    logo_path: str = "files/logo.json",
+    group: str = "",
+    version: str = "unavailable",
 ):
     """open and print logo from logo.json
     If a process is given, prints the process logo.
     """
-    click.echo(click.style("=" * 80, fg="white", bold=True))
+    logos = json2dict(Path(__file__).parents[0] / Path(logo_path))
+    click.secho("=" * 80, fg="white", bold=True)
 
     try:
-        logos = json2dict(Path(__file__).parents[0] / Path(logojson))
-
         click.echo(click.style(logos["magtogoek"], fg="blue", bold=True))
-        if process == "adcp":
+        if group == "adcp":
             click.echo(click.style(logos["adcp"], fg="red", bold=True))
 
     except FileNotFoundError:
@@ -271,7 +245,7 @@ def _print_logo(
 
     click.echo(
         click.style(
-            f"version: {magtogoek_version}" + f" {group} ".rjust(67, " "),
+            f"version: {_magtogoek_version}" + f" {group} ".rjust(67, " "),
             fg="green",
             bold=True,
         )
@@ -280,7 +254,7 @@ def _print_logo(
 
 
 def _print_arguments(group):
-    """print group arguments(command)"""
+    """print group(command) command(arguments)"""
     if group == "mtgk":
         click.secho(
             "  config".ljust(20, " ") + "Command to make configuration files",
@@ -291,6 +265,12 @@ def _print_arguments(group):
         click.secho("  adcp".ljust(20, " ") + "Config file for adcp data. ", fg="white")
     if group == "process":
         click.secho("FIXME")
+    if group == "adcp":
+        click.secho(
+            "  [config_name]".ljust(20, " ")
+            + "File name (path/to/file) for the new configuration file.",
+            fg="white",
+        )
 
 
 def _print_description(group):
@@ -314,13 +294,12 @@ def _print_description(group):
         click.echo(""" FIXME""")
 
 
-def _print_usage(group):
+def _print_usage(group, parent):
     """print group/command usage"""
     if group in ["mtgk", "config"]:
         click.echo("""    mtgk config [adcp, ] [CONFIG_NAME] [OPTIONS]""")
     if group in ["mtgk", "process"]:
         click.echo("""    mtgk process [adcp, ] [CONFIG_FILE] [OPTIONS]""")
-
-
-def _print_help_command():
-    click.echo("\n  -h/--help".ljust(20, " ") + "Show this help page")
+    if group in ["adcp", "process"]:
+        if parent == "config":
+            click.echo("""    mtgk process [adcp, ] [CONFIG_FILE] [OPTIONS]""")

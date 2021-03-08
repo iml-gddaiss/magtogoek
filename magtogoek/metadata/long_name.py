@@ -17,5 +17,5 @@ long_name = dict(adcp=dict(TEMPPR01="sea temperature at transducer"))
 # TODO
 
 if __name__ == "__main__":
-    file_name = "files/long_name.json"
+    file_name = "../files/long_name.json"
     dict2json(file_name, long_name)

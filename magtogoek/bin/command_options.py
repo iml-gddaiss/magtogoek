@@ -77,9 +77,11 @@ def adcp_options():
             help="""year when the adcp sampling started. ex: `1970`""",
         ),
         click.option(
-            "--up/--down",
+            "-O",
+            "--adcp-orientation",
+            type=click.Choice(["up", "down"]),
             help="""Vertical orientation of the adcp.""",
-            default=False,
+            default="down",
             show_default=True,
         ),
         click.option(

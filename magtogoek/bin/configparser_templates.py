@@ -2,344 +2,417 @@
 author: Jérôme Guay
 date: March 4, 2021
 
-This script is called by magtogoek_command.py
+This make_configparser is called by magtogoek_command.py
+    $ mtgk config ...
 
-This modules has functions to make the different sections of
-the configparser files and to produce it.
+This modules also contains the sections and default parameters values for the configparsers.
 
+NOTE update ?
 NOTE: More comments should be added in the configparser files.
 NOTE: Missing,fonctions to open the config files.
+NOTE: Make a class ? Config(config_name, sensor_type=None).{update(options), .load(), .save()}
 """
-import configparser
+from configparser import ConfigParser
 import typing as tp
 from pandas import Timestamp
 import getpass
 
-# Defaults attrs and value of the parser sections
-default_input_attrs = {"input_files": "", "platform_file": ""}
-default_output_attrs = {"netcdf_output": "", "odf_output": ""}
-default_netcdf_cf_attrs = {
-    "Conventions": "CF 1.8",
-    "title": "",
-    "institution": "",
-    "summary": "",
-    "references": "https://github.com/JeromeJGuay/magtogoek",
-    "comments": "",
-    "naming_authority": "BODC, SDC, CF, MEDS",
-}
-default_project_attrs = {
-    "project": "",
-    "sea_name": "",
-    "sea_code": "",
-}
-default_cruise_attrs = {
-    "country_institue_code": "",
-    "cruise_number": "",
-    "organization": "",
-    "chief_scientist": "",
-    "start_date": "",
-    "end_date": "",
-}
-default_global_attrs = {
-    "date_created": "",
-    "date_created": "",
-    "data_type": "",
-    "data_subtype": "",
-    "country_code": "",
-    "keywords": "",
-    "publisher_email": "",
-    "creator_type": "",
-    "publisher_name": "",
-    "keywords_vocabulary": "",
-    "standard_name_vocabulary": "CF v.52",  # NOTE update ?
-    "aknowledgment": "",
-}
-default_adcp_attrs = dict(
-    ADCP_PROCESSING=dict(
-        yearbase=("", str),
-        adcp_orientation=("down", str),
-        sonar=("", str),
-        GPS_file=("", str),
-    ),
-    ADCP_QUALITY_CONTROL=dict(
-        quality_control=(True, bool),
-        amplitude_threshold=(0, float),
-        percentgood_threshold=(64, float),
-        correlation_threshold=(90, float),
-        horizontal_velocity_threshold=(5, float),
-        vertical_velocity_threshold=(5, float),
-        error_velocity_threshold=(5, float),
-        side_lobe_correction=(True, bool),
-        pitch_threshold=(20, float),
-        roll_threshold=(20, float),
-        trim_leading_data=("", str),
-        trim_trailling_data=("", str),
-        platform_motion_correction=(True, bool),
-    ),
-    ADCP_OUTPUT=dict(
-        merge_output_file=(True, bool),
-        bodc_name=(True, bool),
-        drop_percent_good=(True, bool),
-        drop_correlation=(True, bool),
-        drop_amplitude=(True, bool),
-        make_figures=(True, bool),
-        make_log=(True, bool),
-    ),
-)
 
+class ConfigFile(ConfigParser):
+    """FIXME"""
 
-def make_configparser(filename: str, sensor_type: str, options: tp.Dict = None) -> None:
-    """make a configparser `.ini` file.
+    def __init__(self, filename):
+        """
+        parameters:
+        -----------
+        filename:
+            name of the config(.ini) file
+        """
 
-    parameters:
-    -----------
-    filename:
-        name of the config(.ini) file
+        self.filename = filename
+        self.valid_sensor_type = ["adcp"]
 
-    sensor_type:
-        used to return sensor_type config.
-    options:
-        options to be set in the configparser file.
-    """
-    linewidth = 70  # width of the .ini comments sections
+    def __repr__(self):
+        try:
+            output = ""
+            for key, item in self._sections.items():
+                output += f"[{key}]\n"
+                for subkey, subitem in item.items():
+                    if subitem is not None:
+                        output += f"{subkey}: {subitem}\n"
+                    else:
+                        output += f"{subkey}\n"
 
-    # updates input and ouput sections from the options.
-    if options:
-        for key in default_input_attrs.keys():
-            if options[key] is not None:
-                default_input_attrs[key] = options[key]
-        for key in default_output_attrs.keys():
-            if options[key] is not None:
-                default_input_attrs[key] = options[key]
+            return output
+        except AttributeError:
+            return "<%s instance at %s>" % (self.__class__.__name__, id(self))
 
-    # making config and adding sections
-    config = _header(sensor_type, linewidth)
-    _input_files(config, default_input_attrs, linewidth)
-    _output_files(config, default_output_attrs, linewidth)
+    def make(
+        self,
+        sensor_type: str,
+        options: tp.Dict = None,
+        comments_section_width: int = 70,
+    ):
+        """make a ConfigParser
 
-    # adding the sensor_type sections
-    if sensor_type == "adcp":
-        if options:
-            _update_adcp_values(default_adcp_attrs, options)
-        adcp_configparser(config, default_adcp_attrs, linewidth)
-    else:
-        print("Invalid sensor_type. Must be one of: `adcp`")
-        exit()
+        sections:
+        ---------
+        [header]
+        [input_files]
+        [output_files]
+        [`sensor_type`_processing]
+        [project]
+        [cruise]
+        [netcdf_cf]
+        [gloabal_attributes]
+        [additional_global_attributes]
 
-    # adding some more global attrs sections to the configparser.
-    _project(config, default_project_attrs, linewidth)
-    _cruise(config, default_cruise_attrs, linewidth)
-    _netcdf_cf(config, default_netcdf_cf_attrs, linewidth)
-    _gloabal_attributes(config, default_global_attrs, linewidth)
-    _additional_global_attributes(config, linewidth)
+        parameters:
+        -----------
+        sensor_type:
+            Used to add the `sensor_type` config parameters.
 
-    # make the configfile
-    _configparser2ini(config, filename)
+        options:
+            options passed update the default value of the parameters.
+            Only for. input, ouput, sensor_type sections.
+        """
+        super(ConfigFile, self).__init__(comment_prefixes=";", allow_no_value=True)
+        self.optionxform = str
 
+        self.sensor_type = sensor_type
+        self.update_options = options
+        self.comments_section_width = comments_section_width
 
-def _update_adcp_values(config: tp.Type[configparser.ConfigParser], options: tp.Dict):
-    """updates adcp config sections with command line options.
+        if self.sensor_type not in self.valid_sensor_type:
+            raise ValueError("Invalid sensor_type. Must be one of: `adcp`")
 
-    structure: [section][attrs] = (value, type)
-    """
-    for section in ["ADCP_PROCESSING", "ADCP_QUALITY_CONTROL", "ADCP_OUTPUT"]:
-        for key in default_adcp_attrs[section].keys():
-            if options[key] is not None:
-                default_adcp_attrs[section][key] = (
-                    options[key],
-                    default_adcp_attrs[section][key][1],
-                )
+        self._init_sections_params()
 
+        self._header()
+        self._input_files()
+        self._output_files()
 
-def _configparser2ini(config: tp.Type[configparser.ConfigParser], filename: str):
-    """make .ini file"""
-    with open(filename, "w") as configfile:
-        config.write(configfile)
+        if sensor_type == "adcp":
+            self._adcp_processing()
 
+        self._project()
+        self._cruise()
+        self._netcdf_cf()
+        self._gloabal_attributes()
+        self._additional_global_attributes()
 
-def _header(sensor_type: str, linewidth: int) -> tp.Type[configparser.ConfigParser]:
-    """initialize the configparser"""
-    date = Timestamp.now().strftime("%Y-%m-%d")
-    user = getpass.getuser()
+        return self
 
-    config = configparser.ConfigParser(allow_no_value=True)
-    config.optionxform = str
+    def save(self):
+        """save to a .ini file"""
+        with open(self.filename, "w") as cf:
+            self.write(cf)
 
-    config["HEADER"] = {
-        ";#".ljust(linewidth, "-") + "#": None,
-        f";| Configurations file for {sensor_type} data processing".ljust(
-            linewidth, " "
+    def load(self):
+        """ read `ini` and set sensor_type"""
+        self._inline_comment_prefixes = "#"
+        self._comment_prefixes = ";"
+        super(ConfigFile, self).read(self.filename)
+
+    def _init_sections_params(self):
+        """FIXME"""
+
+        self._input_params = {"input_files": ("", str), "platform_file": ("", str)}
+        self._output_params = {"netcdf_output": ("", str), "odf_output": ("", str)}
+        self._netcdf_cf_params = {
+            "Conventions": ("CF 1.8", str),
+            "title": ("", str),
+            "institution": ("", str),
+            "summary": ("", str),
+            "references": ("https://github.com/JeromeJGuay/magtogoek", str),
+            "comments": ("", str),
+            "naming_authority": ("BODC, SDC, CF, MEDS", str),
+        }
+        self._project_params = {
+            "project": ("", str),
+            "sea_name": ("", str),
+            "sea_code": ("", str),
+        }
+        self._cruise_params = {
+            "country_institue_code": ("", str),
+            "cruise_number": ("", str),
+            "organization": ("", str),
+            "chief_scientist": ("", str),
+            "start_date": ("", str),
+            "end_date": ("", str),
+        }
+        self._global_attrs_params = {
+            "date_created": ("", str),
+            "date_created": ("", str),
+            "data_type": ("", str),
+            "data_subtype": ("", str),
+            "country_code": ("", str),
+            "keywords": ("", str),
+            "publisher_email": ("", str),
+            "creator_type": ("", str),
+            "publisher_name": ("", str),
+            "keywords_vocabulary": ("", str),
+            "standard_name_vocabulary": ("CF v.52", str),
+            "aknowledgment": ("", str),
+        }
+
+        self._adcp_params = dict(
+            ADCP_PROCESSING=dict(
+                yearbase=("", str),
+                adcp_orientation=("down", str),
+                sonar=("", str),
+                GPS_file=("", str),
+            ),
+            ADCP_QUALITY_CONTROL=dict(
+                quality_control=(True, bool),
+                amplitude_threshold=(0, float),
+                percentgood_threshold=(64, float),
+                correlation_threshold=(90, float),
+                horizontal_velocity_threshold=(5, float),
+                vertical_velocity_threshold=(5, float),
+                error_velocity_threshold=(5, float),
+                side_lobe_correction=(True, bool),
+                pitch_threshold=(20, float),
+                roll_threshold=(20, float),
+                trim_leading_data=("", str),
+                trim_trailling_data=("", str),
+                platform_motion_correction=(True, bool),
+            ),
+            ADCP_OUTPUT=dict(
+                merge_output_file=(True, bool),
+                bodc_name=(True, bool),
+                drop_percent_good=(True, bool),
+                drop_correlation=(True, bool),
+                drop_amplitude=(True, bool),
+                make_figures=(True, bool),
+                make_log=(True, bool),
+            ),
         )
-        + "|": None,
-        f";| Created on {date}".ljust(linewidth, " ") + "|": None,
-        f";| By {user}".ljust(linewidth, " ") + "|": None,
-        ";#".ljust(linewidth, "-") + "# ": None,
-    }
-    return config
+
+        if self.update_options is not None:
+            for key in self._input_params.keys():
+                if self.update_options[key] is not None:
+                    self._input_params[key] = (
+                        self.update_options[key],
+                        self._input_params[key][1],
+                    )
+            for key in self._output_params.keys():
+                if self.update_options[key] is not None:
+                    self._output_params[key] = (
+                        self.update_options[key],
+                        self._output_params[key][1],
+                    )
+
+        sensor_params = {"adcp": self._adcp_params}[self.sensor_type]
+
+        for section_key, section in sensor_params.items():
+            print(section_key)
+            for param_key, param in section.items():
+                if self.update_options[param_key] is not None:
+                    sensor_params[section_key][param_key] = (
+                        self.update_options[param_key],
+                        param[1],
+                    )
+
+    def _header(self):
+        """add a header to the configparser"""
+
+        date = Timestamp.now().strftime("%Y-%m-%d")
+        user = getpass.getuser()
+
+        self["HEADER"] = {
+            ";#".ljust(self.comments_section_width, "-") + "#": None,
+            f";| Configurations file for {self.sensor_type} data processing".ljust(
+                self.comments_section_width, " "
+            )
+            + "|": None,
+            f";| Created on {date}".ljust(self.comments_section_width, " ") + "|": None,
+            f";| By {user}".ljust(self.comments_section_width, " ") + "|": None,
+            ";#".ljust(self.comments_section_width, "-") + "# ": None,
+        }
+
+    def _input_files(self):
+        """adds input sections with attrs"""
+        section_name = "INPUT"
+        self[section_name] = {
+            ";#".ljust(self.comments_section_width, "-") + "#": None,
+            ";| input file: Expression identifying the file or files to be process.".ljust(
+                self.comments_section_width, " "
+            )
+            + "|": None,
+            ";| platform file: (file name) Can be omitted.".ljust(
+                self.comments_section_width, " "
+            )
+            + "|": None,
+            ";#".ljust(self.comments_section_width, "-") + "# ": None,
+        }
+        for key, item in self._input_params.items():
+            self[section_name][f"\t {key}"] = str(item[0])
+
+    def _output_files(self):
+        """add output secionts with attrs"""
+        section_name = "OUTPUT"
+        self[section_name] = {
+            ";#".ljust(self.comments_section_width, "-") + "#": None,
+            ";| Expression for odf and netcdf output files names.".ljust(
+                self.comments_section_width, " "
+            )
+            + "|": None,
+            ";| Leave blank for `False`.".ljust(self.comments_section_width, " ")
+            + "|": None,
+            ";#".ljust(self.comments_section_width, "-") + "# ": None,
+        }
+        for key, item in self._output_params.items():
+            self[section_name][f"\t {key}"] = str(item[0])
+
+    def _netcdf_cf(self):
+        """add netcdf CF conventions sections with attrs"""
+        section_name = "NETCDF_CF"
+        self[section_name] = {
+            ";#".ljust(self.comments_section_width, "-") + "#": None,
+            ";| Global attibutes for CF conventions".ljust(
+                self.comments_section_width, " "
+            )
+            + "|": None,
+            ";| Blanks are omitted.".ljust(self.comments_section_width, " ")
+            + "|": None,
+            ";#".ljust(self.comments_section_width, "-") + "# ": None,
+        }
+        for key, item in self._output_params.items():
+            self[section_name][f"\t {key}"] = str(item[0])
+
+    def _project(self):
+        """add project sections with attrs"""
+        section_name = "PROJECT"
+        self[section_name] = {
+            ";#".ljust(self.comments_section_width, "-") + "#": None,
+            ";| Global attributes for project".ljust(self.comments_section_width, " ")
+            + "|": None,
+            ";| Blanks are omitted.".ljust(self.comments_section_width, " ")
+            + "|": None,
+            ";#".ljust(self.comments_section_width, "-") + "# ": None,
+        }
+        for key, item in self._project_params.items():
+            self[section_name][f"\t {key}"] = str(item[0])
+
+    def _cruise(self):
+        """add cruise sections with attrs"""
+        section_name = "CRUISE"
+        self[section_name] = {
+            ";#".ljust(self.comments_section_width, "-") + "#": None,
+            ";| Global attributes for cruise".ljust(self.comments_section_width, " ")
+            + "|": None,
+            ";| Blanks are omitted".ljust(self.comments_section_width, " ") + "|": None,
+            ";| chief_scientist: overwrites the value in the platform file.".ljust(
+                self.comments_section_width, " "
+            )
+            + "|": None,
+            ";| Date format: YYYY-MM-DDTHH:MM:SS FIXME ".ljust(
+                self.comments_section_width, " "
+            )
+            + "|": None,
+            ";#".ljust(self.comments_section_width, "-") + "# ": None,
+        }
+        for key, item in self._cruise_params.items():
+            self[section_name][f"\t {key}"] = str(item[0])
+
+    def _gloabal_attributes(self):
+        """add global attributes sections with attrs"""
+        section_name = "GLOBAL_ATTRIBUTES"
+        self[section_name] = {
+            ";#".ljust(self.comments_section_width, "-") + "#": None,
+            ";| Global attributes ".ljust(self.comments_section_width, " ") + "|": None,
+            ";| Blanks are omitted".ljust(self.comments_section_width, " ") + "|": None,
+            ";#".ljust(self.comments_section_width, "-") + "# ": None,
+        }
+        for key, item in self._global_attrs_params.items():
+            self[section_name][f"\t {key}"] = str(item[0])
+
+    def _additional_global_attributes(self):
+        """add addtionnal global attributes sections"""
+        self["ADDITIONAL_GLOBAL_ATTRIBUTES"] = {
+            ";#".ljust(self.comments_section_width, "-") + "#": None,
+            ";| Insert addittional attributes below.".ljust(
+                self.comments_section_width, " "
+            )
+            + "|": None,
+            ";#".ljust(self.comments_section_width, "-") + "# ": None,
+        }
+
+    def _adcp_processing(self) -> None:
+        """add adcp sections with attributes"""
+        section_name = "ADCP_PROCESSING"
+        self[section_name] = {
+            ";#".ljust(self.comments_section_width, "-") + "#": None,
+            ";| yearbase: year that the sampling started. ex: `1970`".ljust(
+                self.comments_section_width, " "
+            )
+            + "|": None,
+            ";| adcp_orientation: `down` or `up`. (horizontal no supported)".ljust(
+                self.comments_section_width, " "
+            )
+            + "|": None,
+            ";| sonar:  Must be one of `wh`, `os`, `bb`, `nb` or `sw`".ljust(
+                self.comments_section_width, " "
+            )
+            + "|": None,
+            ";| GPS_file: path/to/netcdf4 containing the gps track,".ljust(
+                self.comments_section_width, " "
+            )
+            + "|": None,
+            ";|   `longitude` and `latitude`, of the platform. If provided,".ljust(
+                self.comments_section_width, " "
+            )
+            + "|": None,
+            ";|    will be used instead of GPS data in the adcp file.(optional) ".ljust(
+                self.comments_section_width, " "
+            )
+            + "|": None,
+            ";#".ljust(self.comments_section_width, "-") + "# ": None,
+        }
+        for key, item in self._adcp_params[section_name].items():
+            self[section_name][f"\t {key}"] = str(item[0])
+
+        section_name = "ADCP_QUALITY_CONTROL"
+        self[section_name] = {
+            ";#".ljust(self.comments_section_width, "-") + "#": None,
+            ";| If quality_control is `False`, no quality control is carried out .".ljust(
+                self.comments_section_width, " "
+            )
+            + "|": None,
+            ";| Blanks are omitted or set False.".ljust(
+                self.comments_section_width, " "
+            )
+            + "|": None,
+            ";| Trims format `YYYYMMDDHHMMSS`".ljust(self.comments_section_width, " ")
+            + "|": None,
+            ";#".ljust(self.comments_section_width, "-") + "# ": None,
+        }
+        for key, item in self._adcp_params[section_name].items():
+            self[section_name][f"\t {key}"] = str(item[0])
+
+        section_name = "ADCP_OUTPUT"
+        self[section_name] = {
+            ";#".ljust(self.comments_section_width, "-") + "#": None,
+            ";| Set True or False. (FIXME)".ljust(self.comments_section_width, " ")
+            + "|": None,
+            ";| If bodc_name False, generic variable names are used.".ljust(
+                self.comments_section_width, " "
+            )
+            + "|": None,
+            ";#".ljust(self.comments_section_width, "-") + "# ": None,
+        }
+        for key, item in self._adcp_params[section_name].items():
+            self[section_name][f"\t {key}"] = str(item[0])
 
 
-def _input_files(
-    config: tp.Type[configparser.ConfigParser], attrs: tp.Dict, linewidth: int
-):
-    """adds input sections with attrs"""
-    section_name = "INPUT"
-    config[section_name] = {
-        ";#".ljust(linewidth, "-") + "#": None,
-        ";| input file: Expression identifying the file or files to be process.".ljust(
-            linewidth, " "
-        )
-        + "|": None,
-        ";| platform file: (file name) Can be omitted.".ljust(linewidth, " ")
-        + "|": None,
-        ";#".ljust(linewidth, "-") + "# ": None,
-    }
-    for key, item in attrs.items():
-        config[section_name][f"\t {key}"] = str(item)
+if __name__ == "__main__":
+    a = ConfigFile("test.ini")
+    a.make("adcp")
+    a.save()
 
-
-def _output_files(
-    config: tp.Type[configparser.ConfigParser], attrs: tp.Dict, linewidth: int
-):
-    """add output secionts with attrs"""
-    section_name = "OUTPUT"
-    config[section_name] = {
-        ";#".ljust(linewidth, "-") + "#": None,
-        ";| Expression for odf and netcdf output files names.".ljust(linewidth, " ")
-        + "|": None,
-        ";| Leave blank for `False`.".ljust(linewidth, " ") + "|": None,
-        ";#".ljust(linewidth, "-") + "# ": None,
-    }
-    for key, item in attrs.items():
-        config[section_name][f"\t {key}"] = str(item)
-
-
-def _netcdf_cf(
-    config: tp.Type[configparser.ConfigParser], attrs: tp.Dict, linewidth: int
-):
-    """add netcdf CF conventions sections with attrs"""
-    section_name = "NETCDF_CF"
-    config[section_name] = {
-        ";#".ljust(linewidth, "-") + "#": None,
-        ";| Global attibutes for CF conventions".ljust(linewidth, " ") + "|": None,
-        ";| Blanks are omitted.".ljust(linewidth, " ") + "|": None,
-        ";#".ljust(linewidth, "-") + "# ": None,
-    }
-    for key, item in attrs.items():
-        config[section_name][f"\t {key}"] = item
-
-
-def _project(
-    config: tp.Type[configparser.ConfigParser], attrs: tp.Dict, linewidth: int
-):
-    """add project sections with attrs"""
-    section_name = "PROJECT"
-    config[section_name] = {
-        ";#".ljust(linewidth, "-") + "#": None,
-        ";| Global attributes for project".ljust(linewidth, " ") + "|": None,
-        ";| Blanks are omitted.".ljust(linewidth, " ") + "|": None,
-        ";#".ljust(linewidth, "-") + "# ": None,
-    }
-    for key, item in attrs.items():
-        config[section_name][f"\t {key}"] = str(item)
-
-
-def _cruise(config: tp.Type[configparser.ConfigParser], attrs: tp.Dict, linewidth: int):
-    """add cruise sections with attrs"""
-    section_name = "CRUISE"
-    config[section_name] = {
-        ";#".ljust(linewidth, "-") + "#": None,
-        ";| Global attributes for cruise".ljust(linewidth, " ") + "|": None,
-        ";| Blanks are omitted".ljust(linewidth, " ") + "|": None,
-        ";| chief_scientist: overwrites the value in the platform file.".ljust(
-            linewidth, " "
-        )
-        + "|": None,
-        ";| Date format: YYYY-MM-DDTHH:MM:SS FIXME ".ljust(linewidth, " ") + "|": None,
-        ";#".ljust(linewidth, "-") + "# ": None,
-    }
-    for key, item in attrs.items():
-        config[section_name][f"\t {key}"] = str(item)
-
-
-def _gloabal_attributes(
-    config: tp.Type[configparser.ConfigParser], attrs: tp.Dict, linewidth: int
-):
-    """add global attributes sections with attrs"""
-    section_name = "GLOBAL_ATTRIBUTES"
-    config[section_name] = {
-        ";#".ljust(linewidth, "-") + "#": None,
-        ";| Global attributes ".ljust(linewidth, " ") + "|": None,
-        ";| Blanks are omitted".ljust(linewidth, " ") + "|": None,
-        ";#".ljust(linewidth, "-") + "# ": None,
-    }
-    for key, item in attrs.items():
-        config[section_name][f"\t {key}"] = str(item)
-
-
-def _additional_global_attributes(
-    config: tp.Type[configparser.ConfigParser], linewidth: int
-):
-    """add addtionnal global attributes sections"""
-    config["ADDITIONAL_GLOBAL_ATTRIBUTES"] = {
-        ";#".ljust(linewidth, "-") + "#": None,
-        ";| Insert addittional attributes below.".ljust(linewidth, " ") + "|": None,
-        ";#".ljust(linewidth, "-") + "# ": None,
-    }
-
-
-def adcp_configparser(
-    config: tp.Type[configparser.ConfigParser], attrs: tp.Dict, linewidth: int
-) -> None:
-    """add adcp sections with attributes"""
-    section_name = "ADCP_PROCESSING"
-    config[section_name] = {
-        ";#".ljust(linewidth, "-") + "#": None,
-        ";| yearbase: year that the sampling started. ex: `1970`".ljust(linewidth, " ")
-        + "|": None,
-        ";| adcp_orientation: `down` or `up`. (horizontal no supported)".ljust(
-            linewidth, " "
-        )
-        + "|": None,
-        ";| sonar:  Must be one of `wh`, `os`, `bb`, `nb` or `sw`".ljust(linewidth, " ")
-        + "|": None,
-        ";| GPS_file: path/to/netcdf4 containing the gps track,".ljust(linewidth, " ")
-        + "|": None,
-        ";|   `longitude` and `latitude`, of the platform. If provided,".ljust(
-            linewidth, " "
-        )
-        + "|": None,
-        ";|    will be used instead of GPS data in the adcp file.(optional) ".ljust(
-            linewidth, " "
-        )
-        + "|": None,
-        ";#".ljust(linewidth, "-") + "# ": None,
-    }
-    for key, item in attrs[section_name].items():
-        config[section_name][f"\t {key}"] = str(item[0])
-
-    section_name = "ADCP_QUALITY_CONTROL"
-    config[section_name] = {
-        ";#".ljust(linewidth, "-") + "#": None,
-        ";| If quality_control is `False`, no quality control is carried out .".ljust(
-            linewidth, " "
-        )
-        + "|": None,
-        ";| Blanks are omitted or set False.".ljust(linewidth, " ") + "|": None,
-        ";| Trims format `YYYYMMDDHHMMSS`".ljust(linewidth, " ") + "|": None,
-        ";#".ljust(linewidth, "-") + "# ": None,
-    }
-    for key, item in attrs[section_name].items():
-        config[section_name][f"\t {key}"] = str(item[0])
-
-    section_name = "ADCP_OUTPUT"
-    config[section_name] = {
-        ";#".ljust(linewidth, "-") + "#": None,
-        ";| Set True or False. (FIXME)".ljust(linewidth, " ") + "|": None,
-        ";| If bodc_name False, generic variable names are used.".ljust(linewidth, " ")
-        + "|": None,
-        ";#".ljust(linewidth, "-") + "# ": None,
-    }
-    for key, item in attrs[section_name].items():
-        config[section_name][f"\t {key}"] = str(item[0])
-
-    return config
+    A = ConfigParser()
+    A.optionxform = str
+    A.read_file(open("test.ini"))
+    with open("test2.ini", "w") as f:
+        A.write(f)
