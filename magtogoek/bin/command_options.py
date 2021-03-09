@@ -68,7 +68,7 @@ def adcp_options():
             help="""String designating type of adcp. This
     is fed to CODAS Multiread or switches to the RTI
     binary reader. Must be one
-    of `wh`, `os`, `bb`, `nb` or `sw`""",
+    of `wh`, `os`, `bb`, `nb`, `sv` or `sw`""",
         ),
         click.option(
             "-y",
