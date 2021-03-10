@@ -35,7 +35,7 @@ import subprocess
 
 from pathlib import Path
 from magtogoek.metadata.toolbox import json2dict
-from magtogoek.bin.configparser_templates import ConfigFile  # make_configparser
+from magtogoek.bin.configfile import make_configfile
 from magtogoek.bin.command_options import adcp_options, add_options
 
 ### Global variable used by some of the module functions.
@@ -62,7 +62,7 @@ def _print_info(ctx, callback):
         click.secho("\nDescriptions:", fg="red")
         _print_description(ctx.info_name)
         click.secho("\nUsage:", fg="red")
-        _print_usage(ctx.info_name, ctx.parent.info_name)
+        _print_usage(ctx.info_name, ctx.parent)
         if ctx.info_name in ["mtgk", "config", "process"]:
             click.secho("\nCommands:", fg="red")
         else:
@@ -100,6 +100,7 @@ def config(info):
     "--info", is_flag=True, callback=_print_info, help="Show command information"
 )
 def process(info):
+    # check param values and make custom error.
     pass
 
 
@@ -123,22 +124,95 @@ def config_adcp(
 
     _print_passed_options(options)
 
+    # check if a file already exists and format the `.ini` extension.
     config_name = _validate_config_name(config_name)
 
-    options = _translate_options_name(options)
+    # translate names to those used by the configparser.
+    updated_params = _convert_options_to_configfile("adcp", options)
 
-    # make the ConfigFile.
-    config = ConfigFile(filename=config_name)
-    config.make(
-        sensor_type="adcp",
-        options=options,
+    make_configfile(
+        filename=config_name, sensor_type="adcp", updated_params=updated_params
     )
-    config.save()
+
     click.echo(
         click.style(
             f"Config file created for adcp processing -> {config_name}", bold=True
         )
     )
+
+
+def _convert_options_to_configfile(sensor_type, options):
+    """transte options name and use put them in the configfile strucutre"""
+    options = _translate_options_name(sensor_type, options)
+
+    base = {
+        "input_files": "INPUT",
+        "platform_file": "INPUT",
+        "netcdf_output": "OUTPUT",
+        "odf_output": "OUTPUT",
+    }
+    adcp = {
+        "yearbase": "ADCP_PROCESSING",
+        "adcp_orientation": "ADCP_PROCESSING",
+        "sonar": "ADCP_PROCESSING",
+        "GPS_file": "ADCP_PROCESSING",
+        "quality_control": "ADCP_QUALITY_CONTROL",
+        "amplitude_threshold": "ADCP_QUALITY_CONTROL",
+        "percentgood_threshold": "ADCP_QUALITY_CONTROL",
+        "correlation_threshold": "ADCP_QUALITY_CONTROL",
+        "horizontal_velocity_threshold": "ADCP_QUALITY_CONTROL",
+        "vertical_velocity_threshold": "ADCP_QUALITY_CONTROL",
+        "error_velocity_threshold": "ADCP_QUALITY_CONTROL",
+        "side_lobe_correction": "ADCP_QUALITY_CONTROL",
+        "pitch_threshold": "ADCP_QUALITY_CONTROL",
+        "roll_threshold": "ADCP_QUALITY_CONTROL",
+        "trim_leading_data": "ADCP_QUALITY_CONTROL",
+        "trim_trailling_data": "ADCP_QUALITY_CONTROL",
+        "platform_motion_correction": "ADCP_QUALITY_CONTROL",
+        "merge_output_file": "ADCP_OUTPUT",
+        "bodc_name": "ADCP_OUTPUT",
+        "drop_percent_good": "ADCP_OUTPUT",
+        "drop_correlation": "ADCP_OUTPUT",
+        "drop_amplitude": "ADCP_OUTPUT",
+        "make_figures": "ADCP_OUTPUT",
+        "make_log": "ADCP_OUTPUT",
+    }
+    if sensor_type == "adcp":
+        configfile_struct = {**base, **adcp}
+
+    updated_params = dict()
+    for section in set(configfile_struct.values()):
+        updated_params[section] = dict()
+
+    for option, value in options.items():
+        if value is not None:
+            updated_params[configfile_struct[option]][option] = value
+
+    return updated_params
+
+
+def _translate_options_name(sensor_type, options):
+    """Translate options name from commad names to the config file names"""
+    translator_dict = dict(
+        adcp=dict(
+            GPS_file="gps",
+            quality_control="qc",
+            side_lobe_correction="side_lobe",
+            trim_leading_data="start_time",
+            trim_trailling_data="end_time",
+            platform_motion_correction="m_corr",
+            merge_output_file="merge",
+            drop_percent_good="drop_pg",
+            drop_correlation="drop_corr",
+            drop_amplitude="drop_amp",
+            make_figures="mk_fig",
+            make_log="mk_log",
+        )
+    )
+    for key, item in translator_dict[sensor_type].items():
+        options[key] = options.pop(item)
+
+    return options
 
 
 def _validate_config_name(config_name: str) -> str:
@@ -175,27 +249,6 @@ def _validate_config_name(config_name: str) -> str:
         ):
             return _validate_config_name(_ask_for_config_name())
     return config_name
-
-
-def _translate_options_name(options):
-    """Translate options name from commad names to the config file names"""
-    translator_dict = dict(
-        GPS_file="gps",
-        quality_control="qc",
-        side_lobe_correction="side_lobe",
-        trim_leading_data="start_time",
-        trim_trailling_data="end_time",
-        platform_motion_correction="m_corr",
-        merge_output_file="merge",
-        drop_percent_good="drop_pg",
-        drop_correlation="drop_corr",
-        drop_amplitude="drop_amp",
-        make_figures="mk_fig",
-        make_log="mk_log",
-    )
-    for key, item in translator_dict.items():
-        options[key] = options.pop(item)
-    return options
 
 
 def _ask_for_config_name() -> str:
@@ -296,6 +349,8 @@ def _print_description(group):
 
 def _print_usage(group, parent):
     """print group/command usage"""
+    if parent:
+        parent = parent.info_name
     if group in ["mtgk", "config"]:
         click.echo("""    mtgk config [adcp, ] [CONFIG_NAME] [OPTIONS]""")
     if group in ["mtgk", "process"]:
