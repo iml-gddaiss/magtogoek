@@ -35,7 +35,7 @@ import subprocess
 
 from pathlib import Path
 from magtogoek.metadata.toolbox import json2dict
-from magtogoek.bin.configparser_templates import ConfigFile  # make_configparser
+from magtogoek.bin.configfile import make_configfile
 from magtogoek.bin.command_options import adcp_options, add_options
 
 ### Global variable used by some of the module functions.
@@ -62,7 +62,7 @@ def _print_info(ctx, callback):
         click.secho("\nDescriptions:", fg="red")
         _print_description(ctx.info_name)
         click.secho("\nUsage:", fg="red")
-        _print_usage(ctx.info_name, ctx.parent.info_name)
+        _print_usage(ctx.info_name, ctx.parent)
         if ctx.info_name in ["mtgk", "config", "process"]:
             click.secho("\nCommands:", fg="red")
         else:
@@ -123,17 +123,23 @@ def config_adcp(
 
     _print_passed_options(options)
 
+    # check if a file already exists and format the `.ini` extension.
     config_name = _validate_config_name(config_name)
 
+    # translate names to those used by the configparser.
     options = _translate_options_name(options)
 
-    # make the ConfigFile.
-    config = ConfigFile(filename=config_name)
-    config.make(
+    # removing options not pass or without a default.
+    for key, item in list(options.items()):
+        if item is None:
+            del options[key]
+
+    make_configfile(
+        filename=config_name,
         sensor_type="adcp",
-        options=options,
+        update_params=options,
     )
-    config.save()
+
     click.echo(
         click.style(
             f"Config file created for adcp processing -> {config_name}", bold=True
@@ -296,6 +302,8 @@ def _print_description(group):
 
 def _print_usage(group, parent):
     """print group/command usage"""
+    if parent:
+        parent = parent.info_name
     if group in ["mtgk", "config"]:
         click.echo("""    mtgk config [adcp, ] [CONFIG_NAME] [OPTIONS]""")
     if group in ["mtgk", "process"]:
