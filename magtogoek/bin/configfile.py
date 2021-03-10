@@ -46,26 +46,55 @@ import getpass
 sensor_type = "none"
 
 
-def make_configfile(filename: str, sensor_type: str, update_params: tp.Dict):
-    """FIXME"""
+def make_configfile(filename: str, sensor_type: str, updated_params: tp.Dict = None):
+    """make a configfile with default and update it if `updated_params` are passed"""
+
+    # geting the default config as dict
+    config_dict = _get_config_default(sensor_type)
+
+    # Building the parser
     parser = ConfigParser()
     parser.optionxform = str
-
-    config_dict = _get_config_dict(sensor_type)
-
     for section, params in config_dict.items():
         parser.add_section(section)
         for param, value in params.items():
-            if param in update_params:
-                parser[section][param] = str(update_params[param])
-            else:
-                parser[section][param] = str(value)
+            parser[section][param] = str(value)
 
+    # Overwrite the default values with `updated_params`.
+    if updated_params is not None:
+        _update_config(parser, updated_params)
+
+    # Writing
     with open(filename, "w") as f:
         parser.write(f)
 
 
-def _get_config_dict(sensor_type: str):
+def load_configfile(filename: str, updated_params: tp.Dict = None):
+    """load a configfile and update it if `updated_params` are passed"""
+    # Opening the configfile
+    parser = ConfigParser()
+    parser.optionxform = str
+    parser.read(filename)
+
+    # Overwrite the config values with `updated_params`.
+    if updated_params is not None:
+        _update_config(parser, updated_params)
+
+    # Overiting the configfile with the new values
+    with open(filename, "w") as f:
+        parser.write(f)
+
+    return parser._sections
+
+
+def _update_config(parser: tp.Type[ConfigParser], updated_params: tp.Dict):
+    """Overwrite the default values with `updated_params`"""
+    for section, params in updated_params.items():
+        for param, value in params.items():
+            parser[section][param] = str(value)
+
+
+def _get_config_default(sensor_type: str):
     """FIXME"""
     basic_dict = dict(
         HEADER={
@@ -114,36 +143,36 @@ def _get_config_dict(sensor_type: str):
     )
 
     adcp_config = dict(
-        ADCP_PROCESSING=dict(
-            yearbase="",
-            adcp_orientation="down",
-            sonar="",
-            GPS_file="",
-        ),
-        ADCP_QUALITY_CONTROL=dict(
-            quality_control=True,
-            amplitude_threshold=0,
-            percentgood_threshold=64,
-            correlation_threshold=90,
-            horizontal_velocity_threshold=5,
-            vertical_velocity_threshold=5,
-            error_velocity_threshold=5,
-            side_lobe_correction=True,
-            pitch_threshold=20,
-            roll_threshold=20,
-            trim_leading_data="",
-            trim_trailling_data="",
-            platform_motion_correction=True,
-        ),
-        ADCP_OUTPUT=dict(
-            merge_output_file=True,
-            bodc_name=True,
-            drop_percent_good=True,
-            drop_correlation=True,
-            drop_amplitude=True,
-            make_figures=True,
-            make_log=True,
-        ),
+        ADCP_PROCESSING={
+            "yearbase": "",
+            "adcp_orientation": "down",
+            "sonar": "",
+            "GPS_file": "",
+        },
+        ADCP_QUALITY_CONTROL={
+            "quality_control": True,
+            "amplitude_threshold": 0,
+            "percentgood_threshold": 64,
+            "correlation_threshold": 90,
+            "horizontal_velocity_threshold": 5,
+            "vertical_velocity_threshold": 5,
+            "error_velocity_threshold": 5,
+            "side_lobe_correction": True,
+            "pitch_threshold": 20,
+            "roll_threshold": 20,
+            "trim_leading_data": "",
+            "trim_trailling_data": "",
+            "platform_motion_correction": True,
+        },
+        ADCP_OUTPUT={
+            "merge_output_file": True,
+            "bodc_name": True,
+            "drop_percent_good": True,
+            "drop_correlation": True,
+            "drop_amplitude": True,
+            "make_figures": True,
+            "make_log": True,
+        },
     )
 
     if sensor_type == "adcp":
