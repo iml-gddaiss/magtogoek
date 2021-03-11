@@ -8,6 +8,7 @@ This script contains functions to read adcp data
 and to load them in xarray.Dataset.
 CODAS Multiread class is used pycurrents package
 is used to read RDI file formats.
+(OS, WH, SV)
 
 Accepted files are:
 -Teledyne RDI .000.(
@@ -33,16 +34,26 @@ from pycurrents.adcp.rdiraw import Multiread, rawfile, Bunch
 import pycurrents.adcp.transform as transform
 
 
-class logger:
-    def __init__(self):
-        self.log = ""
+class Logger:
+    def __init__(self, logbook=""):
+        self.logbook = "" + logbook
 
     def __repr__(self):
-        print(self.log)
+        return self.logbook
 
-    def log(self, msg):
-        self.log += msg + "\n"
+    def section(self, msg, t=False):
+        time = "" if t is False else " " + self.timestamp()
+        self.logbook += "[" + msg + "]" + time + "\n"
         print(msg)
+
+    def log(self, msg, t=False):
+        msg = msg if t is False else self.timestamp() + " " + msg
+        self.logbook += "  -" + msg + "\n"
+        print(msg)
+
+    @staticmethod
+    def timestamp():
+        return "(" + pd.Timestamp.now().strftime("%Y-%m-%d %Hh%M:%S") + ")"
 
 
 def load_rdi_binary(
@@ -52,33 +63,38 @@ def load_rdi_binary(
     adcp_orientation: str,  # TODO add options for None computing average orientation from FL,
     sensor_depth: float = None,
     magnetic_declination: float = None,
-    min_depth: float = 0,
+    #    max_depth:float=0
 ):
     """FIXME"""
     # =============================#
     # globad attrs for processing  #
     # adcp_orientation             #
     # coordsystem                  #
-    # magnetic_declination         #
     # yearbase                     #
     # sonar                        #
     # =============================#
 
-    l = logger()
+    l = Logger()
+    l.section("Reading RDI file", t=True)
 
     # read binary data. TODO Check in fixed_leader for change. (BUGS)
     data = Multiread(fnames=filenames, sonar=sonar, yearbase=yearbase).read()
     fl = read_fixed_leader(filenames=filenames, sonar=sonar, yearbase=yearbase)
 
     # convert dday to datatime64[s] and to formated time string.
-    time, time_string = convert_time(data.dday, yearbase)
+    time, time_string = _dday_to_datetime64(data.dday, yearbase)
     depth = data.dep
 
-    ### NOTE Je crois que l'ajustement est déja fait. ###
-    # if adcp_orientation == "down":
-    #    depth = data.dep + np.nanmean(data.XducerDepth)  # depth of the bins
-    # else:
-    #    depth = np.nanmean(data.XducerDepth) - data.dep  # depth of the bins
+    ## distance from adcp to depth below surface
+    # TRIMING FIRST XducerDepth needs to be trim FIRST TODO (if OS: else)
+    XducerDepth = data.Xducer
+
+    if data.sonar.model != "os":  # assuming OS sonar output depth.
+        if adcp_orientation == "down":
+            depth = np.nanmean(data.XducerDepth) + data.dep
+        else:
+            depth = np.nanmean(data.XducerDepth) - data.dep
+        l.log("Depth below surface computed using  XducerDepth.")
 
     # Init dataset
     ds = init_dataset(time, data.dep)
@@ -90,37 +106,44 @@ def load_rdi_binary(
         enu = coordsystem2earth(data=data, orientation=adcp_orientation)
         l.log(f"Velocities were rotated from to earth coordinate")
 
-    # If no bottom track data, drop variables
+    # If no bottom track data, drop variables (for loop)
     if not (data.bt_vel.data == 0).all():
-        ds["u_bt"].values = -data.bt_vel.data[:, 0]
-        ds["v_bt"].values = -data.bt_vel.data[:, 1]
-        ds["w_bt"].values = -data.bt_vel.data[:, 2]
-        #        ds["e_bt"].values = data.bt_vel.data[:, 3]
-        ds["range_bt"].values = np.nanmean(data.bt_depth.data, axis=-1)
+        ds["bt_u"].values = -data.bt_vel.data[:, 0]
+        ds["bt_v"].values = -data.bt_vel.data[:, 1]
+        ds["bt_w"].values = -data.bt_vel.data[:, 2]
+        ds["bt_e"].values = data.bt_vel.data[:, 3]
+        ds["bt_depth"].values = np.nanmean(data.bt_depth.data, axis=-1)
+        for i in range(1, 5):
+            ds["bt_corr{i}"].values = np.asarray(data["bt_corr{i}"].T)
     else:
-        ds = ds.drop_vars(names=["u_bt", "v_bt", "w_bt", "range_bt"])  # e_bt
-
-    ds["corr"].values = np.asarray(np.mean(data.cor, axis=2).T)
-    ds["amp"].values = np.asarray(np.mean(data.amp, axis=2).T)
+        ds = ds.drop_vars(names=["bt_u", "bt_v", "bt_w", "bt_e", "bt_depth"])  # e_bt
 
     # Add GPS data
     #    if GPS_data:
-    if sonar == "os":  # try or other if
+    if "rawnav" in data:  # if data.sonar.model = "os"
         ds["lon"].values = np.array(data["rawnav"]["Lon1_BAM4"] * 180.0 / 2 ** 31)
         ds["lat"].values = np.array(data["rawnav"]["Lat1_BAM4"] * 180.0 / 2 ** 31)
-    #    else:
-    #        ds = ds.drop_vasr(names=["lon","lat"])
+    else:
+        ds = ds.drop_vars(names=["lon", "lat"])
 
-    # Remove data shallower than min depth
-    if min_depth > 0:
-        selected = data.XducerDepth >= min_depth
-        ds = ds.sel(time=selected)
+    # Ocean Surveillor don't record pressure.
+    if data.sonar.model != "os":
+        ds["pres"].values = data.VL["Pressure"]
+    else:
+        ds = ds.drop_vars(["Pressure"])
+
+    for i in range(1, 5):
+        ds["corr{i}"].values = np.asarray(data["corr{i}"].T)
+        ds["amp{i}"].values = np.asarray(data["amp{i}"].T)
+
     ds["intr_dep"].values = np.asarray(data.XducerDepth)
     ds["heading"].values = np.asarray(data.heading)
     ds["roll_"].values = np.asarray(data.roll)
     ds["pitch"].values = np.asarray(data.pitch)
     ds["temp"].values = np.asarray(data.temperature)
     ds["time_string"].values = time_string
+
+    ds.sortby(depth)
 
     return ds, data, fl
 
@@ -136,44 +159,51 @@ def init_dataset(time: NDArray, depth: NDArray, sonar: str = None):
         vector of [float/int]
     """
 
+    # Moored P01 only
     data_vars = {
-        "u": (["Z", "T"], nans(depth.shape + time.shape), {"P01": "LCEWAP01"}),
-        "v": (["Z", "T"], nans(depth.shape + time.shape), {"P01": "LCNSAP01"}),
-        "w": (["Z", "T"], nans(depth.shape + time.shape), {"P01": "LRZAAP01"}),
-        "e": (["Z", "T"], nans(depth.shape + time.shape), {"P01": "LERRAP01"}),
-        "pg": (["Z", "T"], nans(depth.shape + time.shape), {"P01": "PCGDAP01"}),
-        "amp1": (["Z", "T"], nans(depth.shape + time.shape), {"P01": "TNIHCE01"}),
-        "amp2": (["Z", "T"], nans(depth.shape + time.shape), {"P01": "TNIHCE02"}),
-        "amp3": (["Z", "T"], nans(depth.shape + time.shape), {"P01": "TNIHCE03"}),
-        "amp4": (["Z", "T"], nans(depth.shape + time.shape), {"P01": "TNIHCE04"}),
-        "corr1": (["Z", "T"], nans(depth.shape + time.shape), {"P01": "CMAGZZ01"}),
-        "corr2": (["Z", "T"], nans(depth.shape + time.shape), {"P01": "CMAGZZ02"}),
-        "corr3": (["Z", "T"], nans(depth.shape + time.shape), {"P01": "CMAGZZ03"}),
-        "corr4": (["Z", "T"], nans(depth.shape + time.shape), {"P01": "CMAGZZ04"}),
-        "lon": (["T"], nans(time.shape), {"P01": "ALONZZ01"}),
-        "lat": (["T"], nans(time.shape), {"P01": "ALATZZ01"}),
-        "roll_": (["T"], nans(time.shape), {"P01": "ROLLGP01"}),
-        "pitch": (["T"], nans(time.shape), {"P01": "PTCHGP01"}),
-        "heading": (["T"], nans(time.shape), {"P01": "HEADCM01"}),
-        "uship": (["T"], nans(time.shape), {"P01": "APEWGP01"}),
-        "vship": (["T"], nans(time.shape), {"P01": "APNSGP01"}),
-        "u_bt": (["T"], nans(time.shape), {"P01": "APNSBT01"}),  # - bt
-        "v_bt": (["T"], nans(time.shape), {"P01": "APEWBT01"}),  # - bt
-        "w_bt": (["T"], nans(time.shape), {"P01": "APZABT01"}),  # - bt
-        "e_bt": (["T"], nans(time.shape), {"P01": "APERBT01"}),  # - bt
-        "range_bt": (["T"], nans(time.shape)),
-        "temp": (["T"], nans(time.shape), {"P01": "TEMPPR01"}),
-        "sea_height": (["T"], nans(time.shape), {"P01": "DISTRAN"}),
-        "time_string": (["T"], nans(time.shape), {"P01": "DTUT8601"}),
+        "u": (["Z", "T"], nans(depth.shape + time.shape)),
+        "v": (["Z", "T"], nans(depth.shape + time.shape)),
+        "w": (["Z", "T"], nans(depth.shape + time.shape)),
+        "e": (["Z", "T"], nans(depth.shape + time.shape)),
+        "pg": (["Z", "T"], nans(depth.shape + time.shape)),
+        "amp1": (["Z", "T"], nans(depth.shape + time.shape)),
+        "amp2": (["Z", "T"], nans(depth.shape + time.shape)),
+        "amp3": (["Z", "T"], nans(depth.shape + time.shape)),
+        "amp4": (["Z", "T"], nans(depth.shape + time.shape)),
+        "corr1": (["Z", "T"], nans(depth.shape + time.shape)),
+        "corr2": (["Z", "T"], nans(depth.shape + time.shape)),
+        "corr3": (["Z", "T"], nans(depth.shape + time.shape)),
+        "corr4": (["Z", "T"], nans(depth.shape + time.shape)),
+        "lon": (["T"], nans(time.shape)),
+        "lat": (["T"], nans(time.shape)),
+        "roll_": (["T"], nans(time.shape)),
+        "pitch": (["T"], nans(time.shape)),
+        "heading": (["T"], nans(time.shape)),
+        "uship": (["T"], nans(time.shape)),
+        "vship": (["T"], nans(time.shape)),
+        "bt_u": (["T"], nans(time.shape)),
+        "bt_v": (["T"], nans(time.shape)),
+        "bt_w": (["T"], nans(time.shape)),
+        "bt_e": (["T"], nans(time.shape)),
+        "bt_pg": (["T"], nans(time.shape)),
+        "bt_corr1": (["Z", "T"], nans(time.shape)),
+        "bt_corr2": (["Z", "T"], nans(time.shape)),
+        "bt_corr3": (["Z", "T"], nans(time.shape)),
+        "bt_corr4": (["Z", "T"], nans(time.shape)),
+        "bt_depth": (["T"], nans(time.shape)),
+        "xducer_dep": (["T"], nans(time.shape)),
+        "temp": (["T"], nans(time.shape)),
+        "pres": (["T"], nans(time.shape)),
+        "time_string": (["T"], nans(time.shape)),
     }
 
     if sonar == "sv":
         data_vars = {
             **data_vars,
-            "v_vel": (["Z", "T"], nans((depth.shape, time.shape)), {"P01": "LRZUVP01"}),
-            "v_amp": (["Z", "T"], nans((depth.shape, time.shape)), {"P01": "TNIHCE05"}),
-            "v_cor": (["Z", "T"], nans((depth.shape, time.shape)), {"P01": "CMAGZZ05"}),
-            "v_pg": (["Z", "T"], nans((depth.shape, time.shape)), {"P01": "PCGDAP05"}),
+            "v_vel": (["Z", "T"], nans((depth.shape + time.shape))),
+            "v_amp": (["Z", "T"], nans((depth.shape + time.shape))),
+            "v_cor": (["Z", "T"], nans((depth.shape + time.shape))),
+            "v_pg": (["Z", "T"], nans((depth.shape + time.shape))),
         }
 
     dataset = xr.Dataset(
@@ -213,7 +243,7 @@ def magnetic_to_true(dataset: tp.Type[xr.Dataset]):
     )
 
 
-def convert_time(dday, yearbase):
+def _dday_to_datetime64(dday, yearbase):
     """Convert time recorded time to pandas time (np.datetime64[s]).
 
     Replace time coordinates with datetime64 in strftime='%Y-%m-%d %H:%M:%S'
@@ -264,50 +294,37 @@ def coordsystem2earth(data: tp.Type[Bunch], orientation: str) -> tp.Dict[str, ND
         coordinates system no recognized.
     """
 
+    if data.trans.coordsystem not in ["beam", "xyze"]:
+        ValueError(
+            f"coordsystem value of {data.sysconfig.coordsystem} not recognized. Conversion to enu not available."
+        )
     beam_pattern = "convex" if data.sysconfig.convex else "concave"
+    xyze, xyze_bt = data.vel.data, data.bt_vel.data
 
     if data.trans.coordsystem == "beam":
         trans = transform.Transform(angle=data.sysconfig.angle, geometry=beam_pattern)
         xyze = trans.beam_to_xyz(data.vel.data)
-        enu = transform.rdi_xyz_enu(
-            xyze,
-            data.heading,
-            data.pitch,
-            data.roll,
-            orientation=orientation,
-        )
-        xyze_bt = trans.beam_to_xyz(data.bt_vel.data)
-        bt_enu = transform.rdi_xyz_enu(
-            xyze,
-            data.heading,
-            data.pitch,
-            data.roll,
-            orientation=orientation,
-        )
-    elif data.trans.coordsystem == "xyz":
-        enu = transform.rdi_xyz_enu(
-            data.vel.data,
-            data.heading,
-            data.pitch,
-            data.roll,
-            orientation=orientation,
-        )
-        bt_enu = transform.rdi_xyz_enu(
-            data.bt_vel.data,
-            data.heading,
-            data.pitch,
-            data.roll,
-            orientation=orientation,
-        )
+        bt_xyze = trans.beam_to_xyz(data.bt_vel.data)
 
-    else:
-        ValueError(
-            f"coordsystem value of {data.sysconfig.coordsystem} not recognized. Conversion to enu not available."
-        )
+    enu = transform.rdi_xyz_enu(
+        xyze,
+        data.heading,
+        data.pitch,
+        data.roll,
+        orientation=orientation,
+    )
+    bt_enu = transform.rdi_xyz_enu(
+        bt_xyze,
+        data.heading,
+        data.pitch,
+        data.roll,
+        orientation=orientation,
+    )
 
     for i in range(4):
         data.vel.data[:, :, i] = np.round(enu[:, :, i], decimals=3)
         data.bt_vel.data[:, i] = np.round(bt_enu[:, i], decimals=3)
+        data.trans["coordinate"] = "earth"
 
 
 def read_fixed_leader(
@@ -372,9 +389,48 @@ if __name__ == "__main__":
         + "sample_data/a1_20050503_20050504_0221m.000"
     )
 
-    path = "/media/jeromejguay/5df6ae8c-2af4-4e5b-a1e0-a560a316bde3/home/jeromejguay/WorkSpace_2019/Data/Raw/ADCP/COR1805-ADCP-150kHz009"
+    path = "/media/jeromejguay/5df6ae8c-2af4-4e5b-a1e0-a560a316bde3/home/jeromejguay/WorkSpace_2019/Data/Raw/ADCP/COR1805-ADCP-150kHz009_000001"
     file_type = [".ENR", ".ENS", ".ENX", ".LTA", ".STA"]
 
-    ds, data, fl = load_rdi_binary(
-        path + file_type[2], "os", 2018, adcp_orientation="down", sensor_depth=0
-    )
+    sonar = "os"
+    data = Multiread(path + ".ENS", sonar=sonar).read()
+    data0 = coordsystem2earth(data, orientation="down")
+    data1 = Multiread(path + ".ENX", sonar=sonar).read()
+
+    data2 = Multiread(fn_raw, sonar=sonar).read()
+
+sysconf_keys = (
+    "FWV",
+    "FWR",
+    "SysCfg",
+    "RealSimFlag",
+    "LagLength",
+    "NBeams",
+    "NCells",
+    "NPings",
+    "CellSize",
+    "Blank",
+    "SPM",
+    "LowCorrThresh",
+    "NCodeReps",
+    "PGMin",
+    "EVMax",
+    "TPP_min",
+    "TPP_sec",
+    "TPP_hun",
+    "EX",
+    "EA",
+    "EV",
+    "EZ",
+    "SA",
+    "Bin1Dist",
+    "Pulse",
+    "RL0",
+    "RL1",
+    "WA",
+    "spare3",
+    "TransLag",
+    "CPU_SN",
+    "WB",
+    "CQ",
+)
