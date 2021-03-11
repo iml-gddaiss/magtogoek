@@ -20,8 +20,9 @@ See Also
 
 Note
 ----
-  Beam coordinate percentgood.
-
+  Beam coordinates: Not supported for now.
+  SV: Nothing no rotation is carried for beam coordinates.
+  NOTE need to add sonar
 """
 import xarray as xr
 import numpy as np
@@ -32,22 +33,38 @@ from pycurrents.adcp.rdiraw import Multiread, rawfile, Bunch
 import pycurrents.adcp.transform as transform
 
 
+class logger:
+    def __init__(self):
+        self.log = ""
+
+    def __repr__(self):
+        print(self.log)
+
+    def log(self, msg):
+        self.log += msg + "\n"
+        print(msg)
+
+
 def load_rdi_binary(
     filenames: tp.Tuple[str, tp.List[str]],
     sonar: str,
     yearbase: int,
     adcp_orientation: str,  # TODO add options for None computing average orientation from FL,
-    sensor_depth: float,
+    sensor_depth: float = None,
+    magnetic_declination: float = None,
     min_depth: float = 0,
 ):
     """FIXME"""
-    ## globad attrs for processing
-    # adcp_orientation
-    # coordsystem
-    # magnetic_declination
-    # yearbase:
+    # =============================#
+    # globad attrs for processing  #
+    # adcp_orientation             #
+    # coordsystem                  #
+    # magnetic_declination         #
+    # yearbase                     #
+    # sonar                        #
+    # =============================#
 
-    log = ""
+    l = logger()
 
     # read binary data. TODO Check in fixed_leader for change. (BUGS)
     data = Multiread(fnames=filenames, sonar=sonar, yearbase=yearbase).read()
@@ -55,8 +72,9 @@ def load_rdi_binary(
 
     # convert dday to datatime64[s] and to formated time string.
     time, time_string = convert_time(data.dday, yearbase)
+    depth = data.dep
 
-    # mhmm pas sur
+    ### NOTE Je crois que l'ajustement est déja fait. ###
     # if adcp_orientation == "down":
     #    depth = data.dep + np.nanmean(data.XducerDepth)  # depth of the bins
     # else:
@@ -65,61 +83,39 @@ def load_rdi_binary(
     # Init dataset
     ds = init_dataset(time, data.dep)
 
-    # Check coordinate system. Rotate data if not in earth NOTE: not tested.
-    # TODO rotate bottom track
-    if not data.trans["coordsystem"] == "earth":
-        msg = (
-            f"WARNING: Velocities are in {data.trans['coordsystem']} coordinate system"
-        )
-        print(msg)
-        log += msg + "\n"
-
+    # Check coordinate system and transform to earth if need.
+    if data.trans["coordsystem"] != "earth":
+        l.log(f"WARNING: Velocities are in {data.trans['coordsystem']} coordinate")
+        l.log(f"WARNING: Coordinate system transformation was not tested")
         enu = coordsystem2earth(data=data, orientation=adcp_orientation)
-
-        msg = f"Velocities were rotated from {data.trans['coordsystem']} to earth coordinate system"
-        print(msg)
-        log += msg + "\n"
-
-        # Set velocities and pg good
-        ds["u"].values = enu["vel1"].T
-        ds["v"].values = enu["vel2"].T
-        ds["w"].values = enu["vel3"].T
-        ds["e"].values = enu["vel4"].T
-        ds["pg"].values = np.float64(np.asarray(np.nanmean(data.pg, axis=2)))
-        msg = "WARNING: PercentGood was calculated from the 4 PercentGood beam average"
-        print(msg)
-        log += msg + "\n"
-
-    else:
-        ds["u"].values = np.asarray(data.vel1.T)
-        ds["v"].values = np.asarray(data.vel2.T)
-        ds["w"].values = np.asarray(data.vel3.T)
-        ds["e"].values = np.asarray(data.vel4.T)
-        ds["pg"].values = np.float64(np.asarray(data.pg4.T))
-
-    # Bottom track data if it exists
-    if not (data.bt_vel.data == 0).all():
-        ds["u_bt"].values = data.bt_vel.data[:, 0]
-        ds["v_bt"].values = data.bt_vel.data[:, 1]
-        ds["w_bt"].values = data.bt_vel.data[:, 2]
-        ds["range_bt"].values = np.nanmean(data.bt_depth.data, axis=-1)
+        l.log(f"Velocities were rotated from to earth coordinate")
 
     # If no bottom track data, drop variables
+    if not (data.bt_vel.data == 0).all():
+        ds["u_bt"].values = -data.bt_vel.data[:, 0]
+        ds["v_bt"].values = -data.bt_vel.data[:, 1]
+        ds["w_bt"].values = -data.bt_vel.data[:, 2]
+        #        ds["e_bt"].values = data.bt_vel.data[:, 3]
+        ds["range_bt"].values = np.nanmean(data.bt_depth.data, axis=-1)
     else:
-        bt_vars = ["u_bt", "v_bt", "w_bt", "range_bt"]
-        ds = ds.drop_vars(names=bt_vars)
+        ds = ds.drop_vars(names=["u_bt", "v_bt", "w_bt", "range_bt"])  # e_bt
+
+    ds["corr"].values = np.asarray(np.mean(data.cor, axis=2).T)
+    ds["amp"].values = np.asarray(np.mean(data.amp, axis=2).T)
+
+    # Add GPS data
+    #    if GPS_data:
+    if sonar == "os":  # try or other if
+        ds["lon"].values = np.array(data["rawnav"]["Lon1_BAM4"] * 180.0 / 2 ** 31)
+        ds["lat"].values = np.array(data["rawnav"]["Lat1_BAM4"] * 180.0 / 2 ** 31)
+    #    else:
+    #        ds = ds.drop_vasr(names=["lon","lat"])
 
     # Remove data shallower than min depth
     if min_depth > 0:
         selected = data.XducerDepth >= min_depth
         ds = ds.sel(time=selected)
-
-    if sonar == "os":
-        ds["lon"].values = np.array(data["rawnav"]["Lon1_BAM4"] * 180.0 / 2 ** 31)
-        ds["lat"].values = np.array(data["rawnav"]["Lat1_BAM4"] * 180.0 / 2 ** 31)
-
-    ds["corr"].values = np.asarray(np.mean(data.cor, axis=2).T)
-    ds["amp"].values = np.asarray(np.mean(data.amp, axis=2).T)
+    ds["intr_dep"].values = np.asarray(data.XducerDepth)
     ds["heading"].values = np.asarray(data.heading)
     ds["roll_"].values = np.asarray(data.roll)
     ds["pitch"].values = np.asarray(data.pitch)
@@ -129,52 +125,55 @@ def load_rdi_binary(
     return ds, data, fl
 
 
-def init_dataset(time, depth, sonar: str = None):
-    """FIXME"""
+def init_dataset(time: NDArray, depth: NDArray, sonar: str = None):
+    """
+    parameters
+    ----------
+    time:
+        vector of datetime64[]
 
-    # Take inputs as coordinate sizes or vectors. NOTE: maybe remove.
-    if isinstance(depth, int):
-        depth = np.arange(depth)
-    else:
-        depth = depth
-    size_depth = depth.size
-    if isinstance(time, int):
-        time = np.empty(time, dtype="datetime64[s]")
-    else:
-        time = time
-    size_time = time.size
+    depth:
+        vector of [float/int]
+    """
 
     data_vars = {
-        "u": (["Z", "T"], np.nan * np.ones((size_depth, size_time))),
-        "v": (["Z", "T"], np.nan * np.ones((size_depth, size_time))),
-        "w": (["Z", "T"], np.nan * np.ones((size_depth, size_time))),
-        "e": (["Z", "T"], np.nan * np.ones((size_depth, size_time))),
-        "lon": (["T"], np.nan * np.ones(size_time)),
-        "lat": (["T"], np.nan * np.ones(size_time)),
-        "temp": (["T"], np.nan * np.ones(size_time)),
-        "dep": (["T"], np.nan * np.ones(size_time)),
-        "roll_": (["T"], np.nan * np.ones(size_time)),
-        "pitch": (["T"], np.nan * np.ones(size_time)),
-        "heading": (["T"], np.nan * np.ones(size_time)),
-        "uship": (["T"], np.nan * np.ones(size_time)),
-        "vship": (["T"], np.nan * np.ones(size_time)),
-        "u_bt": (["T"], np.nan * np.ones(size_time)),
-        "v_bt": (["T"], np.nan * np.ones(size_time)),
-        "w_bt": (["T"], np.nan * np.ones(size_time)),
-        "amp": (["Z", "T"], np.nan * np.ones((size_depth, size_time))),
-        "corr": (["Z", "T"], np.nan * np.ones((size_depth, size_time))),
-        "pg": (["Z", "T"], np.nan * np.ones((size_depth, size_time))),
-        "range_bt": (["T"], np.nan * np.ones(size_time)),
-        "time_string": (["T"], np.nan * np.ones(size_time)),
+        "u": (["Z", "T"], nans(depth.shape + time.shape), {"P01": "LCEWAP01"}),
+        "v": (["Z", "T"], nans(depth.shape + time.shape), {"P01": "LCNSAP01"}),
+        "w": (["Z", "T"], nans(depth.shape + time.shape), {"P01": "LRZAAP01"}),
+        "e": (["Z", "T"], nans(depth.shape + time.shape), {"P01": "LERRAP01"}),
+        "pg": (["Z", "T"], nans(depth.shape + time.shape), {"P01": "PCGDAP01"}),
+        "amp1": (["Z", "T"], nans(depth.shape + time.shape), {"P01": "TNIHCE01"}),
+        "amp2": (["Z", "T"], nans(depth.shape + time.shape), {"P01": "TNIHCE02"}),
+        "amp3": (["Z", "T"], nans(depth.shape + time.shape), {"P01": "TNIHCE03"}),
+        "amp4": (["Z", "T"], nans(depth.shape + time.shape), {"P01": "TNIHCE04"}),
+        "corr1": (["Z", "T"], nans(depth.shape + time.shape), {"P01": "CMAGZZ01"}),
+        "corr2": (["Z", "T"], nans(depth.shape + time.shape), {"P01": "CMAGZZ02"}),
+        "corr3": (["Z", "T"], nans(depth.shape + time.shape), {"P01": "CMAGZZ03"}),
+        "corr4": (["Z", "T"], nans(depth.shape + time.shape), {"P01": "CMAGZZ04"}),
+        "lon": (["T"], nans(time.shape), {"P01": "ALONZZ01"}),
+        "lat": (["T"], nans(time.shape), {"P01": "ALATZZ01"}),
+        "roll_": (["T"], nans(time.shape), {"P01": "ROLLGP01"}),
+        "pitch": (["T"], nans(time.shape), {"P01": "PTCHGP01"}),
+        "heading": (["T"], nans(time.shape), {"P01": "HEADCM01"}),
+        "uship": (["T"], nans(time.shape), {"P01": "APEWGP01"}),
+        "vship": (["T"], nans(time.shape), {"P01": "APNSGP01"}),
+        "u_bt": (["T"], nans(time.shape), {"P01": "APNSBT01"}),  # - bt
+        "v_bt": (["T"], nans(time.shape), {"P01": "APEWBT01"}),  # - bt
+        "w_bt": (["T"], nans(time.shape), {"P01": "APZABT01"}),  # - bt
+        "e_bt": (["T"], nans(time.shape), {"P01": "APERBT01"}),  # - bt
+        "range_bt": (["T"], nans(time.shape)),
+        "temp": (["T"], nans(time.shape), {"P01": "TEMPPR01"}),
+        "sea_height": (["T"], nans(time.shape), {"P01": "DISTRAN"}),
+        "time_string": (["T"], nans(time.shape), {"P01": "DTUT8601"}),
     }
 
     if sonar == "sv":
         data_vars = {
             **data_vars,
-            "vb_vel": (["Z", "T"], np.nan * np.ones((size_depth, size_time))),
-            "vb_amp": (["Z", "T"], np.nan * np.ones((size_depth, size_time))),
-            "vb_cor": (["Z", "T"], np.nan * np.ones((size_depth, size_time))),
-            "vb_pg": (["Z", "T"], np.nan * np.ones((size_depth, size_time))),
+            "v_vel": (["Z", "T"], nans((depth.shape, time.shape)), {"P01": "LRZUVP01"}),
+            "v_amp": (["Z", "T"], nans((depth.shape, time.shape)), {"P01": "TNIHCE05"}),
+            "v_cor": (["Z", "T"], nans((depth.shape, time.shape)), {"P01": "CMAGZZ05"}),
+            "v_pg": (["Z", "T"], nans((depth.shape, time.shape)), {"P01": "PCGDAP05"}),
         }
 
     dataset = xr.Dataset(
@@ -205,8 +204,8 @@ def magnetic_to_true(dataset: tp.Type[xr.Dataset]):
         dataset with attrs magnetic_declination.
     """
 
-    def R(x):
-        return [[np.cos(x), -np.sin(x)], [np.sin(x), np.cos(x)]]
+    def R(angle):
+        return [[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]]
 
     angle_rad = -np.radians(dataset.attrs["magnetic_declination"])
     dataset.lon.values, dataset.lat.values = np.split(
@@ -306,22 +305,9 @@ def coordsystem2earth(data: tp.Type[Bunch], orientation: str) -> tp.Dict[str, ND
             f"coordsystem value of {data.sysconfig.coordsystem} not recognized. Conversion to enu not available."
         )
 
-    vel1 = np.round(enu[:, :, 0], decimals=3)
-    vel2 = np.round(enu[:, :, 1], decimals=3)
-    vel3 = np.round(enu[:, :, 2], decimals=3)
-    vel4 = np.round(enu[:, :, 3], decimals=3)
-
-    bt_vel1 = np.round(bt_enu[:, :, 0], decimals=3)
-    bt_vel2 = np.round(bt_enu[:, :, 1], decimals=3)
-    bt_vel3 = np.round(bt_enu[:, :, 2], decimals=3)
-    bt_vel4 = np.round(bt_enu[:, :, 3], decimals=3)
-
-    return dict(
-        vel1=vel1,
-        vel2=vel2,
-        vel3=vel3,
-        vel4=vel4,
-    )  # TODO
+    for i in range(4):
+        data.vel.data[:, :, i] = np.round(enu[:, :, i], decimals=3)
+        data.bt_vel.data[:, i] = np.round(bt_enu[:, i], decimals=3)
 
 
 def read_fixed_leader(
@@ -370,6 +356,11 @@ def read_fixed_leader(
         )
 
     return fixed_leader
+
+
+def nans(shape: tp.Tuple[list, tuple, NDArray]) -> NDArray:
+    """return array of nan of shape `shape`"""
+    return np.full(shape, np.nan)
 
 
 if __name__ == "__main__":

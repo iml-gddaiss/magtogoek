@@ -188,6 +188,55 @@ sdn = dict(
         sdn_uom_name="Percent",
         legacy_GF3_code="FIXME",
     ),
+    LRZUVP01=dict(
+        standard_name="upward_sea_water_velocity",
+        units="m s-1",
+        sensor_type="adcp",
+        long_name="upward sea water velocity by vertical beam",
+        sdn_parameter_urn="SDN:P01::LRZUVP01",
+        sdn_parameter_name=("upward_sea_water_velocity_by_vertical_beam"),
+        sdn_uom_urn="SDN:P06::UVAA",
+        sdn_uom_name="Metres per second",
+    ),
+    TNIHCE05=dict(
+        standard_name="signal_intensity_from_multibeam_acoustic_doppler_velocity_sensor_in_sea_water",
+        units="counts",
+        sensor_type="adcp",
+        long_name="ADCP echo intensity beam 5",
+        sdn_parameter_urn="SDN:P01::TNIHCE05",
+        sdn_parameter_name=(
+            "Echo intensity from the water body by moored acoustic doppler current "
+            "profiler (ADCP) vertical beam"
+        ),
+        sdn_uom_urn="SDN:P06::UCNT",
+        sdn_uom_name="Counts",
+    ),
+    CMAGZZ05=dict(
+        standard_name="beam_consistency_indicator_from_multibeam_acoustic_doppler_velocity_profiler_in_sea_water",
+        units="counts",
+        sensor_type="adcp",
+        long_name="ADCP correlation magnitude beam 5",
+        sdn_parameter_urn="SDN:P01::CMAGZZ05",
+        sdn_parameter_name=(
+            "Correlation magnitude of acoustic signal returns from the water body "
+            "by moored acoustic doppler current profiler (ADCP) vertical beam"
+        ),
+        sdn_uom_urn="SDN:P06::UCNT",
+        sdn_uom_name="Counts",
+    ),
+    PCGDAP05=dict(
+        standard_name="proportion_of_acceptable_signal_returns_from_acoustic_instrument_in_sea_water",
+        units="percent",
+        sensor_type="adcp",
+        long_name="percent_good_beam_5",
+        sdn_parameter_urn="SDN:P01::PCGDAP05",
+        sdn_parameter_name=(
+            "Acceptable proportion of signal returns by moored acoustic doppler "
+            "current profiler (ADCP) vertical beam"
+        ),
+        sdn_uom_urn="SDN:P06::UPCT",
+        sdn_uom_name="Percent",
+    ),
     ALATZZ01=_A_ZZ01("latitude", "north", "LAT", "Latitude", "DEGN", "lat"),
     ALONZZ01=_A_ZZ01("longitude", "east", "LON", "Longitude", "DEGE", "lon"),
     PTCHGP01=dict(
@@ -322,9 +371,7 @@ sdn = dict(
         units="m",
         long_name="depth below surface",
         sdn_parameter_urn="SDN:P01::ADEPZZ01",
-        sdn_parameter_name=(
-            "Depth (spatial coordinate) relative " "to water surface in the water body"
-        ),
+        sdn_parameter_name="Depth relative to water surface in the water body",
         Sdn_uom_urn="SDN:P06::ULAA",
         sdn_uom_name="Metres",
         legacy_GF3_code="SDN:GF3::DEPH",
@@ -340,8 +387,44 @@ sdn = dict(
         legacy_GF3_code="SDN:GF3::N/A",
         calendar="gregorian",
     ),
+    APNSBT01=dict(
+        units="m s-1",
+        sensor_type="adcp",
+        long_name="northward velocity of the measurment platform by bottom tracking",
+        sdn_parameter_urn="SDN:P01::",
+        sdn_parameter_name=(
+            "Northward velocity of measurement platform relative to ground surface "
+            "by ADCP bottom tracking."
+        ),
+    ),
+    APEWBT01=dict(
+        units="m s-1",
+        sensor_type="adcp",
+        long_name="eastward velocity of the measurment platform by bottom tracking",
+        sdn_parameter_urn="SDN:P01::APEWBT01",
+        sdn_parameter_name=(
+            "Eastward velocity of measurement platform relative to ground surface "
+            "by ADCP bottom tracking."
+        ),
+    ),
+    APZABT01=dict(
+        units="m s-1",
+        sensor_type="adcp",
+        long_name="upward velocity of the measurment platform by bottom tracking",
+        sdn_parameter_urn="SDN:P01::APZABT01",
+        sdn_parameter_name="Upward velocity of measurement platform by ADCP bottom tracking.",
+    ),
+    APERBT01=dict(
+        units="m s-1",
+        sensor_type="adcp",
+        long_name="error velocity of the measurment platform by bottom tracking",
+        sdn_parameter_urn="SDN:P01::APERBT01",
+        sdn_parameter_name=(
+            "Error velocity of measurement platform relative to ground surface "
+            "by ADCP bottom tracking."
+        ),
+    ),
 )
-
 
 if __name__ == "__main__":
     # probably not good practice. Relative path not working.
