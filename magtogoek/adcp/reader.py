@@ -11,9 +11,7 @@ files can also be exporter directly to Teledyne .P01 file formats and be proeces
 and the RDI loader.
 
 The RDI loader uses CODAS Multiread reader from the pycurrent pacakge. The Multiread
-reader supports .000, .ENX, .ENS, .LTA and .STA binary files. However, the ouput
-from Multiread is then process by the loader and testing is style ongoing for some
-of the file formats, but it should work just fine.
+reader supports .000, .ENX, .ENS, .LTA and .STA binary files.
 
 Summary of load_rdi_binary() function:
 parameters: sonar ('wh', 'sv', 'os'), yearbase, adcp_orientation 'up' or 'down',
@@ -72,12 +70,11 @@ class Logger:
         self.logbook += "[" + msg + "]" + time + "\n"
         print(msg)
 
-    def log(self, msg, t=False, w=False):
+    def log(self, msg, t=False):
         if "WARNING:" in msg:
             click.echo(click.style("WARNING:", fg="yellow") + msg[8:])
             self.w_count += 1
         else:
-            msg = msg if w is False else msg + " " + str(self.w_count) + " Warnings"
             print(msg)
         msg = msg if t is False else self.timestamp() + " " + msg
         self.logbook += "  -" + msg + "\n"
@@ -85,6 +82,10 @@ class Logger:
     @staticmethod
     def timestamp():
         return "(" + pd.Timestamp.now().strftime("%Y-%m-%d %Hh%M:%S") + ")"
+
+
+class CoordinateSystemError(Exception):
+    pass
 
 
 def load_rdi_binary(
@@ -106,26 +107,25 @@ def load_rdi_binary(
     fl_flag = 0
     fl = read_fixed_leader(filenames, sonar=sonar, yearbase=yearbase)
     ### --- En faire une fonction --- ###
-    for name in fl.dtype.names:
-        if np.unique(fl[name]).size > 1:
-            l.log(f"WARNING: Problem detected in the fixed leader with {name}")
-            fl_flag += 1
 
-    eturn_counts = False
-    ### --- Fin de la fonction --- ###
+    if np.unique(fl["SysCfg"]).size > 1:
+        l.log(f"WARNING: Value of the `SysCfg` in the `FixedLeader` change over time.")
+        l.log(
+            "They may be something wrong with the ADCP, the equipement or the configuration."
+        )
 
-    # read binary data. TODO Check in fixed_leader for change. (BUGS)
+    ### --- Reading the data  --- ###
     data = Multiread(fnames=filenames, sonar=sonar, yearbase=yearbase).read()
 
     ### --- Dealing with the times --- ###
 
-    if fl_flag == 0:
-        # convert dday to datatime64[s] and to formated time string.
-        time, time_string = dday_to_datetime64(data.dday, yearbase)
-    else:
-        l.log(f"WARNING: There was {fl_flag} errors in the fixed leader.")
+    if (data.dday < 0).any():
+        l.log(f"WARNING: The `dday` vector contains  negative values")
         l.log(f"WARNING: Time coordinate made from -> [1,2,3,4...,len(dday)] in days")
         time, time_string = dday_to_datetime64(np.arange(len(data.dday)), yearbase)
+    else:
+        # convert dday to datatime64[s] and to formated time string.
+        time, time_string = dday_to_datetime64(data.dday, yearbase)
 
     ### --- Dealing with the depth --- ###
 
@@ -140,26 +140,32 @@ def load_rdi_binary(
         else:
             l.log(
                 (
-                    "WARNING: a sensor depth was not provided. Required for `wh` and `sv`"
-                    " Thus no correction was done to the depth coordinate"
+                    "WARNING: `sensor_depth` was not provided and one is required for `wh` and `sv` sensor"
+                    " No correction was done to the depth vector coordinate"
                 )
             )
             depth = data.dep
+            XducerDepth = None
 
     ### --- Initating the dataset --- ###
     ds = init_dataset(time, data.dep)
 
     ### --- Dealing with the coordinates system --- ###
     # Check coordinate system and transform to earth if need.
+    # Transformation disable
     if data.trans["coordsystem"] != "earth":
-        l.log(f"WARNING: Velocities are in {data.trans['coordsystem']} coordinate")
-        l.log("WARNING: Coordinate system transformation was not tested")
+        raise CoordinateSystemError("Data must be in earth coordinate.")
+        # l.log(f"The data are in {data.trans['coordsystem']} coordinate")
+        # l.log("WARNING: Coordinate system transformation was not tested")
 
-        coordsystem2earth(data=data, orientation=orientation)
+        # coordsystem2earth(data=data, orientation=orientation)
 
-        l.log("The velocities were transformed to ENU (earth coordinate)")
-        l.log("PercentGood was computed from the beam PercentGoods")
+        # l.log("The velocities were transformed to ENU (earth coordinate)")
 
+    if data.trans["coordsystem"] == "beam":
+        l.log(
+            "The `PercentGood` values are computed from the depth average of each beam PercentGood"
+        )
         percent_good = np.asarray(np.mean(data.pg.data, axis=2).T)
     else:
         percent_good = np.asarray(data.pg4.T)
@@ -194,25 +200,21 @@ def load_rdi_binary(
         ds[f"corr{i}"].values = np.asarray(data[f"cor{i}"].T)
         ds[f"amp{i}"].values = np.asarray(data[f"amp{i}"].T)
 
-    # for `wh` and `os` xducer_depht varies over times.
+    # for `wh` and `sv` XducerDepth varies over times.
     if data.sonar.model != "os":
         ds["xducer_depth"].values = np.asarray(data.XducerDepth)
-
     else:
-        # for `os`, XducerDepth is inputed by the user.
+        # for `os`, XducerDepth is entered by the user.
         ds = ds.drop_vars(names=["xducer_depth"])
         XducerDepth = data.XducerDepth[0]
 
-    ds.attrs["_vartmp_XducerDepth"] = XducerDepth
+    if XducerDepth is not None:
+        ds.attrs["_vartmp_XducerDepth"] = XducerDepth
 
-    # Add Navigation data for `os`if available.
-    if data.sonar.model == "os":
-        if "rawnav" in data:
-            ds["lon"].values = np.array(data["rawnav"]["Lon1_BAM4"] * 180.0 / 2 ** 31)
-            ds["lat"].values = np.array(data["rawnav"]["Lat1_BAM4"] * 180.0 / 2 ** 31)
-        else:
-            l.log("Rawnav (GPS data) was found in the binary file")
-            ds = ds.drop_vars(names=["lon", "lat"])
+    if "rawnav" in data:
+        ds["lon"].values = np.array(data["rawnav"]["Lon1_BAM4"] * 180.0 / 2 ** 31)
+        ds["lat"].values = np.array(data["rawnav"]["Lat1_BAM4"] * 180.0 / 2 ** 31)
+
     else:
         ds = ds.drop_vars(names=["lon", "lat"])
 
@@ -220,9 +222,7 @@ def load_rdi_binary(
     if data.sonar.model != "os":
         ds["pres"].values = data.VL["Pressure"]
         if (ds["pres"].values == 0).all():
-            l.log(
-                "Pressure values were all `0` and so they are dropped from the ouput."
-            )
+            l.log("Pressure data unavailable")
             ds = ds.drop_vars(["pres"])
     else:
         ds = ds.drop_vars(["pres"])
@@ -238,17 +238,17 @@ def load_rdi_binary(
 
     ds.sortby("depth")
 
-    ds.attrs["coordsytem"] = data.trans["coordsystem"]
+    ds.attrs["coordsystem"] = data.trans["coordsystem"]
     #             'ping_frequency': '',
     #             'beam_angle': '',
     #             'bin_size': '',
     #             'orientation': '',
     #             'instrument_serial': '',
 
-    l.log("Data loaded with", t=True, w=True)
+    l.log(f"Data loaded with {l.w_count} warnings", t=True)
     ds.attrs["_vartmp_logbook"] = l.logbook
 
-    return ds, data, fl
+    return ds
 
 
 def init_dataset(time: NDArray, depth: NDArray, sonar: str = None):
@@ -406,6 +406,7 @@ def coordsystem2earth(data: tp.Type[Bunch], orientation: str):
         xyze = trans.beam_to_xyz(data.vel.data)
         bt_xyze = trans.beam_to_xyz(data.bt_vel.data)
 
+    # TODO FIXME HEADING PITCH AND ROLL MAY NOT BE AVAIABLE. -> [0,0,0,0,0,0,...,0,0]
     enu = transform.rdi_xyz_enu(
         xyze,
         data.heading,
@@ -424,8 +425,8 @@ def coordsystem2earth(data: tp.Type[Bunch], orientation: str):
     for i in range(4):
         data.vel.data[:, :, i] = np.round(enu[:, :, i], decimals=3)
         data.bt_vel.data[:, i] = np.round(bt_enu[:, i], decimals=3)
-        data.trans["coordinate"] = "earth"
-        data.trans["tilts"] = True
+    data.trans["coordsystem"] = "earth"
+    data.trans["tilts"] = True
 
 
 def _xducer_depth_check(data, sensor_depth, logger):
@@ -531,9 +532,4 @@ if __name__ == "__main__":
     sonar = "os"
     # enr = load_rdi_binary(path + ".ENR", sonar=sonar, yearbase=2018, orientation="down")
     # ens = load_rdi_binary(path + ".ENS", sonar=sonar, yearbase=2018, orientation="down")
-    # enx = load_rdi_binary(path + ".ENX", sonar=sonar, yearbase=2018, orientation="down")
-    # sta = load_rdi_binary(path + ".STA", sonar=sonar, yearbase=2018, orientation="down")
-
-    ios = load_rdi_binary(
-        ios_path, sonar=sonar, yearbase=2020, orientation="down"
-    )  # .00
+    enx = load_rdi_binary(path + ".ENX", sonar=sonar, yearbase=2018, orientation="down")
