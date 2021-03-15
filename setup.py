@@ -1,11 +1,12 @@
-import setuptools
+from setuptools import find_packages, setup
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
 version = "0.0.2"
 
-setuptools.setup(
+
+setup(
     name="magtogoek",
     version=version,
     author="JeromeJGuay,",
@@ -31,14 +32,13 @@ setuptools.setup(
         "nptyping",
         "click",
     ],
-    packages=setuptools.find_packages(),
+    packages=find_packages(),
     package_data={"Magtogoek": ["*.geojson"]},
     classifiers=["Programming Language :: Python :: 3"],
     python_requires="~=3.7",
     entry_points={
         "console_scripts": [
             "mtgk=magtogoek.bin.magtogoek_command:magtogoek",
-            # "magtogoek_config_adcp=magtogoek.bin.config_command:magtogoek_config_adcp",
         ]
     },
 )

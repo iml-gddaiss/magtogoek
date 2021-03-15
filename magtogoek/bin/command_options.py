@@ -22,7 +22,6 @@ def adcp_options():
         click.option(
             "-i",
             "--input-files",
-            nargs=1,
             type=click.STRING,
             help="Expression identifying adcp files",
         ),
