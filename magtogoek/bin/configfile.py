@@ -7,13 +7,11 @@ This make_configparser is called by magtogoek_command.py
 
 This modules also contains the sections and default parameters values for the configparsers.
 
-<<<<<<< HEAD
+
 NOTE update ?
 NOTE: More comments should be added in the configparser files.
 NOTE: Missing,fonctions to open the config files.
 NOTE: Make a class ? Config(config_name, sensor_type=None).{update(options), .load(), .save()}
-=======
->>>>>>> c646716ebd2bde2da6ef5e953760b2c123cb7968
 
 INPUT:
 Expression identifying the file or files to be process.
@@ -41,14 +39,15 @@ ADCP_OUTPUT:
 Set True or False.
 If bodc_name False, generic variable names are used.
 """
-<<<<<<< HEAD
-from configparser import ConfigParser
-import typing as tp
-from pandas import Timestamp
+
 import getpass
+import typing as tp
+from configparser import ConfigParser
+
+from pandas import Timestamp
 
 sensor_type = "none"
-=======
+
 import getpass
 import typing as tp
 from configparser import ConfigParser
@@ -135,7 +134,6 @@ adcp_config = dict(
         "make_log": True,
     },
 )
->>>>>>> c646716ebd2bde2da6ef5e953760b2c123cb7968
 
 
 def make_configfile(filename: str, sensor_type: str, updated_params: tp.Dict = None):
@@ -188,7 +186,7 @@ def _update_config(parser: tp.Type[ConfigParser], updated_params: tp.Dict):
 
 def _get_config_default(sensor_type: str):
     """FIXME"""
-<<<<<<< HEAD
+
     basic_dict = dict(
         HEADER={
             "sensor_type": sensor_type,
@@ -268,8 +266,6 @@ def _get_config_default(sensor_type: str):
         },
     )
 
-=======
->>>>>>> c646716ebd2bde2da6ef5e953760b2c123cb7968
     if sensor_type == "adcp":
         config_dict = {**basic_dict, **adcp_config}
 
