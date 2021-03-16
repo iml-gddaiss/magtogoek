@@ -29,16 +29,17 @@ Helps:
 
     $ mtgk [config, process] [adcp, ]
 """
-import click
-import typing as tp
 import subprocess
-
+import typing as tp
 from pathlib import Path
-from magtogoek.metadata.toolbox import json2dict
-from magtogoek.bin.configfile import make_configfile
-from magtogoek.bin.command_options import adcp_options, add_options
 
-### Global variable used by some of the module functions.
+import click
+from magtogoek.bin.command_options import adcp_options, add_options
+from magtogoek.bin.configfile import make_configfile
+from magtogoek.metadata.platforms import make_platform_template
+from magtogoek.metadata.toolbox import json2dict
+
+### Global variable used by some of the module functions. ###
 _magtogoek_version = "0.0.2"
 _valid_sensor_types = ["adcp"]
 _logo_path = "../files/logo.json"
@@ -54,7 +55,7 @@ _CONTEXT_SETTINGS = dict(
 def _print_info(ctx, callback):
     """Show command information"""
     if callback:
-        subprocess.run(["printf", "\e[8;40;80t"])
+        subprocess.run(["printf", "\e[8;40;81t"])
         click.clear()
         _print_logo(
             logo_path=_logo_path, group=ctx.info_name, version=_magtogoek_version
@@ -74,9 +75,9 @@ def _print_info(ctx, callback):
         exit()
 
 
-# ---------------------------#
-#      mtgk entry point      #
-# ---------------------------#
+# --------------------------- #
+#      mtgk entry point       #
+# --------------------------- #
 @click.group(context_settings=_CONTEXT_SETTINGS)
 @click.option(
     "--info", is_flag=True, callback=_print_info, help="Show command information"
@@ -94,7 +95,7 @@ def config(info):
     pass
 
 
-### process sub-group
+### process sub-group ###
 @magtogoek.group(context_settings=_CONTEXT_SETTINGS)
 @click.option(
     "--info", is_flag=True, callback=_print_info, help="Show command information"
@@ -104,14 +105,25 @@ def process(info):
     pass
 
 
-### adcp: config sub-command
+### platforms: config sub-command ###
+@config.command("platform")
+@click.option(
+    "--info", is_flag=True, callback=_print_info, help="Show command information"
+)
+@click.argument("filename", metavar="[filename]", type=str)
+@click.pass_context
+def config_platform(ctx, filename, info):
+    filename = _validate_filename(filename, ext=".json")
+    make_platform_template(filename)
+    click.echo(click.style(f"Platform file created for -> {filename}", bold=True))
+
+
+### adcp: config sub-command ###
 @config.command("adcp")
 @click.option(
     "--info", is_flag=True, callback=_print_info, help="Show command information"
 )
-@click.argument(
-    "config_name", metavar="[config_file]", required=False, default=None, type=str
-)
+@click.argument("config_name", metavar="[config_file]", type=str)
 @add_options(adcp_options())
 @click.pass_context
 def config_adcp(
@@ -125,7 +137,7 @@ def config_adcp(
     _print_passed_options(options)
 
     # check if a file already exists and format the `.ini` extension.
-    config_name = _validate_config_name(config_name)
+    config_name = _validate_filename(config_name, ext=".ini")
 
     # translate names to those used by the configparser.
     updated_params = _convert_options_to_configfile("adcp", options)
@@ -215,47 +227,48 @@ def _translate_options_name(sensor_type, options):
     return options
 
 
-def _validate_config_name(config_name: str) -> str:
+def _validate_filename(filename: str, ext: str) -> str:
     """Check if directory or/and file name exist.
 
     Ask to make the directories if they don't exist.
     Ask  to ovewrite the file if a file already exist.
 
-    Appends a `.ini` suffix (extension) none was given.
-    But keeps other suffixes.
+    Appends the correct suffix (extension) if none was given
+    but keeps other suffixes.
     Ex. path/to/file.ext1.ext2.ini
 
     """
-    if Path(config_name).suffix != ".ini":
-        config_name += ".ini"
+    print(filename)
+    if Path(filename).suffix != ext:
+        filename += f"{ext}"
 
-    while not Path(config_name).parents[0].is_dir():
+    while not Path(filename).parents[0].is_dir():
         if click.confirm(
             click.style(
                 "Directory does not exist. Do you want to create it ?", bold=True
             ),
             default=False,
         ):
-            Path(config_name).parents[0].mkdir(parents=True)
+            Path(filename).parents[0].mkdir(parents=True)
         else:
-            config_name = _ask_for_config_name()
+            filename = _ask_for_filename(ext)
 
-    if Path(config_name).is_file():
+    if Path(filename).is_file():
         if not click.confirm(
             click.style(
-                "A `.ini` file with this name already exists. Overwrite ?", bold=True
+                f"A `{ext}` file with this name already exists. Overwrite ?", bold=True
             ),
             default=True,
         ):
-            return _validate_config_name(_ask_for_config_name())
-    return config_name
+            return _validate_filename(_ask_for_filename(ext), ext)
+    return filename
 
 
-def _ask_for_config_name() -> str:
-    """ckick.prompt that ask for `config_name`"""
+def _ask_for_filename(ext: str) -> str:
+    """ckick.prompt that ask for `filename`"""
     return click.prompt(
         click.style(
-            "\nEnter a filename (path/to/file) for the config `.ini` file. ", bold=True
+            f"\nEnter a filename (path/to/file) for the `{ext}` file. ", bold=True
         )
     )
 
@@ -316,12 +329,21 @@ def _print_arguments(group):
         click.secho("  process".ljust(20, " ") + "Command to process data", fg="white")
     if group == "config":
         click.secho("  adcp".ljust(20, " ") + "Config file for adcp data. ", fg="white")
+        click.secho(
+            "  platform".ljust(20, " ") + "Creates a platform.json file", fg="white"
+        )
     if group == "process":
         click.secho("FIXME")
     if group == "adcp":
         click.secho(
             "  [config_name]".ljust(20, " ")
-            + "File name (path/to/file) for the new configuration file.",
+            + "Filename (path/to/file) for the new configuration file.",
+            fg="white",
+        )
+    if group == "platform":
+        click.secho(
+            "  [filename]".ljust(20, " ")
+            + "Filename (path/to/file) for the new platform file.",
             fg="white",
         )
 
@@ -345,16 +367,19 @@ def _print_description(group):
         click.echo("""FIXME""")
     if group == "adcp":
         click.echo(""" FIXME""")
+    if group == "platform":
+        click.echo("""Creates an empty platform.json file FIXME""")
 
 
 def _print_usage(group, parent):
     """print group/command usage"""
-    if parent:
-        parent = parent.info_name
-    if group in ["mtgk", "config"]:
-        click.echo("""    mtgk config [adcp, ] [CONFIG_NAME] [OPTIONS]""")
-    if group in ["mtgk", "process"]:
-        click.echo("""    mtgk process [adcp, ] [CONFIG_FILE] [OPTIONS]""")
-    if group in ["adcp", "process"]:
-        if parent == "config":
-            click.echo("""    mtgk process [adcp, ] [CONFIG_FILE] [OPTIONS]""")
+    _parent = parent.info_name if parent else ""
+
+    if group == "config":
+        click.echo("  mtgk config [adcp, platform,] [CONFIG_NAME] [OPTIONS]")
+    if group == "process":
+        click.echo("  mtgk process [adcp, ] [CONFIG_FILE] [OPTIONS]")
+    if group == "adcp":
+        click.echo(f"  mtgk {_parent} adcp [CONFIG_FILE] [OPTIONS]")
+    if group == "platform":
+        click.echo(f"  mtgk config platform [FILENAME] [OPTIONS]")
