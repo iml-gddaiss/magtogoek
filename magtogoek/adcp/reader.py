@@ -584,6 +584,7 @@ if __name__ == "__main__":
         "COR1805-ADCP-150kHz009_000001",
         "COR1805-ADCP-150kHz009_000002",
     ]
+    bruno_path = ["/media/jeromejguay/Bruno/TREX2020/V50/"]
     files = [sillex_path + fn for fn in sillex_fns]
     sonar = "os"
     # enr = load_rdi_binary(
