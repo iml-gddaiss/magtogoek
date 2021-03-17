@@ -13,6 +13,8 @@ and the RDI loader.
 The RDI loader uses CODAS Multiread reader from the pycurrent pacakge. The Multiread
 reader supports .000, .ENX, .ENS, .LTA and .STA binary files.
 
+-Sentinel V encoding is not fully supported. ID 0x7000 to 0x7004 will be printed.
+
 Summary of load_rdi_binary() function:
 parameters: sonar ('wh', 'sv', 'os'), yearbase, adcp_orientation 'up' or 'down',
             sensor_depth, motion_correction `True` or `False`.
@@ -68,7 +70,7 @@ class Logger:
         return self.logbook
 
     def section(self, msg, t=False):
-        time = "" if t is False else " " + self.timestamp()
+        time = "" if t is False else " " + self._timestamp()
         self.logbook += "[" + msg + "]" + time + "\n"
         click.secho(msg, fg="green")
 
@@ -79,11 +81,11 @@ class Logger:
             self.w_count += 1
         else:
             print(msg)
-        msg = msg if t is False else self.timestamp() + " " + msg
+        msg = msg if t is False else self._timestamp() + " " + msg
         self.logbook += " " + msg + "\n"
 
     @staticmethod
-    def timestamp():
+    def _timestamp():
         return pd.Timestamp.now().strftime("%Y-%m-%d %Hh%M:%S")
 
 
@@ -98,9 +100,19 @@ def load_rdi_binary(
     orientation: str,
     sensor_depth: float = None,
 ):
-    """FIXME
+    """Load adcp data
 
-    TODO, add an orientatino checkup
+    Return a dataset with the ADCP data loaded.
+
+    Parameters
+    ----------
+    TODO
+    Returns
+    -------
+    TODO
+    Notes
+    -----
+    TODO, add an orientation checkup
 
     """
     l = Logger()
@@ -121,7 +133,7 @@ def load_rdi_binary(
         l.log(f"WARNING: Value of the `SysCfg` in the `FixedLeader` change over time.")
         l.log(
             "There maybe is something wrong with the ADCP, the equipement or the configuration."
-        )
+        )  # TODO maybe remove this part. FL seems to change with the sound speed calculation.
 
     # ------------------------ #
     # Reading the data file(s) #
@@ -165,14 +177,14 @@ def load_rdi_binary(
     # --------------------- #
     # Initating the dataset #
     # --------------------- #
-    ds = init_dataset(time, data.dep)
+    ds = init_dataset(time, data.dep, sonar=data.sonar.model)
 
     # --------------------------------------- #
     # Dealing with the coordinates system     #
     # --------------------------------------- #
     original_coordsystem = data.trans["coordsystem"]
     if original_coordsystem != "earth":
-        l.log(f"The data are in {data.trans['coordsystem']} coordinate")
+        l.log(f"The velocity data are in {data.trans['coordsystem']} coordinate")
 
         coordsystem2earth(data=data, orientation=orientation)
 
@@ -180,7 +192,7 @@ def load_rdi_binary(
             l.log(
                 "WARNING: Roll, Pitch or Heading seems to be missing from the data file."
             )
-        l.log(f"The velocities were transformed to {data.trans['coordsystem']}")
+        l.log(f"The velocity data were transformed to {data.trans['coordsystem']}")
 
     # --------------------------- #
     # Loading the transducer data #
@@ -191,11 +203,11 @@ def load_rdi_binary(
     ds["e"].values = np.asarray(data.vel.data[:, :, 3].T)
 
     if data.sonar.model == "sv":
-        ds["v_vel"] = np.asarray(data.vb_vel.T)
-        ds["v_pg"] = np.asarray(data.vb_pg.T)
-        ds["v_corr"] = np.asarray(data.vb_cor.T)
-        ds["v_amp"] = np.asarray(data.vb_amp.T)
-        l.log("Sentinel V fifth beam of data loaded.")
+        ds["vb_vel"].values = np.asarray(data.vbvel.T)
+        # ds["vb_pg"].values = np.asarray(data.vb_pg.T)
+        ds["vb_corr"].values = np.asarray(data.VBCorrelation.T)
+        ds["vb_amp"].values = np.asarray(data.VBIntensity.T)
+        l.log("Data from the Sentinel V fifth beam loaded.")
 
     if not (data.bt_vel.data == 0).all():
         ds["bt_u"].values = np.asarray(data.bt_vel.data[:, 0])
@@ -211,13 +223,16 @@ def load_rdi_binary(
         )
 
     if original_coordsystem == "beam":
-        l.log(
-            "Percent good was computed by averaging each beam PercentGood. The raw data were in beam coordinate."
-        )
-        percent_good = np.asarray(np.mean(data.pg.data, axis=2).T)
+        # For `sv` model, pg was not present in the pycurrents output. This is to prevent further Error.
+        try:
+            ds["pg"].values = np.asarray(np.mean(data.pg.data, axis=2).T)
+            l.log(
+                "Percent good was computed by averaging each beam PercentGood. The raw data were in beam coordinate."
+            )
+        except AttributeError:
+            l.log("WARNING: Percent good was not retrieve from the dataset.")
     else:
-        percent_good = np.asarray(data.pg4.T)
-    ds["pg"].values = percent_good
+        ds["pg"].values = np.asarray(data.pg4.T)
 
     for i in range(1, 5):
         ds[f"corr{i}"].values = np.asarray(data[f"cor{i}"].T)
@@ -291,14 +306,22 @@ def load_rdi_binary(
 
 
 def init_dataset(time: NDArray, depth: NDArray, sonar: str = None):
-    """
-    parameters
+    """Make a default dataset for adcp.
+
+    Return a default dataset with empty DataArray.
+
+    Initialize a DataArrays for a fifth beam data if `sonar` == "sv".
+
+    Parameters
     ----------
     time:
         vector of datetime64[]
 
     depth:
         vector of [float/int]
+
+    sonar:
+        Type of sonar. (`wh`, `sv`, etc).
     """
 
     # Moored P01 only
@@ -337,10 +360,10 @@ def init_dataset(time: NDArray, depth: NDArray, sonar: str = None):
     if sonar == "sv":
         data_vars = {
             **data_vars,
-            "v_vel": (["depth", "time"], nans((depth.shape + time.shape))),
-            "v_amp": (["depth", "time"], nans((depth.shape + time.shape))),
-            "v_cor": (["depth", "time"], nans((depth.shape + time.shape))),
-            "v_pg": (["depth", "time"], nans((depth.shape + time.shape))),
+            "vb_vel": (["depth", "time"], nans((depth.shape + time.shape))),
+            "vb_amp": (["depth", "time"], nans((depth.shape + time.shape))),
+            "vb_corr": (["depth", "time"], nans((depth.shape + time.shape))),
+            # "vb_pg": (["depth", "time"], nans((depth.shape + time.shape))),
         }
 
     dataset = xr.Dataset(
@@ -475,44 +498,6 @@ def coordsystem2earth(data: tp.Type[Bunch], orientation: str):
             data.bt_vel.data[:, i] = np.round(bt_enu[:, i], decimals=3)
 
 
-# TODO to be removed
-def _xducer_depth_check(data, sensor_depth, logger):
-    """FIXME"""
-    if abs(np.nanmedian(data.XducerDepth) - sensor_depth) > 5:
-        logger.log(
-            (
-                "WARNING: The diffenrece between XducerDepth median and the provided sensor depth is greater than 5 m. ",
-                "The provided sensor depth will be used for processing instead of XducerDepth",
-            )
-        )
-        logger.log(
-            f"\n  Sensor depth = {sensor_depth} m, XducerDepth = {np.nanmedian(data.XducerDepth)} m"
-        )
-
-        XducerDepth = sensor_depth
-
-    elif abs(np.nanmean(data.XducerDepth) - sensor_depth) > 5:
-        logger.log(
-            "WARNING: The diffenrece between XducerDepth mean and the provided sensor depth is greater than 5 m. "
-        )
-        logger.log(
-            f"\n  Sensor depth = {sensor_depth} m, XducerDepth = {np.nanmean(data.XducerDepth)} m"
-        )
-        XducerDepth = np.nanmean(
-            data.XducerDepth[abs(data.XducerDepth - sensor_depth) > 5]
-        )
-        logger.log(
-            f"The XducerDepth mean was computed with the dubious depth discarted"
-        )
-        logger.log(f"\n  XducerDepth mean = {XducerDepth} m")
-
-    else:
-        XducerDepth = np.nanmean(data.XducerDepth)
-        logger.log("Depth below surface computed using  the XducerDepth averaged depth")
-
-        return XducerDepth
-
-
 def read_fixed_leader(
     filenames: tp.Tuple[str, tp.List[str]], sonar: str, yearbase: int
 ):
@@ -584,7 +569,7 @@ if __name__ == "__main__":
         "COR1805-ADCP-150kHz009_000001",
         "COR1805-ADCP-150kHz009_000002",
     ]
-    bruno_path = ["/media/jeromejguay/Bruno/TREX2020/V50/"]
+
     files = [sillex_path + fn for fn in sillex_fns]
     sonar = "os"
     # enr = load_rdi_binary(
@@ -607,3 +592,15 @@ if __name__ == "__main__":
     ios2 = load_rdi_binary(
         ios_path + ios_fns[2], sonar=sonar, yearbase=2006, orientation="down"
     )
+
+    v50exp = (
+        "/media/jeromejguay/Bruno/TREX2020/V50/TREX2020_V50_20200911T121242_003_*.ENS"
+    )
+    v100 = "/media/jeromejguay/Bruno/TREX2020/V100/TREX2020_V100_20200911T115335.pd0"
+    v50path = Path(v50exp)
+    v50files = list(map(str, v50path.parent.glob(v50path.name)))
+    v50files.sort()
+    sonar = "sv"
+
+    v100 = load_rdi_binary(v100, sonar=sonar, yearbase=2020, orientation="down")
+    v50 = Multiread(v50files, sonar=sonar, yearbase=2020).read()

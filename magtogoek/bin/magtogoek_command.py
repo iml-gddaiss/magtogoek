@@ -32,13 +32,8 @@ Helps:
 import subprocess
 import typing as tp
 from pathlib import Path
-<<<<<<< HEAD
-from magtogoek.metadata.toolbox import json2dict
-from magtogoek.bin.configfile import make_configfile
-=======
 
 import click
->>>>>>> c646716ebd2bde2da6ef5e953760b2c123cb7968
 from magtogoek.bin.command_options import adcp_options, add_options
 from magtogoek.bin.configfile import make_configfile
 from magtogoek.metadata.platforms import make_platform_template
@@ -142,11 +137,7 @@ def config_adcp(
     _print_passed_options(options)
 
     # check if a file already exists and format the `.ini` extension.
-<<<<<<< HEAD
-    config_name = _validate_config_name(config_name)
-=======
     config_name = _validate_filename(config_name, ext=".ini")
->>>>>>> c646716ebd2bde2da6ef5e953760b2c123cb7968
 
     # translate names to those used by the configparser.
     updated_params = _convert_options_to_configfile("adcp", options)
@@ -236,11 +227,7 @@ def _translate_options_name(sensor_type, options):
     return options
 
 
-<<<<<<< HEAD
-def _validate_config_name(config_name: str) -> str:
-=======
 def _validate_filename(filename: str, ext: str) -> str:
->>>>>>> c646716ebd2bde2da6ef5e953760b2c123cb7968
     """Check if directory or/and file name exist.
 
     Ask to make the directories if they don't exist.
@@ -273,21 +260,12 @@ def _validate_filename(filename: str, ext: str) -> str:
             ),
             default=True,
         ):
-<<<<<<< HEAD
-            return _validate_config_name(_ask_for_config_name())
-    return config_name
-
-
-def _ask_for_config_name() -> str:
-    """ckick.prompt that ask for `config_name`"""
-=======
             return _validate_filename(_ask_for_filename(ext), ext)
     return filename
 
 
 def _ask_for_filename(ext: str) -> str:
     """ckick.prompt that ask for `filename`"""
->>>>>>> c646716ebd2bde2da6ef5e953760b2c123cb7968
     return click.prompt(
         click.style(
             f"\nEnter a filename (path/to/file) for the `{ext}` file. ", bold=True
@@ -395,7 +373,7 @@ def _print_description(group):
 
 def _print_usage(group, parent):
     """print group/command usage"""
-<<<<<<< HEAD
+
     if parent:
         parent = parent.info_name
     if group in ["mtgk", "config"]:
@@ -405,7 +383,7 @@ def _print_usage(group, parent):
     if group in ["adcp", "process"]:
         if parent == "config":
             click.echo("""    mtgk process [adcp, ] [CONFIG_FILE] [OPTIONS]""")
-=======
+
     _parent = parent.info_name if parent else ""
 
     if group == "config":
@@ -416,4 +394,3 @@ def _print_usage(group, parent):
         click.echo(f"  mtgk {_parent} adcp [CONFIG_FILE] [OPTIONS]")
     if group == "platform":
         click.echo(f"  mtgk config platform [FILENAME] [OPTIONS]")
->>>>>>> c646716ebd2bde2da6ef5e953760b2c123cb7968
