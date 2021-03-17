@@ -48,6 +48,7 @@ Note
 ----
 TODO mag declination
 """
+import logging
 import typing as tp
 from pathlib import Path
 
@@ -56,10 +57,12 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from nptyping import NDArray
-from pycurrents.adcp import transform
+from pycurrents.adcp import rdiraw, transform
 from pycurrents.adcp.rdiraw import Bunch, Multiread, rawfile
+from scipy.stats import circmean
 
-
+logging.getLogger(rdiraw.__name__).setLevel("CRITICAL")
+# Maybe use the Logging moudle. To be looked into
 class Logger:
     def __init__(self, logbook=""):
 
@@ -76,13 +79,17 @@ class Logger:
 
     def log(self, msg, t=False):
 
-        if "WARNING:" in msg:
-            click.echo(click.style("WARNING:", fg="yellow") + msg[8:])
-            self.w_count += 1
+        if isinstance(msg, list):
+            [self.log(m) for m in msg]
+
         else:
-            print(msg)
-        msg = msg if t is False else self._timestamp() + " " + msg
-        self.logbook += " " + msg + "\n"
+            if "WARNING:" in msg:
+                click.echo(click.style("WARNING:", fg="yellow") + msg[8:])
+                self.w_count += 1
+            else:
+                print(msg)
+            msg = msg if t is False else self._timestamp() + " " + msg
+            self.logbook += " " + msg + "\n"
 
     @staticmethod
     def _timestamp():
@@ -100,24 +107,31 @@ def load_rdi_binary(
     orientation: str,
     sensor_depth: float = None,
 ):
-    """Load adcp data
+    """Load RDI adcp data.
 
     Return a dataset with the ADCP data loaded.
 
     Parameters
     ----------
-    TODO
+    filenames:
+        Path/to/files
+    sonar:
+        Type of sonar (`os`, `wh`, `sv`, `sw_pd0`) #TODO SEAWATCH
+    yearbase:
+        year that the sampling begun.
+    orientation:
+        Adcp orientation. Either `up` or `down`
+    sensor_depth:
+        Depth of the ADCP. Use to compare with XducerDeppth median
     Returns
     -------
-    TODO
-    Notes
-    -----
-    TODO, add an orientation checkup
+        Dataset with the loaded adcp data
 
     """
     l = Logger()
     l.section("Loading RDI", t=True)
     if isinstance(filenames, list):
+        filenames.sort()
         l.log(
             "Files:"
             + "      ".join([p.name + "\n" for p in list(map(Path, filenames))])
@@ -125,32 +139,37 @@ def load_rdi_binary(
     else:
         l.log(f"File: {Path(filenames).name}")
 
-    # ------------------------------------------ #
-    # Looking for anomolies in the fixed leader  #
-    # ------------------------------------------ #
-    fl = read_fixed_leader(filenames, sonar=sonar, yearbase=yearbase)
-    if np.unique(fl["SysCfg"]).size > 1:
-        l.log(f"WARNING: Value of the `SysCfg` in the `FixedLeader` change over time.")
+    if sonar == "sv":
         l.log(
-            "There maybe is something wrong with the ADCP, the equipement or the configuration."
-        )  # TODO maybe remove this part. FL seems to change with the sound speed calculation.
+            [
+                "WARNING: (from pycurrents) The SV support is under development.  Missing features:",
+                "        - The 0x7000-0x7004 IDs are not being parsed and stored.",
+                "        - The `Fixed Leader` can change within a file",
+                "        - See pycurrents.adcp.rdiraw module for for information",
+            ]
+        )
+
+    # ------------------------------ #
+    # Reading the files FixedLeaders #
+    # ------------------------------ #
+    fl = read_fixed_leader(filenames=filenames, sonar=sonar, yearbase=yearbase)
 
     # ------------------------ #
     # Reading the data file(s) #
     # ------------------------ #
     data = Multiread(fnames=filenames, sonar=sonar, yearbase=yearbase).read()
-    bad_time = False
 
     # ---------------------------- #
     # Convert `dday` to datetime64 #
     # ---------------------------- #
+    bad_time = False
     if (data.dday < 0).any() or (np.diff(data.dday) < 0).any():
         bad_time = True
         l.log(
-            f"WARNING: The `dday` vector either contains negative values or is not monotonically increasing."
-        )
-        l.log(
-            f"WARNING: Time coordinate was replaced by a default datetime vector: One second for each ping since {yearbase}"
+            [
+                f"WARNING: The `dday` vector either contains negative values or is not monotonically increasing."
+                f"WARNING: Time was replaced by a default datetime vector: 1 second timestep since {yearbase}"
+            ]
         )
         time, time_string = dday_to_datetime64(
             np.arange(len(data.dday)) / (3600 * 24), yearbase
@@ -188,7 +207,7 @@ def load_rdi_binary(
 
         coordsystem2earth(data=data, orientation=orientation)
 
-        if data.trans["tilts"] is False:
+        if data.trans["coordsystem"] == "xyz":
             l.log(
                 "WARNING: Roll, Pitch or Heading seems to be missing from the data file."
             )
@@ -196,13 +215,19 @@ def load_rdi_binary(
 
     # --------------------------- #
     # Loading the transducer data #
-    # ----------------------------#
+    # --------------------------- #
+
+    # Set velocity values of -32768.0 to nans, since -32768.0 is the automatic fill_value for pycurrents
+    data.vel.data[data.vel.data == -32768.0] = np.nan
+
     ds["u"].values = np.asarray(data.vel.data[:, :, 0].T)
     ds["v"].values = np.asarray(data.vel.data[:, :, 1].T)
     ds["w"].values = np.asarray(data.vel.data[:, :, 2].T)
     ds["e"].values = np.asarray(data.vel.data[:, :, 3].T)
 
     if data.sonar.model == "sv":
+        data.vbvel.data[data.vbvel.data == -32768.0] = np.nan
+
         ds["vb_vel"].values = np.asarray(data.vbvel.T)
         # ds["vb_pg"].values = np.asarray(data.vb_pg.T)
         ds["vb_corr"].values = np.asarray(data.VBCorrelation.T)
@@ -266,12 +291,12 @@ def load_rdi_binary(
     # -------------------------------------------- #
     # For `wh` and `sv` the pressure is added if available.
     if data.sonar.model != "os":
-        ds["pres"].values = data.VL["Pressure"] / 1000  # Is it right to divide ? TODO
-        if (ds["pres"].values == 0).all():
-            l.log("Pressure data unavailable")
-            ds = ds.drop_vars(["pres"])
+        ds["pres"].values = data.VL["Pressure"] / 1000  # decapascal to decibar
+        l.log("Pressure data unavailable")
+        ds = ds.drop_vars(["pres"])
     else:
         ds = ds.drop_vars(["pres"])
+
     if (data.heading == 0).all() or (np.diff(data.heading) == 0).all():
         l.log("WARNING: Heading data are either all 0, or not variying.")
     if (data.roll == 0).all() or (np.diff(data.roll) == 0).all():
@@ -293,16 +318,18 @@ def load_rdi_binary(
     ds.sortby("depth")
 
     ds.attrs["coordsystem"] = data.trans["coordsystem"]
-    #             'ping_frequency': '', TODO
-    #             'beam_angle': '',
-    #             'bin_size': '',
-    #             'orientation': '',
-    #             'instrument_serial': '',
+
+    # Attributes
+    ds.attrs["beam_angle"] = data.sysconfig["angle"]
+    ds.attrs["ping_frequency"] = data.sysconfig["kHz"] * 1000
+    ds.attrs["bin_size"] = data.CellSize
+    ds.attrs["orientation"] = orientation
+    ds.attrs["instrument_serial"] = str(data.FL["Inst_SN"])
 
     l.log(f"File(s) loaded with {l.w_count} warnings")
     ds.attrs["_vartmp_logbook"] = l.logbook
 
-    return ds
+    return ds, data, fl
 
 
 def init_dataset(time: NDArray, depth: NDArray, sonar: str = None):
@@ -324,7 +351,6 @@ def init_dataset(time: NDArray, depth: NDArray, sonar: str = None):
         Type of sonar. (`wh`, `sv`, etc).
     """
 
-    # Moored P01 only
     data_vars = {
         "u": (["depth", "time"], nans(depth.shape + time.shape)),
         "v": (["depth", "time"], nans(depth.shape + time.shape)),
@@ -363,7 +389,7 @@ def init_dataset(time: NDArray, depth: NDArray, sonar: str = None):
             "vb_vel": (["depth", "time"], nans((depth.shape + time.shape))),
             "vb_amp": (["depth", "time"], nans((depth.shape + time.shape))),
             "vb_corr": (["depth", "time"], nans((depth.shape + time.shape))),
-            # "vb_pg": (["depth", "time"], nans((depth.shape + time.shape))),
+            # "vb_pg": (["depth", "time"], nans((depth.shape + time.shape))), missing
         }
 
     dataset = xr.Dataset(
@@ -429,7 +455,7 @@ def dday_to_datetime64(dday, yearbase):
 def coordsystem2earth(data: tp.Type[Bunch], orientation: str):
     """Transforms beam and xyz coordinates to enu coordinates
 
-    NOTE: not properly tested. Modified from pycurrents_ADCP_processing.
+    NOTE: not properly tested. But it should work.
 
     Replace the values of data.vel, data.bt_vel with East, North and Up velocities
     and the velocity error for 4 beams ADCP. UHDAS transform functions are used to
@@ -470,7 +496,6 @@ def coordsystem2earth(data: tp.Type[Bunch], orientation: str):
 
     if (data.heading == 0).all() or (data.roll == 0).all() or (data.pitch == 0).all():
         data.trans["coordsystem"] = "xyz"
-        data.trans["tilts"] = False
 
         for i in range(4):
             data.vel.data[:, :, i] = np.round(xyze[:, :, i], decimals=3)
@@ -491,11 +516,15 @@ def coordsystem2earth(data: tp.Type[Bunch], orientation: str):
             orientation=orientation,
         )
         data.trans["coordsystem"] = "earth"
-        data.trans["tilts"] = True
 
         for i in range(4):
             data.vel.data[:, :, i] = np.round(enu[:, :, i], decimals=3)
             data.bt_vel.data[:, i] = np.round(bt_enu[:, i], decimals=3)
+
+
+def nans(shape: tp.Tuple[list, tuple, NDArray]) -> NDArray:
+    """return array of nan of shape `shape`"""
+    return np.full(shape, np.nan)
 
 
 def read_fixed_leader(
@@ -546,11 +575,6 @@ def read_fixed_leader(
     return fixed_leader
 
 
-def nans(shape: tp.Tuple[list, tuple, NDArray]) -> NDArray:
-    """return array of nan of shape `shape`"""
-    return np.full(shape, np.nan)
-
-
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
@@ -589,18 +613,25 @@ if __name__ == "__main__":
     ios1 = load_rdi_binary(
         ios_path + ios_fns[1], sonar=sonar, yearbase=2016, orientation="down"
     )
-    ios2 = load_rdi_binary(
-        ios_path + ios_fns[2], sonar=sonar, yearbase=2006, orientation="down"
-    )
+    #    ios2 = load_rdi_binary(
+    # ios_path + ios_fns[2], sonar=sonar, yearbase=2006, orientation="down"
+    # )
 
     v50exp = (
-        "/media/jeromejguay/Bruno/TREX2020/V50/TREX2020_V50_20200911T121242_003_*.ENS"
+        "/media/jeromejguay/Bruno/TREX2020/V50/TREX2020_V50_20200911T121242_003_*.ENX"
     )
-    v100 = "/media/jeromejguay/Bruno/TREX2020/V100/TREX2020_V100_20200911T115335.pd0"
+    v100file = (
+        "/media/jeromejguay/Bruno/TREX2020/V100/TREX2020_V100_20200911T115335.pd0"
+    )
+
     v50path = Path(v50exp)
     v50files = list(map(str, v50path.parent.glob(v50path.name)))
-    v50files.sort()
     sonar = "sv"
 
-    v100 = load_rdi_binary(v100, sonar=sonar, yearbase=2020, orientation="down")
-    v50 = Multiread(v50files, sonar=sonar, yearbase=2020).read()
+    v50, data = load_rdi_binary(
+        v50files, sonar=sonar, yearbase=2020, orientation="down"
+    )
+
+    v100, data, fl = load_rdi_binary(
+        v100file, sonar=sonar, yearbase=2020, orientation="down"
+    )
