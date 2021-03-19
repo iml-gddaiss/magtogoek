@@ -1,0 +1,54 @@
+rti_python ChangeLog
+
+rti_python - 2.2.0
+ - Added netCDF exporter
+ - Added PD0 outputs for ensemble data
+
+rti_python - 2.1.6
+ - Added check for exterme tilts in check_binary_file.
+ - In EarthVelocity, make sure both velocity and bottom track velocity are good when removing vessel speed.
+
+rti_python - 2.1.5
+ - Added a function in BinaryCodec to monitor the buffer size
+
+rti_python - 2.1.4
+ - Added average_mag_dir in EarthVelocity.
+
+rti_python - 2.1.3
+ - Added watchdog.py
+
+rti_python - 2.1.2
+ - Added qa_qc to Utilities to screen data
+ - Changed Water Direction back to 0 - 360 degrees
+ - Fixed bug in AdcpCommands:print_pretty_m for values greater than 1000m.
+ - In config.py, added option to replace the Pressure Height in AutoWaves with Vertical Beam Height
+ - In WaveForceCodec, add the option to replace the Pressure Height with Vertical Beam Height
+ - Added Bin Size and Blank to AverageWaterColumn.
+ - Added static method in Ensemble to create a dataframe from 2D array like velocity or amp or corr
+ - In AncillaryDataSet, added is_upward_facing().
+ - Added a main to read_binary_file to help understand how to use it.
+ - In BinaryCodec, append the new data to the buffer instead of replace the new data.  Could prevent lost data.
+ - In WavesCodec, handle a single bin.
+ - Fixed BAD_VELOCITY check.  Allow values greater than 88 now.  Incorrectly filtered out direction values greater than 88.
+ - Added file progress to read_binary_file.
+ - Added First and Last Ensemble to AverageWaterColumn. * Fixed bug in WaveEnsemble:add_4_beam, when handling a single bin.
+rti_python - 2.1.1
+  -  Added encode_df to EarthVelocity.
+  - Fixed bug in encode_csv in EarthVelocity
+
+rti_python - 2.1.0
+ - Recoded the WaveForceCodec
+ - Made all the codecs a thread
+ - Added PLOT section to config.
+
+rti_python - 2.0.0
+ - Added Encoding, to write an ensemble file.
+ - Added Unittest to test the dataset types.
+
+rti_python - 1.0.1
+ - Add PD0 ensemble size calculation to Prediction Model
+
+rti_python - 1.0.0
+ - Fixed bug in Prediction model Max Velocity and Narrowband
+ - Added water absorption to Ranges in Prediction Model.
+ - Added pytest Unit testing for Prediction Model.
