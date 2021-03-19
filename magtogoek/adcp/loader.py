@@ -1,13 +1,14 @@
 """
 author: Jérôme Guay
 date: Feb. 22, 2021
-based-on: https://github.com/jeanlucshaw/adcp2nc/
-          and https://github.com/hhourston/pycurrents_ADCP_processign
+based in part  on: https://github.com/jeanlucshaw/adcp2nc/
+                   https://github.com/hhourston/pycurrents_ADCP_processign
 
 This script contains functions to read adcp files and load them in xarray.Dataset.
-There is two loader; one for Teldyne RDI files and one for Rowtech files. Rowtech
-files can also be exporter directly to Teledyne .P01 file formats and be proecess
- by the RDI loader. Testing still need to be done with the Rowtech P01 format
+There is two loader; one for Teldyne RDI files and one for Rowtech files.
+
+(NOT WORKING)Rowtech files can also be exporter directly to Teledyne `PD0` file formats and be proecess
+ by the RDI loader. Testing still need to be done with the Rowtech `PD0` format
 and the RDI loader.
 
 The RDI loader uses CODAS Multiread reader from the pycurrent pacakge. The Multiread
@@ -19,10 +20,7 @@ Summary of load_rdi_binary() function:
 parameters: sonar ('wh', 'sv', 'os'), yearbase, adcp_orientation 'up' or 'down',
             sensor_depth, motion_correction `True` or `False`.
 -: First, the loader look into all the FixedLeader of each pings to look for
-   inconsistancy/variability in the SysCfg.
--: Uses the `sensor_depth` to compare it with `XducerDepth` (transducer depth)
-   in the data file. If a significant difference is found (+/- 5 m), `sensor_depth`
-   will be used for further computation.
+   invalid configuration in the SysCfg and rise Warning if one is founrd. 
 -: If sonar is "os", the loader assumes that`dep` (depth vector coordinate)
    in the RDI file is relative to the sea surface. It also assumes that no
    pressure data is available.
@@ -37,8 +35,11 @@ parameters: sonar ('wh', 'sv', 'os'), yearbase, adcp_orientation 'up' or 'down',
 -: If the bottrack values are all 0, they are removed from the ouput dataset.
 -: For `os` sonar, the loader looks for navigation data. None are return if
    they are not found.
+-: Uses the `sensor_depth` to compare it with `XducerDepth` (transducer depth)
+   in the data file.
 
 The RTI loader is stil in the making.
+The RDI loader still need to be tested for sw_pd0
 
 See Also
 --------
@@ -46,7 +47,6 @@ See Also
 
 Note
 ----
-TODO mag declination
 """
 import logging
 import typing as tp
@@ -56,44 +56,13 @@ import click
 import numpy as np
 import pandas as pd
 import xarray as xr
+from magtogoek.adcp.utils import *
 from nptyping import NDArray
 from pycurrents.adcp import rdiraw, transform
 from pycurrents.adcp.rdiraw import Bunch, Multiread, rawfile
-from scipy.stats import circmean
 
+# This is to prevent pycurrents from printing error.
 logging.getLogger(rdiraw.__name__).setLevel("CRITICAL")
-# Maybe use the Logging moudle. To be looked into
-class Logger:
-    def __init__(self, logbook=""):
-
-        self.logbook = "" + logbook
-        self.w_count = 0
-
-    def __repr__(self):
-        return self.logbook
-
-    def section(self, msg, t=False):
-        time = "" if t is False else " " + self._timestamp()
-        self.logbook += "[" + msg + "]" + time + "\n"
-        click.secho(msg, fg="green")
-
-    def log(self, msg, t=False):
-
-        if isinstance(msg, list):
-            [self.log(m) for m in msg]
-
-        else:
-            if "WARNING:" in msg:
-                click.echo(click.style("WARNING:", fg="yellow") + msg[8:])
-                self.w_count += 1
-            else:
-                print(msg)
-            msg = msg if t is False else self._timestamp() + " " + msg
-            self.logbook += " " + msg + "\n"
-
-    @staticmethod
-    def _timestamp():
-        return pd.Timestamp.now().strftime("%Y-%m-%d %Hh%M:%S")
 
 
 class CoordinateSystemError(Exception):
@@ -106,6 +75,7 @@ def load_rdi_binary(
     yearbase: int,
     orientation: str,
     sensor_depth: float = None,
+    silent: bool = False,
 ):
     """Load RDI adcp data.
 
@@ -123,12 +93,16 @@ def load_rdi_binary(
         Adcp orientation. Either `up` or `down`
     sensor_depth:
         Depth of the ADCP. Use to compare with XducerDeppth median
+    silent:
+       Silence the log prints if True
     Returns
     -------
         Dataset with the loaded adcp data
 
     """
     l = Logger()
+    l.silence(silent)
+
     l.section("Loading RDI", t=True)
     if isinstance(filenames, list):
         filenames.sort()
@@ -138,6 +112,12 @@ def load_rdi_binary(
         )
     else:
         l.log(f"File: {Path(filenames).name}")
+
+    sw_flag = False
+    if sonar == "sw_pd0":
+        sonar = "wh"
+        sw_flag = True
+        l.log("Loading SW PD0 files")
 
     if sonar == "sv":
         l.log(
@@ -153,6 +133,11 @@ def load_rdi_binary(
     # Reading the files FixedLeaders #
     # ------------------------------ #
     fl = read_fixed_leader(filenames=filenames, sonar=sonar, yearbase=yearbase)
+    if (fl["SysCfg"] == 2 ** 16 - 1).any():
+        nbad = np.sum((fl["SysCfg"] == 2 ** 16 - 1))
+        l.log(
+            f"WARNING: Invalide configuration, msb=`11111111` and lsb=`11111111`, found in the SysCfg of {nbad} FixedLeader "
+        )
 
     # ------------------------ #
     # Reading the data file(s) #
@@ -291,9 +276,11 @@ def load_rdi_binary(
     # -------------------------------------------- #
     # For `wh` and `sv` the pressure is added if available.
     if data.sonar.model != "os":
-        ds["pres"].values = data.VL["Pressure"] / 1000  # decapascal to decibar
-        l.log("Pressure data unavailable")
-        ds = ds.drop_vars(["pres"])
+        if (data.VL["Pressure"] == 0).all():
+            ds = ds.drop_vars(["pres"])
+            l.log("Pressure data unavailable")
+        else:
+            ds["pres"].values = data.VL["Pressure"] / 1000  # decapascal to decibar
     else:
         ds = ds.drop_vars(["pres"])
 
@@ -313,9 +300,10 @@ def load_rdi_binary(
 
     ds["time_string"].values = time_string
     if bad_time is True:
-        ds["dday"] = (["T"], data.dday)
+        ds["dday"] = (["time"], data.dday)
 
-    ds.sortby("depth")
+    if orientation == "up":
+        ds.sortby("depth")
 
     ds.attrs["coordsystem"] = data.trans["coordsystem"]
 
@@ -324,12 +312,11 @@ def load_rdi_binary(
     ds.attrs["ping_frequency"] = data.sysconfig["kHz"] * 1000
     ds.attrs["bin_size"] = data.CellSize
     ds.attrs["orientation"] = orientation
-    ds.attrs["instrument_serial"] = str(data.FL["Inst_SN"])
 
     l.log(f"File(s) loaded with {l.w_count} warnings")
-    ds.attrs["_vartmp_logbook"] = l.logbook
+    ds.attrs["logbook"] = l.logbook
 
-    return ds, data, fl
+    return ds, fl
 
 
 def init_dataset(time: NDArray, depth: NDArray, sonar: str = None):
@@ -398,58 +385,6 @@ def init_dataset(time: NDArray, depth: NDArray, sonar: str = None):
     )
 
     return dataset
-
-
-def magnetic_to_true(dataset: tp.Type[xr.Dataset]):
-    """Covert coordiniates from magnetic to true(geographic).
-
-    The coordinates needs to be in decimal degrees and in a East(x)-North(y)
-    frame of reference. The coordinates are rotated from magnetics to true
-    using the `magnectic_declination` angle which need to be  measured in
-    the geographic frame of reference in decimal degrees.
-
-    [east_true,  = [[np.cos(x), -np.sin(x)]   [magnetic_east,
-    north_true]     [np.sin(x), np.cos(x)]] *  magnetic_north]
-
-
-    Parameters
-    ----------
-    dataset :
-        dataset with variable lon: East coordinates measured by the ADCP.
-        dataset with variable lat: North coordinates measured by the ADCP.
-        dataset with attrs magnetic_declination.
-    """
-
-    def R(angle):
-        return [[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]]
-
-    angle_rad = -np.radians(dataset.attrs["magnetic_declination"])
-    dataset.lon.values, dataset.lat.values = np.split(
-        np.dot(R(angle_rad), [dataset.lon, dataset.lat]), 2
-    )
-
-
-def dday_to_datetime64(dday, yearbase):
-    """Convert time recorded time to pandas time (np.datetime64[s]).
-
-    Replace time coordinates with datetime64 in strftime='%Y-%m-%d %H:%M:%S'
-    Add `time_string` variables to dataset (strftime='%Y-%m-%d %H:%M:%S')
-
-    Parameters
-    ----------
-    dataset:
-       FIXME
-    """
-    start_time = pd.Timestamp(str(yearbase) + "-01-01")
-    time = np.array(
-        pd.to_datetime(dday, unit="D", origin=start_time, utc=True).strftime(
-            "%Y-%m-%d %H:%M:%S"
-        ),
-        dtype="datetime64[s]",
-    )
-    time_string = time.astype(str)
-
-    return time, time_string
 
 
 def coordsystem2earth(data: tp.Type[Bunch], orientation: str):
@@ -522,11 +457,6 @@ def coordsystem2earth(data: tp.Type[Bunch], orientation: str):
             data.bt_vel.data[:, i] = np.round(bt_enu[:, i], decimals=3)
 
 
-def nans(shape: tp.Tuple[list, tuple, NDArray]) -> NDArray:
-    """return array of nan of shape `shape`"""
-    return np.full(shape, np.nan)
-
-
 def read_fixed_leader(
     filenames: tp.Tuple[str, tp.List[str]], sonar: str, yearbase: int
 ):
@@ -594,8 +524,20 @@ if __name__ == "__main__":
         "COR1805-ADCP-150kHz009_000002",
     ]
 
-    files = [sillex_path + fn for fn in sillex_fns]
-    sonar = "os"
+    v50exp = (
+        "/media/jeromejguay/Bruno/TREX2020/V50/TREX2020_V50_20200911T121242_003_*.ENX"
+    )
+    v100file = (
+        "/media/jeromejguay/Bruno/TREX2020/V100/TREX2020_V100_20200911T115335.pd0"
+    )
+
+    pd0_sw_path = "/home/jeromejguay/ImlSpace/Projects/magtogoek/test/files/sw_300_4beam_20deg_piston.pd0"
+    ens_sw_path = (
+        "/home/jeromejguay/ImlSpace/Projects/magtogoek/test/files/rowetech_seawatch.ens"
+    )
+
+    # files = [sillex_path + fn for fn in sillex_fns]
+    # sonar = "os"
     # enr = load_rdi_binary(
     #    [f + ".ENR" for f in files], sonar=sonar, yearbase=2018, orientation="down"
     # )
@@ -606,32 +548,23 @@ if __name__ == "__main__":
     #    [f + ".ENX" for f in files], sonar=sonar, yearbase=2018, orientation="down"
     # )
 
-    sonar = "wh"
-    ios0 = load_rdi_binary(
-        ios_path + ios_fns[0], sonar=sonar, yearbase=2005, orientation="down"
-    )
-    ios1 = load_rdi_binary(
-        ios_path + ios_fns[1], sonar=sonar, yearbase=2016, orientation="down"
-    )
-    #    ios2 = load_rdi_binary(
-    # ios_path + ios_fns[2], sonar=sonar, yearbase=2006, orientation="down"
+    # sonar = "wh"
+    # ios0 = load_rdi_binary(
+    #    ios_path + ios_fns[0], sonar=sonar, yearbase=2005, orientation="down"
+    # )
+    # ios1 = load_rdi_binary(
+    #    ios_path + ios_fns[1], sonar=sonar, yearbase=2016, orientation="down"
+    # )
+    # ios2 = load_rdi_binary(
+    #    ios_path + ios_fns[2], sonar=sonar, yearbase=2006, orientation="down"
     # )
 
-    v50exp = (
-        "/media/jeromejguay/Bruno/TREX2020/V50/TREX2020_V50_20200911T121242_003_*.ENX"
-    )
-    v100file = (
-        "/media/jeromejguay/Bruno/TREX2020/V100/TREX2020_V100_20200911T115335.pd0"
-    )
+    # v50path = Path(v50exp)
+    # v50files = list(map(str, v50path.parent.glob(v50path.name)))
+    # sonar = "sv"
 
-    v50path = Path(v50exp)
-    v50files = list(map(str, v50path.parent.glob(v50path.name)))
-    sonar = "sv"
+    # v50 = load_rdi_binary(v50files, sonar=sonar, yearbase=2020, orientation="down")
 
-    v50, data = load_rdi_binary(
-        v50files, sonar=sonar, yearbase=2020, orientation="down"
-    )
+    #    v100 = load_rdi_binary(v100file, sonar=sonar, yearbase=2020, orientation="down")
 
-    v100, data, fl = load_rdi_binary(
-        v100file, sonar=sonar, yearbase=2020, orientation="down"
-    )
+    sw = load_rdi_binary(ens_sw_path, sonar="sw_pd0", yearbase=2020, orientation="down")

@@ -1,10 +1,18 @@
 """
-functions used for adcp processing
+Set of functions and objects used for adcp processing
 """
+import typing as tp
+
 import click
 import numpy as np
 import pandas as pd
 import xarray as xr
+from nptyping import NDArray
+
+
+def nans(shape: tp.Tuple[list, tuple, NDArray]) -> NDArray:
+    """return array of nan of shape `shape`"""
+    return np.full(shape, np.nan)
 
 
 def magnetic_to_true(dataset: tp.Type[xr.Dataset]):
@@ -60,11 +68,10 @@ def dday_to_datetime64(dday, yearbase):
 
 
 class Logger:
-    def __init__(self, logbook="", name=None):
+    def __init__(self, logbook=""):
 
         self.logbook = "" + logbook
         self.w_count = 0
-        self.name = None
         self.silent = False
 
     def __repr__(self):
@@ -90,7 +97,7 @@ class Logger:
             self.logbook += " " + msg + "\n"
 
     def silence(self, silent):
-        self.silent = True
+        self.silent = silent
 
     @staticmethod
     def _timestamp():
