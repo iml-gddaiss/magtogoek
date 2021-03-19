@@ -3,276 +3,331 @@ Basicaly all from jeanlucshaw.
 """
 import datetime
 import glob
-import os
+# import os
 import warnings
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import xarray as xr
-# from magtogoek.adcp.utils import *
+from magtogoek.adcp.utils import *
 from rti_python.Codecs.BinaryCodec import BinaryCodec
 from rti_python.Ensemble.EnsembleData import *
+from scipy.constants import convert_temperature
 from scipy.stats import circmean
 from tqdm import tqdm
 
-# Constants
+
+# Bunch Class was copied from pycurrents.adcp.rdiraw
+class Bunch(dict):
+    """
+    A dictionary that also provides access via attributes.
+
+    This version is specialized for this module; see also
+    the version in pycurrents.system.misc, which has extra
+    methods for handling parameter sets.
+    """
+
+    def __init__(self, *args, **kwargs):
+        dict.__init__(self)
+        self.__dict__ = self
+        for arg in args:
+            self.__dict__.update(arg)
+        self.__dict__.update(kwargs)
+
+    def __str__(self):
+        ## fix the formatting later
+        slist = ["Dictionary with access to the following as attributes:"]
+        keystrings = [str(key) for key in self.keys()]
+        slist.append("\n".join(keystrings))
+        return "\n".join(slist) + "\n"
+
+    def split(self, var):
+        """
+        Method specialized for splitting velocity etc. into
+        separate arrays for each beam.
+        """
+        n = self[var].shape[-1]
+        for i in range(n):
+            self["%s%d" % (var, i + 1)] = self[var][..., i]
+
+    @classmethod
+    def from_structured(cls, a):
+        b = cls()
+        for name in a.dtype.names:
+            setattr(b, name, a[name][0])
+        return b
+
+
+# ------------------------------------------------------ #
+#                     CONSTANTS                          #
+# ------------------------------------------------------ #
 DELIMITER = b"\x80" * 16
 
 
-def load_rtb_binary(files):
-    """
-    Read Rowetech RTB binary ADCP data to xarray.
+class RtiReader:
+    def __init__(self, filenames):
+        self.filenames = filenames
 
-    Parameters
-    ----------
-    files : str or list of str
-        File name or expression designating .ENS files, or list or file names.
+    def read(self):
+        """FIXME"""
+        if isinstance(filenames, str):
+            p = Path(filenames)
+            if p.is_file():
+                self.adcp_files = [filenames]
+            else:
+                self.adcp_files = sorted(map(str, p.parent.glob(filenames.name)))
+        else:
+            self.adcp_files = filenames
 
-    Returns
-    -------
-    xarray.Dataset
-        ADCP data as organized by mxtoolbox.read.adcp.adcp_init .
+        if self.adcp_files > 1:
+            adcp_data = []
+            for f in adcp_files:
+                adcp_data.append(read_rtb_file(f))
+            return np.asarray(adcp_data)
 
-    """
+        else:
+            return read_rtb_file(self.adcp_files[0])
 
-    # Make list of files to read
-    if isinstance(files, str):
-        adcp_files = glob.glob(files)
-    else:
-        adcp_files = files
+    def read_rtb_file(self, filename):
+        """
+        Read data from one RTB .ENS file into xarray.
 
-    # Make xarray from file list
-    if len(adcp_files) > 1:
-        # xarray_datasets = [read_rtb_file(f) for f in adcp_files if f[-3:]=='ENS']
-        xarray_datasets = [read_rtb_file(f) for f in adcp_files]
-        ds = xr.concat(xarray_datasets, dim="time")
-
-        # Find average depths by bin
-        bins = np.arange(0, ds.z.max() + ds.bin_size, ds.bin_size)
-        lbb = bins - 0.5 * ds.bin_size
-        ubb = bins + 0.5 * ds.bin_size
-        z_bins = np.array(
-            [
-                ds.z.where((ds.z < ub) & (ds.z > lb)).mean().values
-                for lb, ub in zip(lbb, ubb)
-            ]
-        )
-        z_bins = z_bins[np.isfinite(z_bins)]
-
-        # Bin to these depths for uniformity
-        ds = xr_bin(ds, "z", z_bins)
-    else:
-        ds = read_rtb_file(*adcp_files)
-
-    return ds
-
-
-def read_rtb_file(file_path):
-    """
-    Read data from one RTB .ENS file into xarray.
-
-    Parameters
-    ----------
-    file_path : str
+        Parameters
+        ----------
+        file_path : str
         File name and path.
 
-    Returns
-    -------
-    xarray.Dataset
+        Returns
+        -------
+        xarray.Dataset
         As organized by mxtoolbox.read.adcp.adcp_init .
 
-    """
-    # Index the ensemble starts
-    idx, enl, data = index_rtb_data(file_path)
+        """
+        self.filename = filename
+        # Index the ensemble starts
+        self.idx, self.enl, self.data = index_rtb_data()
 
-    chunk = data[idx[0] : idx[1]]
-    if BinaryCodec.verify_ens_data(chunk):
-        ens = BinaryCodec.decode_data_sets(chunk)
+        # decode data from the first chunck
+        chunk = self.data[self.idx[0] : self.idx[1]]
+        if BinaryCodec.verify_ens_data(chunk):
+            ens = BinaryCodec.decode_data_sets(chunk)
 
-    # Get coordinate sizes
-    ens_count = len(idx)
-    bin_count = ens.EnsembleData.NumBins
-    bin_size = ens.AncillaryData.BinSize
+        # Get coordinate sizes
+        pd = Bunch()
 
-    data = dict()
+        pd.ens_count = len(self.idx)
+        pd.nbin = ens.EnsembleData.NumBins
+        pd.CellSize = ens.AncillaryData.BinSize
+        pd.Bin1Dist = ens.AncillaryData.FirstBinRange
+        pd.dep = pd.Bin1Dist + np.arange(0, pd.nbin * pd.CellSize, pd.CellSize)
 
-    # ---------- #
-    # read_chunk #
-    # ---------- #
+        # pd.blank = None
+        pd.NBeams = ens.EnsembleData.NumBeams
+        # pd.pingtype = None
+        pd.yearbase = ens.EsembleData.Year
+        pd.instrument_serial = ens.EnsembleData.SerialNumber
 
-    # Read and store ensembles
-    with tqdm(
-        total=len(idx) - 1, desc="Processing " + file_path, unit=" ensembles"
-    ) as pbar:
-        for ii in range(len(idx)):
+        pd.sysconfig = dict(
+            angle=_beam_angle(ens.EnsembleData.SerialNumber),
+            kHz=ens.SystemSetup.WpSystemFreqHz,
+            convex=True,  # Rowetech adcp seems to be convex.
+            up=None,
+        )
 
-            # Get data binary chunck for one ensemble
-            chunk = data[idx[ii] : idx[ii] + enl[ii]]
+        pd.trans = dict(coordsystem="beam")
+        if ens.IsInstrumentVelocity:
+            pd.trans["coordsytem"] = "xyz"
+        if ens.IsEarthVelocity:
+            pd.trans["coordsytem"] = "earth"
 
-            # Check that chunk looks ok
-            if BinaryCodec.verify_ens_data(chunk):
+        # ---------- #
+        # read_chunk #
+        # ---------- #
+        ppd = self.read_chunks()
 
-                # Decode data variables
-                ens = BinaryCodec.decode_data_sets(chunk)
+        # Determine up/down configuration
+        mean_roll = circmean(np.radians(pd.roll))
+        pd.sysconfig["up"] = True if abs(mean_roll) < np.radians(30) else False
 
-                CORR = np.array(ens.Correlation.Correlation)
-                AMP = np.array(ens.Amplitude.Amplitude)
-                PG = np.array(ens.GoodEarth.GoodEarth)
+        # Roll near zero means downwards (like RDI)
+        pd.roll = pd.roll + 180
+        pd.roll[pd.roll > 180] -= 360
 
-                time[ii] = ens.EnsembleData.datetime()
-                ds.u.values[:, ii] = np.array(ens.EarthVelocity.Velocities)[:, 0]
-                ds.v.values[:, ii] = np.array(ens.EarthVelocity.Velocities)[:, 1]
-                ds.w.values[:, ii] = np.array(ens.EarthVelocity.Velocities)[:, 2]
-                ds.temp.values[ii] = ens.AncillaryData.WaterTemp
-                ds.depth.values[ii] = ens.AncillaryData.TransducerDepth
-                ds.heading.values[ii] = ens.AncillaryData.Heading
-                ds.pitch.values[ii] = ens.AncillaryData.Pitch
-                ds.roll_.values[ii] = ens.AncillaryData.Roll
-                ds.corr.values[:, ii] = np.nanmean(CORR, axis=-1)
-                ds.amp.values[:, ii] = np.nanmean(AMP, axis=-1)
-                ds.pg.values[:, ii] = PG[:, 3]
+        # ------------------------------- #
+        # Make a functions for the loader #
+        # ------------------------------- #
+        # Determine bin depths
 
-                # Bottom track data
-                if ens.IsBottomTrack:
-                    ds.u_bt[ii] = np.array(ens.BottomTrack.EarthVelocity)[0]
-                    ds.v_bt[ii] = np.array(ens.BottomTrack.EarthVelocity)[1]
-                    ds.w_bt[ii] = np.array(ens.BottomTrack.EarthVelocity)[2]
-                    ds.pg_bt[ii] = np.nanmean(ens.BottomTrack.BeamGood, axis=-1)
-                    ds.corr_bt[ii] = np.nanmean(ens.BottomTrack.Correlation, axis=-1)
-                    ds.range_bt[ii] = np.nanmean(ens.BottomTrack.Range, axis=-1)
-            pbar.update(1)
+        # if data["orientation"] == "up":
+        #    z = np.asarray(np.median(data["depth"]) - data["dep"]).round(2)
+        # else:
+        #    z = np.asarray(np.median(data["depth"]) + data["dep"]).round(2)
 
-    # --------------- #
-    # Make a function #
-    # --------------- #
-    # Determine up/down configuration
-    mean_roll = circmean(np.radians(data["roll"]))
-    data["orientation"] = "up" if abs(mean_roll) < np.radians(30) else "down"
+    def read_chunks(self):
+        """FIXME"""
+        ppd_list = []
+        # Read and store ensembles
+        # Correlation are multipled by 255 to be between 0 and 255 (like RDI).
+        with tqdm(
+            total=len(self.idx) - 1,
+            desc="Processing " + Path(self.filename).name,
+            unit=" ensembles",
+        ) as pbar:
+            for ii in range(len(self.idx)):
+                ppd = Bunch()
 
-    # --------------- #
-    # Make a function #
-    # --------------- #
-    # Determine bin depths
-    data["dep"] = ens.AncillaryData.FirstBinRange + np.arange(
-        0, bin_count * bin_size, bin_size
-    )
-    if data["orientation"] == "up":
-        z = np.asarray(np.median(data["depth"]) - data["dep"]).round(2)
-    else:
-        z = np.asarray(np.median(data["depth"]) + data["dep"]).round(2)
+                # Get data binary chunck for one ensemble
+                chunk = self.data[self.idx[ii] : self.idx[ii] + self.enl[ii]]
 
-    # Roll near zero means downwards (like RDI)
-    roll_ = ds.roll_.values + 180
-    roll_[roll_ > 180] -= 360
-    ds["roll_"].values = roll_
+                # Check that chunk looks ok
+                if BinaryCodec.verify_ens_data(chunk):
 
-    # Correlation between 0 and 255 (like RDI)
-    ds["corr"].values *= 255
+                    # Decode data variables
+                    ens = BinaryCodec.decode_data_sets(chunk)
 
-    # Set coordinates and attributes
-    z_attrs, t_attrs = ds.z.attrs, ds.time.attrs
-    ds = ds.assign_coords(z=z, time=time)
-    ds["z"].attrs = z_attrs
-    ds["time"].attrs = t_attrs
+                    ppd.dday = ens.EnsembleData.datetime()  # to reshape
 
-    # Get beam angle
-    if ens.EnsembleData.SerialNumber[1] in "12345678DEFGbcdefghi":
-        ds.attrs["beam_angle"] = 20
-    elif ens.EnsembleData.SerialNumber[1] in "OPQRST":
-        ds.attrs["beam_angle"] = 15
-    elif ens.EnsembleData.SerialNumber[1] in "IJKLMNjklmnopqrstuvwxy":
-        ds.attrs["beam_angle"] = 30
-    elif ens.EnsembleData.SerialNumber[1] in "9ABCUVWXYZ":
-        ds.attrs["beam_angle"] = 0
-    else:
-        raise ValueError("Could not determine beam angle.")
+                    ppd.cor = np.array(ens.Correlation.Correlation) * 255  # to reshape
+                    ppd.amp = np.array(ens.Amplitude.Amplitude)  # to reshape
 
-    # Manage coordinates and remaining attributes
-    data["bin_size"] = bin_size
-    data["instrument_serial"] = ens.EnsembleData.SerialNumber
-    data["ping_frequency"] = ens.SystemSetup.WpSystemFreqHz
+                    if ens.IsGoodEarth:
+                        ppd.pg = np.array(ens.GoodEarth.GoodEarth)  # to reshape
 
-    return ds
+                    if ens.IsGoodBeam:
+                        ppd.pg = np.array(ens.GoodEarth.Good)  # to reshape
+
+                    if ens.IsBeamVelocity:
+                        ppd.vel = np.array(ens.BeamVelocity.Velocities)  # to reshape
+
+                    if ens.IsInstrumentVelocity:  # to reshape
+                        ppd.vel = np.array(ens.InstrumentVelocity.Velocities)
+
+                    if ens.IsEarthVelocity:
+                        ppd.vel = np.array(ens.EarthVelocity.Velocities)  # to reshape
+
+                    if ens.IsAncillaryData:
+                        ppd.temperature = convert_temperature(
+                            np.array(ens.AncillaryData.WaterTemp),
+                            "fahrenheit",
+                            "celsius",
+                        )
+                        ppd.salinity = np.array(ens.AncillaryData.Salinity)
+                        # pascal to decapascal
+
+                        ppd.pressure = np.array(ens.AncillaryData.Pressure) / 10
+                        ppd.XducerDepth = np.array(ens.AncillaryData.TransducerDepth)
+                        ppd.heading = np.array(ens.AncillaryData.Heading)
+                        ppd.pitch = np.array(ens.AncillaryData.Pitch)
+                        ppd.roll = np.array(ens.AncillaryData.Roll)
+
+                    if ens.IsBottomTrack:
+                        ppd.bt_vel = np.array(ens.BottomTrack.EarthVelocity)
+                        ppd.bt_pg = np.array(ens.BottomTrack.BeamGood)
+                        ppd.bt_cor = np.array(ens.BottomTrack.Correlation) * 255
+                        ppd.bt_range = np.array(ens.BottomTrack.Range)
+
+                pbar.update(1)
+                ppd_list.append(ppd)
+        return ppd_list
+
+    def index_rtb_data(self):
+        """
+        Read binary as byte stream. Find ensemble locations and sizes.
+
+        Parameters
+        ----------
+        file_path : str
+            File path and name.
+
+        Returns
+        -------
+        1D array
+            Ensemble start index values.
+        1D array
+            Ensemble data lengths.
+        1D array
+            Data as byte stream.
+
+        """
+        # Open binary
+        with open(self.filename, "rb") as df:
+
+            # Read data file
+            data = df.read()
+            ensemble_starts = []
+            ensemble_lengths = []
+
+            # Get payload size of first ensemble
+            payloadsize = int.from_bytes(data[24:27], "little")
+
+            # Get individual ensemble starts and lengths
+            ii = 0
+            while ii < len(data) - payloadsize - 32 - 4:
+                if data[ii : ii + 16] == DELIMITER:
+                    ensemble_starts.append(ii)
+                    ensemble_lengths.append(payloadsize + 32 + 4)
+
+                    # Increment by payload size, plus header plus checksum
+                    ii += payloadsize + 32 + 4
+                else:
+                    print("Data format bad")
+                    break
+
+                # Get payload size of next ensemble
+                payloadsize = int.from_bytes(data[ii + 24 : ii + 27], "little")
+
+        return ensemble_starts, ensemble_lengths, data
+
+    def read_rtb_ensemble(self, N=0):
+        """
+        Read one ensemble from a RTB .ENS file.
+
+        Parameters
+        ----------
+        file_path : str
+            Name and path of the RTB file.
+        N : int
+            Index value of the ensemble to read.
+
+        Returns
+        -------
+        rti_python.Ensemble.Ensemble
+            Ensemble data object.
+
+        """
+        ensemble_starts, ensemble_lengths, data = index_rtb_data(self.filename)
+
+        chunk = data[ensemble_starts[N] : ensemble_starts[N] + ensemble_lengths[N]]
+        if BinaryCodec.verify_ens_data(chunk):
+            ens = BinaryCodec.decode_data_sets(chunk)
+        else:
+            ens = []
+
+        return ens
+
+    @staticmethod
+    def _beam_angle(serial_number):
+        beam_angles = {
+            "12345678DEFGbcdefghi": 20,
+            "OPQRST": 15,
+            "IJKLMNjklmnopqrstuvwxy": 30,
+            "9ABCUVWXYZ": 0,
+        }
+        try:
+            return beam_angles[serial_number]
+        except KeyError:
+            print("Could not determine beam angle.")
+            return None
+
+    @staticmethod
+    def concatenate_ppd_list(ppd_list):
+        """"""
+        ppd = Bunch()
+        pass
 
 
-def read_rtb_ensemble(file_path, N=0):
-    """
-    Read one ensemble from a RTB .ENS file.
-
-    Parameters
-    ----------
-    file_path : str
-        Name and path of the RTB file.
-    N : int
-        Index value of the ensemble to read.
-
-    Returns
-    -------
-    rti_python.Ensemble.Ensemble
-        Ensemble data object.
-
-    """
-    ensemble_starts, ensemble_lengths, data = index_rtb_data(file_path)
-
-    chunk = data[ensemble_starts[N] : ensemble_starts[N] + ensemble_lengths[N]]
-    if BinaryCodec.verify_ens_data(chunk):
-        ens = BinaryCodec.decode_data_sets(chunk)
-    else:
-        ens = []
-
-    return ens
-
-
-def index_rtb_data(file_path):
-    """
-    Read binary as byte stream. Find ensemble locations and sizes.
-
-    Parameters
-    ----------
-    file_path : str
-        File path and name.
-
-    Returns
-    -------
-    1D array
-        Ensemble start index values.
-    1D array
-        Ensemble data lengths.
-    1D array
-        Data as byte stream.
-
-    """
-    # Open binary
-    with open(file_path, "rb") as df:
-
-        # Read data file
-        data = df.read()
-        ensemble_starts = []
-        ensemble_lengths = []
-
-        # Get payload size of first ensemble
-        payloadsize = int.from_bytes(data[24:27], "little")
-
-        # Get individual ensemble starts and lengths
-        ii = 0
-        while ii < len(data) - payloadsize - 32 - 4:
-            if data[ii : ii + 16] == DELIMITER:
-                ensemble_starts.append(ii)
-                ensemble_lengths.append(payloadsize + 32 + 4)
-
-                # Increment by payload size, plus header plus checksum
-                ii += payloadsize + 32 + 4
-            else:
-                print("Data format bad")
-                break
-
-            # Get payload size of next ensemble
-            payloadsize = int.from_bytes(data[ii + 24 : ii + 27], "little")
-
-    return ensemble_starts, ensemble_lengths, data
-
-
-def bine2center(bine):
+def bine2center(bin_edge):
     """
     Get bin centers from bin edges.
 
@@ -294,7 +349,7 @@ def bine2center(bine):
 
        * convert.binc2edge
     """
-    return bine[:-1] + np.diff(bine) / 2
+    return bin_edge[:-1] + np.diff(bin_edge) / 2
 
 
 def binc2edge(z):
@@ -329,7 +384,11 @@ def binc2edge(z):
 
         # Make offset pandas series
         OS = pd.concat(
-            (-0.5 * pd.Series(DT.take([0])), -0.5 * DT, 0.5 * pd.Series(DT.take([-1])))
+            (
+                -0.5 * pd.Series(DT.take([0])),
+                -0.5 * DT,
+                0.5 * pd.Series(DT.take([-1])),
+            )
         ).reset_index(drop=True)
 
         # Make bin edge vector
@@ -342,7 +401,11 @@ def binc2edge(z):
 
         # Make offset pandas series
         OS = pd.concat(
-            (-0.5 * pd.Series(DT.take([0])), -0.5 * DT, 0.5 * pd.Series(DT.take([-1])))
+            (
+                -0.5 * pd.Series(DT.take([0])),
+                -0.5 * DT,
+                0.5 * pd.Series(DT.take([-1])),
+            )
         ).reset_index(drop=True)
 
         # Make bin edge vector
@@ -444,7 +507,7 @@ def xr_bin(dataset, dim, bins, centers=True, func=np.nanmean):
 
 def xr_unique(dataset, dim):
     """
-    Remove duplicates along dimension `dim`.
+        Remove duplicates along dimension `dim`.
 
     Parameters
     ----------

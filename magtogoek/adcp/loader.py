@@ -316,7 +316,7 @@ def load_rdi_binary(
     l.log(f"File(s) loaded with {l.w_count} warnings")
     ds.attrs["logbook"] = l.logbook
 
-    return ds, fl
+    return ds, data
 
 
 def init_dataset(time: NDArray, depth: NDArray, sonar: str = None):
@@ -559,12 +559,12 @@ if __name__ == "__main__":
     #    ios_path + ios_fns[2], sonar=sonar, yearbase=2006, orientation="down"
     # )
 
-    # v50path = Path(v50exp)
-    # v50files = list(map(str, v50path.parent.glob(v50path.name)))
-    # sonar = "sv"
+    v50path = Path(v50exp)
+    v50files = sorted(map(str, v50path.parent.rglob(v50path.name)))  # .rglob() ?
+    sonar = "sv"
 
-    # v50 = load_rdi_binary(v50files, sonar=sonar, yearbase=2020, orientation="down")
+    v50 = load_rdi_binary(v50files, sonar=sonar, yearbase=2020, orientation="down")
 
     #    v100 = load_rdi_binary(v100file, sonar=sonar, yearbase=2020, orientation="down")
 
-    sw = load_rdi_binary(ens_sw_path, sonar="sw_pd0", yearbase=2020, orientation="down")
+#    sw = load_rdi_binary(ens_sw_path, sonar="sw_pd0", yearbase=2020, orientation="down")
