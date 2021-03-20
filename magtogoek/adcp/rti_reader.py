@@ -1,16 +1,17 @@
 """
 Basicaly all from jeanlucshaw.
 """
-import datetime
 import glob
 # import os
 import warnings
+from datetime import datetime
+from multiprocessing import Pool, cpu_count
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
-import xarray as xr
-from magtogoek.adcp.utils import *
+import pandas as pds  # func not used
+import xarray as xr  # func not used
+# from magtogoek.adcp.utils import *
 from rti_python.Codecs.BinaryCodec import BinaryCodec
 from rti_python.Ensemble.EnsembleData import *
 from scipy.constants import convert_temperature
@@ -51,18 +52,10 @@ class Bunch(dict):
         for i in range(n):
             self["%s%d" % (var, i + 1)] = self[var][..., i]
 
-    @classmethod
-    def from_structured(cls, a):
-        b = cls()
-        for name in a.dtype.names:
-            setattr(b, name, a[name][0])
-        return b
 
-
-# ------------------------------------------------------ #
-#                     CONSTANTS                          #
-# ------------------------------------------------------ #
+# --------------------CONSTANTS------------------------- #
 DELIMITER = b"\x80" * 16
+# ------------------------------------------------------ #
 
 
 class RtiReader:
@@ -71,23 +64,23 @@ class RtiReader:
 
     def read(self):
         """FIXME"""
-        if isinstance(filenames, str):
-            p = Path(filenames)
+        if isinstance(self.filenames, str):
+            p = Path(self.filenames)
             if p.is_file():
-                self.adcp_files = [filenames]
+                self.adcp_files = [self.filenames]
             else:
-                self.adcp_files = sorted(map(str, p.parent.glob(filenames.name)))
+                self.adcp_files = sorted(map(str, p.parent.glob(self.filenames.name)))
         else:
-            self.adcp_files = filenames
+            self.adcp_files = self.filenames
 
-        if self.adcp_files > 1:
-            adcp_data = []
+        if len(self.adcp_files) > 1:
+            bunch_list = []
             for f in adcp_files:
-                adcp_data.append(read_rtb_file(f))
-            return np.asarray(adcp_data)
+                bunch_list.append(self.read_rtb_file(f))
+            return self.concatenate_files_bunch(bunch_list)
 
         else:
-            return read_rtb_file(self.adcp_files[0])
+            return self.read_rtb_file(self.adcp_files[0])
 
     def read_rtb_file(self, filename):
         """
@@ -106,7 +99,7 @@ class RtiReader:
         """
         self.filename = filename
         # Index the ensemble starts
-        self.idx, self.enl, self.data = index_rtb_data()
+        self.idx, self.enl, self.data = self.index_rtb_data()
 
         # decode data from the first chunck
         chunk = self.data[self.idx[0] : self.idx[1]]
@@ -125,11 +118,11 @@ class RtiReader:
         # pd.blank = None
         pd.NBeams = ens.EnsembleData.NumBeams
         # pd.pingtype = None
-        pd.yearbase = ens.EsembleData.Year
+        pd.yearbase = ens.EnsembleData.Year
         pd.instrument_serial = ens.EnsembleData.SerialNumber
 
         pd.sysconfig = dict(
-            angle=_beam_angle(ens.EnsembleData.SerialNumber),
+            angle=self._beam_angle(pd.instrument_serial),
             kHz=ens.SystemSetup.WpSystemFreqHz,
             convex=True,  # Rowetech adcp seems to be convex.
             up=None,
@@ -141,10 +134,14 @@ class RtiReader:
         if ens.IsEarthVelocity:
             pd.trans["coordsytem"] = "earth"
 
-        # ---------- #
-        # read_chunk #
-        # ---------- #
         ppd = self.read_chunks()
+        for k in ppd:
+            pd[k] = ppd[k]
+            if k == "dday":
+                pd[k] = np.array(
+                    [(t - datetime(pd.yearbase, 1, 1)).total_seconds() for t in ppd[k]]
+                )
+                pd[k] *= 1 / (3600 * 24)
 
         # Determine up/down configuration
         mean_roll = circmean(np.radians(pd.roll))
@@ -154,82 +151,111 @@ class RtiReader:
         pd.roll = pd.roll + 180
         pd.roll[pd.roll > 180] -= 360
 
-        # ------------------------------- #
-        # Make a functions for the loader #
-        # ------------------------------- #
         # Determine bin depths
+        if pd.sysconfig["up"] is True:
+            pd.dep = np.asarray(np.median(pd.XducerDepth) - pd.dep).round(2)
+        else:
+            pd.dep = np.asarray(np.median(pd.XducerDepth) + pd.dep).round(2)
 
-        # if data["orientation"] == "up":
-        #    z = np.asarray(np.median(data["depth"]) - data["dep"]).round(2)
-        # else:
-        #    z = np.asarray(np.median(data["depth"]) + data["dep"]).round(2)
+        return pd
 
     def read_chunks(self):
         """FIXME"""
-        ppd_list = []
-        # Read and store ensembles
-        # Correlation are multipled by 255 to be between 0 and 255 (like RDI).
-        with tqdm(
-            total=len(self.idx) - 1,
-            desc="Processing " + Path(self.filename).name,
-            unit=" ensembles",
-        ) as pbar:
-            for ii in range(len(self.idx)):
-                ppd = Bunch()
+        # cutting the file in chunks and putting them in a list
+        chunk_list = []
+        for ii in range(len(self.idx)):
+            chunk_list.append(
+                (ii, self.data[self.idx[ii] : self.idx[ii] + self.enl[ii]])
+            )
+        # free some memory
+        del self.data, self.idx, self.enl
 
-                # Get data binary chunck for one ensemble
-                chunk = self.data[self.idx[ii] : self.idx[ii] + self.enl[ii]]
+        # spliting the reading workload on multiple cpu
+        cpu = cpu_count() - 1
+        print("Reading chunks")
+        t0 = datetime.now()
+        with Pool(cpu) as p:
+            self.data_list = p.starmap(self.read_single_chunk, tqdm(chunk_list))
+        print(
+            len(chunk_list),
+            "chunks read in",
+            round((datetime.now() - t0).total_seconds(), 3),
+            "s",
+        )
+        # sorting the data_list with the idx position then droping the indx.
+        self.data_list.sort()
+        self.data_list = [data for _, data in self.data_list]
 
-                # Check that chunk looks ok
-                if BinaryCodec.verify_ens_data(chunk):
+        ppd = Bunch()
+        for k in self.data_list[0]:
+            chunks = [p[k] for p in self.data_list]
+            ppd[k] = np.stack(chunks, axis=0)
 
-                    # Decode data variables
-                    ens = BinaryCodec.decode_data_sets(chunk)
+            if ppd[k].ndim == 3:
+                ppd.split(k)
 
-                    ppd.dday = ens.EnsembleData.datetime()  # to reshape
+        return ppd
 
-                    ppd.cor = np.array(ens.Correlation.Correlation) * 255  # to reshape
-                    ppd.amp = np.array(ens.Amplitude.Amplitude)  # to reshape
+    @staticmethod
+    def read_single_chunk(ii, chunk):
+        """
+        Correlation are multipled by 255 to be between 0 and 255 (like RDI).
+        Pressure is divided by 10. Pascal to decapascal(like RDI).
+        """
+        ppd = Bunch()
+        # ii, chucnk = chunk
 
-                    if ens.IsGoodEarth:
-                        ppd.pg = np.array(ens.GoodEarth.GoodEarth)  # to reshape
+        # Get data binary chunck for one ensemble
+        # chunk = data[idx[ii] : idx[ii] + enl[ii]]
 
-                    if ens.IsGoodBeam:
-                        ppd.pg = np.array(ens.GoodEarth.Good)  # to reshape
+        # Check that chunk looks ok
+        if BinaryCodec.verify_ens_data(chunk):
 
-                    if ens.IsBeamVelocity:
-                        ppd.vel = np.array(ens.BeamVelocity.Velocities)  # to reshape
+            # Decode data variables
+            ens = BinaryCodec.decode_data_sets(chunk)
 
-                    if ens.IsInstrumentVelocity:  # to reshape
-                        ppd.vel = np.array(ens.InstrumentVelocity.Velocities)
+            ppd.dday = ens.EnsembleData.datetime()  # transform to dday later
 
-                    if ens.IsEarthVelocity:
-                        ppd.vel = np.array(ens.EarthVelocity.Velocities)  # to reshape
+            ppd.cor = np.array(ens.Correlation.Correlation) * 255
+            ppd.amp = np.array(ens.Amplitude.Amplitude)
 
-                    if ens.IsAncillaryData:
-                        ppd.temperature = convert_temperature(
-                            np.array(ens.AncillaryData.WaterTemp),
-                            "fahrenheit",
-                            "celsius",
-                        )
-                        ppd.salinity = np.array(ens.AncillaryData.Salinity)
-                        # pascal to decapascal
+            if ens.IsGoodEarth:
+                ppd.pg = np.array(ens.GoodEarth.GoodEarth)
 
-                        ppd.pressure = np.array(ens.AncillaryData.Pressure) / 10
-                        ppd.XducerDepth = np.array(ens.AncillaryData.TransducerDepth)
-                        ppd.heading = np.array(ens.AncillaryData.Heading)
-                        ppd.pitch = np.array(ens.AncillaryData.Pitch)
-                        ppd.roll = np.array(ens.AncillaryData.Roll)
+            if ens.IsGoodBeam:
+                ppd.pg = np.array(ens.GoodBeam.GoodBeam)
 
-                    if ens.IsBottomTrack:
-                        ppd.bt_vel = np.array(ens.BottomTrack.EarthVelocity)
-                        ppd.bt_pg = np.array(ens.BottomTrack.BeamGood)
-                        ppd.bt_cor = np.array(ens.BottomTrack.Correlation) * 255
-                        ppd.bt_range = np.array(ens.BottomTrack.Range)
+            if ens.IsBeamVelocity:
+                ppd.vel = np.array(ens.BeamVelocity.Velocities)
 
-                pbar.update(1)
-                ppd_list.append(ppd)
-        return ppd_list
+            if ens.IsInstrumentVelocity:
+                ppd.vel = np.array(ens.InstrumentVelocity.Velocities)
+
+            if ens.IsEarthVelocity:
+                ppd.vel = np.array(ens.EarthVelocity.Velocities)
+
+            if ens.IsAncillaryData:
+                ppd.temperature = convert_temperature(
+                    np.array(ens.AncillaryData.WaterTemp),
+                    "fahrenheit",
+                    "celsius",
+                )
+                ppd.salinity = np.array(ens.AncillaryData.Salinity)
+                # pascal to decapascal
+
+                ppd.pressure = np.array(ens.AncillaryData.Pressure) / 10
+                ppd.XducerDepth = np.array(ens.AncillaryData.TransducerDepth)
+                ppd.heading = np.array(ens.AncillaryData.Heading)
+                ppd.pitch = np.array(ens.AncillaryData.Pitch)
+                ppd.roll = np.array(ens.AncillaryData.Roll)
+
+            if ens.IsBottomTrack:
+                ppd.bt_vel = np.array(ens.BottomTrack.EarthVelocity)
+                ppd.bt_pg = np.array(ens.BottomTrack.BeamGood)
+                ppd.bt_cor = np.array(ens.BottomTrack.Correlation) * 255
+                ppd.bt_range = np.array(ens.BottomTrack.Range)
+
+        return ii, ppd
 
     def index_rtb_data(self):
         """
@@ -308,25 +334,33 @@ class RtiReader:
 
     @staticmethod
     def _beam_angle(serial_number):
-        beam_angles = {
-            "12345678DEFGbcdefghi": 20,
-            "OPQRST": 15,
-            "IJKLMNjklmnopqrstuvwxy": 30,
-            "9ABCUVWXYZ": 0,
-        }
-        try:
-            return beam_angles[serial_number]
-        except KeyError:
-            print("Could not determine beam angle.")
+        """"""
+        if serial_number[1] in "12345678DEFGbcdefghi":
+            return 20
+        elif serial_number[1] in "OPQRST":
+            return (15,)
+        elif serial_number[1] in "IJKLMNjklmnopqrstuvwxy":
+            return 30
+        elif "9ABCUVWXYZ":
+            return 0
+        else:
+            print("Could not determine beam angle. FIXME")
             return None
 
     @staticmethod
-    def concatenate_ppd_list(ppd_list):
+    def concatenate_files_bunch(bunch_list):
         """"""
-        ppd = Bunch()
-        pass
+        pd = Bunch()
+        b0 = bunch_list[0]
+        pd.dep = b0.dep
+        for k in b0:
+            if k == "dep" or not isinstance(b0[k], np.ndarray):
+                pd[k] = b0[k]
+            chunks = [p[k] for p in bunch_list]
+            pd[k] = np.concatenate(chunks)
 
 
+##### FUNCTIONS BELOW ARE NOT YET USED #####
 def bine2center(bin_edge):
     """
     Get bin centers from bin edges.
@@ -375,36 +409,36 @@ def binc2edge(z):
        * convert.bine2center
 
     """
-    if type(z) is pd.core.indexes.datetimes.DatetimeIndex:
-        TIME = pd.Series(z)
+    if type(z) is pds.core.indexes.datetimes.DatetimeIndex:
+        TIME = pds.Series(z)
         DT = TIME.diff()[1:].reset_index(drop=True)
 
         # Extend time vector
         TIME = TIME.append(TIME.take([-1])).reset_index(drop=True)
 
         # Make offset pandas series
-        OS = pd.concat(
+        OS = pds.concat(
             (
-                -0.5 * pd.Series(DT.take([0])),
+                -0.5 * pds.Series(DT.take([0])),
                 -0.5 * DT,
-                0.5 * pd.Series(DT.take([-1])),
+                0.5 * pds.Series(DT.take([-1])),
             )
         ).reset_index(drop=True)
 
         # Make bin edge vector
         EDGES = TIME + OS
-    elif type(z) is pd.core.series.Series:
+    elif type(z) is pds.core.series.Series:
         DT = z.diff()[1:].reset_index(drop=True)
 
         # Extend time vector
         z = z.append(z.take([-1])).reset_index(drop=True)
 
         # Make offset pandas series
-        OS = pd.concat(
+        OS = pds.concat(
             (
-                -0.5 * pd.Series(DT.take([0])),
+                -0.5 * pds.Series(DT.take([0])),
                 -0.5 * DT,
-                0.5 * pd.Series(DT.take([-1])),
+                0.5 * pds.Series(DT.take([-1])),
             )
         ).reset_index(drop=True)
 
@@ -523,3 +557,8 @@ def xr_unique(dataset, dim):
     """
     _, index = np.unique(dataset[dim], return_index=True)
     return dataset.isel({dim: index})
+
+
+if __name__ == "__main__":
+    fn = "../../test/files/rowetech_seawatch.ens"
+    data = RtiReader(fn).read()
