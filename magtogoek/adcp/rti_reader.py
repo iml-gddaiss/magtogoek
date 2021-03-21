@@ -1,17 +1,16 @@
 """
 Basicaly all from jeanlucshaw.
 """
-import glob
-# import os
+
 import warnings
 from datetime import datetime
 from multiprocessing import Pool, cpu_count
 from pathlib import Path
+from typing import Dict, List, Tuple, Type
 
 import numpy as np
-import pandas as pds  # func not used
+import pandas as pd  # func not used
 import xarray as xr  # func not used
-# from magtogoek.adcp.utils import *
 from rti_python.Codecs.BinaryCodec import BinaryCodec
 from rti_python.Ensemble.EnsembleData import *
 from scipy.constants import convert_temperature
@@ -19,7 +18,7 @@ from scipy.stats import circmean
 from tqdm import tqdm
 
 
-# Bunch Class was copied from pycurrents.adcp.rdiraw
+# Bunch Class was copied from UHDAS pycurrents.adcp.rdiraw
 class Bunch(dict):
     """
     A dictionary that also provides access via attributes.
@@ -55,137 +54,166 @@ class Bunch(dict):
 
 # --------------------CONSTANTS------------------------- #
 DELIMITER = b"\x80" * 16
+BLOCK_SIZE = 4096
 # ------------------------------------------------------ #
 
 
 class RtiReader:
-    def __init__(self, filenames):
+    def __init__(self, filenames: Tuple[str, List]):
+        """
+        Parameters
+        ----------
+        filenames
+            path/to/filename or list(path/to/filenames) or path/to/regex
+        """
+        # NOT TESTED #
         self.filenames = filenames
 
-    def read(self):
-        """FIXME"""
+        # looks for regex and transform to list.
         if isinstance(self.filenames, str):
             p = Path(self.filenames)
             if p.is_file():
-                self.adcp_files = [self.filenames]
+                self.filenames = [self.filenames]
             else:
-                self.adcp_files = sorted(map(str, p.parent.glob(self.filenames.name)))
-        else:
-            self.adcp_files = self.filenames
+                self.filenames = sorted(map(str, p.parent.glob(p.name)))
+                if len(self.filenames) == 0:
+                    raise FileNotFoundError(
+                        f"Expression `{p}` does not match any files."
+                    )
 
-        if len(self.adcp_files) > 1:
-            bunch_list = []
-            for f in adcp_files:
-                bunch_list.append(self.read_rtb_file(f))
-            return self.concatenate_files_bunch(bunch_list)
+    def read(self):
+        """Call read_rt_file.
+        return a Bunch object with the read data."""
+        bunch_list = []
+        for filename in self.filenames:
+            bunch_list.append(self.read_file(filename))
 
-        else:
-            return self.read_rtb_file(self.adcp_files[0])
+        data = self.concatenate_files_bunch(bunch_list)
+        data["dday"] = datetimes2dday(data["datetime"])
+        # ["rawnav"]["Lon1_BAM4"] * 180.0 / 2 ** 31
+        # TODO interp lon, lat and convert #
+        # adds fill values for velocities -32768.0
 
-    def read_rtb_file(self, filename):
-        """
-        Read data from one RTB .ENS file into xarray.
+        return data
+
+    def read_file(self, filename: str) -> Type[Bunch]:
+        """Read data from one RTB .ENS file put them into a Bunch object
 
         Parameters
         ----------
-        file_path : str
-        File name and path.
+        filename
+            path/to/filename
 
         Returns
         -------
-        xarray.Dataset
-        As organized by mxtoolbox.read.adcp.adcp_init .
+        Bunch:
+            bunch with the read data.
 
         """
-        self.filename = filename
-        # Index the ensemble starts
-        self.idx, self.enl, self.data = self.index_rtb_data()
+        # error with ENS from IML4
+        # read the binary data
+        with open(filename, "rb") as df:
+            self.ens_data = df.read()
+        self.ens_index, self.ens_lenght = self.index_ens_data()
 
-        # decode data from the first chunck
-        chunk = self.data[self.idx[0] : self.idx[1]]
-        if BinaryCodec.verify_ens_data(chunk):
-            ens = BinaryCodec.decode_data_sets(chunk)
+        first_chunk = self.ens_data[
+            self.ens_index[0] : self.ens_index[0] + self.ens_lenght[0]
+        ]
+        if BinaryCodec.verify_ens_data(first_chunk):
+            ens = BinaryCodec.decode_data_sets(first_chunk)
 
         # Get coordinate sizes
-        pd = Bunch()
+        ppd = Bunch()
+        ppd.filename = filename
+        ppd.ens_count = len(self.ens_index)
+        ppd.nbin = ens.EnsembleData.NumBins
+        ppd.CellSize = ens.AncillaryData.BinSize
+        ppd.Bin1Dist = ens.AncillaryData.FirstBinRange
+        ppd.dep = ppd.Bin1Dist + np.arange(0, ppd.nbin * ppd.CellSize, ppd.CellSize)
 
-        pd.ens_count = len(self.idx)
-        pd.nbin = ens.EnsembleData.NumBins
-        pd.CellSize = ens.AncillaryData.BinSize
-        pd.Bin1Dist = ens.AncillaryData.FirstBinRange
-        pd.dep = pd.Bin1Dist + np.arange(0, pd.nbin * pd.CellSize, pd.CellSize)
+        # ppd.blank = None
+        ppd.NBeams = ens.EnsembleData.NumBeams
+        # ppd.pingtype = None
+        ppd.yearbase = ens.EnsembleData.Year
+        ppd.instrument_serial = ens.EnsembleData.SerialNumber
 
-        # pd.blank = None
-        pd.NBeams = ens.EnsembleData.NumBeams
-        # pd.pingtype = None
-        pd.yearbase = ens.EnsembleData.Year
-        pd.instrument_serial = ens.EnsembleData.SerialNumber
-
-        pd.sysconfig = dict(
-            angle=self._beam_angle(pd.instrument_serial),
+        ppd.sysconfig = dict(
+            angle=self._beam_angle(ppd.instrument_serial),
             kHz=ens.SystemSetup.WpSystemFreqHz,
             convex=True,  # Rowetech adcp seems to be convex.
             up=None,
         )
 
-        pd.trans = dict(coordsystem="beam")
+        ppd.trans = dict(coordsystem="beam")
         if ens.IsInstrumentVelocity:
-            pd.trans["coordsytem"] = "xyz"
+            ppd.trans["coordsytem"] = "xyz"
         if ens.IsEarthVelocity:
-            pd.trans["coordsytem"] = "earth"
+            ppd.trans["coordsytem"] = "earth"
 
-        ppd = self.read_chunks()
-        for k in ppd:
-            pd[k] = ppd[k]
-            if k == "dday":
-                pd[k] = np.array(
-                    [(t - datetime(pd.yearbase, 1, 1)).total_seconds() for t in ppd[k]]
-                )
-                pd[k] *= 1 / (3600 * 24)
+        # reading all the chucnks.
+        ppd = Bunch(**ppd, **self.read_chunks())
 
         # Determine up/down configuration
-        mean_roll = circmean(np.radians(pd.roll))
-        pd.sysconfig["up"] = True if abs(mean_roll) < np.radians(30) else False
+        mean_roll = circmean(np.radians(ppd.roll))
+        ppd.sysconfig["up"] = True if abs(mean_roll) < np.radians(30) else False
 
         # Roll near zero means downwards (like RDI)
-        pd.roll = pd.roll + 180
-        pd.roll[pd.roll > 180] -= 360
+        ppd.roll = ppd.roll + 180
+        ppd.roll[ppd.roll > 180] -= 360
 
         # Determine bin depths
-        if pd.sysconfig["up"] is True:
-            pd.dep = np.asarray(np.median(pd.XducerDepth) - pd.dep).round(2)
+        if ppd.sysconfig["up"] is True:
+            ppd.dep = np.asarray(np.median(ppd.XducerDepth) - ppd.dep).round(2)
         else:
-            pd.dep = np.asarray(np.median(pd.XducerDepth) + pd.dep).round(2)
+            ppd.dep = np.asarray(np.median(ppd.XducerDepth) + ppd.dep).round(2)
 
-        return pd
+        return ppd
 
     def read_chunks(self):
-        """FIXME"""
+        """Read the chunks in multple process
+        Notes:
+        ------
+        This could be somewhat faster if the tqdm was removed. It takes ~.25 additional sec
+        (~5s total) 4000 chunks. Exiting the process to ouput progress could time consuming
+        for bigger files.
+        """
         # cutting the file in chunks and putting them in a list
         chunk_list = []
-        for ii in range(len(self.idx)):
+        for ii in range(len(self.ens_index)):
             chunk_list.append(
-                (ii, self.data[self.idx[ii] : self.idx[ii] + self.enl[ii]])
+                (
+                    ii,
+                    self.ens_data[
+                        self.ens_index[ii] : self.ens_index[ii] + self.ens_lenght[ii]
+                    ],
+                )
             )
         # free some memory
-        del self.data, self.idx, self.enl
+        del self.ens_data, self.ens_index, self.ens_lenght
 
         # spliting the reading workload on multiple cpu
-        cpu = cpu_count() - 1
+        number_of_cpu = cpu_count() - 1
+
         print("Reading chunks")
-        t0 = datetime.now()
-        with Pool(cpu) as p:
-            self.data_list = p.starmap(self.read_single_chunk, tqdm(chunk_list))
+        time0 = datetime.now()
+
+        with Pool(number_of_cpu) as p:  # test
+            self.data_list = p.starmap(self.decode_chunk, tqdm(chunk_list))  # test
+
+        time1 = datetime.now()
         print(
             len(chunk_list),
-            "chunks read in",
-            round((datetime.now() - t0).total_seconds(), 3),
+            " chuncks read in",
+            round((time1 - time0).total_seconds(), 3),
             "s",
         )
-        # sorting the data_list with the idx position then droping the indx.
+
+        # sorting the data_list with the index position then droping the indx.
         self.data_list.sort()
         self.data_list = [data for _, data in self.data_list]
 
+        # Merging bunches into a single one.
+        # Splitting beam data into new individual variable e.g. vel -> vel1,...,vel4
         ppd = Bunch()
         for k in self.data_list[0]:
             chunks = [p[k] for p in self.data_list]
@@ -197,16 +225,17 @@ class RtiReader:
         return ppd
 
     @staticmethod
-    def read_single_chunk(ii, chunk):
-        """
+    def decode_chunk(ii: int, chunk: str):
+        """Read single chunk of data.
+
+        Parameters:
+        -----------
+        ii:
+            Index of the chunk in the file. It is passed one with the Bunch
         Correlation are multipled by 255 to be between 0 and 255 (like RDI).
         Pressure is divided by 10. Pascal to decapascal(like RDI).
         """
         ppd = Bunch()
-        # ii, chucnk = chunk
-
-        # Get data binary chunck for one ensemble
-        # chunk = data[idx[ii] : idx[ii] + enl[ii]]
 
         # Check that chunk looks ok
         if BinaryCodec.verify_ens_data(chunk):
@@ -214,7 +243,7 @@ class RtiReader:
             # Decode data variables
             ens = BinaryCodec.decode_data_sets(chunk)
 
-            ppd.dday = ens.EnsembleData.datetime()  # transform to dday later
+            ppd.datetime = np.array(ens.EnsembleData.datetime())
 
             ppd.cor = np.array(ens.Correlation.Correlation) * 255
             ppd.amp = np.array(ens.Amplitude.Amplitude)
@@ -255,9 +284,14 @@ class RtiReader:
                 ppd.bt_cor = np.array(ens.BottomTrack.Correlation) * 255
                 ppd.bt_range = np.array(ens.BottomTrack.Range)
 
+            if ens.IsNmeaData:
+                ppd.longitude = np.array(ens.NmeaData.longitude)
+                ppd.latitude = np.array(ens.NmeaData.latitude)
+                ppd.gps_datetime = np.array(ens.NmeaData.datetime)
+
         return ii, ppd
 
-    def index_rtb_data(self):
+    def index_ens_data(self):
         """
         Read binary as byte stream. Find ensemble locations and sizes.
 
@@ -276,65 +310,77 @@ class RtiReader:
             Data as byte stream.
 
         """
-        # Open binary
-        with open(self.filename, "rb") as df:
 
-            # Read data file
-            data = df.read()
-            ensemble_starts = []
-            ensemble_lengths = []
+        ensemble_starts = []
+        ensemble_lengths = []
 
-            # Get payload size of first ensemble
-            payloadsize = int.from_bytes(data[24:27], "little")
+        # Get payload size of first ensemble
+        payloadsize = int.from_bytes(self.ens_data[24:27], "little")
 
-            # Get individual ensemble starts and lengths
-            ii = 0
-            while ii < len(data) - payloadsize - 32 - 4:
-                if data[ii : ii + 16] == DELIMITER:
-                    ensemble_starts.append(ii)
-                    ensemble_lengths.append(payloadsize + 32 + 4)
+        # Get individual ensemble starts and lengths
+        ii = 0
+        while ii < len(self.ens_data) - payloadsize - 32 - 4:
+            if self.ens_data[ii : ii + 16] == DELIMITER:
+                ensemble_starts.append(ii)
+                ensemble_lengths.append(payloadsize + 32 + 4)
 
-                    # Increment by payload size, plus header plus checksum
-                    ii += payloadsize + 32 + 4
-                else:
-                    print("Data format bad")
-                    break
+                # Increment by payload size, plus header plus checksum
+                ii += payloadsize + 32 + 4
+            else:
+                print("Data format bad")
+                break
 
-                # Get payload size of next ensemble
-                payloadsize = int.from_bytes(data[ii + 24 : ii + 27], "little")
+            # Get payload size of next ensemble
+            payloadsize = int.from_bytes(self.ens_data[ii + 24 : ii + 27], "little")
 
-        return ensemble_starts, ensemble_lengths, data
+        return ensemble_starts, ensemble_lengths
 
-    def read_rtb_ensemble(self, N=0):
-        """
-        Read one ensemble from a RTB .ENS file.
+    def get_chunks(self, ens_file_path):
+        #### FIXME
 
-        Parameters
-        ----------
-        file_path : str
-            Name and path of the RTB file.
-        N : int
-            Index value of the ensemble to read.
+        # Get the total file size to keep track of total bytes read and show progress
+        file_size = os.path.getsize(ens_file_path)  # NOTE use path
+        bytes_read = 0
 
-        Returns
-        -------
-        rti_python.Ensemble.Ensemble
-            Ensemble data object.
+        # Create a buffer
+        buff = bytes()
 
-        """
-        ensemble_starts, ensemble_lengths, data = index_rtb_data(self.filename)
+        with open(ens_file_path, "rb") as f:
 
-        chunk = data[ensemble_starts[N] : ensemble_starts[N] + ensemble_lengths[N]]
-        if BinaryCodec.verify_ens_data(chunk):
-            ens = BinaryCodec.decode_data_sets(chunk)
-        else:
-            ens = []
+            # Read in the file
+            # for chunk in iter(lambda: f.read(4096), b''):
+            #    self.adcp_codec.add(chunk)
 
-        return ens
+            data = f.read(BLOCK_SIZE)  # Read in data
+
+            # Keep track of bytes read
+            bytes_read += BLOCK_SIZE
+            self.file_progress(bytes_read, file_size, ens_file_path)
+
+            while data:  # Verify data was found
+                buff += data  # Accumulate the buffer
+                if DELIMITER in buff:  # Check for the delimiter
+                    chunks = buff.split(
+                        DELIMITER
+                    )  # If delimiter found, split to get the remaining buffer data
+                    buff = chunks.pop()  # Put the remaining data back in the buffer
+
+                    for chunk in chunks:  # Take out the ens data
+                        self.process_playback_ens(
+                            DELIMITER + chunk
+                        )  # Process the binary ensemble data
+
+                data = f.read(BLOCK_SIZE)  # Read the next batch of data
+
+                # Keep track of bytes read
+                bytes_read += BLOCK_SIZE
+                # self.file_progress(bytes_read, file_size, ens_file_path)
+                self.file_progress(BLOCK_SIZE, file_size, ens_file_path)
 
     @staticmethod
     def _beam_angle(serial_number):
         """"""
+
         if serial_number[1] in "12345678DEFGbcdefghi":
             return 20
         elif serial_number[1] in "OPQRST":
@@ -344,221 +390,46 @@ class RtiReader:
         elif "9ABCUVWXYZ":
             return 0
         else:
-            print("Could not determine beam angle. FIXME")
+            print("Could not determine beam angle.")
             return None
 
     @staticmethod
-    def concatenate_files_bunch(bunch_list):
+    def concatenate_files_bunch(bunches):
         """"""
         pd = Bunch()
-        b0 = bunch_list[0]
+        b0 = bunches[0]
         pd.dep = b0.dep
+        for bunch in bunches:
+            dep_diff = (bunch.dep - b0.dep).mean()
+            if dep_diff != 0:
+                print(
+                    f"There is {dep_diff} m difference between the first file {b0.filename} and {bunch.filename} bin depths."
+                )
         for k in b0:
             if k == "dep" or not isinstance(b0[k], np.ndarray):
                 pd[k] = b0[k]
-            chunks = [p[k] for p in bunch_list]
-            pd[k] = np.concatenate(chunks)
-
-
-##### FUNCTIONS BELOW ARE NOT YET USED #####
-def bine2center(bin_edge):
-    """
-    Get bin centers from bin edges.
-
-    Bin centers can be irregularly spaced. Edges are halfway between
-    one point and the next.
-
-    Parameters
-    ----------
-    bine : 1D array
-        Bin edges.
-
-    Returns
-    -------
-    1D array
-        Bin centers.
-
-    See Also
-    --------
-
-       * convert.binc2edge
-    """
-    return bin_edge[:-1] + np.diff(bin_edge) / 2
-
-
-def binc2edge(z):
-    """
-    Get bin edges from bin centers.
-
-    Bin centers can be irregularly spaced. Edges are halfway between
-    one point and the next.
-
-    Parameters
-    ----------
-    z : numpy.array, pandas.DatetimeIndex, pandas.Series
-        Bin centers.
-
-    Returns
-    -------
-    numpy.array, pandas.DatetimeIndex, pandas.Series
-        Bin edges.
-
-    See Also
-    --------
-
-       * convert.bine2center
-
-    """
-    if type(z) is pds.core.indexes.datetimes.DatetimeIndex:
-        TIME = pds.Series(z)
-        DT = TIME.diff()[1:].reset_index(drop=True)
-
-        # Extend time vector
-        TIME = TIME.append(TIME.take([-1])).reset_index(drop=True)
-
-        # Make offset pandas series
-        OS = pds.concat(
-            (
-                -0.5 * pds.Series(DT.take([0])),
-                -0.5 * DT,
-                0.5 * pds.Series(DT.take([-1])),
-            )
-        ).reset_index(drop=True)
-
-        # Make bin edge vector
-        EDGES = TIME + OS
-    elif type(z) is pds.core.series.Series:
-        DT = z.diff()[1:].reset_index(drop=True)
-
-        # Extend time vector
-        z = z.append(z.take([-1])).reset_index(drop=True)
-
-        # Make offset pandas series
-        OS = pds.concat(
-            (
-                -0.5 * pds.Series(DT.take([0])),
-                -0.5 * DT,
-                0.5 * pds.Series(DT.take([-1])),
-            )
-        ).reset_index(drop=True)
-
-        # Make bin edge vector
-        EDGES = z + OS
-    else:
-        dz = np.diff(z)
-        EDGES = np.r_[z[0] - dz[0] / 2, z[1:] - dz / 2, z[-1] + dz[-1] / 2]
-
-    return EDGES
-
-
-def xr_bin(dataset, dim, bins, centers=True, func=np.nanmean):
-    """
-    Bin dataset along `dim`.
-
-    Convenience wrapper for the groupby_bins xarray method. Meant for
-    simply binning xarray `dataset` to the values of dimension `dim`, and
-    return values at bin centers (or edges) `bins`.
-
-    Parameters
-    ----------
-    dataset : xarray.Dataset or xarray.DataArray
-        Dataset to operate on.
-    dim: str
-        Name of dimension along which to bin.
-    bins: array_like
-        Bin centers or edges if `centers` is False.
-    centers: bool
-        Parameter `bins` is the centers, otherwise it is the edges.
-    func: Object
-        Function used to reduce bin groups.
-
-    Returns
-    -------
-    xarray.Dataset
-        Dataset binned at `binc` along `dim`.
-    """
-    # Bin type management
-    if centers:
-        edge = binc2edge(bins)
-        labels = bins
-    else:
-        edge = bins
-        labels = bine2center(bins)
-
-    # Skip for compatibility with DataArray
-    if isinstance(dataset, xr.core.dataset.Dataset):
-        # Save dimension orders for each variable
-        dim_dict = dict()
-        for key in dataset.keys():
-            dim_dict[key] = dataset[key].dims
-
-        # Save dataset attributes
-        attributes = dataset.attrs
-
-        # Save variable attributes
-        var_attributes = dict()
-        for v in dataset.data_vars:
-            var_attributes[v] = dataset[v].attrs
-
-        # Save variable attributes
-        coord_attributes = dict()
-        for c in dataset.coords:
-            coord_attributes[c] = dataset[c].attrs
-
-    # Avoids printing mean of empty slice warning
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", category=RuntimeWarning)
-
-        # Bin reduction
-        output = (
-            dataset.groupby_bins(dataset[dim], bins=edge, labels=labels)
-            .reduce(func, dim=dim)
-            .rename({dim + "_bins": dim})
-        )
-
-    # Skip for compatibility with DataArray
-    if isinstance(dataset, xr.core.dataset.Dataset):
-        # Restore dataset attributes
-        output.attrs = attributes
-
-        # Restore variable
-        for v in output.data_vars:
-            output[v].attrs = var_attributes[v]
-
-        # Restore variable
-        for c in output.coords:
-            output[c].attrs = coord_attributes[c]
-
-        # Restore dimension order to each variable
-        for key, dim_tuple in dim_dict.items():
-            if dim not in dim_tuple:
-                output[key] = dataset[key]
             else:
-                output[key] = output[key].transpose(*dim_tuple)
+                chunks = [p[k] for p in bunches]
+                pd[k] = np.concatenate(chunks)
 
-    return output
+        return pd
 
 
-def xr_unique(dataset, dim):
+def datetimes2dday(datetimes: List[Type[datetime]], yearbase: int = None):
+    """Convert sequence of datetime to an array of dday since yearbase
+
+    If yearbase is none, default to the year of the first datetime.
     """
-        Remove duplicates along dimension `dim`.
+    yearbase = yearbase if yearbase else datetimes[0].year
 
-    Parameters
-    ----------
-    dataset : xarray.Dataset
-        Dataset to operate on.
-    dim : str
-        Name of dimension to operate along.
-
-    Returns
-    -------
-    xarray.Dataset
-        Dataset with duplicates removed along `dim`.
-    """
-    _, index = np.unique(dataset[dim], return_index=True)
-    return dataset.isel({dim: index})
+    return (
+        np.array([(t - datetime(yearbase, 1, 1)).total_seconds() for t in datetimes])
+        * 1
+        / (3600 * 24)
+    )
 
 
 if __name__ == "__main__":
-    fn = "../../test/files/rowetech_seawatch.ens"
-    data = RtiReader(fn).read()
+    #    fn = "../../test/files/rowetech_seawatch.ens"
+    fn = "../../test/files/"
+    data = RtiReader([fn + "rowetech_seawatch.ens"]).read()

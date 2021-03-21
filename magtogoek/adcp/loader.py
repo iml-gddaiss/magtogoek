@@ -415,19 +415,30 @@ def coordsystem2earth(data: tp.Type[Bunch], orientation: str):
     -------
     ValueError :
         coordinates system no recognized.
+
+    Notes:
+    ------
+    Move the prints outside
     """
 
     if data.trans.coordsystem not in ["beam", "xyz"]:
-        CoordinateSystemError(
-            f"coordsystem value of {data.sysconfig.coordsystem} not recognized. Conversion to enu not available."
+        print(
+            f"Coordsystem value of {data.sysconfig.coordsystem} not recognized. Conversion to enu not available."
         )
+
     beam_pattern = "convex" if data.sysconfig.convex else "concave"
+
     xyze, xyze_bt = data.vel.data, data.bt_vel.data
 
     if data.trans.coordsystem == "beam":
-        trans = transform.Transform(angle=data.sysconfig.angle, geometry=beam_pattern)
-        xyze = trans.beam_to_xyz(data.vel.data)
-        bt_xyze = trans.beam_to_xyz(data.bt_vel.data)
+        if data.sysconfig.angle:
+            trans = transform.Transform(
+                angle=data.sysconfig.angle, geometry=beam_pattern
+            )
+            xyze = trans.beam_to_xyz(data.vel.data)
+            bt_xyze = trans.beam_to_xyz(data.bt_vel.data)
+        else:
+            print("Beam angle missing. Could not convert from beam coordinate.")
 
     if (data.heading == 0).all() or (data.roll == 0).all() or (data.pitch == 0).all():
         data.trans["coordsystem"] = "xyz"
