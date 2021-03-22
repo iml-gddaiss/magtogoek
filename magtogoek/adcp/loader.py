@@ -61,7 +61,7 @@ from nptyping import NDArray
 from pycurrents.adcp import rdiraw, transform
 from pycurrents.adcp.rdiraw import Bunch, Multiread, rawfile
 
-# This is to prevent pycurrents from printing error.
+# This is to prevent pycurrents from printing warnings.
 logging.getLogger(rdiraw.__name__).setLevel("CRITICAL")
 
 

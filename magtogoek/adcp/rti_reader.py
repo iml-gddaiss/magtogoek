@@ -1,21 +1,32 @@
 """
-Basicaly all from jeanlucshaw.
+RTI readers for Rowetech ENS files based on rti_tools by jeanlucshaw and rti_python.
+
+Uses rti_python Ensemble and Codecs to read and decode data. The data are then loaded in a
+`Bunch` object taken from pycurrents. This allows us to use to same loader from RDI and RTI data.
+
+Usage:
+data = RtiReader(filenames).read()
+filenames: path/to/filename or list(path/to/filenames) or path/to/regex.
+
 """
 
-import warnings
+import logging
 from datetime import datetime
 from multiprocessing import Pool, cpu_count
 from pathlib import Path
 from typing import Dict, List, Tuple, Type
 
 import numpy as np
-import pandas as pd  # func not used
-import xarray as xr  # func not used
 from rti_python.Codecs.BinaryCodec import BinaryCodec
 from rti_python.Ensemble.EnsembleData import *
 from scipy.constants import convert_temperature
+from scipy.interpolate import griddata
 from scipy.stats import circmean
 from tqdm import tqdm
+
+
+class EnsFileError(Exception):
+    pass
 
 
 # Bunch Class was copied from UHDAS pycurrents.adcp.rdiraw
@@ -52,12 +63,6 @@ class Bunch(dict):
             self["%s%d" % (var, i + 1)] = self[var][..., i]
 
 
-# --------------------CONSTANTS------------------------- #
-DELIMITER = b"\x80" * 16
-BLOCK_SIZE = 4096
-# ------------------------------------------------------ #
-
-
 class RtiReader:
     def __init__(self, filenames: Tuple[str, List]):
         """
@@ -86,23 +91,20 @@ class RtiReader:
         return a Bunch object with the read data."""
         bunch_list = []
         for filename in self.filenames:
-            bunch_list.append(self.read_file(filename))
+            self.ens_file_path = filename
+            bunch_list.append(self.read_file())
 
         data = self.concatenate_files_bunch(bunch_list)
-        data["dday"] = datetimes2dday(data["datetime"])
-        # ["rawnav"]["Lon1_BAM4"] * 180.0 / 2 ** 31
-        # TODO interp lon, lat and convert #
-        # adds fill values for velocities -32768.0
 
         return data
 
-    def read_file(self, filename: str) -> Type[Bunch]:
+    def read_file(self) -> Type[Bunch]:
         """Read data from one RTB .ENS file put them into a Bunch object
 
         Parameters
         ----------
-        filename
-            path/to/filename
+        ens_file_path
+            path/to/ens_file_path
 
         Returns
         -------
@@ -110,22 +112,14 @@ class RtiReader:
             bunch with the read data.
 
         """
-        # error with ENS from IML4
-        # read the binary data
-        with open(filename, "rb") as df:
-            self.ens_data = df.read()
-        self.ens_index, self.ens_lenght = self.index_ens_data()
 
-        first_chunk = self.ens_data[
-            self.ens_index[0] : self.ens_index[0] + self.ens_lenght[0]
-        ]
-        if BinaryCodec.verify_ens_data(first_chunk):
-            ens = BinaryCodec.decode_data_sets(first_chunk)
+        self.get_chunks()
+        ens = BinaryCodec.decode_data_sets(self.chunk_list[0][1])
 
         # Get coordinate sizes
         ppd = Bunch()
-        ppd.filename = filename
-        ppd.ens_count = len(self.ens_index)
+        ppd.filename = Path(self.ens_file_path).name
+        ppd.ens_count = len(self.chunk_list)
         ppd.nbin = ens.EnsembleData.NumBins
         ppd.CellSize = ens.AncillaryData.BinSize
         ppd.Bin1Dist = ens.AncillaryData.FirstBinRange
@@ -157,19 +151,63 @@ class RtiReader:
         mean_roll = circmean(np.radians(ppd.roll))
         ppd.sysconfig["up"] = True if abs(mean_roll) < np.radians(30) else False
 
-        # Roll near zero means downwards (like RDI)
-        ppd.roll = ppd.roll + 180
-        ppd.roll[ppd.roll > 180] -= 360
-
         # Determine bin depths
         if ppd.sysconfig["up"] is True:
             ppd.dep = np.asarray(np.median(ppd.XducerDepth) - ppd.dep).round(2)
         else:
             ppd.dep = np.asarray(np.median(ppd.XducerDepth) + ppd.dep).round(2)
 
+        # Roll near zero means downwards (like RDI)
+        ppd.roll = ppd.roll + 180
+        ppd.roll[ppd.roll > 180] -= 360
+
+        ppd.dday = datetimes2dday(ppd["datetime"])
+
+        if "gps_datetime" in ppd:
+            ppd.rawnav = self.format_rawnav(ppd)
+
         return ppd
 
-    def read_chunks(self):
+    def get_chunks(self) -> List[Tuple[int, bytes]]:
+        """Read the binary ens file and find the split it in chunk(ping)
+
+        Returns list[(chunk_idx, chunk)]
+
+        """
+
+        # RTB ensemble delimiter
+        DELIMITER = b"\x80" * 16
+        BLOCK_SIZE = 4096
+        buff = bytes()
+        ii = 0
+        self.chunk_list = []
+
+        with open(self.ens_file_path, "rb") as f:
+
+            data = f.read(BLOCK_SIZE)
+
+            while data:
+                buff += data
+                if DELIMITER in buff:
+                    chunks = buff.split(DELIMITER)
+                    buff = chunks.pop()
+                    for chunk in chunks:
+                        if BinaryCodec.verify_ens_data(DELIMITER + chunk):
+                            self.chunk_list.append((ii, DELIMITER + chunk))
+                            ii += 1
+
+                data = f.read(BLOCK_SIZE)
+
+            if BinaryCodec.verify_ens_data(buff):
+                self.chunk_list.append((ii, DELIMITER + buff))
+                ii += 1
+
+        self.number_of_chunks = ii
+
+        if len(self.chunk_list) == 0:
+            raise EnsFileError("No good chunk found")
+
+    def read_chunks(self) -> Type[Bunch]:
         """Read the chunks in multple process
         Notes:
         ------
@@ -177,20 +215,6 @@ class RtiReader:
         (~5s total) 4000 chunks. Exiting the process to ouput progress could time consuming
         for bigger files.
         """
-        # cutting the file in chunks and putting them in a list
-        chunk_list = []
-        for ii in range(len(self.ens_index)):
-            chunk_list.append(
-                (
-                    ii,
-                    self.ens_data[
-                        self.ens_index[ii] : self.ens_index[ii] + self.ens_lenght[ii]
-                    ],
-                )
-            )
-        # free some memory
-        del self.ens_data, self.ens_index, self.ens_lenght
-
         # spliting the reading workload on multiple cpu
         number_of_cpu = cpu_count() - 1
 
@@ -198,11 +222,11 @@ class RtiReader:
         time0 = datetime.now()
 
         with Pool(number_of_cpu) as p:  # test
-            self.data_list = p.starmap(self.decode_chunk, tqdm(chunk_list))  # test
+            self.data_list = p.starmap(self.decode_chunk, tqdm(self.chunk_list))  # test
 
         time1 = datetime.now()
         print(
-            len(chunk_list),
+            len(self.chunk_list),
             " chuncks read in",
             round((time1 - time0).total_seconds(), 3),
             "s",
@@ -215,9 +239,14 @@ class RtiReader:
         # Merging bunches into a single one.
         # Splitting beam data into new individual variable e.g. vel -> vel1,...,vel4
         ppd = Bunch()
+
         for k in self.data_list[0]:
             chunks = [p[k] for p in self.data_list]
             ppd[k] = np.stack(chunks, axis=0)
+
+            if k == "vel":
+                #  change de vel fill values to the once used by teledyne.
+                ppd.vel[ppd.vel == 88.88800048828125] = -32768.0
 
             if ppd[k].ndim == 3:
                 ppd.split(k)
@@ -225,7 +254,7 @@ class RtiReader:
         return ppd
 
     @staticmethod
-    def decode_chunk(ii: int, chunk: str):
+    def decode_chunk(ii: int, chunk: str) -> Type[Bunch]:
         """Read single chunk of data.
 
         Parameters:
@@ -291,92 +320,6 @@ class RtiReader:
 
         return ii, ppd
 
-    def index_ens_data(self):
-        """
-        Read binary as byte stream. Find ensemble locations and sizes.
-
-        Parameters
-        ----------
-        file_path : str
-            File path and name.
-
-        Returns
-        -------
-        1D array
-            Ensemble start index values.
-        1D array
-            Ensemble data lengths.
-        1D array
-            Data as byte stream.
-
-        """
-
-        ensemble_starts = []
-        ensemble_lengths = []
-
-        # Get payload size of first ensemble
-        payloadsize = int.from_bytes(self.ens_data[24:27], "little")
-
-        # Get individual ensemble starts and lengths
-        ii = 0
-        while ii < len(self.ens_data) - payloadsize - 32 - 4:
-            if self.ens_data[ii : ii + 16] == DELIMITER:
-                ensemble_starts.append(ii)
-                ensemble_lengths.append(payloadsize + 32 + 4)
-
-                # Increment by payload size, plus header plus checksum
-                ii += payloadsize + 32 + 4
-            else:
-                print("Data format bad")
-                break
-
-            # Get payload size of next ensemble
-            payloadsize = int.from_bytes(self.ens_data[ii + 24 : ii + 27], "little")
-
-        return ensemble_starts, ensemble_lengths
-
-    def get_chunks(self, ens_file_path):
-        #### FIXME
-
-        # Get the total file size to keep track of total bytes read and show progress
-        file_size = os.path.getsize(ens_file_path)  # NOTE use path
-        bytes_read = 0
-
-        # Create a buffer
-        buff = bytes()
-
-        with open(ens_file_path, "rb") as f:
-
-            # Read in the file
-            # for chunk in iter(lambda: f.read(4096), b''):
-            #    self.adcp_codec.add(chunk)
-
-            data = f.read(BLOCK_SIZE)  # Read in data
-
-            # Keep track of bytes read
-            bytes_read += BLOCK_SIZE
-            self.file_progress(bytes_read, file_size, ens_file_path)
-
-            while data:  # Verify data was found
-                buff += data  # Accumulate the buffer
-                if DELIMITER in buff:  # Check for the delimiter
-                    chunks = buff.split(
-                        DELIMITER
-                    )  # If delimiter found, split to get the remaining buffer data
-                    buff = chunks.pop()  # Put the remaining data back in the buffer
-
-                    for chunk in chunks:  # Take out the ens data
-                        self.process_playback_ens(
-                            DELIMITER + chunk
-                        )  # Process the binary ensemble data
-
-                data = f.read(BLOCK_SIZE)  # Read the next batch of data
-
-                # Keep track of bytes read
-                bytes_read += BLOCK_SIZE
-                # self.file_progress(bytes_read, file_size, ens_file_path)
-                self.file_progress(BLOCK_SIZE, file_size, ens_file_path)
-
     @staticmethod
     def _beam_angle(serial_number):
         """"""
@@ -392,6 +335,18 @@ class RtiReader:
         else:
             print("Could not determine beam angle.")
             return None
+
+    @staticmethod
+    def format_rawnav(data: Type[Bunch]) -> Dict:
+        """Interp lon, lat on adcp dday, and format to pyccurents rawnav."""
+
+        gps_dday = datetimes2dday(data.gsp_datetime)
+
+        rawnav = dict(
+            Lon1_BAM4=griddata(gps_dday, data.longitude, data.dday) / (180.0 / 2 ** 31),
+            Lat1_BAM4=griddata(gps_dday, data.latitude, data.dday) / (180.0 / 2 ** 31),
+        )
+        return rawnav
 
     @staticmethod
     def concatenate_files_bunch(bunches):
@@ -430,6 +385,6 @@ def datetimes2dday(datetimes: List[Type[datetime]], yearbase: int = None):
 
 
 if __name__ == "__main__":
-    #    fn = "../../test/files/rowetech_seawatch.ens"
-    fn = "../../test/files/"
-    data = RtiReader([fn + "rowetech_seawatch.ens"]).read()
+    fp = "../../test/files/"
+    fn = "rowetech_seawatch.ens"
+    data = RtiReader(fp + fn).read()
