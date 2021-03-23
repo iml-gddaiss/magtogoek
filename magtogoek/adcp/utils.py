@@ -2,12 +2,35 @@
 Set of functions and objects used for adcp processing
 """
 import typing as tp
+from datetime import datetime
 
 import click
 import numpy as np
 import pandas as pd
-import xarray as xr
 from nptyping import NDArray
+from path import Path
+
+
+def get_files_from_expresion(filenames: tp.Tuple[str, tp.List[str]]) -> tp.List[str]:
+    """Get existing files from expression.
+
+    Returns a list of existing files.
+
+    Raises:
+    -------
+    FileNotFoundError:
+        If files does not exist, or a matching regex not found.
+    """
+    if isinstance(filenames, str):
+        p = Path(filenames)
+        if p.isfile():
+            filenames = [filenames]
+        else:
+            filenames = sorted(map(str, p.parent.glob(p.name)))
+            if len(filenames) == 0:
+                raise FileNotFoundError(f"Expression `{p}` does not match any files.")
+
+    return sorted(filenames)
 
 
 def nans(shape: tp.Tuple[list, tuple, NDArray]) -> NDArray:
@@ -15,36 +38,41 @@ def nans(shape: tp.Tuple[list, tuple, NDArray]) -> NDArray:
     return np.full(shape, np.nan)
 
 
-def magnetic_to_true(dataset: tp.Type[xr.Dataset]):
+def magnetic_to_true(
+    magnetic_longitude: NDArray, magnetic_latitude: NDArray, magnetic_declination: float
+) -> tp.Tuple[NDArray, NDArray]:
     """Covert coordiniates from magnetic to true(geographic).
 
-    The coordinates needs to be in decimal degrees and in a East(x)-North(y)
-    frame of reference. The coordinates are rotated from magnetics to true
-    using the `magnectic_declination` angle which need to be  measured in
-    the geographic frame of reference in decimal degrees.
-
-    [east_true,  = [[np.cos(x), -np.sin(x)]   [magnetic_east,
-    north_true]     [np.sin(x), np.cos(x)]] *  magnetic_north]
-
+    [true_longitude,  = [[np.cos(m_d), -np.sin(m_d)]   [magnetic_longitude,
+     true_latitude]     [np.sin(m_d), np.cos(m_d)]] *  magnetic_latitude]
 
     Parameters
     ----------
-    dataset :
-        dataset with variable lon: East coordinates measured by the ADCP.
-        dataset with variable lat: North coordinates measured by the ADCP.
-        dataset with attrs magnetic_declination.
+    longitude :
+        Decimal degrees (East)
+    latitude:
+        Decimal degress (North)
+    declination:
+        Measured in teh geogrpahic frame of reference in decimal degrees.
+
+    Returns:
+    --------
+    true_longitude:
+
+    true_latitude:
+
     """
 
     def R(angle):
         return [[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]]
 
-    angle_rad = -np.radians(dataset.attrs["magnetic_declination"])
-    dataset.lon.values, dataset.lat.values = np.split(
-        np.dot(R(angle_rad), [dataset.lon, dataset.lat]), 2
+    angle_rad = -np.radians(magnetic_declination)
+    longitude, longitude = np.split(
+        np.dot(R(angle_rad), [magnetic_longitude, magnetic_latitude]), 2
     )
 
 
-def dday_to_datetime64(dday, yearbase):
+def dday_to_datetime64(dday: tp.List, yearbase: int) -> tp.Tuple[NDArray, NDArray]:
     """Convert time recorded time to pandas time (np.datetime64[s]).
 
     Replace time coordinates with datetime64 in strftime='%Y-%m-%d %H:%M:%S'
@@ -67,37 +95,80 @@ def dday_to_datetime64(dday, yearbase):
     return time, time_string
 
 
-class Logger:
-    def __init__(self, logbook=""):
+def datetime_to_dday(
+    datetimes: tp.List[tp.Type[datetime]], yearbase: int = None
+) -> NDArray:
+    """Convert sequence of datetime to an array of dday since yearbase
 
-        self.logbook = "" + logbook
+    If yearbase is none, default to the year of the first datetime.
+    """
+    yearbase = yearbase if yearbase else datetimes[0].year
+
+    return (
+        np.array([(t - datetime(yearbase, 1, 1)).total_seconds() for t in datetimes])
+        * 1
+        / (3600 * 24)
+    )
+
+
+class Logger:
+    def __init__(self, logbook: str = "", level: int = 0):
+
+        self.logbook = logbook
         self.w_count = 0
-        self.silent = False
+        self.level = level
 
     def __repr__(self):
         return self.logbook
 
-    def section(self, msg, t=False):
+    def section(self, section: str, t: bool = False):
+        """
+        Parameters:
+        -----------
+        section:
+           Section's names.
+        t:
+           Log time if True.
+
+        """
         time = "" if t is False else " " + self._timestamp()
-        self.logbook += "[" + msg + "]" + time + "\n"
+        self.logbook += "[" + section + "]" + time + "\n"
+        click.secho(section, fg="green") if self.level < 1 else None
 
-        click.secho(msg, fg="green") if not self.silent else None
-
-    def log(self, msg, t=False):
+    def log(self, msg: str, t: bool = False):
+        """
+        Parameters:
+        -----------
+        msg:
+           Message to log.
+        t:
+           Log time if True.
+        """
         if isinstance(msg, list):
-            [self.log(m) for m in msg]
+            [self.log(m, t=t) for m in msg]
         else:
-            if not self.silent:
-                if "WARNING:" in msg:
-                    click.echo(click.style("WARNING:", fg="yellow") + msg[8:])
-                    self.w_count += 1
-                else:
-                    print(msg)
+            if self.level < 1:
+                print(msg)
             msg = msg if t is False else self._timestamp() + " " + msg
             self.logbook += " " + msg + "\n"
 
-    def silence(self, silent):
-        self.silent = silent
+    def warning(self, msg: str, t: bool = False):
+        """
+        Parameters:
+        -----------
+        msg:
+           Message to log.
+        t:
+           Log time if True.
+        """
+        if isinstance(msg, list):
+            [self.warning(m, t=t) for m in msg]
+        else:
+            if self.level < 2:
+                click.echo(click.style("WARNING:", fg="yellow") + msg)
+                self.w_count += 1
+            msg = msg if t is False else self._timestamp() + " " + msg
+            self.logbook += " " + msg + "\n"
 
     @staticmethod
     def _timestamp():
