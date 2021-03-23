@@ -3,7 +3,7 @@ RTI readers for Rowetech ENS files based on rti_tools by jeanlucshaw and rti_pyt
 Only tested on SeaWatch adcp.
 
 Uses rti_python Ensemble and Codecs to read and decode data. The data are then loaded in a
-`Bunch` object taken from pycurrents. This allows us to use to same loader from RDI and RTI data.
+`Bunch` object taken from pycurrents. This allows us to use to same loader for RDI and RTI data.
 
 Usage:
 data = RtiReader(filenames).read()
@@ -71,58 +71,98 @@ class RtiReader:
         """
         self.filenames = get_files_from_expresion(filenames)
 
-    def read(self):
+        self.DELIMITER = b"\x80" * 16  # RTB ensemble delimiter
+        self.BLOCK_SIZE = 4096  # Size of the Bytes Block Read at a time
+
+    def read(self, start_index: int = 0, stop_index: int = 0):
         """Call read_file.
         return a Bunch object with the read data."""
+
+        self.start_index = start_index
+        self.stop_index = stop_index
+        files_index = dict()
+        for filename in self.filenames:
+            ens_count = self.check_file_for_ens
+            if ens_count == 0:
+                filenames.remove(filename)
+            elif ens_count < self.start_index:
+                filenames.remove(filename)
+                self.start_index -= ens_count
+            elif ens_count > self.start_index:
+                files_index[filenames] = (self.start_index, ens_count)
+                self.start_index = 0
+
         bunch_list = []
         for filename in self.filenames:
             self.ens_file_path = filename
             self.get_ens_chunks()
-            if self.IsGoodFile:
-                bunch_list.append(self.read_file_chunks())
+            start_index, stop_index = files_index[filename]
+            self.chunk_list = self.chunk_list[start_index:stop_index]
+
+            bunch_list.append(self.read_file_chunks())
 
         data = self.concatenate_files_bunch(bunch_list)
 
         return data
 
-    def get_ens_chunks(self) -> List[Tuple[int, bytes]]:
-        """Read the binary ens file and find the split it in chunk(ping)
+    def get_ens_chunks(self):
+        """Read the binary ens file and get ensemble (chunk/ping)
 
-        Returns list[(chunk_idx, chunk)]
+        makes attributes chunk_list: List[(chunk_idx, chunk)]
 
         """
-        # RTB ensemble delimiter
-        DELIMITER = b"\x80" * 16
-        BLOCK_SIZE = 4096
         buff = bytes()
         ii = 0
         self.chunk_list = []
-        self.IsGoodFile = True
 
         with open(self.ens_file_path, "rb") as f:
 
-            data = f.read(BLOCK_SIZE)
+            data = f.read(self.BLOCK_SIZE)
 
             while data:
                 buff += data
-                if DELIMITER in buff:
-                    chunks = buff.split(DELIMITER)
+                if self.DELIMITER in buff:
+                    chunks = buff.split(self.DELIMITER)
                     buff = chunks.pop()
                     for chunk in chunks:
-                        if BinaryCodec.verify_ens_data(DELIMITER + chunk):
-                            self.chunk_list.append((ii, DELIMITER + chunk))
+                        if BinaryCodec.verify_ens_data(self.DELIMITER + chunk):
+                            self.chunk_list.append((ii, self.DELIMITER + chunk))
                             ii += 1
 
-                data = f.read(BLOCK_SIZE)
+                data = f.read(self.BLOCK_SIZE)
 
-            if BinaryCodec.verify_ens_data(buff):
-                self.chunk_list.append((ii, DELIMITER + buff))
+            # check the remaining bytes in buffer
+            if BinaryCodec.verify_ens_data(self.DELIMITER + buff):
+                self.chunk_list.append((ii, self.DELIMITER + buff))
+                ii += 1
+
+    def check_file_for_ens(self):
+        """Read the binary ens file and count the number of chunks"""
+        buff = bytes()
+        ii = 0
+
+        with open(self.ens_file_path, "rb") as f:
+
+            data = f.read(self.BLOCK_SIZE)
+
+            while data:
+                buff += data
+                if self.DELIMITER in buff:
+                    chunks = buff.split(self.DELIMITER)
+                    buff = chunks.pop()
+                    for chunk in chunks:
+                        if BinaryCodec.verify_ens_data(self.DELIMITER + chunk):
+                            ii += 1
+
+                data = f.read(self.BLOCK_SIZE)
+
+            # check the remaining bytes in buffer
+            if BinaryCodec.verify_ens_data(self.DELIMITER + buff):
                 ii += 1
 
         self.number_of_chunks = ii
 
         if len(self.chunk_list) == 0:
-            self.IsGoodFile = False
             print(f"No data found in {self.ens_file_path}")
 
     def read_file_chunks(self) -> Type[Bunch]:
@@ -234,13 +274,13 @@ class RtiReader:
             ppd[k] = np.stack(chunks, axis=0)
 
             if k == "vel":
-                #  change de vel fill values to the once used by teledyne.
+                #  change de vel fill values to the one used by teledyne.
                 ppd.vel[ppd.vel == 88.88800048828125] = -32768.0
 
             if ppd[k].ndim == 3:
                 ppd.split(k)
         if "bt_vel" in ppd:
-            #  change de vel fill values to the once used by teledyne.
+            #  change de vel fill values to the one used by teledyne.
             ppd.bt_vel[ppd.bt_vel == 88.88800048828125] = -32768.0
 
         return ppd
@@ -379,4 +419,4 @@ if __name__ == "__main__":
     fn = "rowetech_seawatch.ens"
 
     # fp0 = '/media/sf_Shared_Folder/IML4_2017_ENS/'
-    data = RtiReader(fp + "*.ens").read()
+    #    data = RtiReader(fp + "*.ens").read()
