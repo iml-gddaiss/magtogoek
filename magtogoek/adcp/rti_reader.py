@@ -26,8 +26,12 @@ from scipy.interpolate import griddata
 from scipy.stats import circmean
 from tqdm import tqdm
 
+DELIMITER = b"\x80" * 16  # RTB ensemble delimiter
+BLOCK_SIZE = 4096  # Number of bytes read at a time
+RTI_FILL_VALUE = 88.88800048828125
+RDI_FILL_VALUE = -32768.0
 
-# Bunch Class was copied from UHDAS pycurrents.adcp.rdiraw
+
 class Bunch(dict):
     """
     A dictionary that also provides access via attributes.
@@ -35,6 +39,10 @@ class Bunch(dict):
     This version is specialized for this module; see also
     the version in pycurrents.system.misc, which has extra
     methods for handling parameter sets.
+
+    Notes:
+    ------
+       Bunch Class was copied from UHDAS pycurrents.adcp.rdiraw
     """
 
     def __init__(self, *args, **kwargs):
@@ -55,6 +63,7 @@ class Bunch(dict):
         """
         Method specialized for splitting velocity etc. into
         separate arrays for each beam.
+
         """
         n = self[var].shape[-1]
         for i in range(n):
@@ -71,10 +80,14 @@ class RtiReader:
         """
         self.filenames = get_files_from_expresion(filenames)
 
-        self.DELIMITER = b"\x80" * 16  # RTB ensemble delimiter
-        self.BLOCK_SIZE = 4096  # Size of the Bytes Block Read at a time
+        self.start_index = None
+        self.stop_index = None
 
-    def read(self, start_index: int = 0, stop_index: int = 0) -> Type[Bunch]:
+        self.files_ens_count = None
+        self.files_start_stop_index = None
+        self.ens_chunks = None
+
+    def read(self, start_index: int = None, stop_index: int = None) -> Type[Bunch]:
         """Return a Bunch object with the read data.
 
         Parameters:
@@ -88,64 +101,108 @@ class RtiReader:
         Returns:
         --------
             data
+        TODO add inline comments
         """
-        if start_index < 0 or stop_index < 0:
-            raise ValueError("start and stop index must be positive int")
-        self.start_index = int(start_index)
-        self.stop_index = int(stop_index)
-        file_ens_count = []
-        for filename in self.filenames:
-            self.ens_file_path = filename
-            ens_count = self.check_file_for_ens()
-            if ens_count > 0:
-                file_ens_count.append(ens_count)
+        if start_index:
+            if start_index < 0:
+                raise ValueError("Start index must be positive int")
             else:
-                self.filenames.remove(filename)
+                self.start_index = int(start_index)
 
-        if np.sum(file_ens_count) < self.start_index:
-            raise ValueError("start_index is greater than the number of ensemble")
-        if np.sum(file_ens_count) < self.stop_index:
-            raise ValueError("stop_index is greater than the number of ensemble")
+        if stop_index:
+            if stop_index < 0:
+                raise ValueError("Stop index must be positive int")
+            else:
+                self.stop_index = int(stop_index)
 
-        start = 0
-        while self.start_index > 0:
-            for filename, ens_count in zip(self.filenames, file_ens_count):
-                if ens_count < self.start_index:
-                    self.filenames.remove(filename)
-                    self.start_index -= ens_count
-                else:
-                    start = self.start_index
-                    self.start_index = 0
-        stop = 0
-        while self.stop_index > 0:
-            for filename, ens_count in zip(
-                reversed(self.filenames), reversed(file_ens_count)
-            ):
-                if ens_count < self.stop_index:
-                    self.filenames.remove(filename)
-                    self.stop_index -= ens_count
-                else:
-                    stop = self.stop_index
-                    self.stop_index = 0
+        self.get_files_ens_count()
+        self.drop_empty_files()
 
-        if len(self.filenames) > 1:
-            bunch_list = []
-            for filename in self.filenames:
-                self.ens_file_path = filename
-                self.get_ens_chunks()
-                if filename == self.filenames[0]:
-                    self.chunk_list = self.chunk_list[start:]
-                if filename == self.filenames[-1]:
-                    self.chunk_list = self.chunk_list[: self.len(chunk_list) - stop]
+        if self.start_index:
+            if np.sum(self.files_ens_count) < self.start_index:
+                raise ValueError("Start_index is greater than the number of ensemble")
+        if self.stop_index:
+            if np.sum(self.files_ens_count) < self.stop_index:
+                raise ValueError("Stop_index is greater than the number of ensemble")
+        if self.start_index and self.stop_index:
+            if np.sum(self.files_ens_count) < self.start_index + self.stop_index:
+                raise ValueError(
+                    "Start_index + stop_index is greater than the number of ensemble"
+                )
 
-            bunch_list.append(self.read_file_chunks())
-            data = self.concatenate_files_bunch(bunch_list)
-        else:
+        self.get_file_start_stop_index()
+
+        files_bunch = []
+        for filename in self.filenames:
+            start, stop = self.files_start_stop_index[filename]
+            self.current_file = filename
             self.get_ens_chunks()
-            self.chunk_list = self.chunk_list[start : len(self.chunk_list) - stop]
-            data = self.read_file_chunks()
+            self.ens_chunks = self.ens_chunks[start:stop]
+            files_bunch.append(self.read_file())
+
+        data = self.concatenate_files_bunch(files_bunch)
 
         return data
+
+    def get_files_ens_count(self):
+        """Read each files to find the number of ensemble in each file."""
+        self.files_ens_count = []
+        for filename in self.filenames:
+            count = 0
+            with open(filename, "rb") as f:
+                data = f.read(BLOCK_SIZE)
+                while data:
+                    count += data.count(DELIMITER)
+                    data = f.read(BLOCK_SIZE)
+            self.files_ens_count.append(count)
+
+    def drop_empty_files(self):
+        """Drop the files with 0 ensemble from self.filenames"""
+        counts = np.array(self.files_ens_count)
+        for filename in np.array(self.filenames)[counts == 0]:
+            print(f"No data found in {filename}. File dropped")
+        self.filenames = np.array(self.filenames)[counts != 0].tolist()
+        self.files_ens_count = counts[counts != 0].tolist()
+
+    def get_file_start_stop_index(self):
+        """Get the start and stop index for the files
+
+        Drops files if they have less counts thant index to trims.
+
+        Takes into account multiple inputs files with varying
+        ensemble counts.
+        """
+
+        counts = np.array(self.files_ens_count)
+        cumsum = np.cumsum(counts)
+        start_index, stop_index = None, None
+        start_file, stop_file = None, None
+
+        if self.start_index:
+            # finds the first files with enough ens and the start index
+            diff_start = cumsum - self.start_index
+            start_index = counts[diff_start > 0][0] - diff_start[diff_start > 0][0]
+            start_file = np.array(self.filenames)[diff_start > 0][0]
+            # remove files with less leading ens than start_index
+            self.filenames = np.array(self.filenames)[diff_start > 0].tolist()
+
+        if self.stop_index:
+            # finds the first files with enough ens and the start index
+            diff_stop = cumsum - cumsum.max() + self.stop_index
+            stop_index = counts[diff_stop > 0][0] - diff_stop[diff_stop > 0][0] + 1
+            stop_file = np.array(self.filenames)[diff_stop > 0][0]
+            # keep files with more trailing ens than stop_index
+            self.filenames = np.array(self.filenames)[diff_stop < 0].tolist()
+            self.filenames.append(stop_file)
+
+        self.files_start_stop_index = dict()
+        for filename in self.filenames:
+            start, stop = None, None
+            if filename == start_file:
+                start = start_index
+            if filename == stop_file:
+                stop = stop_index
+            self.files_start_stop_index[filename] = (start, stop)
 
     def get_ens_chunks(self):
         """Read the binary ens file and get ensemble (chunk/ping)
@@ -155,59 +212,28 @@ class RtiReader:
         """
         buff = bytes()
         ii = 0
-        self.chunk_list = []
+        self.ens_chunks = []
 
-        with open(self.ens_file_path, "rb") as f:
-
-            data = f.read(self.BLOCK_SIZE)
-
+        with open(self.current_file, "rb") as f:
+            data = f.read(BLOCK_SIZE)
             while data:
                 buff += data
-                if self.DELIMITER in buff:
-                    chunks = buff.split(self.DELIMITER)
+                if DELIMITER in buff:
+                    chunks = buff.split(DELIMITER)
                     buff = chunks.pop()
                     for chunk in chunks:
-                        if BinaryCodec.verify_ens_data(self.DELIMITER + chunk):
-                            self.chunk_list.append((ii, self.DELIMITER + chunk))
+                        if BinaryCodec.verify_ens_data(DELIMITER + chunk):
+                            self.ens_chunks.append((ii, DELIMITER + chunk))
                             ii += 1
 
-                data = f.read(self.BLOCK_SIZE)
+                data = f.read(BLOCK_SIZE)
 
             # check the remaining bytes in buffer
-            if BinaryCodec.verify_ens_data(self.DELIMITER + buff):
-                self.chunk_list.append((ii, self.DELIMITER + buff))
+            if BinaryCodec.verify_ens_data(DELIMITER + buff):
+                self.ens_chunks.append((ii, DELIMITER + buff))
                 ii += 1
 
-    def check_file_for_ens(self) -> int:
-        """Read the binary ens file and count the number of chunks"""
-        buff = bytes()
-        ii = 0
-
-        with open(self.ens_file_path, "rb") as f:
-
-            data = f.read(self.BLOCK_SIZE)
-
-            while data:
-                buff += data
-                if self.DELIMITER in buff:
-                    chunks = buff.split(self.DELIMITER)
-                    buff = chunks.pop()
-                    for chunk in chunks:
-                        if BinaryCodec.verify_ens_data(self.DELIMITER + chunk):
-                            ii += 1
-
-                data = f.read(self.BLOCK_SIZE)
-
-            # check the remaining bytes in buffer
-            if BinaryCodec.verify_ens_data(self.DELIMITER + buff):
-                ii += 1
-
-        if ii == 0:
-            print(f"No data found in {self.ens_file_path}")
-
-        return ii
-
-    def read_file_chunks(self) -> Type[Bunch]:
+    def read_file(self) -> Type[Bunch]:
         """Read data from one RTB .ENS file put them into a Bunch object
 
         Parameters
@@ -222,12 +248,12 @@ class RtiReader:
 
         """
         # Get `static` data from the first ensemble.
-        ens = BinaryCodec.decode_data_sets(self.chunk_list[0][1])
+        ens = BinaryCodec.decode_data_sets(self.ens_chunks[0][1])
 
         # Get coordinate sizes
         ppd = Bunch()
-        ppd.filename = Path(self.ens_file_path).name
-        ppd.ens_count = len(self.chunk_list)
+        ppd.filename = Path(self.current_file).name
+        ppd.ens_count = len(self.ens_chunks)
 
         ppd.nbin = ens.EnsembleData.NumBins
         ppd.NBeams = ens.EnsembleData.NumBeams
@@ -253,7 +279,7 @@ class RtiReader:
         if ens.IsEarthVelocity:
             ppd.trans = dict(coordsystem="earth")
 
-        # reading all the chucnks.
+        # Read chunks and data of ens to ppd.
         ppd = Bunch(**ppd, **self.read_chunks())
 
         # Determine up/down configuration
@@ -278,7 +304,7 @@ class RtiReader:
         return ppd
 
     def read_chunks(self) -> Type[Bunch]:
-        """Read chunks over multple process
+        """Read and decode chunks over multple process
 
         Notes:
         ------
@@ -289,47 +315,47 @@ class RtiReader:
         # spliting the reading workload on multiple cpu
         number_of_cpu = cpu_count() - 1
 
-        print(f"Reading {self.ens_file_path}")
+        print(f"Reading {self.current_file}")
         time0 = datetime.now()
 
         with Pool(number_of_cpu) as p:  # test
-            self.data_list = p.starmap(self.decode_chunk, tqdm(self.chunk_list))  # test
+            decoded_chunks = p.starmap(self.decode_chunk, tqdm(self.ens_chunks))  # test
 
         time1 = datetime.now()
         print(
-            len(self.chunk_list),
+            len(self.ens_chunks),
             " chuncks read in",
             round((time1 - time0).total_seconds(), 3),
             "s",
         )
 
-        # sorting the data_list with the index position then droping the indx.
-        self.data_list.sort()
-        self.data_list = [data for _, data in self.data_list]
+        # sorting the decoded_chunks with the index position then droping the indx.
+        decoded_chunks.sort()
+        decoded_chunks = [data for _, data in decoded_chunks]
 
         # Merging bunches into a single one.
         # Splitting beam data into new individual variable e.g. vel -> vel1,...,vel4
         ppd = Bunch()
 
-        for k in self.data_list[0]:
-            chunks = [p[k] for p in self.data_list]
+        for k in decoded_chunks[0]:
+            chunks = [p[k] for p in decoded_chunks]
             ppd[k] = np.stack(chunks, axis=0)
 
             if k == "vel":
                 #  change de vel fill values to the one used by teledyne.
-                ppd.vel[ppd.vel == 88.88800048828125] = -32768.0
+                ppd.vel[ppd.vel == RTI_FILL_VALUE] = RDI_FILL_VALUE
 
             if ppd[k].ndim == 3:
                 ppd.split(k)
         if "bt_vel" in ppd:
             #  change de vel fill values to the one used by teledyne.
-            ppd.bt_vel[ppd.bt_vel == 88.88800048828125] = -32768.0
+            ppd.bt_vel[ppd.bt_vel == RTI_FILL_VALUE] = RDI_FILL_VALUE
 
         return ppd
 
     @staticmethod
     def decode_chunk(ii: int, chunk: str) -> Type[Bunch]:
-        """Read single chunk of data.
+        """Decode single chunk of data.
 
         Parameters:
         -----------
@@ -461,4 +487,4 @@ if __name__ == "__main__":
     fn = "rowetech_seawatch.ens"
 
     # fp0 = '/media/sf_Shared_Folder/IML4_2017_ENS/'
-    data = RtiReader(fp + "*.ens").read(start_index=0, stop_index=4000)
+    data = RtiReader(fp + "*.ens").read(start_index=10, stop_index=20)
