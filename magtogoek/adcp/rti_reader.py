@@ -74,34 +74,76 @@ class RtiReader:
         self.DELIMITER = b"\x80" * 16  # RTB ensemble delimiter
         self.BLOCK_SIZE = 4096  # Size of the Bytes Block Read at a time
 
-    def read(self, start_index: int = 0, stop_index: int = 0):
-        """Call read_file.
-        return a Bunch object with the read data."""
+    def read(self, start_index: int = 0, stop_index: int = 0) -> Type[Bunch]:
+        """Return a Bunch object with the read data.
 
-        self.start_index = start_index
-        self.stop_index = stop_index
-        files_index = dict()
-        for filename in self.filenames:
-            ens_count = self.check_file_for_ens
-            if ens_count == 0:
-                filenames.remove(filename)
-            elif ens_count < self.start_index:
-                filenames.remove(filename)
-                self.start_index -= ens_count
-            elif ens_count > self.start_index:
-                files_index[filenames] = (self.start_index, ens_count)
-                self.start_index = 0
+        Parameters:
+        -----------
+        start_index:
+           Trim leading chunks by start_index.
 
-        bunch_list = []
+        stop_index:
+           Trim trailling chunks by stop_index.
+
+        Returns:
+        --------
+            data
+        """
+        if start_index < 0 or stop_index < 0:
+            raise ValueError("start and stop index must be positive int")
+        self.start_index = int(start_index)
+        self.stop_index = int(stop_index)
+        file_ens_count = []
         for filename in self.filenames:
             self.ens_file_path = filename
-            self.get_ens_chunks()
-            start_index, stop_index = files_index[filename]
-            self.chunk_list = self.chunk_list[start_index:stop_index]
+            ens_count = self.check_file_for_ens()
+            if ens_count > 0:
+                file_ens_count.append(ens_count)
+            else:
+                self.filenames.remove(filename)
+
+        if np.sum(file_ens_count) < self.start_index:
+            raise ValueError("start_index is greater than the number of ensemble")
+        if np.sum(file_ens_count) < self.stop_index:
+            raise ValueError("stop_index is greater than the number of ensemble")
+
+        start = 0
+        while self.start_index > 0:
+            for filename, ens_count in zip(self.filenames, file_ens_count):
+                if ens_count < self.start_index:
+                    self.filenames.remove(filename)
+                    self.start_index -= ens_count
+                else:
+                    start = self.start_index
+                    self.start_index = 0
+        stop = 0
+        while self.stop_index > 0:
+            for filename, ens_count in zip(
+                reversed(self.filenames), reversed(file_ens_count)
+            ):
+                if ens_count < self.stop_index:
+                    self.filenames.remove(filename)
+                    self.stop_index -= ens_count
+                else:
+                    stop = self.stop_index
+                    self.stop_index = 0
+
+        if len(self.filenames) > 1:
+            bunch_list = []
+            for filename in self.filenames:
+                self.ens_file_path = filename
+                self.get_ens_chunks()
+                if filename == self.filenames[0]:
+                    self.chunk_list = self.chunk_list[start:]
+                if filename == self.filenames[-1]:
+                    self.chunk_list = self.chunk_list[: self.len(chunk_list) - stop]
 
             bunch_list.append(self.read_file_chunks())
-
-        data = self.concatenate_files_bunch(bunch_list)
+            data = self.concatenate_files_bunch(bunch_list)
+        else:
+            self.get_ens_chunks()
+            self.chunk_list = self.chunk_list[start : len(self.chunk_list) - stop]
+            data = self.read_file_chunks()
 
         return data
 
@@ -136,7 +178,7 @@ class RtiReader:
                 self.chunk_list.append((ii, self.DELIMITER + buff))
                 ii += 1
 
-    def check_file_for_ens(self):
+    def check_file_for_ens(self) -> int:
         """Read the binary ens file and count the number of chunks"""
         buff = bytes()
         ii = 0
@@ -160,10 +202,10 @@ class RtiReader:
             if BinaryCodec.verify_ens_data(self.DELIMITER + buff):
                 ii += 1
 
-        self.number_of_chunks = ii
-
-        if len(self.chunk_list) == 0:
+        if ii == 0:
             print(f"No data found in {self.ens_file_path}")
+
+        return ii
 
     def read_file_chunks(self) -> Type[Bunch]:
         """Read data from one RTB .ENS file put them into a Bunch object
@@ -419,4 +461,4 @@ if __name__ == "__main__":
     fn = "rowetech_seawatch.ens"
 
     # fp0 = '/media/sf_Shared_Folder/IML4_2017_ENS/'
-    #    data = RtiReader(fp + "*.ens").read()
+    data = RtiReader(fp + "*.ens").read(start_index=0, stop_index=4000)
