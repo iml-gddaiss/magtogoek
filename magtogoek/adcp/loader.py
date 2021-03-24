@@ -16,6 +16,10 @@ RTI data re read using Magtogoek rti_reader built from rti_python tools by RoweT
 -Rowtech files can also be exporter directly to Teledyne `PD0` formats and read by pycurrnets
 using 'sw_pd0' for sonar.
 
+Notes:
+-----
+    Orientation is taken from the first profile of the first file
+    if not no value is pass.
 
 See Also
 --------
@@ -52,12 +56,19 @@ def load_adcp_binary(
     filenames: tp.Tuple[str, tp.List[str]],
     sonar: str,
     yearbase: int,
-    orientation: str,
+    orientation: str = None,
     sensor_depth: float = None,
+    leading_index: int = None,
+    trailing_index: int = None,
 ):
     """Load RDI and RTI adcp data.
 
     Return a dataset with the ADCP data loaded.
+
+    Notes:
+    -----
+    Orientation is taken from the first profile of the first file
+    if not no value is pass.
 
     Parameters
     ----------
@@ -68,7 +79,8 @@ def load_adcp_binary(
     yearbase:
         year that the sampling begun.
     orientation:
-        Adcp orientation. Either `up` or `down`
+        Adcp orientation. Either `up` or `down`. Will overwrite the value
+        of the binary file.
     sensor_depth:
         Depth of the ADCP. Use to compare with XducerDeppth median
     Returns
@@ -83,12 +95,11 @@ def load_adcp_binary(
 
     if sonar == "sv":
         l.warning(
-            [
-                "(from pycurrents) The SV support is under development.  Missing features:",
-                "        - The 0x7000-0x7004 IDs are not being parsed and stored.",
-                "        - The `Fixed Leader` can change within a file",
-                "        - See pycurrents.adcp.rdiraw module for for information",
-            ]
+            """(from pycurrents)
+- The SV support is under development.  Missing features:
+- The 0x7000-0x7004 IDs are not being parsed and stored.
+- The `Fixed Leader` can change within a file
+- See pycurrents.adcp.rdiraw module for for information"""
         )
 
     # ------------------------ #
@@ -96,33 +107,58 @@ def load_adcp_binary(
     # ------------------------ #
     if sonar == "sw":
         l.log(
-            "RTI ens files:" + "\n-".join([p.name for p in list(map(Path, filenames))])
+            "RTI ens files:\n-"
+            + "\n-".join([p.name for p in list(map(Path, filenames))])
         )
-        data = RtiReader(filenames=filenames).read()
+        data = RtiReader(filenames=filenames).read(
+            start_index=leading_index, stop_index=trailing_index
+        )
+        if not orientation:
+            orientation = "up" if data.sysconfig["up"] else "down"
+        else:
+            if orientation != ("up" if data.sysconfig["up"] else "down"):
+                l.warning(
+                    "The adcp orientation does not match the one found in the binary files."
+                )
 
     elif sonar in ["wh", "sv", "os", "sw_pd0"]:
         if sonar == "sw_pd0":
             sonar = "wh"
             l.log(
-                "RTI pd0 files:"
+                "RTI pd0 files:\n-"
                 + "\n-".join([p.name for p in list(map(Path, filenames))])
             )
         else:
             l.log(
-                "RDI pd0 files:"
+                "RDI pd0 files:\n-"
                 + "\n-".join([p.name for p in list(map(Path, filenames))])
             )
+        if trailing_index:
+            trailing_index = -trailing_index
 
         # Reading the files FixedLeaders to check for invalid config.
         invalid_config_count = check_PD0_invalid_config(
-            filenames=filenames, sonar=sonar, yearbase=yearbase
+            filenames=filenames,
+            sonar=sonar,
+            yearbase=yearbase,
+            leading_index=leading_index,
+            trailing_index=trailing_index,
         )
         if invalid_config_count:
             l.warning(
                 f"Invalide configuration, msb=`11111111` and lsb=`11111111`, found in the SysCfg of {invalid_config_count} FixedLeader."
             )
 
-        data = Multiread(fnames=filenames, sonar=sonar, yearbase=yearbase).read()
+        data = Multiread(fnames=filenames, sonar=sonar, yearbase=yearbase).read(
+            start=leading_index, stop=trailing_index
+        )
+        if not orientation:
+            orientation = "up" if data.sysconfig["up"] else "down"
+        else:
+            if orientation != ("up" if data.sysconfig["up"] else "down"):
+                l.warning(
+                    "The adcp orientation does not match the one found in the binary files."
+                )
     else:
         InvalidSonarError(
             f"{sonar} is not a valid. Valid sonar: `os`, `wh`, `sv`, `sw`, `sw_pd0` "
@@ -164,6 +200,8 @@ def load_adcp_binary(
         XducerDepth = data.XducerDepth[0]
         depth = data.dep
 
+    if (depth < 0).all():
+        l.warning("Bin depths are all negative, ADCP orientation is probably wrong.")
     # --------------------- #
     # Initating the dataset #
     # --------------------- #
@@ -428,7 +466,11 @@ def coordsystem2earth(data: tp.Type[Bunch], orientation: str):
 
 
 def check_PD0_invalid_config(
-    filenames: tp.Tuple[str, tp.List[str]], sonar: str, yearbase: int
+    filenames: tp.Tuple[str, tp.List[str]],
+    sonar: str,
+    yearbase: int,
+    leading_index: int = None,
+    trailing_index: int = None,
 ) -> tp.Tuple[int, None]:
     """Read Teledyne RDI binary FixedLeader and check for invalid config.
 
@@ -472,9 +514,11 @@ def check_PD0_invalid_config(
             .read(varlist=["FixedLeader"])
             .raw.FixedLeader
         )
+
+    syscfg = fixed_leader["SysCfg"][leading_index:trailing_index]
     invalid_cfg_count = None
-    if (fixed_leader["SysCfg"] == 2 ** 16 - 1).any():
-        invalid_cfg_count = np.sum((fixed_leader["SysCfg"] == 2 ** 16 - 1))
+    if (syscfg == 2 ** 16 - 1).any():
+        invalid_cfg_count = np.sum((syscfg == 2 ** 16 - 1))
 
     return invalid_cfg_count
 
@@ -482,65 +526,78 @@ def check_PD0_invalid_config(
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
-    ios_path = (
-        "/home/jeromejguay/ImlSpace/Projects/"
-        + "pycurrents_ADCP_processing/sample_data/"
-    )
-    ios_fns = [
-        "a1_20050503_20050504_0221m.000",
-        "a1_20160713_20170513_0480m.000",
-        "eh2_20060530_20060717_0007m.000",
-    ]
-
-    sillex_path = "/media/jeromejguay/5df6ae8c-2af4-4e5b-a1e0-a560a316bde3/home/jeromejguay/WorkSpace_2019/Data/Raw/ADCP/"
-    sillex_fns = [
-        "COR1805-ADCP-150kHz009_000001",
-        "COR1805-ADCP-150kHz009_000002",
-    ]
+    # ios_path = (
+    #      "/home/jeromejguay/ImlSpace/Projects/"
+    #       + "pycurrents_ADCP_processing/sample_data/"
+    #    )
+    # ios_fns = [
+    #      "a1_20050503_20050504_0221m.000",
+    #       "a1_20160713_20170513_0480m.000",
+    #        "eh2_20060530_20060717_0007m.000",
+    #  ]
+    #   sillex_path = "/media/jeromejguay/5df6ae8c-2af4-4e5b-a1e0-a560a316bde3/home/jeromejguay/WorkSpace_2019/Data/Raw/ADCP/"
+    #    sillex_fns = [
+    # "COR1805-ADCP-150kHz009_000001",
+    # "COR1805-ADCP-150kHz009_000002",
+    # ]
 
     v50exp = (
         "/media/jeromejguay/Bruno/TREX2020/V50/TREX2020_V50_20200911T121242_003_*.ENX"
     )
-    v100file = (
-        "/media/jeromejguay/Bruno/TREX2020/V100/TREX2020_V100_20200911T115335.pd0"
-    )
+    # v100file = (
+    #    "/media/jeromejguay/Bruno/TREX2020/V100/TREX2020_V100_20200911T115335.pd0"
+    #  )
 
     pd0_sw_path = "/home/jeromejguay/ImlSpace/Projects/magtogoek/test/files/sw_300_4beam_20deg_piston.pd0"
     ens_sw_path = (
         "/home/jeromejguay/ImlSpace/Projects/magtogoek/test/files/rowetech_seawatch.ens"
     )
 
-    files = [sillex_path + fn for fn in sillex_fns]
-    sonar = "os"
-    enr = load_adcp_binary(
-        [f + ".ENR" for f in files], sonar=sonar, yearbase=2018, orientation="down"
-    )
-    ens = load_adcp_binary(
-        [f + ".ENS" for f in files], sonar=sonar, yearbase=2018, orientation="down"
-    )
-    enx = load_adcp_binary(
-        [f + ".ENX" for f in files], sonar=sonar, yearbase=2018, orientation="down"
-    )
+    #  files = [sillex_path + fn for fn in sillex_fns]
+    # sonar = "os"
+    #  enr = load_adcp_binary(
+    #       [f + ".ENR" for f in files], sonar=sonar, yearbase=2018, orientation="down"
+    #    )
+    # ens = load_adcp_binary(
+    #      [f + ".ENS" for f in files], sonar=sonar, yearbase=2018, orientation="down"
+    #   )
+    #    enx = load_adcp_binary(
+    # [f + ".ENX" for f in files], sonar=sonar, yearbase=2018, orientation="down"
+    # )
 
-    sonar = "wh"
-    ios0 = load_adcp_binary(
-        ios_path + ios_fns[0], sonar=sonar, yearbase=2005, orientation="down"
-    )
-    ios1 = load_adcp_binary(
-        ios_path + ios_fns[1], sonar=sonar, yearbase=2016, orientation="down"
-    )
-    ios2 = load_adcp_binary(
-        ios_path + ios_fns[2], sonar=sonar, yearbase=2006, orientation="down"
-    )
+    # sonar = "wh"
+    # ios0 = load_adcp_binary(
+    # ios_path + ios_fns[0], sonar=sonar, yearbase=2005, orientation="down"
+    # )
+    # ios1 = load_adcp_binary(
+    #    ios_path + ios_fns[1], sonar=sonar, yearbase=2016, orientation="down"
+    # )
+    # ios2 = load_adcp_binary(
+    #    ios_path + ios_fns[2], sonar=sonar, yearbase=2006, orientation="down"
+    # )
 
     v50path = Path(v50exp)
     v50files = sorted(map(str, v50path.parent.rglob(v50path.name)))
     sonar = "sv"
 
-    v50 = load_adcp_binary(v50files, sonar=sonar, yearbase=2020, orientation="down")
+    v50 = load_adcp_binary(
+        v50files,
+        sonar=sonar,
+        yearbase=2020,
+        orientation="down",
+        leading_index=100,
+        trailing_index=10000,
+    )
 
-    v100 = load_adcp_binary(v100file, sonar=sonar, yearbase=2020, orientation="down")
+    # v100 = load_adcp_binary(v100file, sonar=sonar, yearbase=2020, orientation="down")
     sw_pd0 = load_adcp_binary(
         pd0_sw_path, sonar="sw_pd0", yearbase=2020, orientation="down"
     )
-    sw = load_adcp_binary(ens_sw_path, sonar="sw", yearbase=2020, orientation="down")
+    sw = load_adcp_binary(
+        ens_sw_path,
+        sonar="sw",
+        yearbase=2020,
+        orientation="down",
+        leading_index=100,
+        trailing_index=10,
+    )
