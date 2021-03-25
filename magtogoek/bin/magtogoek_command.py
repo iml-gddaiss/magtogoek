@@ -37,6 +37,7 @@ from pandas import Timestamp
 # from magtogoek.bin.configfile import make_configfile
 # from magtogoek.metadata.platforms import make_platform_template
 # from magtogoek.adcp.loader import load_adcp_binary
+# from magtogoek.adcp.utils import Logger
 # --------------------------------------------------------------- #
 
 MAGTOGOEK_VERSION = "0.0.2"
@@ -248,6 +249,7 @@ def quick_adcp(
     """Command to make an quickly process adcp files. The [OPTIONS] can be added
     before or after the [inputs_files]."""
     from magtogoek.adcp.loader import load_adcp_binary
+    from magtogoek.adcp.utils import Logger
 
     leading_index, trailing_index = None, None
     start_time, end_time = None, None
@@ -271,6 +273,7 @@ def quick_adcp(
             leading_index=leading_index,
             trailing_index=trailing_index,
         )
+        l = Logger(ds.logbook)
 
         ds = ds.sel(time=slice(start_time, end_time))
 
@@ -278,6 +281,10 @@ def quick_adcp(
             netcdf_output = _validate_filename(options["netcdf_output"], ext=".nc")
         else:
             netcdf_output = input_files[0].split(".")[0] + ".nc"
+
+        if len(ds.time) == 0:
+            l.warning(f"{netcdf_output} time dims is of lenght 0 after slicing.")
+            ds.attrs["logbook"] = l.logbook
 
         ds.to_netcdf(netcdf_output)
         print(f"netcdf file made -> {netcdf_output}")
@@ -291,13 +298,20 @@ def quick_adcp(
                 trailing_index=trailing_index,
             )
 
+            l = Logger(ds.logbook)
+
             ds = ds.sel(time=slice(start_time, end_time))
+            print(len(ds.time))
 
             if options["netcdf_output"]:
                 netcdf_output = _validate_filename(options["netcdf_output"], ext=".nc")
                 netcdf_output = netcdf_output.split(".nc")[0] + "_" + str(count) + ".nc"
             else:
                 netcdf_output = fn.split(".")[0] + ".nc"
+
+            if len(ds.time) == 0:
+                l.warning(f"{netcdf_output} time dims is of lenght 0 after slicing.")
+                ds.attrs["logbook"] = l.logbook
 
             ds.to_netcdf(netcdf_output)
             print(f"netcdf file made -> {netcdf_output}")
