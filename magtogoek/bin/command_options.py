@@ -16,15 +16,20 @@ def add_options(options):
     return _add_options
 
 
-def adcp_options():
+def adcp_options(input_files=True):
     """return shared adcp options. They can they be passe with the add option decorator"""
-    return [
-        click.option(
-            "-i",
-            "--input-files",
-            type=click.STRING,
-            help="Expression identifying adcp files",
-        ),
+    options = []
+    if input_files:
+        options += [
+            click.option(
+                "-i",
+                "--input-files",
+                type=click.STRING,
+                help="Expression identifying adcp files",
+            )
+        ]
+
+    options += [
         click.option(
             "-n",
             "--netcdf-output",
@@ -63,7 +68,7 @@ def adcp_options():
         click.option(
             "-s",
             "--sonar",
-            type=click.STRING,
+            type=click.Choice(["wh", "sv", "os", "sw", "sw_pd0"]),
             help="""String designating type of adcp. This
     is fed to CODAS Multiread or switches to the RTI
     binary reader. Must be one
@@ -86,17 +91,20 @@ def adcp_options():
         click.option(
             "-l",
             "--start-time",
-            type=click.STRING,
-            help="Remove leading data before this date. Fomart (YYYYMMDDHHMM).",
+            #  type,
+            help="""Date (YYYYMMDDTHHMMSS): Remove leading data before this date.
+    Number (int): Remove this number of profile at the start of the file.""",
             nargs=1,
+            default=None,
         ),
         click.option(
             "-t",
             "--end-time",
-            metavar="metavar test",
-            type=click.STRING,
-            help="Remove trailling data after this date. Format (YYYYMMDDHHMM).",
+            #  type
+            help="""Date (YYYYMMDDTHHMMSS): Remove trailling data after this date. 
+    Number (int): Remove this number of profile at the end of the file.""",
             nargs=1,
+            default=None,
         ),
         click.option(
             "--qc/--no-qc",
@@ -228,3 +236,4 @@ def adcp_options():
             default=True,
         ),
     ]
+    return options

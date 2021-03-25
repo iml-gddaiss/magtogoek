@@ -160,7 +160,7 @@ def load_adcp_binary(
                     "The adcp orientation does not match the one found in the binary files."
                 )
     else:
-        InvalidSonarError(
+        raise InvalidSonarError(
             f"{sonar} is not a valid. Valid sonar: `os`, `wh`, `sv`, `sw`, `sw_pd0` "
         )
 

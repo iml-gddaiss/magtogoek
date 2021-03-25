@@ -46,19 +46,9 @@ from configparser import ConfigParser
 
 from pandas import Timestamp
 
-sensor_type = "none"
-
-import getpass
-import typing as tp
-from configparser import ConfigParser
-
-from pandas import Timestamp
-
-# some default variables #
-sensor_type = "none"
-basic_dict = dict(
+BASIC_CONFIG = dict(
     HEADER={
-        "sensor_type": sensor_type,
+        "sensor_type": "none",
         "made_by": getpass.getuser(),
         "last_updated": Timestamp.now().strftime("%Y-%m-%d"),
     },
@@ -102,7 +92,7 @@ basic_dict = dict(
     },
 )
 
-adcp_config = dict(
+ADCP_CONFIG = dict(
     ADCP_PROCESSING={
         "yearbase": "",
         "adcp_orientation": "down",
@@ -186,87 +176,8 @@ def _update_config(parser: tp.Type[ConfigParser], updated_params: tp.Dict):
 
 def _get_config_default(sensor_type: str):
     """FIXME"""
-
-    basic_dict = dict(
-        HEADER={
-            "sensor_type": sensor_type,
-            "made_by": getpass.getuser(),
-            "last_updated": Timestamp.now().strftime("%Y-%m-%d"),
-        },
-        INPUT={"input_files": "", "platform_file": ""},
-        OUTPUT={"netcdf_output": "", "odf_output": ""},
-        NETCDF_CF={
-            "Conventions": "CF 1.8",
-            "title": "",
-            "institution": "",
-            "summary": "",
-            "references": "https://github.com/JeromeJGuay/magtogoek",
-            "comments": "",
-            "naming_authority": "BODC, SDC, CF, MEDS ; comment",
-        },
-        PROJECT={
-            "project": "",
-            "sea_name": "",
-            "sea_code": "",
-        },
-        CRUISE={
-            "country_institue_code": "",
-            "cruise_number": "",
-            "organization": "",
-            "chief_scientist": "",
-            "start_date": "",
-            "end_date": "",
-        },
-        GLOBAL_ATTRIBUTES={
-            "date_created": "",
-            "date_created": "",
-            "data_type": "",
-            "data_subtype": "",
-            "country_code": "",
-            "keywords": "",
-            "publisher_email": "",
-            "creator_type": "",
-            "publisher_name": "",
-            "keywords_vocabulary": "",
-            "standard_name_vocabulary": "CF v.52",
-            "aknowledgment": "",
-        },
-    )
-
-    adcp_config = dict(
-        ADCP_PROCESSING={
-            "yearbase": "",
-            "adcp_orientation": "down",
-            "sonar": "",
-            "GPS_file": "",
-        },
-        ADCP_QUALITY_CONTROL={
-            "quality_control": True,
-            "amplitude_threshold": 0,
-            "percentgood_threshold": 64,
-            "correlation_threshold": 90,
-            "horizontal_velocity_threshold": 5,
-            "vertical_velocity_threshold": 5,
-            "error_velocity_threshold": 5,
-            "side_lobe_correction": True,
-            "pitch_threshold": 20,
-            "roll_threshold": 20,
-            "trim_leading_data": "",
-            "trim_trailling_data": "",
-            "platform_motion_correction": True,
-        },
-        ADCP_OUTPUT={
-            "merge_output_file": True,
-            "bodc_name": True,
-            "drop_percent_good": True,
-            "drop_correlation": True,
-            "drop_amplitude": True,
-            "make_figures": True,
-            "make_log": True,
-        },
-    )
-
     if sensor_type == "adcp":
-        config_dict = {**basic_dict, **adcp_config}
+        config_dict = {**BASIC_CONFIG, **ADCP_CONFIG}
+    config_dict["HEADER"]["sensor_type"] = sensor_type
 
     return config_dict
