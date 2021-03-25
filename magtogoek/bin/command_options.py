@@ -1,5 +1,5 @@
 """
-TODO
+Contains different click options and the functions to add them to the click command.
 """
 
 import click
@@ -16,8 +16,17 @@ def add_options(options):
     return _add_options
 
 
-def adcp_options(input_files=True):
-    """return shared adcp options. They can they be passe with the add option decorator"""
+def adcp_options(input_files=True, yearbase=True, sonar=True):
+    """return shared adcp options. They can they be passe with the add option decorator
+    Paramters:
+    ----------
+    inputs_files:
+        Adds input_options
+    yearbase:
+        Adds yearbase
+    sonar:
+        Adds sonar
+    """
     options = []
     if input_files:
         options += [
@@ -65,21 +74,27 @@ def adcp_options(input_files=True):
     `longitude`, `latitude`, of the platform. If provided,
     they will be used instead of the GPS data in the adcp file""",
         ),
-        click.option(
-            "-s",
-            "--sonar",
-            type=click.Choice(["wh", "sv", "os", "sw", "sw_pd0"]),
-            help="""String designating type of adcp. This
-    is fed to CODAS Multiread or switches to the RTI
-    binary reader. Must be one
-    of `wh`, `os`, `bb`, `nb` or `sw`""",
-        ),
-        click.option(
-            "-y",
-            "--yearbase",
-            type=click.INT,
-            help="""year when the adcp sampling started. ex: `1970`""",
-        ),
+    ]
+    if sonar:
+        options += [
+            click.option(
+                "-s",
+                "--sonar",
+                type=click.Choice(["wh", "sv", "os", "sw", "sw_pd0"]),
+                help="""String designating type of adcp. This
+    is fed to CODAS Multiread or switches to the magtogoek RtiReader.""",
+            )
+        ]
+    if yearbase:
+        options += [
+            click.option(
+                "-y",
+                "--yearbase",
+                type=click.INT,
+                help="""year when the adcp sampling started. ex: `1970`""",
+            )
+        ]
+    options += [
         click.option(
             "-O",
             "--adcp-orientation",

@@ -4,23 +4,25 @@ date: Feb. 22, 2021
 based in part  on: https://github.com/jeanlucshaw/adcp2nc/
                    https://github.com/hhourston/pycurrents_ADCP_processign
 
+
 This script contains functions to read adcp files and load them in xarray.Dataset.
 
 RDI data are read using CODAS Multiread reader from the pycurrent pacakge. The Multiread
 reader supports .000, .ENX, .ENS, .LTA and .STA binary files.
--sonar: 'wh', 'sv', 'os'.
--Sentinel V encoding is not fully supported by pycurrent.
+- sonar: 'wh', 'sv', 'os'.
+- Sentinel V encoding is not fully supported by pycurrent.
 
 RTI data re read using Magtogoek rti_reader built from rti_python tools by RoweTech.
--sonar: 'sw'
--Rowtech files can also be exporter directly to Teledyne `PD0` formats and read by pycurrnets
+- sonar: 'sw'
+- Rowtech files can also be exporter directly to Teledyne `PD0` formats and read by pycurrnets
 using 'sw_pd0' for sonar.
 
 Notes:
 -----
-    Orientation is taken from the first profile of the first file
-    if not no value is pass.
-
+- Orientation is taken from the first profile of the first file if not no value is pass.
+- We assume that the `dep` from OS  already is the bin depth below surface.
+- pd0 Fixed_Leader are know to have invalid configuration. msb=`11111111` and lsb=`11111111`. The
+file will be processed but a warning will be raised. The cause was not investigated.
 See Also
 --------
    * pycurrents.adcp.rdiraw.Multiread
@@ -46,6 +48,12 @@ from pycurrents.adcp.rdiraw import Bunch, Multiread, rawfile
 
 # This is to prevent pycurrents from printing warnings.
 logging.getLogger(rdiraw.__name__).setLevel("CRITICAL")
+
+VEL_FILL_VALUE = -32768.0
+
+
+class FilesFormatError(Exception):
+    pass
 
 
 class InvalidSonarError(Exception):
@@ -113,14 +121,6 @@ def load_adcp_binary(
         data = RtiReader(filenames=filenames).read(
             start_index=leading_index, stop_index=trailing_index
         )
-        if not orientation:
-            orientation = "up" if data.sysconfig["up"] else "down"
-        else:
-            if orientation != ("up" if data.sysconfig["up"] else "down"):
-                l.warning(
-                    "The adcp orientation does not match the one found in the binary files."
-                )
-
     elif sonar in ["wh", "sv", "os", "sw_pd0"]:
         if sonar == "sw_pd0":
             sonar = "wh"
@@ -136,6 +136,13 @@ def load_adcp_binary(
         if trailing_index:
             trailing_index = -trailing_index
 
+        try:
+            data = Multiread(fnames=filenames, sonar=sonar, yearbase=yearbase).read(
+                start=leading_index, stop=trailing_index
+            )
+        except RuntimeError:
+            raise FilesFormatError("Not RDI pd0 file format.")
+
         # Reading the files FixedLeaders to check for invalid config.
         invalid_config_count = check_PD0_invalid_config(
             filenames=filenames,
@@ -149,21 +156,21 @@ def load_adcp_binary(
                 f"Invalide configuration, msb=`11111111` and lsb=`11111111`, found in the SysCfg of {invalid_config_count} FixedLeader."
             )
 
-        data = Multiread(fnames=filenames, sonar=sonar, yearbase=yearbase).read(
-            start=leading_index, stop=trailing_index
-        )
-        if not orientation:
-            orientation = "up" if data.sysconfig["up"] else "down"
-        else:
-            if orientation != ("up" if data.sysconfig["up"] else "down"):
-                l.warning(
-                    "The adcp orientation does not match the one found in the binary files."
-                )
     else:
         raise InvalidSonarError(
             f"{sonar} is not a valid. Valid sonar: `os`, `wh`, `sv`, `sw`, `sw_pd0` "
         )
 
+    # -------------------- #
+    # Compares orientation #
+    # -------------------- #
+    if not orientation:
+        orientation = "up" if data.sysconfig["up"] else "down"
+    else:
+        if orientation != ("up" if data.sysconfig["up"] else "down"):
+            l.warning(
+                "The adcp orientation does not match the one found in the binary files."
+            )
     # ---------------------------- #
     # Convert `dday` to datetime64 #
     # ---------------------------- #
@@ -185,7 +192,6 @@ def load_adcp_binary(
     # ----------------------------------------------------------- #
     # Convert depth relative to the ADCP to depth below surface   #
     # ----------------------------------------------------------- #
-    # We assume that for Ocean Surveillor dep output are already depth below surface.
     if sonar != "os":
         XducerDepth = np.median(data.XducerDepth)
         if sensor_depth:
@@ -202,6 +208,7 @@ def load_adcp_binary(
 
     if (depth < 0).all():
         l.warning("Bin depths are all negative, ADCP orientation is probably wrong.")
+
     # --------------------- #
     # Initating the dataset #
     # --------------------- #
@@ -224,8 +231,7 @@ def load_adcp_binary(
     # Loading the transducer data #
     # --------------------------- #
 
-    # Set velocity values of -32768.0 to nans, since -32768.0 is the automatic fill_value for pycurrents
-    data.vel[data.vel == -32768.0] = np.nan
+    data.vel[data.vel == VEL_FILL_VALUE] = np.nan  # fill
 
     ds["u"] = (["depth", "time"], np.asarray(data.vel[:, :, 0].T))
     ds["v"] = (["depth", "time"], np.asarray(data.vel[:, :, 1].T))
@@ -233,7 +239,7 @@ def load_adcp_binary(
     ds["e"] = (["depth", "time"], np.asarray(data.vel[:, :, 3].T))
 
     if sonar == "sv":
-        data.vbvel[data.vbvel == -32768.0] = np.nan
+        data.vbvel[data.vbvel == VEL_FILL_VALUE] = np.nan
         ds["vb_vel"] = (["depth", "time"], np.asarray(data.vbvel.T))
         ds["vb_corr"] = (["depth", "time"], np.asarray(data.VBCorrelation.T))
         ds["vb_amp"] = (["depth", "time"], np.asarray(data.VBIntensity.T))
@@ -243,7 +249,7 @@ def load_adcp_binary(
 
     if "bt_vel" in data:
         if not (data.bt_vel == 0).all():
-            data.bt_vel[data.bt_vel == -32768.0] = np.nan
+            data.bt_vel[data.bt_vel == VEL_FILL_VALUE] = np.nan
             ds["bt_u"] = (["time"], np.asarray(data.bt_vel[:, 0]))
             ds["bt_v"] = (["time"], np.asarray(data.bt_vel[:, 1]))
             ds["bt_w"] = (["time"], np.asarray(data.bt_vel[:, 2]))

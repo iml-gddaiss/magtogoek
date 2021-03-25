@@ -32,6 +32,10 @@ RTI_FILL_VALUE = 88.88800048828125
 RDI_FILL_VALUE = -32768.0
 
 
+class FilesFormatError(Exception):
+    pass
+
+
 class Bunch(dict):
     """
     A dictionary that also provides access via attributes.
@@ -118,6 +122,9 @@ class RtiReader:
         self.get_files_ens_count()
         self.drop_empty_files()
 
+        if len(self.filenames) == 0:
+            raise FilesFormatError("Not RTI ens files")
+
         if self.start_index:
             if np.sum(self.files_ens_count) < self.start_index:
                 raise ValueError("Start_index is greater than the number of ensemble")
@@ -147,13 +154,26 @@ class RtiReader:
     def get_files_ens_count(self):
         """Read each files to find the number of ensemble in each file."""
         self.files_ens_count = []
+        buff = bytes()
+        ii = 0
+        self.ens_chunks = []
+
         for filename in self.filenames:
             count = 0
             with open(filename, "rb") as f:
                 data = f.read(BLOCK_SIZE)
                 while data:
-                    count += data.count(DELIMITER)
+                    buff += data
+                    if DELIMITER in buff:
+                        chunks = buff.split(DELIMITER)
+                        buff = chunks.pop()
+                        for chunk in chunks:
+                            if BinaryCodec.verify_ens_data(DELIMITER + chunk):
+                                count += 1
                     data = f.read(BLOCK_SIZE)
+                # check the remaining bytes in buffer
+                if BinaryCodec.verify_ens_data(DELIMITER + buff):
+                    count += 1
             self.files_ens_count.append(count)
 
     def drop_empty_files(self):

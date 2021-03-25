@@ -2,10 +2,8 @@
 Author: JeromeJGuay
 Date: Mars 2
 
-This module contains the command line applications `mtgk`.
-TODO: change process var to sensor_type to avoid confusion
-TODO: move add_options here and to _add_options
-TODO: pathlib *.ext ? handling
+This module contains the entry point for  `mtgk`.
+
 ================================================================================
         __  ___    ____    _____ ________ ______ _____  ______ _____  __ __
        /  |/   |  / _  |  / ___//__  ___// __  // ___/ / __  //  __/ / // /
@@ -22,26 +20,25 @@ Usage:
 
     $ mtgk process [adcp, ] [CONFIG_FILE] [OPTIONS]
 
-Helps:
-    $ mtgk
+    $ mtgk quick [adcp, ] [FILE_NAME] [OPTIONS]
 
-    $ mtgk [config, process, ]
-
-    $ mtgk [config, process] [adcp, ]
 """
 
-import subprocess
 import typing as tp
 from pathlib import Path
+from subprocess import run as subp_run
 
 import click
 from magtogoek.bin.command_options import adcp_options, add_options
-from magtogoek.bin.configfile import make_configfile
-from magtogoek.metadata.platforms import make_platform_template
 from magtogoek.metadata.toolbox import json2dict
 from pandas import Timestamp
 
-### Global variable used by some of the module functions. ###
+# ---------- Module or functions imported by commands ----------- #
+# from magtogoek.bin.configfile import make_configfile
+# from magtogoek.metadata.platforms import make_platform_template
+# from magtogoek.adcp.loader import load_adcp_binary
+# --------------------------------------------------------------- #
+
 MAGTOGOEK_VERSION = "0.0.2"
 LOGO_PATH = "../files/logo.json"
 
@@ -104,7 +101,7 @@ CONTEXT_SETTINGS = dict(
 def _print_info(ctx, callback):
     """Show command information"""
     if callback:
-        subprocess.run(["printf", "\e[8;40;81t"])
+        subp_run(["printf", "\e[8;40;81t"])
         click.clear()
         _print_logo(logo_path=LOGO_PATH, group=ctx.info_name, version=MAGTOGOEK_VERSION)
         click.secho("\nDescriptions:", fg="red")
@@ -170,6 +167,8 @@ def quick(info):
 @click.argument("filename", metavar="[filename]", type=str)
 @click.pass_context
 def config_platform(ctx, filename, info):
+    from magtogoek.metadata.platforms import make_platform_template
+
     filename = _validate_filename(filename, ext=".json")
     make_platform_template(filename)
     click.echo(click.style(f"Platform file created for -> {filename}", bold=True))
@@ -190,6 +189,7 @@ def config_adcp(
 ):
     """Command to make an adcp config files. The [OPTIONS] can be added
     before or after the [config_name]."""
+    from magtogoek.bin.configfile import make_configfile
 
     _print_passed_options(options)
 
@@ -215,16 +215,28 @@ def config_adcp(
 @click.option(
     "--info", is_flag=True, callback=_print_info, help="Show command information"
 )
-@click.argument("input_files", metavar="[input_files]", nargs=-1)
 @click.argument(
-    "sonar", metavar="[sonar]", type=click.Choice(["wh", "sv", "os", "sw", "sw_pd0"])
+    "input_files",
+    metavar="[input_files]",
+    nargs=-1,
+    type=click.Path(exists=True),
+    required=True,
 )
-@click.argument(
-    "yearbase",
-    metavar="[yearbase]",
+@add_options(adcp_options(input_files=False, sonar=False, yearbase=False))
+@click.option(
+    "-s",
+    "--sonar",
+    type=click.Choice(["wh", "sv", "os", "sw", "sw_pd0"]),
+    help="String designating type of adcp. This  is fed to CODAS Multiread or switches to the magtogoek RTIReader.",
+    required=True,
+)
+@click.option(
+    "-y",
+    "--yearbase",
     type=click.INT,
+    help="""year when the adcp sampling started. ex: `1970`""",
+    required=True,
 )
-@add_options(adcp_options(input_files=False))
 @click.pass_context
 def quick_adcp(
     ctx,
@@ -239,7 +251,6 @@ def quick_adcp(
 
     leading_index, trailing_index = None, None
     start_time, end_time = None, None
-
     if options["start_time"]:
         if "T" in options["start_time"]:
             start_time = Timestamp(options["start_time"])
@@ -286,7 +297,7 @@ def quick_adcp(
                 netcdf_output = _validate_filename(options["netcdf_output"], ext=".nc")
                 netcdf_output = netcdf_output.split(".nc")[0] + "_" + str(count) + ".nc"
             else:
-                netcdf_output = input_files[0].split(".")[0] + ".nc"
+                netcdf_output = fn.split(".")[0] + ".nc"
 
             ds.to_netcdf(netcdf_output)
             print(f"netcdf file made -> {netcdf_output}")
