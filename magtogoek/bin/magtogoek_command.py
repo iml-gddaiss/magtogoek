@@ -23,14 +23,13 @@ Usage:
     $ mtgk quick [adcp, ] [FILE_NAME] [OPTIONS]
 
 """
-
 import typing as tp
 from pathlib import Path
 from subprocess import run as subp_run
 
 import click
 from magtogoek.bin.command_options import adcp_options, add_options
-from magtogoek.metadata.toolbox import json2dict
+from magtogoek.utils import json2dict, validate_filename
 from pandas import Timestamp
 
 # ---------- Module or functions imported by commands ----------- #
@@ -38,6 +37,7 @@ from pandas import Timestamp
 # from magtogoek.metadata.platforms import make_platform_template
 # from magtogoek.adcp.loader import load_adcp_binary
 # from magtogoek.adcp.utils import Logger
+# from magtogoek.adcp.quick_adcp import quick_adcp
 # --------------------------------------------------------------- #
 
 MAGTOGOEK_VERSION = "0.0.2"
@@ -156,7 +156,6 @@ def process(info):
     "--info", is_flag=True, callback=_print_info, help="Show command information"
 )
 def quick(info):
-    # check param values and make custom error.
     pass
 
 
@@ -170,7 +169,7 @@ def quick(info):
 def config_platform(ctx, filename, info):
     from magtogoek.metadata.platforms import make_platform_template
 
-    filename = _validate_filename(filename, ext=".json")
+    filename = validate_filename(filename, ext=".json")
     make_platform_template(filename)
     click.echo(click.style(f"Platform file created for -> {filename}", bold=True))
 
@@ -195,7 +194,7 @@ def config_adcp(
     _print_passed_options(options)
 
     # check if a file already exists and format the `.ini` extension.
-    config_name = _validate_filename(config_name, ext=".ini")
+    config_name = validate_filename(config_name, ext=".ini")
 
     # translate names to those used by the configparser.
     updated_params = _convert_options_to_configfile("adcp", options)
@@ -248,73 +247,9 @@ def quick_adcp(
 ):
     """Command to make an quickly process adcp files. The [OPTIONS] can be added
     before or after the [inputs_files]."""
-    from magtogoek.adcp.loader import load_adcp_binary
-    from magtogoek.adcp.utils import Logger
+    from magtogoek.adcp.quick_adcp import quick_adcp
 
-    leading_index, trailing_index = None, None
-    start_time, end_time = None, None
-    if options["start_time"]:
-        if "T" in options["start_time"]:
-            start_time = Timestamp(options["start_time"])
-        else:
-            leading_index = int(options["start_time"])
-
-    if options["end_time"]:
-        if "T" in options["end_time"]:
-            end_time = Timestamp(options["end_time"])
-        else:
-            trailing_index = int(options["end_time"])
-
-    if options["merge"]:
-        ds = load_adcp_binary(
-            input_files,
-            yearbase=yearbase,
-            sonar=sonar,
-            leading_index=leading_index,
-            trailing_index=trailing_index,
-        )
-        l = Logger(ds.logbook)
-
-        ds = ds.sel(time=slice(start_time, end_time))
-
-        if options["netcdf_output"]:
-            netcdf_output = _validate_filename(options["netcdf_output"], ext=".nc")
-        else:
-            netcdf_output = input_files[0].split(".")[0] + ".nc"
-
-        if len(ds.time) == 0:
-            l.warning(f"{netcdf_output} time dims is of lenght 0 after slicing.")
-            ds.attrs["logbook"] = l.logbook
-
-        ds.to_netcdf(netcdf_output)
-        print(f"netcdf file made -> {netcdf_output}")
-    else:
-        for fn, count in zip(input_files, range(len(input_files))):
-            ds = load_adcp_binary(
-                fn,
-                yearbase=yearbase,
-                sonar=sonar,
-                leading_index=leading_index,
-                trailing_index=trailing_index,
-            )
-
-            l = Logger(ds.logbook)
-
-            ds = ds.sel(time=slice(start_time, end_time))
-            print(len(ds.time))
-
-            if options["netcdf_output"]:
-                netcdf_output = _validate_filename(options["netcdf_output"], ext=".nc")
-                netcdf_output = netcdf_output.split(".nc")[0] + "_" + str(count) + ".nc"
-            else:
-                netcdf_output = fn.split(".")[0] + ".nc"
-
-            if len(ds.time) == 0:
-                l.warning(f"{netcdf_output} time dims is of lenght 0 after slicing.")
-                ds.attrs["logbook"] = l.logbook
-
-            ds.to_netcdf(netcdf_output)
-            print(f"netcdf file made -> {netcdf_output}")
+    quick_adcp(input_files, sonar, yearbase, options)
 
 
 def _convert_options_to_configfile(sensor_type, options):
@@ -342,52 +277,6 @@ def _translate_options_name(sensor_type, options):
         options[key] = options.pop(item)
 
     return options
-
-
-def _validate_filename(filename: str, ext: str) -> str:
-    """Check if directory or/and file name exist.
-
-    Ask to make the directories if they don't exist.
-    Ask  to ovewrite the file if a file already exist.
-
-    Appends the correct suffix (extension) if none was given
-    but keeps other suffixes.
-    Ex. path/to/file.ext1.ext2.ini
-
-    """
-    print(filename)
-    if Path(filename).suffix != ext:
-        filename += f"{ext}"
-
-    while not Path(filename).parents[0].is_dir():
-        if click.confirm(
-            click.style(
-                "Directory does not exist. Do you want to create it ?", bold=True
-            ),
-            default=False,
-        ):
-            Path(filename).parents[0].mkdir(parents=True)
-        else:
-            filename = _ask_for_filename(ext)
-
-    if Path(filename).is_file():
-        if not click.confirm(
-            click.style(
-                f"A `{ext}` file with this name already exists. Overwrite ?", bold=True
-            ),
-            default=True,
-        ):
-            return _validate_filename(_ask_for_filename(ext), ext)
-    return filename
-
-
-def _ask_for_filename(ext: str) -> str:
-    """ckick.prompt that ask for `filename`"""
-    return click.prompt(
-        click.style(
-            f"\nEnter a filename (path/to/file) for the `{ext}` file. ", bold=True
-        )
-    )
 
 
 def _print_passed_options(ctx_params: tp.Dict):

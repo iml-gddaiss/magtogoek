@@ -11,7 +11,8 @@ The resulting dictionnary are exported in .json file which will be used to set a
 -:everything
 """
 import typing as tp
-from toolbox import dict2json
+
+from magtogoek.utils import dict2json
 
 sensors_type = dict(adcp=["TEMPR01", "SVELCV01", "PRESPR01", "ADEPZZ01"])
 

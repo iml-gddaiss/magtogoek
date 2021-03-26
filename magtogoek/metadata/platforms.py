@@ -6,7 +6,7 @@ This script makes platform template
 :TODO:
 -:everything:
 """
-from magtogoek.metadata.toolbox import dict2json
+from magtogoek.utils import dict2json
 
 
 def make_platform_template(filename):

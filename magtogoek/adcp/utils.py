@@ -6,36 +6,9 @@ from datetime import datetime
 
 import click
 import numpy as np
-import pandas as pd
 from nptyping import NDArray
+from pandas import Timestamp, to_datetime
 from path import Path
-
-
-def get_files_from_expresion(filenames: tp.Tuple[str, tp.List[str]]) -> tp.List[str]:
-    """Get existing files from expression.
-
-    Returns a list of existing files.
-
-    Raises:
-    -------
-    FileNotFoundError:
-        If files does not exist, or a matching regex not found.
-    """
-    if isinstance(filenames, str):
-        p = Path(filenames)
-        if p.isfile():
-            filenames = [filenames]
-        else:
-            filenames = sorted(map(str, p.parent.glob(p.name)))
-            if len(filenames) == 0:
-                raise FileNotFoundError(f"Expression `{p}` does not match any files.")
-
-    return sorted(filenames)
-
-
-def nans(shape: tp.Tuple[list, tuple, NDArray]) -> NDArray:
-    """return array of nan of shape `shape`"""
-    return np.full(shape, np.nan)
 
 
 def magnetic_to_true(
@@ -83,9 +56,9 @@ def dday_to_datetime64(dday: tp.List, yearbase: int) -> tp.Tuple[NDArray, NDArra
     dataset:
        FIXME
     """
-    start_time = pd.Timestamp(str(yearbase) + "-01-01")
+    start_time = Timestamp(str(yearbase) + "-01-01")
     time = np.array(
-        pd.to_datetime(dday, unit="D", origin=start_time, utc=True).strftime(
+        to_datetime(dday, unit="D", origin=start_time, utc=True).strftime(
             "%Y-%m-%d %H:%M:%S"
         ),
         dtype="datetime64[s]",
@@ -109,67 +82,3 @@ def datetime_to_dday(
         * 1
         / (3600 * 24)
     )
-
-
-class Logger:
-    def __init__(self, logbook: str = "", level: int = 0):
-
-        self.logbook = logbook
-        self.w_count = 0
-        self.level = level
-
-    def __repr__(self):
-        return self.logbook
-
-    def section(self, section: str, t: bool = False):
-        """
-        Parameters:
-        -----------
-        section:
-           Section's names.
-        t:
-           Log time if True.
-
-        """
-        time = "" if t is False else " " + self._timestamp()
-        self.logbook += "[" + section + "]" + time + "\n"
-        click.secho(section, fg="green") if self.level < 1 else None
-
-    def log(self, msg: str, t: bool = False):
-        """
-        Parameters:
-        -----------
-        msg:
-           Message to log.
-        t:
-           Log time if True.
-        """
-        if isinstance(msg, list):
-            [self.log(m, t=t) for m in msg]
-        else:
-            if self.level < 1:
-                print(msg)
-            msg = msg if t is False else self._timestamp() + " " + msg
-            self.logbook += " " + msg + "\n"
-
-    def warning(self, msg: str, t: bool = False):
-        """
-        Parameters:
-        -----------
-        msg:
-           Message to log.
-        t:
-           Log time if True.
-        """
-        if isinstance(msg, list):
-            [self.warning(m, t=t) for m in msg]
-        else:
-            if self.level < 2:
-                click.echo(click.style("WARNING:", fg="yellow") + msg)
-                self.w_count += 1
-            msg = msg if t is False else self._timestamp() + " " + msg
-            self.logbook += " " + msg + "\n"
-
-    @staticmethod
-    def _timestamp():
-        return pd.Timestamp.now().strftime("%Y-%m-%d %Hh%M:%S")

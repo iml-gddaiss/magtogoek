@@ -36,7 +36,8 @@ NOTE:
 - PCGDAP04: Use for beam 4, beam coordinate
 """
 import typing as tp
-from magtogoek.metadata.toolbox import dict2json
+
+from magtogoek.utils import dict2json
 
 # --------------------------------------------------------------------------- #
 # ---------------- Functions to define variables attributes ----------------- #

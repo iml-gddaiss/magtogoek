@@ -18,7 +18,8 @@ from pathlib import Path
 from typing import Dict, List, Tuple, Type
 
 import numpy as np
-from magtogoek.adcp.utils import datetime_to_dday, get_files_from_expresion
+from magtogoek.adcp.utils import datetime_to_dday
+from magtogoek.utils import get_files_from_expresion
 from rti_python.Codecs.BinaryCodec import BinaryCodec
 from rti_python.Ensemble.EnsembleData import *
 from scipy.constants import convert_temperature
@@ -48,6 +49,7 @@ class Bunch(dict):
     ------
        Bunch Class was copied from UHDAS pycurrents.adcp.rdiraw
     """
+
     def __init__(self, *args, **kwargs):
         dict.__init__(self)
         self.__dict__ = self
@@ -90,9 +92,7 @@ class RtiReader:
         self.files_start_stop_index = None
         self.ens_chunks = None
 
-    def read(self,
-             start_index: int = None,
-             stop_index: int = None) -> Type[Bunch]:
+    def read(self, start_index: int = None, stop_index: int = None) -> Type[Bunch]:
         """Return a Bunch object with the read data.
 
         Parameters:
@@ -128,15 +128,12 @@ class RtiReader:
 
         if self.start_index:
             if np.sum(self.files_ens_count) < self.start_index:
-                raise ValueError(
-                    "Start_index is greater than the number of ensemble")
+                raise ValueError("Start_index is greater than the number of ensemble")
         if self.stop_index:
             if np.sum(self.files_ens_count) < self.stop_index:
-                raise ValueError(
-                    "Stop_index is greater than the number of ensemble")
+                raise ValueError("Stop_index is greater than the number of ensemble")
         if self.start_index and self.stop_index:
-            if np.sum(
-                    self.files_ens_count) < self.start_index + self.stop_index:
+            if np.sum(self.files_ens_count) < self.start_index + self.stop_index:
                 raise ValueError(
                     "Start_index + stop_index is greater than the number of ensemble"
                 )
@@ -205,8 +202,7 @@ class RtiReader:
         if self.start_index:
             # finds the first files with enough ens and the start index
             diff_start = cumsum - self.start_index
-            start_index = counts[diff_start > 0][0] - diff_start[
-                diff_start > 0][0]
+            start_index = counts[diff_start > 0][0] - diff_start[diff_start > 0][0]
             start_file = np.array(self.filenames)[diff_start > 0][0]
             # remove files with less leading ens than start_index
             self.filenames = np.array(self.filenames)[diff_start > 0].tolist()
@@ -214,8 +210,7 @@ class RtiReader:
         if self.stop_index:
             # finds the first files with enough ens and the start index
             diff_stop = cumsum - cumsum.max() + self.stop_index
-            stop_index = counts[diff_stop > 0][0] - diff_stop[
-                diff_stop > 0][0] + 1
+            stop_index = counts[diff_stop > 0][0] - diff_stop[diff_stop > 0][0] + 1
             stop_file = np.array(self.filenames)[diff_stop > 0][0]
             # keep files with more trailing ens than stop_index
             self.filenames = np.array(self.filenames)[diff_stop < 0].tolist()
@@ -289,8 +284,7 @@ class RtiReader:
         ppd.CellSize = ens.AncillaryData.BinSize
         ppd.Bin1Dist = ens.AncillaryData.FirstBinRange
 
-        ppd.dep = ppd.Bin1Dist + np.arange(0, ppd.nbin * ppd.CellSize,
-                                           ppd.CellSize)
+        ppd.dep = ppd.Bin1Dist + np.arange(0, ppd.nbin * ppd.CellSize, ppd.CellSize)
 
         ppd.pingtype = ens.SystemSetup.WpBroadband
         ppd.sysconfig = dict(
@@ -311,8 +305,7 @@ class RtiReader:
 
         # Determine up/down configuration
         mean_roll = circmean(np.radians(ppd.roll))
-        ppd.sysconfig["up"] = True if abs(mean_roll) < np.radians(
-            30) else False
+        ppd.sysconfig["up"] = True if abs(mean_roll) < np.radians(30) else False
 
         # Determine bin depths
         if ppd.sysconfig["up"] is True:
@@ -347,8 +340,7 @@ class RtiReader:
         time0 = datetime.now()
 
         with Pool(number_of_cpu) as p:  # test
-            decoded_chunks = p.starmap(self.decode_chunk,
-                                       tqdm(self.ens_chunks))  # test
+            decoded_chunks = p.starmap(self.decode_chunk, tqdm(self.ens_chunks))  # test
 
         time1 = datetime.now()
         print(
@@ -432,12 +424,8 @@ class RtiReader:
                 "celsius",
             )
             ppd.salinity = np.array(ens.AncillaryData.Salinity)
-            pressure = np.array(
-                ens.AncillaryData.Pressure) / 10  # pascal to decapascal
-            ppd.VL = np.array(pressure, {
-                "names": ["Pressure"],
-                "formats": [np.float]
-            })
+            pressure = np.array(ens.AncillaryData.Pressure) / 10  # pascal to decapascal
+            ppd.VL = np.array(pressure, {"names": ["Pressure"], "formats": [np.float]})
             ppd.XducerDepth = np.array(ens.AncillaryData.TransducerDepth)
             ppd.heading = np.array(ens.AncillaryData.Heading)
             ppd.pitch = np.array(ens.AncillaryData.Pitch)
@@ -462,7 +450,7 @@ class RtiReader:
         if serial_number[1] in "12345678DEFGbcdefghi":
             return 20
         elif serial_number[1] in "OPQRST":
-            return (15, )
+            return (15,)
         elif serial_number[1] in "IJKLMNjklmnopqrstuvwxy":
             return 30
         elif "9ABCUVWXYZ":
@@ -481,10 +469,8 @@ class RtiReader:
         gps_dday = datetime_to_dday(data.gsp_datetime)
 
         rawnav = dict(
-            Lon1_BAM4=griddata(gps_dday, data.longitude, data.dday) /
-            (180.0 / 2**31),
-            Lat1_BAM4=griddata(gps_dday, data.latitude, data.dday) /
-            (180.0 / 2**31),
+            Lon1_BAM4=griddata(gps_dday, data.longitude, data.dday) / (180.0 / 2 ** 31),
+            Lat1_BAM4=griddata(gps_dday, data.latitude, data.dday) / (180.0 / 2 ** 31),
         )
         return rawnav
 
@@ -505,12 +491,9 @@ class RtiReader:
             print(f"Bin depth computed from {b0.filename}")
             for d, f in zip(dist1bin_list, filename_list):
                 if d != 0:
-                    print(
-                        f"Distance of the first bin in file {f} differs by {d} m"
-                    )
+                    print(f"Distance of the first bin in file {f} differs by {d} m")
 
-
-# TODO MISSMATCH DES DEP VECTOR LONGEUR
+        # TODO MISSMATCH DES DEP VECTOR LONGEUR
         for k in b0:
             if k == "dep" or not isinstance(b0[k], np.ndarray):
                 ppd[k] = b0[k]
@@ -519,6 +502,7 @@ class RtiReader:
                 ppd[k] = np.concatenate(chunks)
 
         return ppd
+
 
 if __name__ == "__main__":
     fp = "../../test/files/"

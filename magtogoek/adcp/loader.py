@@ -40,8 +40,8 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from magtogoek.adcp.rti_reader import RtiReader
-from magtogoek.adcp.utils import (Logger, dday_to_datetime64,
-                                  get_files_from_expresion, nans)
+from magtogoek.adcp.utils import dday_to_datetime64
+from magtogoek.utils import Logger, get_files_from_expresion, nans
 from nptyping import NDArray
 from pycurrents.adcp import rdiraw, transform
 from pycurrents.adcp.rdiraw import Bunch, Multiread, rawfile
@@ -102,35 +102,44 @@ def load_adcp_binary(
     filenames = get_files_from_expresion(filenames)
 
     if sonar == "sv":
-        l.warning("""(from pycurrents)
+        l.warning(
+            """(from pycurrents)
 - The SV support is under development.  Missing features:
 - The 0x7000-0x7004 IDs are not being parsed and stored.
 - The `Fixed Leader` can change within a file
-- See pycurrents.adcp.rdiraw module for for information""")
+- See pycurrents.adcp.rdiraw module for for information"""
+        )
 
     # ------------------------ #
     # Reading the data file(s) #
     # ------------------------ #
     if sonar == "sw":
-        l.log("RTI ens files:\n-" +
-              "\n-".join([p.name for p in list(map(Path, filenames))]))
-        data = RtiReader(filenames=filenames).read(start_index=leading_index,
-                                                   stop_index=trailing_index)
+        l.log(
+            "RTI ens files:\n-"
+            + "\n-".join([p.name for p in list(map(Path, filenames))])
+        )
+        data = RtiReader(filenames=filenames).read(
+            start_index=leading_index, stop_index=trailing_index
+        )
     elif sonar in ["wh", "sv", "os", "sw_pd0"]:
         if sonar == "sw_pd0":
             sonar = "wh"
-            l.log("RTI pd0 files:\n-" +
-                  "\n-".join([p.name for p in list(map(Path, filenames))]))
+            l.log(
+                "RTI pd0 files:\n-"
+                + "\n-".join([p.name for p in list(map(Path, filenames))])
+            )
         else:
-            l.log("RDI pd0 files:\n-" +
-                  "\n-".join([p.name for p in list(map(Path, filenames))]))
+            l.log(
+                "RDI pd0 files:\n-"
+                + "\n-".join([p.name for p in list(map(Path, filenames))])
+            )
         if trailing_index:
             trailing_index = -trailing_index
 
         try:
-            data = Multiread(fnames=filenames, sonar=sonar,
-                             yearbase=yearbase).read(start=leading_index,
-                                                     stop=trailing_index)
+            data = Multiread(fnames=filenames, sonar=sonar, yearbase=yearbase).read(
+                start=leading_index, stop=trailing_index
+            )
         except RuntimeError:
             raise FilesFormatError("Not RDI pd0 file format.")
 
@@ -168,12 +177,15 @@ def load_adcp_binary(
     bad_dday = False
     if (data.dday < 0).any() or (np.diff(data.dday) < 0).any():
         bad_dday = True
-        l.warning([
-            f"The `dday` vector contains either negative values or is not monotonically increasing."
-            f"Time was replaced by a default datetime vector: len(dday) with a 1 second time step since {yearbase}-1-1 00:00:00"
-        ])
+        l.warning(
+            [
+                f"The `dday` vector contains either negative values or is not monotonically increasing."
+                f"Time was replaced by a default datetime vector: len(dday) with a 1 second time step since {yearbase}-1-1 00:00:00"
+            ]
+        )
         time, time_string = dday_to_datetime64(
-            np.arange(len(data.dday)) / (3600 * 24), yearbase)
+            np.arange(len(data.dday)) / (3600 * 24), yearbase
+        )
     else:
         time, time_string = dday_to_datetime64(data.dday, yearbase)
 
@@ -195,8 +207,7 @@ def load_adcp_binary(
         depth = data.dep
 
     if (depth < 0).all():
-        l.warning(
-            "Bin depths are all negative, ADCP orientation is probably wrong.")
+        l.warning("Bin depths are all negative, ADCP orientation is probably wrong.")
 
     # --------------------- #
     # Initating the dataset #
@@ -208,18 +219,13 @@ def load_adcp_binary(
     # --------------------------------------- #
     original_coordsystem = data.trans["coordsystem"]
     if original_coordsystem != "earth":
-        l.log(
-            f"The velocity data are in {data.trans['coordsystem']} coordinate")
+        l.log(f"The velocity data are in {data.trans['coordsystem']} coordinate")
 
         coordsystem2earth(data=data, orientation=orientation)
 
         if data.trans["coordsystem"] == "xyz":
-            l.warning(
-                "Roll, Pitch or Heading seems to be missing from the data file."
-            )
-        l.log(
-            f"The velocity data were transformed to {data.trans['coordsystem']}"
-        )
+            l.warning("Roll, Pitch or Heading seems to be missing from the data file.")
+        l.log(f"The velocity data were transformed to {data.trans['coordsystem']}")
 
     # --------------------------- #
     # Loading the transducer data #
@@ -268,8 +274,7 @@ def load_adcp_binary(
 
     if "pg" in data:
         if original_coordsystem == "beam":
-            ds["pg"] = (["depth",
-                         "time"], np.asarray(np.mean(data.pg, axis=2).T))
+            ds["pg"] = (["depth", "time"], np.asarray(np.mean(data.pg, axis=2).T))
             l.log(
                 "Percent good was computed by averaging each beam PercentGood. The raw data were in beam coordinate."
             )
@@ -299,10 +304,8 @@ def load_adcp_binary(
     # Loading the naviagtion data #
     # --------------------------- #
     if "rawnav" in data:
-        ds["lon"] = (["time"],
-                     np.array(data["rawnav"]["Lon1_BAM4"] * 180.0 / 2**31))
-        ds["lat"] = (["time"],
-                     np.array(data["rawnav"]["Lat1_BAM4"] * 180.0 / 2**31))
+        ds["lon"] = (["time"], np.array(data["rawnav"]["Lon1_BAM4"] * 180.0 / 2 ** 31))
+        ds["lat"] = (["time"], np.array(data["rawnav"]["Lat1_BAM4"] * 180.0 / 2 ** 31))
         l.log("Navigation (GPS) data loaded.")
 
     # -------------------------------------------- #
@@ -311,8 +314,7 @@ def load_adcp_binary(
     # For `wh`, `sv` and `sw` the pressure is added if available.
     if "Pressure" in data.VL.dtype.names:
         if not (data.VL["Pressure"] == 0).all():
-            ds["pres"] = (["time"], data.VL["Pressure"] / 1000
-                          )  # decapascal to decibar
+            ds["pres"] = (["time"], data.VL["Pressure"] / 1000)  # decapascal to decibar
         else:
             l.log("Pressure data unavailable")
 
@@ -332,8 +334,7 @@ def load_adcp_binary(
         else:
             ds["pitch"] = (["time"], np.asarray(data.pitch))
     if "temperature" in data:
-        if (data.temperature == 0).all() or (np.diff(data.temperature)
-                                             == 0).all():
+        if (data.temperature == 0).all() or (np.diff(data.temperature) == 0).all():
             l.warning("Temperature data are either all 0, or not variying.")
         else:
             ds["temperature"] = (["time"], np.asarray(data.temperature))
@@ -352,10 +353,9 @@ def load_adcp_binary(
     # -------------- #
     # Add attributes #
     # -------------- #
-    sonar_names = dict(wh="WorhHorse",
-                       sv="SentinelV",
-                       os="OceanSurveyor",
-                       sw="SeaWATCH")
+    sonar_names = dict(
+        wh="WorhHorse", sv="SentinelV", os="OceanSurveyor", sw="SeaWATCH"
+    )
     ds.attrs["sonar"] = sonar_names[sonar]
     ds.attrs["coordsystem"] = data.trans["coordsystem"]
     ds.attrs["beam_angle"] = data.sysconfig["angle"]
@@ -383,10 +383,7 @@ def init_dataset(time: NDArray, depth: NDArray):
 
     dataset = xr.Dataset(
         data_vars={},
-        coords={
-            "depth": (["depth"], depth),
-            "time": (["time"], time)
-        },
+        coords={"depth": (["depth"], depth), "time": (["time"], time)},
     )
 
     return dataset
@@ -438,16 +435,15 @@ def coordsystem2earth(data: tp.Type[Bunch], orientation: str):
 
     if data.trans.coordsystem == "beam":
         if data.sysconfig.angle:
-            trans = transform.Transform(angle=data.sysconfig.angle,
-                                        geometry=beam_pattern)
+            trans = transform.Transform(
+                angle=data.sysconfig.angle, geometry=beam_pattern
+            )
             xyze = trans.beam_to_xyz(data.vel.data)
             bt_xyze = trans.beam_to_xyz(data.bt_vel.data)
         else:
-            print(
-                "Beam angle missing. Could not convert from beam coordinate.")
+            print("Beam angle missing. Could not convert from beam coordinate.")
 
-    if (data.heading == 0).all() or (data.roll == 0).all() or (data.pitch
-                                                               == 0).all():
+    if (data.heading == 0).all() or (data.roll == 0).all() or (data.pitch == 0).all():
         data.trans["coordsystem"] = "xyz"
 
         for i in range(4):
@@ -510,19 +506,25 @@ def check_PD0_invalid_config(
     """
     # uses rawfile() to get the FixedLeader.
     if isinstance(filenames, list):
-        fixed_leader = np.concatenate([
-            rawfile(fname=fname, sonar=sonar, yearbase=yearbase).read(
-                varlist=["FixedLeader"]).raw.FixedLeader for fname in filenames
-        ])
+        fixed_leader = np.concatenate(
+            [
+                rawfile(fname=fname, sonar=sonar, yearbase=yearbase)
+                .read(varlist=["FixedLeader"])
+                .raw.FixedLeader
+                for fname in filenames
+            ]
+        )
     else:
-        fixed_leader = (rawfile(
-            fname=filenames, sonar=sonar,
-            yearbase=yearbase).read(varlist=["FixedLeader"]).raw.FixedLeader)
+        fixed_leader = (
+            rawfile(fname=filenames, sonar=sonar, yearbase=yearbase)
+            .read(varlist=["FixedLeader"])
+            .raw.FixedLeader
+        )
 
     syscfg = fixed_leader["SysCfg"][leading_index:trailing_index]
     invalid_cfg_count = None
-    if (syscfg == 2**16 - 1).any():
-        invalid_cfg_count = np.sum((syscfg == 2**16 - 1))
+    if (syscfg == 2 ** 16 - 1).any():
+        invalid_cfg_count = np.sum((syscfg == 2 ** 16 - 1))
 
     return invalid_cfg_count
 
@@ -594,10 +596,9 @@ if __name__ == "__main__":
     )
 
     # v100 = load_adcp_binary(v100file, sonar=sonar, yearbase=2020, orientation="down")
-    sw_pd0 = load_adcp_binary(pd0_sw_path,
-                              sonar="sw_pd0",
-                              yearbase=2020,
-                              orientation="down")
+    sw_pd0 = load_adcp_binary(
+        pd0_sw_path, sonar="sw_pd0", yearbase=2020, orientation="down"
+    )
     sw = load_adcp_binary(
         ens_sw_path,
         sonar="sw",

@@ -31,17 +31,17 @@ setup(
         "click",
         "configparser",
         "tqdm",
+        "path"
         # - RTI_PYTHON REQUIEREMENT - #
-        "pytest",
-        "scipy",
+        #        "pytest",  # no
         "pynmea2",
         "obsub",
-        "mttkinter",
-        "pygeodesy",
-        "crc16",
+        #        "mttkinter",  # no
+        "pygeodesy",  # no
+        "crc16",  # needed
     ],
     packages=find_packages(),
-    package_data={"Magtogoek": ["*.geojson"]},
+    package_data={"magtogoek": ["*.geojson"]},
     classifiers=["Programming Language :: Python :: 3"],
     python_requires="~=3.7",
     entry_points={
