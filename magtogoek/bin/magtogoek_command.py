@@ -16,11 +16,13 @@ Descriptions:
   FIXME
 
 Usage:
-    $ mtgk config [adcp, ] [CONFIG_NAME] [OPTIONS]
+    $ mtgk config [adcp, platform] [CONFIG_NAME] [OPTIONS]
 
     $ mtgk process [adcp, ] [CONFIG_FILE] [OPTIONS]
 
-    $ mtgk quick [adcp, ] [FILE_NAME] [OPTIONS]
+    $ mtgk quick [adcp, ] [INPUT_FILES] [OPTIONS]
+
+    $ mtgk chekck [rti, ] [INPUT_FILES]
 
 """
 import typing as tp
@@ -261,7 +263,7 @@ def quick_adcp(
     quick_adcp(input_files, sonar, yearbase, options)
 
 
-### adcp: quick sub-command ###
+### rti: check sub-command ###
 @check.command("rti")
 @click.option(
     "--info", is_flag=True, callback=_print_info, help="Show command information"

@@ -191,7 +191,7 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
             help="""Motion correction. Default[-no-m-corr] (True).
     Uses `bt` if available or GSP data. If the adcp
     file does not contain GPS data. A netcdf
-    file with with variable named (`longitude`, `latitude`)
+    file with with variable named (`lon`, `lat`)
     needs to be provided with options `-G`""",
             default=False,
         ),

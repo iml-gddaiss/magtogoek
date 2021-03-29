@@ -164,3 +164,52 @@ class Logger:
     @staticmethod
     def _timestamp():
         return Timestamp.now().strftime("%Y-%m-%d %Hh%M:%S")
+
+
+def circular_distance(a1, a2, units="rad"):
+    """
+    Function circdist usage:
+        d   =   circdist(a1,a2,units='rad')
+
+    Returns to 'd' the distance between angles a1 and a2
+    expected to be radians by default, or degrees if units
+    is specified to 'deg'.
+    Parameters
+    ----------
+    a1, a2 : float
+        Input angle.
+    units: str
+        Units of input angles ('deg', 'rad')
+    Returns
+    -------
+    float
+        Angular distance between `a1` and `a2`.
+
+    Notes:
+    ------
+    Taken from jeanlucshaw adcp2nc: https://github.com/jeanlucshaw/adcp2nc/
+    """
+    if units == "deg":
+        a1 = np.pi * a1 / 180
+        a2 = np.pi * a2 / 180
+
+    if np.isscalar(a1) and np.isscalar(a2):
+        v1 = np.array([np.cos(a1), np.sin(a1)])
+        v2 = np.array([np.cos(a2), np.sin(a2)])
+        dot = np.dot(v1, v2)
+    elif not np.isscalar(a1) and np.isscalar(a2):
+        a2 = np.tile(a2, a1.size)
+        v1 = np.array([np.cos(a1), np.sin(a1)]).T
+        v2 = np.array([np.cos(a2), np.sin(a2)]).T
+        dot = (v1 * v2).sum(-1)
+    else:
+        v1 = np.array([np.cos(a1), np.sin(a1)]).T
+        v2 = np.array([np.cos(a2), np.sin(a2)]).T
+        dot = (v1 * v2).sum(-1)
+
+    res = np.arccos(np.clip(dot, -1.0, 1.0))
+
+    if units == "deg":
+        res = 180 * res / np.pi
+
+    return res

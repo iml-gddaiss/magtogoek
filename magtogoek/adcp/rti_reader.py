@@ -502,8 +502,7 @@ class RtiReader:
         )
         return rawnav
 
-    @staticmethod
-    def concatenate_files_bunch(bunches: List[Type[Bunch]]) -> Type[Bunch]:
+    def concatenate_files_bunch(self, bunches: List[Type[Bunch]]) -> Type[Bunch]:
         """Concatenante the file bunches.
 
         Uses the first file bunch data for static values ( e.g. dep,
@@ -525,7 +524,7 @@ class RtiReader:
             In that case, files need the be processed individually.
 
         """
-        check_mismatch_dep()
+        self.check_mismatch_dep(bunches)
 
         ppd = Bunch()
         b0 = bunches[0]
@@ -558,10 +557,10 @@ class RtiReader:
 
         """
         mismatch = None
-        filenames = [b.filenames for b in bunches]
+        filenames = [b.filename for b in bunches]
         deps = np.array([b.dep for b in bunches])
-        if (np.diff(deps) != 0).any():
-            msg = "\n".join([f"{f} has {d} bin" for f, d in zip(filenames, deps)])
+        if (np.diff(deps, axis=0) != 0).any():
+            msg = "\n".join([f"{f} has {len(d)} bin" for f, d in zip(filenames, deps)])
             raise DepLengthMismatch("\n" + msg)
 
         bin1dist0 = bunches[0].Bin1Dist
@@ -579,5 +578,6 @@ if __name__ == "__main__":
     fn = "rowetech_seawatch.ens"
 
     # fp0 = '/media/sf_Shared_Folder/IML4_2017_ENS/'
-    # data = RtiReader(fp + "*.ens").read(start_index=10, stop_index=20)
+    RtiReader(fp + "*.ens").check_files()
+    data = RtiReader(fp + "*.ens").read(start_index=10, stop_index=20)
     RtiReader(fp + "*.ens").check_files()
