@@ -37,6 +37,10 @@ class FilesFormatError(Exception):
     pass
 
 
+class DepLengthMismatch(Exception):
+    pass
+
+
 class Bunch(dict):
     """
     A dictionary that also provides access via attributes.
@@ -91,6 +95,30 @@ class RtiReader:
         self.files_ens_count = None
         self.files_start_stop_index = None
         self.ens_chunks = None
+        self.current_file = None
+
+    def check_files(self):
+        """Check files for ensemble count and bin depths."""
+
+        self.get_files_ens_count()
+
+        for filename in self.filenames:
+            self.current_file = filename
+            self.get_ens_chunks()
+            ens = BinaryCodec.decode_data_sets(self.ens_chunks[0][1])
+
+            print("-" * 40)
+            print("File: ", Path(filename).name)
+            print("Year: ", ens.EnsembleData.Year)
+            print("Number of ens: ", len(self.ens_chunks))
+            print("Number of beams: ", ens.EnsembleData.NumBeams)
+            print("Number of bins:", ens.EnsembleData.NumBins)
+            print("Binsize: ", ens.AncillaryData.BinSize)
+            print(
+                "Distance first bin: ", round(ens.AncillaryData.FirstBinRange, 3), " m"
+            )
+            print("Beam angle:", self._beam_angle(ens.EnsembleData.SerialNumber))
+            print("Frequency:", int(ens.SystemSetup.WpSystemFreqHz), "hz")
 
     def read(self, start_index: int = None, stop_index: int = None) -> Type[Bunch]:
         """Return a Bunch object with the read data.
@@ -282,7 +310,7 @@ class RtiReader:
         ppd.instrument_serial = ens.EnsembleData.SerialNumber
 
         ppd.CellSize = ens.AncillaryData.BinSize
-        ppd.Bin1Dist = ens.AncillaryData.FirstBinRange
+        ppd.Bin1Dist = round(ens.AncillaryData.FirstBinRange, 3)
 
         ppd.dep = ppd.Bin1Dist + np.arange(0, ppd.nbin * ppd.CellSize, ppd.CellSize)
 
@@ -475,25 +503,34 @@ class RtiReader:
         return rawnav
 
     @staticmethod
-    def concatenate_files_bunch(bunches):
-        """"""
+    def concatenate_files_bunch(bunches: List[Type[Bunch]]) -> Type[Bunch]:
+        """Concatenante the file bunches.
+
+        Uses the first file bunch data for static values ( e.g. dep,
+        orientation, frequency, beam angle, etc)
+
+        Parameters:
+        -----------
+        bunches:
+            List of the files bunches to concatenante.
+        Returns:
+        --------
+        ppd:
+            Bunch fo the concatenate files.
+        Raise:
+        ------
+        DepLengthMismatch: (check_mismatch_depth())
+            Bin depth vector lenght mismatch.
+            Lenght, thus values, of the dep vector can change through files.
+            In that case, files need the be processed individually.
+
+        """
+        check_mismatch_dep()
+
         ppd = Bunch()
         b0 = bunches[0]
         ppd.dep = b0.dep
-        dist1bin_list = []
-        filename_list = []
-        for bunch in bunches:
-            dist1bin_list.append(bunch.Bin1Dist - b0.Bin1Dist)
-            filename_list.append(bunch.filename)
 
-        dist1bin_list = np.array(dist1bin_list)
-        if dist1bin_list.any() != 0:
-            print(f"Bin depth computed from {b0.filename}")
-            for d, f in zip(dist1bin_list, filename_list):
-                if d != 0:
-                    print(f"Distance of the first bin in file {f} differs by {d} m")
-
-        # TODO MISSMATCH DES DEP VECTOR LONGEUR
         for k in b0:
             if k == "dep" or not isinstance(b0[k], np.ndarray):
                 ppd[k] = b0[k]
@@ -503,10 +540,44 @@ class RtiReader:
 
         return ppd
 
+    @staticmethod
+    def check_mismatch_dep(bunches: List[Type[Bunch]]):
+        """Look for mismatch in bin depth.
+
+        Parameters:
+        -----------
+        bunches:
+            List of the files bunches to concatenante.
+
+        Raise:
+        ------
+        DepLengthMismatch: (check_mismatch_depth())
+            Bin depth vector lenght mismatch.
+            Lenght, thus values, of the dep vector can change through files.
+            In that case, files need the be processed individually.
+
+        """
+        mismatch = None
+        filenames = [b.filenames for b in bunches]
+        deps = np.array([b.dep for b in bunches])
+        if (np.diff(deps) != 0).any():
+            msg = "\n".join([f"{f} has {d} bin" for f, d in zip(filenames, deps)])
+            raise DepLengthMismatch("\n" + msg)
+
+        bin1dist0 = bunches[0].Bin1Dist
+        bin1dists = np.array([b.Bin1Dist - bin1dist0 for b in bunches])
+        if bin1dists.any() != 0:
+            print(f"Bin depth computed from {filenames[0]}")
+            for d, f in zip(bin1dists, filenames):
+                print(f"{d} : {f}")
+
+        return mismatch
+
 
 if __name__ == "__main__":
     fp = "../../test/files/"
     fn = "rowetech_seawatch.ens"
 
     # fp0 = '/media/sf_Shared_Folder/IML4_2017_ENS/'
-    data = RtiReader(fp + "*.ens").read(start_index=10, stop_index=20)
+    # data = RtiReader(fp + "*.ens").read(start_index=10, stop_index=20)
+    RtiReader(fp + "*.ens").check_files()

@@ -109,7 +109,7 @@ def _print_info(ctx, callback):
         _print_description(ctx.info_name)
         click.secho("\nUsage:", fg="red")
         _print_usage(ctx.info_name, ctx.parent)
-        if ctx.info_name in ["mtgk", "config", "process"]:
+        if ctx.info_name in ["mtgk", "config", "process", "quick", "check"]:
             click.secho("\nCommands:", fg="red")
         else:
             click.secho("\nArguments:", fg="red")
@@ -150,12 +150,21 @@ def process(info):
     pass
 
 
-### process sub-group ###
+### quick sub-group ###
 @magtogoek.group(context_settings=CONTEXT_SETTINGS)
 @click.option(
     "--info", is_flag=True, callback=_print_info, help="Show command information"
 )
 def quick(info):
+    pass
+
+
+### check sub-group ###
+@magtogoek.group(context_settings=CONTEXT_SETTINGS)
+@click.option(
+    "--info", is_flag=True, callback=_print_info, help="Show command information"
+)
+def check(info):
     pass
 
 
@@ -210,7 +219,7 @@ def config_adcp(
     )
 
 
-### adcp: config sub-command ###
+### adcp: quick sub-command ###
 @quick.command("adcp")
 @click.option(
     "--info", is_flag=True, callback=_print_info, help="Show command information"
@@ -250,6 +259,26 @@ def quick_adcp(
     from magtogoek.adcp.quick_adcp import quick_adcp
 
     quick_adcp(input_files, sonar, yearbase, options)
+
+
+### adcp: quick sub-command ###
+@check.command("rti")
+@click.option(
+    "--info", is_flag=True, callback=_print_info, help="Show command information"
+)
+@click.argument(
+    "input_files",
+    metavar="[input_files]",
+    nargs=-1,
+    type=click.Path(exists=True),
+    required=True,
+)
+@click.pass_context
+def check_rti(ctx, input_files, **options):
+    """Prints info about RTI .ENS files."""
+    from magtogoek.adcp.rti_reader import RtiReader
+
+    RtiReader(input_files).check_files()
 
 
 def _convert_options_to_configfile(sensor_type, options):
@@ -341,6 +370,11 @@ def _print_arguments(group, parent):
             "  quick".ljust(20, " ") + "Command to quickly process files",
             fg="white",
         )
+        click.secho(
+            "  check".ljust(20, " ")
+            + "Command to check the inforamtions on some file type.",
+            fg="white",
+        )
     if group == "config":
         click.secho("  adcp".ljust(20, " ") + "Config file for adcp data. ", fg="white")
         click.secho(
@@ -360,6 +394,11 @@ def _print_arguments(group, parent):
         click.secho(
             "  [filename]".ljust(20, " ")
             + "Filename (path/to/file) for the new platform file.",
+            fg="white",
+        )
+    if group == "check":
+        click.secho(
+            "  rti".ljust(20, " ") + "Print information on the rti .ens files. ",
             fg="white",
         )
 
@@ -383,6 +422,10 @@ def _print_description(group):
         click.echo("""Quick way to process files.""")
     if group == "process":
         click.echo("""FIXME""")
+    if group == "check":
+        click.echo(
+            """Print somes raw files informations. Only available for adcp RTI .ENS files."""
+        )
     if group == "adcp":
         click.echo(""" FIXME""")
     if group == "platform":
@@ -407,4 +450,8 @@ def _print_usage(group, parent):
         if _parent == "config":
             click.echo(f"  mtgk config adcp [CONFIG_FILE] [OPTIONS]")
         if _parent == "quick":
-            click.echo(f"  mtgk quick adcp [FILENAME] [SONAR] [YEARBASE] [OPTIONS]")
+            click.echo(f"  mtgk quick adcp [INPUT_FILES] [SONAR] [YEARBASE] [OPTIONS]")
+    if group == "check":
+        click.echo(f"  mtgk check [rti,] [INPUT_FILES] ")
+    if group == "rti":
+        click.echo(f"  mtgk check rti [INPUT_FILES] ")
