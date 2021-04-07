@@ -23,13 +23,13 @@ Notes:
 - We assume that the `dep` from OS  already is the bin depth below surface.
 - pd0 Fixed_Leader are know to have invalid configuration. msb=`11111111` and lsb=`11111111`. The
 file will be processed but a warning will be raised. The cause was not investigated.
+
+- This schould probably be turned into an object.
 See Also
 --------
    * pycurrents.adcp.rdiraw.Multiread
    * rti_python
 
-Note
-----
 """
 import logging
 import typing as tp
@@ -58,6 +58,9 @@ class FilesFormatError(Exception):
 
 class InvalidSonarError(Exception):
     pass
+
+
+l = Logger(level=0)
 
 
 def load_adcp_binary(
@@ -96,7 +99,6 @@ def load_adcp_binary(
         Dataset with the loaded adcp data
 
     """
-    l = Logger(level=0)
     l.section("Loading adcp data", t=True)
 
     filenames = get_files_from_expresion(filenames)
@@ -169,7 +171,7 @@ def load_adcp_binary(
     else:
         if orientation != ("up" if data.sysconfig["up"] else "down"):
             l.warning(
-                "The adcp orientation does not match the one found in the binary files."
+                "The given adcp orientation does not match the one found in the binary files."
             )
     # ---------------------------- #
     # Convert `dday` to datetime64 #
@@ -266,7 +268,7 @@ def load_adcp_binary(
                 ["time"],
                 np.asarray(np.nanmean(data.bt_depth, axis=-1)),
             )
-            l.log("Bottom range data loaded")
+            l.log("Bottom depth  data loaded")
         else:
             l.log(
                 "Bottom depth values were all `0` and so they were dropped from the ouput."

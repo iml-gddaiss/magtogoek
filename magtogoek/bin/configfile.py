@@ -110,8 +110,8 @@ ADCP_CONFIG = dict(
         "side_lobe_correction": True,
         "pitch_threshold": 20,
         "roll_threshold": 20,
-        "trim_leading_data": "",
-        "trim_trailling_data": "",
+        "leading_trim": "",
+        "trailing_trim": "",
         "platform_motion_correction": True,
     },
     ADCP_OUTPUT={

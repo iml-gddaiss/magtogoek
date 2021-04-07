@@ -108,15 +108,13 @@ class RtiReader:
             ens = BinaryCodec.decode_data_sets(self.ens_chunks[0][1])
 
             print("-" * 40)
-            print("File: ", Path(filename).name)
-            print("Year: ", ens.EnsembleData.Year)
-            print("Number of ens: ", len(self.ens_chunks))
-            print("Number of beams: ", ens.EnsembleData.NumBeams)
+            print("File:", Path(filename).name)
+            print("Year:", ens.EnsembleData.Year)
+            print("Number of ens:", len(self.ens_chunks))
+            print("Number of beams:", ens.EnsembleData.NumBeams)
             print("Number of bins:", ens.EnsembleData.NumBins)
-            print("Binsize: ", ens.AncillaryData.BinSize)
-            print(
-                "Distance first bin: ", round(ens.AncillaryData.FirstBinRange, 3), " m"
-            )
+            print("Binsize:", ens.AncillaryData.BinSize)
+            print("Distance first bin:", round(ens.AncillaryData.FirstBinRange, 3), "m")
             print("Beam angle:", self._beam_angle(ens.EnsembleData.SerialNumber))
             print("Frequency:", int(ens.SystemSetup.WpSystemFreqHz), "hz")
 
@@ -446,11 +444,7 @@ class RtiReader:
             ppd.vel = np.array(ens.EarthVelocity.Velocities)
 
         if ens.IsAncillaryData:
-            ppd.temperature = convert_temperature(
-                np.array(ens.AncillaryData.WaterTemp),
-                "fahrenheit",
-                "celsius",
-            )
+            ppd.temperature = ens.AncillaryData.WaterTemp
             ppd.salinity = np.array(ens.AncillaryData.Salinity)
             pressure = np.array(ens.AncillaryData.Pressure) / 10  # pascal to decapascal
             ppd.VL = np.array(pressure, {"names": ["Pressure"], "formats": [np.float]})
@@ -463,7 +457,7 @@ class RtiReader:
             ppd.bt_vel = np.array(ens.BottomTrack.EarthVelocity)
             ppd.bt_pg = np.array(ens.BottomTrack.BeamGood)
             ppd.bt_cor = np.array(ens.BottomTrack.Correlation) * 255
-            ppd.bt_range = np.array(ens.BottomTrack.Range)
+            ppd.bt_depth = np.array(ens.BottomTrack.Range)
 
         if ens.IsNmeaData:
             ppd.longitude = np.array(ens.NmeaData.longitude)

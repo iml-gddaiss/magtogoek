@@ -31,7 +31,7 @@ from subprocess import run as subp_run
 
 import click
 from magtogoek.bin.command_options import adcp_options, add_options
-from magtogoek.utils import json2dict, validate_filename
+from magtogoek.utils import is_valid_filename, json2dict
 from pandas import Timestamp
 
 # ---------- Module or functions imported by commands ----------- #
@@ -66,8 +66,8 @@ ADCP_CONFIG_STRUCT = {
     "side_lobe_correction": "ADCP_QUALITY_CONTROL",
     "pitch_threshold": "ADCP_QUALITY_CONTROL",
     "roll_threshold": "ADCP_QUALITY_CONTROL",
-    "trim_leading_data": "ADCP_QUALITY_CONTROL",
-    "trim_trailling_data": "ADCP_QUALITY_CONTROL",
+    "leading_trim": "ADCP_QUALITY_CONTROL",
+    "trailing_trim": "ADCP_QUALITY_CONTROL",
     "platform_motion_correction": "ADCP_QUALITY_CONTROL",
     "merge_output_file": "ADCP_OUTPUT",
     "bodc_name": "ADCP_OUTPUT",
@@ -83,8 +83,6 @@ CONFIG_NAME_TRANSLATOR = dict(
         GPS_file="gps",
         quality_control="qc",
         side_lobe_correction="side_lobe",
-        trim_leading_data="start_time",
-        trim_trailling_data="end_time",
         platform_motion_correction="m_corr",
         merge_output_file="merge",
         drop_percent_good="drop_pg",
@@ -133,7 +131,9 @@ def magtogoek(info):
     pass
 
 
-### config sub-group ###
+# --------------------------- #
+#        mtgk command         #
+# --------------------------- #
 @magtogoek.group(context_settings=CONTEXT_SETTINGS)
 @click.option(
     "--info", is_flag=True, callback=_print_info, help="Show command information"
@@ -142,17 +142,14 @@ def config(info):
     pass
 
 
-### process sub-group ###
 @magtogoek.group(context_settings=CONTEXT_SETTINGS)
 @click.option(
     "--info", is_flag=True, callback=_print_info, help="Show command information"
 )
 def process(info):
-    # check param values and make custom error.
     pass
 
 
-### quick sub-group ###
 @magtogoek.group(context_settings=CONTEXT_SETTINGS)
 @click.option(
     "--info", is_flag=True, callback=_print_info, help="Show command information"
@@ -161,7 +158,6 @@ def quick(info):
     pass
 
 
-### check sub-group ###
 @magtogoek.group(context_settings=CONTEXT_SETTINGS)
 @click.option(
     "--info", is_flag=True, callback=_print_info, help="Show command information"
@@ -170,7 +166,9 @@ def check(info):
     pass
 
 
-### platforms: config sub-command ###
+# --------------------------- #
+#       config command        #
+# --------------------------- #
 @config.command("platform")
 @click.option(
     "--info", is_flag=True, callback=_print_info, help="Show command information"
@@ -180,12 +178,11 @@ def check(info):
 def config_platform(ctx, filename, info):
     from magtogoek.metadata.platforms import make_platform_template
 
-    filename = validate_filename(filename, ext=".json")
+    filename = is_valid_filename(filename, ext=".json")
     make_platform_template(filename)
     click.echo(click.style(f"Platform file created for -> {filename}", bold=True))
 
 
-### adcp: config sub-command ###
 @config.command("adcp")
 @click.option(
     "--info", is_flag=True, callback=_print_info, help="Show command information"
@@ -205,7 +202,7 @@ def config_adcp(
     _print_passed_options(options)
 
     # check if a file already exists and format the `.ini` extension.
-    config_name = validate_filename(config_name, ext=".ini")
+    config_name = is_valid_filename(config_name, ext=".ini")
 
     # translate names to those used by the configparser.
     updated_params = _convert_options_to_configfile("adcp", options)
@@ -221,7 +218,9 @@ def config_adcp(
     )
 
 
-### adcp: quick sub-command ###
+# --------------------------- #
+#       quick command         #
+# --------------------------- #
 @quick.command("adcp")
 @click.option(
     "--info", is_flag=True, callback=_print_info, help="Show command information"
@@ -258,12 +257,14 @@ def quick_adcp(
 ):
     """Command to make an quickly process adcp files. The [OPTIONS] can be added
     before or after the [inputs_files]."""
-    from magtogoek.adcp.quick_adcp import quick_adcp
+    from magtogoek.adcp.quick_adcp import quick_process_adcp
 
-    quick_adcp(input_files, sonar, yearbase, options)
+    quick_process_adcp(input_files, sonar, yearbase, options)
 
 
-### rti: check sub-command ###
+# --------------------------- #
+#       check command         #
+# --------------------------- #
 @check.command("rti")
 @click.option(
     "--info", is_flag=True, callback=_print_info, help="Show command information"
@@ -283,6 +284,9 @@ def check_rti(ctx, input_files, **options):
     RtiReader(input_files).check_files()
 
 
+# ------------------------ #
+#        Functions         #
+# ------------------------ #
 def _convert_options_to_configfile(sensor_type, options):
     """transte options name and use put them in the configfile strucutre"""
     options = _translate_options_name(sensor_type, options)

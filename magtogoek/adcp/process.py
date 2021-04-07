@@ -1,92 +1,134 @@
-# Use pathlib instead of os
-# mostly copied from jeanlucshaw adcp2nc
-# TODO: add temporary attributes to files, like sensors, serial, depth. ie:
-# -----: ie: _vartmp_adcp_serial_number = platform['adcp'].serial_number
+"""
+Script to process adcp data.
 
-## Add magnetic declination to option
-# TODO add Minimum depth option.
-# TODO add depth below which is flag
+- Load
+- Quality_Control
+- MetaData
+- Export -> .nc or .odf
+"""
+import typing as tp
+import warnings
 
-# TODO add compass ajustment
-# def _get_from_expression(expression):
-#    """TODO """
-#    # list(Path().glob(expression))
+import numpy as np
+import pandas as pd
+import xarray as xr
+from magtogoek.utils import Logger, get_gps_bearing, vincenty
 
-## Other options
-#    t_offset = args.t_offset / 24 if args.t_offset else 0
-#
-#    min_depth = args.mindep or 0
-#
-#    qc = not args.no_qc
+l = Logger(level=0)
 
-# Get output path
-#    if isinstance(args.files, list):
-#        abs_path = os.path.abspath(args.files[0])
-#    else:
-#        abs_path = os.path.abspath(args.files)
-#    path = '%s/' % os.path.dirname(abs_path)
-
-# -----------------------------------#
-# Binary reading and quality control#
-# -----------------------------------#
-# Read teledyne ADCP data
-
-## TODO find path ext from filenames
-# if args.adcptype in ["wh", "bb", "os"]:
-#    ds = load_rdi_binary(
-#        args.files,
-#        args.adcptype,
-#        force_dw=args.force_dw,
-#        force_up=args.force_up,
-#        min_depth=min_depth,
-#    )
-#    brand = "RDI"
-#    sonar = args.adcptype
-#    qc_kw = {**qc_defaults, **rdi_qc_defaults, **user_qc_kw}
-
-# If model == Sentinel V, read in vertical beam data
-
-## Read rowetech seawatch binaries directly
-# elif args.adcptype == "sw":
-#    ds = load_rtb_binary(args.files)
-#    brand = "RTI"
-#    sonar = args.adcptype
-#    qc_kw = {**qc_defaults, **rti_qc_defaults, **user_qc_kw}
-
-## Read rowetech seawatch binaries converted to pd0
-# elif args.adcptype == "sw_pd0":
-#    ds = load_rdi_binary(
-#        args.files,
-#        "wh",
-#        force_dw=args.force_dw,
-#        force_up=args.force_up,
-#        min_depth=min_depth,
-#    )
-#    brand = "RTI"
-#    sonar = "sw"
-#    qc_kw = {**qc_defaults, **rdi_qc_defaults, **user_qc_kw}
-
-## Sonar unknown
-# else:
-#    raise ValueError("Sonar type %s not recognized" % args.adcptype)
+from pathlib import Path
 
 
-## Quality control
-#  if qc:
-#      ds = adcp_qc(ds, **qc_kw)
+def load_navigation(filename: str, window: int = 60) -> tp.Type[xr.Dataset]:
+    """Load navigation data from netcdf file.
+
+    The netcd files must contains `lon` and `lat`
+    (longitude and latitude in decimal degrees) along a `time`
+    coordinates.
+
+    This functions computes the `bearing`, `u_ship` and `v_ship` from
+    `lon` and `lat`.
+
+    Computes the distance between each GPS coordinates with Vincenty and
+    WGS84 and speed = distance / time_delta. The navigation data computed
+    are averaged over `window` number of assemble and interpolated of the
+    original time vector.
+
+    Parameters
+    ----------
+    filename :
+        GPS netcdf filename.
+    window :
+        Size of the centered averaging window.
+    Returns
+    -------
+        dataset with the loaded navigation data.
+    Notes
+    -----
+        Not properly tested.
+
+    """
+    if Path(filename).is_file():
+        try:
+            dataset = xr.open_dataset(filename).dropna("time")
+        except OSError(f"{filename} is not a netcdf file."):
+            l.warning("GPS file was not in netcdf format.")
+
+        if "lon" in dataset.variables and "lat" in dataset.variables:
+
+            dataset = xr.merge((dataset, compute_nav(dataset, window=window)))
+
+            return dataset
+
+        else:
+            l.warning(
+                "GPS data, `lon` and/or `lat`, were not found in the gsp netcdf file provided."
+            )
+    else:
+        l.warning("No GPS files found.")
 
 
-## Data Encoding
-## Format data
-# if bodc_name:
-#    change var name and add new attrs.
-## add variables_attrs
-## add global_attrs
+def compute_nav(dataset: tp.Type[xr.Dataset], window: int = 60) -> tp.Type[xr.Dataset]:
+    """compute bearing, speed, u_ship and v_ship
 
-## if odf_file_name is False and netcdf_file_name is False:
-#   netcdf_file_name = (inputfile remove ext .nc in local dir)
-## export to odf
-# if isinstance(odf_file_name, list):
-#   export to odf
-## Set creation date attribute
-# ds.attrs['history'] = 'Created: %s' % datetime.now().strftime("%Y/%m/%d %H:%M:%S")
+    Computes the distance between each GPS coordinates with Vincenty and
+    WGS84 and speed = distance / time_delta.
+
+    Parameters
+    ----------
+    window :
+        Size of the centered averaging window.
+    """
+
+    position0 = np.array((dataset.lon.values[:-1], dataset.lat.values[:-1])).T.tolist()
+    position1 = np.array((dataset.lon.values[1:], dataset.lat.values[1:])).T.tolist()
+
+    distances = list(map(vincenty, position0, position1))  # meter
+
+    bearing = list(map(get_gps_bearing, position0, position1))  # degree
+
+    time_delta = np.diff(dataset.time).astype("timedelta64[s]")
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", category=RuntimeWarning)
+
+    speed = distances / time_delta.astype("float64")  # meter per seconds
+
+    time_centered = dataset.time[:-1] + time_delta / 2
+
+    u_ship = speed * np.sin(np.radians(bearing))
+    v_ship = speed * np.cos(np.radians(bearing))
+
+    ds = xr.Dataset(
+        {
+            "bearing": (["time"], bearing),
+            "speed": (["time"], speed),
+            "u_ship": (["time"], u_ship),
+            "v_ship": (["time"], v_ship),
+        },
+        coords={"time": time_centered},
+    )
+
+    ds = ds.rolling(time=window, center=True).mean().interp(time=dataset.time)
+
+    return ds
+
+
+if __name__ == "__main__":
+    import matplotlib.pyplot as plt
+
+    test_files = "../../test/files/gps_sillex2018.nc"
+
+    ds = xr.open_dataset(test_files)
+
+    ds_vel = load_navigation(test_files, window=1)
+
+    vel = ds.bt_u[abs(ds.bt_u) < 50]
+
+    plt.figure("vel mag")
+    plt.plot(ds_vel.time, ds_vel.u_ship, label="ship")
+    plt.plot(vel.time, -vel, label="bottom")
+
+    plt.legend()
+
+    plt.show()

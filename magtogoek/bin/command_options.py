@@ -1,5 +1,7 @@
 """
-Contains different click options and the functions to add them to the click command.
+Script that contains different click options and the functions to add them to the click command.
+
+FIXME
 """
 
 import click
@@ -33,8 +35,9 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
             click.option(
                 "-i",
                 "--input-files",
-                type=click.STRING,
-                help="Expression identifying adcp files",
+                multiple=True,
+                type=click.Path(exists=True),
+                help="Expression identifying adcp files. Call `-i` for each files.",
             )
         ]
 
@@ -100,24 +103,24 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
             "--adcp-orientation",
             type=click.Choice(["up", "down"]),
             help="""Vertical orientation of the adcp.""",
-            default="down",
+            default=None,
             show_default=True,
         ),
         click.option(
             "-l",
-            "--start-time",
-            #  type,
-            help="""Date (YYYYMMDDTHHMMSS): Remove leading data before this date.
-    Number (int): Remove this number of profile at the start of the file.""",
+            "--leading-trim",
+            type=click.STRING,
+            help="""Removes a count of leading data or data before a given date or datetime.
+    Formats: Date "YYYYMMDDT" or "YYYYMMDDThhmmss.ssss",  Count (int): """,
             nargs=1,
             default=None,
         ),
         click.option(
             "-t",
-            "--end-time",
-            #  type
-            help="""Date (YYYYMMDDTHHMMSS): Remove trailling data after this date. 
-    Number (int): Remove this number of profile at the end of the file.""",
+            "--trailing-trim",
+            type=click.STRING,
+            help="""Removes a count of trailing data or data after a given date or datetime.
+    Formats: Date "YYYYMMDDT" or "YYYYMMDDThhmmss.ssss",  Count (int): """,
             nargs=1,
             default=None,
         ),
@@ -187,13 +190,15 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
             show_default=True,
         ),
         click.option(
-            "--m-corr/--no-m-corr",
-            help="""Motion correction. Default[-no-m-corr] (True).
-    Uses `bt` if available or GSP data. If the adcp
-    file does not contain GPS data. A netcdf
-    file with with variable named (`lon`, `lat`)
-    needs to be provided with options `-G`""",
+            "-m_cor",
+            "--motion_correction",
+            help="""Motion correction.
+    Corrects with bottomTrack `bt` or GPS `gsp`.
+    If the adcp file does not contain GPS data, a netcdf file
+    containing variable named `lon` and `lat` needs to be provided
+    with options `-G` for the `gsp` option""",
             default=False,
+            type=click.Choice("bt", "gps"),
         ),
         click.option(
             "-P",

@@ -3,103 +3,15 @@ magotogek utils
 """
 import json
 import typing as tp
+import warnings
+from pathlib import Path
 
 import click
 import numpy as np
+import xarray as xr
 from nptyping import NDArray
 from pandas import Timestamp
-from path import Path
-
-
-def get_files_from_expresion(filenames: tp.Tuple[str, tp.List[str]]) -> tp.List[str]:
-    """Get existing files from expression.
-
-    Returns a list of existing files.
-
-    Raises:
-    -------
-    FileNotFoundError:
-        If files does not exist, or a matching regex not found.
-    """
-    if isinstance(filenames, str):
-        p = Path(filenames)
-        if p.isfile():
-            filenames = [filenames]
-        else:
-            filenames = sorted(map(str, p.parent.glob(p.name)))
-            if len(filenames) == 0:
-                raise FileNotFoundError(f"Expression `{p}` does not match any files.")
-
-    return sorted(filenames)
-
-
-def validate_filename(filename: str, ext: str) -> str:
-    """Check if directory or/and file name exist.
-
-    Ask to make the directories if they don't exist.
-    Ask  to ovewrite the file if a file already exist.
-
-    Appends the correct suffix (extension) if none was given
-    but keeps other suffixes.
-    Ex. path/to/file.ext1.ext2.ini
-
-    """
-    print(filename)
-    if Path(filename).suffix != ext:
-        filename += f"{ext}"
-
-    while not Path(filename).parents[0].is_dir():
-        if click.confirm(
-            click.style(
-                "Directory does not exist. Do you want to create it ?", bold=True
-            ),
-            default=False,
-        ):
-            Path(filename).parents[0].mkdir(parents=True)
-        else:
-            filename = ask_for_filename(ext)
-
-    if Path(filename).is_file():
-        if not click.confirm(
-            click.style(
-                f"A `{ext}` file with this name already exists. Overwrite ?", bold=True
-            ),
-            default=True,
-        ):
-            return validate_filename(ask_for_filename(ext), ext)
-    return filename
-
-
-def ask_for_filename(ext: str) -> str:
-    """ckick.prompt that ask for `filename`"""
-    return click.prompt(
-        click.style(
-            f"\nEnter a filename (path/to/file) for the `{ext}` file. ", bold=True
-        )
-    )
-
-
-def dict2json(file_name: str, dictionnary: tp.Dict, indent: int = 4) -> None:
-    """Makes json file from dictionnary
-    Parameters:
-    -----------
-    indent:
-        argument is passed to json.dump(..., indent=indent)
-    """
-    with open(file_name, "w") as f:
-        json.dump(dictionnary, f, indent=indent)
-
-
-def json2dict(json_file: str):
-    """Open json file as a dictionnary."""
-    with open(json_file) as f:
-        dictionary = json.load(f)
-    return dictionary
-
-
-def nans(shape: tp.Tuple[list, tuple, NDArray]) -> NDArray:
-    """return array of nan of shape `shape`"""
-    return np.full(shape, np.nan)
+from pygeodesy.ellipsoidalVincenty import LatLon
 
 
 class Logger:
@@ -128,11 +40,11 @@ class Logger:
 
     def log(self, msg: str, t: bool = False):
         """
-        Parameters:
-        -----------
-        msg:
+        Parameters
+        ----------
+        msg :
            Message to log.
-        t:
+        t :
            Log time if True.
         """
         if isinstance(msg, list):
@@ -145,11 +57,11 @@ class Logger:
 
     def warning(self, msg: str, t: bool = False):
         """
-        Parameters:
-        -----------
-        msg:
+        Parameters
+        ----------
+        msg :
            Message to log.
-        t:
+        t :
            Log time if True.
         """
         if isinstance(msg, list):
@@ -166,6 +78,95 @@ class Logger:
         return Timestamp.now().strftime("%Y-%m-%d %Hh%M:%S")
 
 
+def get_files_from_expresion(filenames: tp.Tuple[str, tp.List[str]]) -> tp.List[str]:
+    """Get existing files from expression.
+
+    Returns a list of existing files.
+
+    Raises
+    ------
+    FileNotFoundError :
+        If files does not exist, or a matching regex not found.
+    """
+    if isinstance(filenames, str):
+        p = Path(filenames)
+        if p.is_file():
+            filenames = [filenames]
+        else:
+            filenames = sorted(map(str, p.parent.glob(p.name)))
+            if len(filenames) == 0:
+                raise FileNotFoundError(f"Expression `{p}` does not match any files.")
+
+    return sorted(filenames)
+
+
+def is_valid_filename(filename: str, ext: str) -> str:
+    """Check if directory or/and file name exist.
+
+    -Ask to make the directories if they don't exist.
+    -Ask  to ovewrite the file if a file already exist.
+    -Adds the correct suffix (extension) if it was not added
+     but keeps other suffixes.
+        Ex. path/to/file.ext1.ext2.ini
+    """
+    if Path(filename).suffix != ext:
+        filename += f"{ext}"
+
+    while not Path(filename).parents[0].is_dir():
+        if click.confirm(
+            click.style(
+                "Directory does not exist. Do you want to create it ?", bold=True
+            ),
+            default=False,
+        ):
+            Path(filename).parents[0].mkdir(parents=True)
+        else:
+            filename = ask_for_filename(ext)
+
+    if Path(filename).is_file():
+        if not click.confirm(
+            click.style(
+                f"A `{ext}` file with this name already exists. Overwrite ?", bold=True
+            ),
+            default=True,
+        ):
+            return is_valid_filename(ask_for_filename(ext), ext)
+    return filename
+
+
+def ask_for_filename(ext: str) -> str:
+    """ckick.prompt that ask for `filename`"""
+    return click.prompt(
+        click.style(
+            f"\nEnter a filename (path/to/file) for the `{ext}` file. ", bold=True
+        )
+    )
+
+
+def dict2json(file_name: str, dictionnary: tp.Dict, indent: int = 4) -> None:
+    """Makes json file from dictionnary
+
+    Parameters
+    ----------
+    indent :
+        argument is passed to json.dump(..., indent=indent)
+    """
+    with open(file_name, "w") as f:
+        json.dump(dictionnary, f, indent=indent)
+
+
+def json2dict(json_file: str):
+    """Open json file as a dictionnary."""
+    with open(json_file) as f:
+        dictionary = json.load(f)
+    return dictionary
+
+
+def nans(shape: tp.Tuple[list, tuple, NDArray]) -> NDArray:
+    """return array of nan of shape `shape`"""
+    return np.full(shape, np.nan)
+
+
 def circular_distance(a1, a2, units="rad"):
     """
     Function circdist usage:
@@ -178,15 +179,15 @@ def circular_distance(a1, a2, units="rad"):
     ----------
     a1, a2 : float
         Input angle.
-    units: str
+    units : str
         Units of input angles ('deg', 'rad')
     Returns
     -------
     float
         Angular distance between `a1` and `a2`.
 
-    Notes:
-    ------
+    Notes
+    -----
     Taken from jeanlucshaw adcp2nc: https://github.com/jeanlucshaw/adcp2nc/
     """
     if units == "deg":
@@ -213,3 +214,44 @@ def circular_distance(a1, a2, units="rad"):
         res = 180 * res / np.pi
 
     return res
+
+
+def vincenty(p0: tp.Tuple[float, float], p1: tp.Tuple[float, float]) -> float:
+    """Calculate the distance between 2 coordinates with pygeodesy.ellipsoidalVincenty.LatLon
+
+    Great Circule Distance with Datum = WGS84
+
+    Parameters
+    ----------
+    p0 :
+       (longitude, latitude) of the first points in decimal degrees
+    p1 :
+       (longitude, latitude) of the second points in decimal degrees
+
+    Returns
+    -------
+    distance :
+        distance between the two points in meters.
+    """
+
+    return LatLon(p0[1], p0[0]).distanceTo(LatLon(p1[1], p1[0]))
+
+
+def get_gps_bearing(p0: tp.Tuple[float, float], p1: tp.Tuple[float, float]) -> float:
+    """Calculate the bearing between two coordinates with pygeodesy.ellipsoidalVincenty.LatLon
+
+    Datum = WGS84
+
+    Parameters
+    ----------
+    p0 :
+       (longitude, latitude) of the first points in decimal degrees
+    p1 :
+       (longitude, latitude) of the second points in decimal degrees
+
+    Returns
+    -------
+    bearing in degrees [0, 360]
+    """
+
+    return LatLon(p0[1], p0[0]).initialBearingTo(LatLon(p1[1], p1[0]))

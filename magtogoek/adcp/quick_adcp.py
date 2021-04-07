@@ -2,81 +2,88 @@
 Constains functions to quickly process adcp data.
 """
 import typing as tp
+from pathlib import Path
 
 from magtogoek.adcp.loader import load_adcp_binary
-from magtogoek.utils import Logger, validate_filename
+from magtogoek.utils import Logger
 from pandas import Timestamp
 
 
-def quick_adcp(input_files: str, sonar: str, yearbase: int, params: tp.Dict = None):
+def quick_process_adcp(
+    input_files: str, sonar: str, yearbase: int, params: tp.Dict = None
+):
     """TODO
     Parameters:
     -----------
     TODO
 
     """
-    leading_index, trailing_index = None, None
-    start_time, end_time = None, None
+    start_time, leading_index = is_datetime_or_count(params["leading_trim"])
+    end_time, trailing_index = is_datetime_or_count(params["trailing_trim"])
 
-    netcdf_output = params["netcdf_output"] = None
-    if params["start_time"]:
-        if "T" in params["start_time"]:
-            start_time = Timestamp(params["start_time"])
-        else:
-            leading_index = int(params["start_time"])
-
-    if params["end_time"]:
-        if "T" in params["end_time"]:
-            end_time = Timestamp(params["end_time"])
-        else:
-            trailing_index = int(params["end_time"])
+    l = Logger()
 
     if params["merge"]:
+        # Loading
         ds = load_adcp_binary(
             input_files,
             yearbase=yearbase,
             sonar=sonar,
             leading_index=leading_index,
             trailing_index=trailing_index,
+            orientation=params["adcp_orientation"],
         )
-        l = Logger(ds.logbook)
-
+        # Time Slicing
         ds = ds.sel(time=slice(start_time, end_time))
 
         if len(ds.time) == 0:
-            l.warning(f"{netcdf_output} time dims is of lenght 0 after slicing.")
+            l.warning(f"{input_files} time dims is of lenght 0 after slicing.")
 
-        ds.attrs["logbook"] = l.logbook
+        # Quality Control
+        if params["qc"]:
+            pass
+
+        # Updateting logbook
+        ds.attrs["logbook"] += l.logbook
+
+        # Exporting to netcdf
         if params["netcdf_output"]:
-            netcdf_output = validate_filename(params["netcdf_output"], ext=".nc")
+            netcdf_output = Path(params["netcdf_output"]).with_suffix(".nc")
         else:
-            netcdf_output = input_files[0].split(".")[0] + ".nc"
+            netcdf_output = Path(input_files[0]).with_suffix(".nc")
+
+        # Exporting to odf
+        if params["odf_output"]:
+            pass
 
         ds.to_netcdf(netcdf_output)
         print(f"netcdf file made -> {netcdf_output}")
     else:
+        params["merge"] = True
         for fn, count in zip(input_files, range(len(input_files))):
-            ds = load_adcp_binary(
-                fn,
-                yearbase=yearbase,
-                sonar=sonar,
-                leading_index=leading_index,
-                trailing_index=trailing_index,
-            )
-
-            l = Logger(ds.logbook)
-
-            ds = ds.sel(time=slice(start_time, end_time))
-
             if params["netcdf_output"]:
-                netcdf_output = validate_filename(params["netcdf_output"], ext=".nc")
-                netcdf_output = netcdf_output.split(".nc")[0] + "_" + str(count) + ".nc"
-            else:
-                netcdf_output = fn.split(".")[0] + ".nc"
+                params["netcdf_output"] = Path(params["netcdf_output"]).with_suffix(
+                    f"_{count}.nc"
+                )
 
-            if len(ds.time) == 0:
-                l.warning(f"{netcdf_output} time dims is of lenght 0 after slicing.")
-                ds.attrs["logbook"] = l.logbook
+            quick_process_adcp(list(fn), sonar, yearbase, params)
 
-            ds.to_netcdf(netcdf_output)
-            print(f"netcdf file made -> {netcdf_output}")
+
+def is_datetime_or_count(trim_arg: str):
+    """Check if trim_arg is a datetime or a count.
+
+    Returns (Timstamp(trim_arg), None) or (None, int(trim_arg))
+
+    Returns:
+    --------
+    datetime:
+        None or pandas.Timstamp
+    count:
+        None or int
+
+    """
+    datetime, count = (
+        (Timestamp(trim_arg), None) if "T" in trim_arg else (None, int(trim_arg))
+    )
+
+    return datetime, count
