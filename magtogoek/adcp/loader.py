@@ -195,17 +195,17 @@ def load_adcp_binary(
     # Convert depth relative to the ADCP to depth below surface   #
     # ----------------------------------------------------------- #
     if sonar != "os":
-        XducerDepth = np.median(data.XducerDepth)
+        xducer_depth = np.median(data.XducerDepth)
         if sensor_depth:
             l.log(
-                f"The difference between `sensor_depth` and `XDucerDepth` is {abs(sensor_depth - XducerDepth)} m"
+                f"The difference between `sensor_depth` and `XDucerDepth` is {abs(sensor_depth - xducer_depth)} m"
             )
         if orientation == "down":
-            depth = XducerDepth + data.dep
+            depth = xducer_depth + data.dep
         else:
-            depth = XducerDepth - data.dep
+            depth = xducer_depth - data.dep
     else:
-        XducerDepth = data.XducerDepth[0]
+        xducer_depth = data.XducerDepth[0]
         depth = data.dep
 
     if (depth < 0).all():
@@ -300,8 +300,6 @@ def load_adcp_binary(
     if sonar != "os":
         ds["xducer_depth"] = (["time"], np.asarray(data.XducerDepth))
 
-    ds.attrs["_vartmp_XducerDepth"] = XducerDepth
-
     # --------------------------- #
     # Loading the naviagtion data #
     # --------------------------- #
@@ -358,6 +356,8 @@ def load_adcp_binary(
     sonar_names = dict(
         wh="WorhHorse", sv="SentinelV", os="OceanSurveyor", sw="SeaWATCH"
     )
+    if "xducer_depth" not in ds:
+        ds.attrs["xducer_depth"] = xducer_depth
     ds.attrs["sonar"] = sonar_names[sonar]
     ds.attrs["coordsystem"] = data.trans["coordsystem"]
     ds.attrs["beam_angle"] = data.sysconfig["angle"]

@@ -35,8 +35,9 @@ def adcp_quality_control(
     vertical_vel_th: float = 5,
     error_vel_th: float = 5,
     motion_correction: float = None,
-    mode_sidelobes: bool = False,
-    side_lobe_depth: float = None,
+    sidelobes_correction: bool = False,
+    bottom_depth: float = None,
+    beam_angle: float = None,
 ) -> tp.Type[xr.Dataset]:
     """
     Perform ADCP quality control.
@@ -60,19 +61,23 @@ def adcp_quality_control(
     horizontal_vel_th:
         Require u, v  values be smaller than this value (meter per seconds).
     veritcal_vel_th:
-        Require w  values be smaller than this value (meter per seconds).
-    mode_platform_velocity :
+        Require w values be smaller than this value (meter per seconds).
+    error_vel_th:
+        Require e values be smaller than this value (meter per seconds).
+    motion_correction
         If `True`, will corrected velocities from the platform motion.
-    gps_file : str
-        GPS dataset with longitude(time), latitude(time).
-    mode_sidelobes :
+    sidelobes_correction :
         Use fixed depth or bottom track range to remove side lobe
-        contamination. Set to either `dep` or `bt`.
-    side_lob_depth : float
+        contamination. Set to either "dep" or "bt" or None.
+    bottom_depth : float
         If not `None`, this depth used for removing side lobe contamination.
 
     Notes:
     ------
+       The same threshold for corr, amp and pg are applied to sentinelV fifth beam.
+
+       Tests returns True when failed.
+
        SeaDatNet Quality Control Flags Value
        * 0: no_quality_control
        * 1: good_value
@@ -85,7 +90,7 @@ def adcp_quality_control(
        * 8: interpolated_value
        * 9: missing_value
 
-    FIXME
+       FIXME
        Data are marked as questionable if they fail only the 4beam
        transformation test. If they fail the 4beam test and any other
        non-critical tests they are marked as bad. Data likely to be
@@ -99,29 +104,37 @@ def adcp_quality_control(
             f"{motion_correction} is not a valid option for motion_correction. Valid are `bt` or `gps`."
         )
 
+    if beam_angle:
+        dataset.attrs["beam_angle"] = beam_angle
+
     l.logbook += dataset.logbook
 
     # condition to check (test)
-    amplitude_condition = None
-    correlation_condition = None
-    percentgood_condition = None
-    roll_condition = None
-    pitch_condition = None
-    sidelobe_condition = None
-    horizontal_velocity_condition = None
-    vertical_velocity_condition = None
-    error_velocity_condition = None
-    pressure_condition = None
-    temperature_condition = None
+    quality_test = dict(
+        amplitude=False,
+        correlation=False,
+        percentgood=False,
+        roll=False,
+        pitch=False,
+        sidelobe=False,
+        horizontal_vel=False,
+        vertical_vel=False,
+        error_velocity=False,
+        pressure=False,
+        temperature=False,
+        missing=False,
+    )
 
     # flags field to make
-    u_flags = None
-    v_flags = None
-    w_flags = None
-    vb_flags = None
-    pressure_qc = None
-    temperature_qc = None
-
+    flags = dict(
+        u_flags=None,
+        v_flags=None,
+        w_flags=None,
+        vb_flags=None,
+        pressure_qc=None,
+        temperature_qc=None,
+    )
+    # if bt bt_u etc are in bt
     if motion_correction == "bt":
         bottom_track_motion_correction(dataset)
 
@@ -130,138 +143,63 @@ def adcp_quality_control(
 
     set_implausible_vel_to_nan(dataset, vel_thresh=IMPLAUSIBLE_VEL_TRESHOLD)
 
-    # Acoustics conditions (True fails)
-    # NOTE JeanLucShaw used absolute but is it needed ?
+    # NOTE if amp1,2,3,4 in dataset
     if amp_th:
-        amplitude_condition = amplitude_test(dataset, amp_th)
+        quality_test["amplitude"] = amplitude_test(dataset, amp_th)
     if corr_th:
-        correlation_condition = correlation_test(dataset, corr_th)
+        quality_test["correlation"] = correlation_test(dataset, corr_th)
     if pg_th:
-        percentgood_condition = percentgood_test(dataset, pg_th)
+        quality_test["percentgood"] = percentgood_test(dataset, pg_th)
 
-    # Roll conditions (True fails)
-    # Distance from mean
-
-    roll_condition = roll_test(dataset, roll_th)
-    pitch_condition = pitch_test(dataset, pitch_th)
-
-    # Pitch conditions (True fails)
-    # Distance from Mean
-    pitch_mean = circmean(dataset.pitch.values, low=-180, high=180)
-    pitch_from_mean = circular_distance(dataset.pitch.values, pitch_mean, units="deg")
-    pitch_condition = pitch_from_mean > pitch_th
-
-    # Motion(Rotation) conditions (True fails)
-    motion_condition = roll_condition | pitch_condition
+    if roll_th:
+        quality_test["roll"] = roll_test(dataset, roll_th)
+    if pitch_th:
+        quality_test["pitch"] = pitch_test(dataset, pitch_th)
 
     # Outlier conditions (True fails)
-    horizontal_velocity = np.sqrt(dataset.u ** 2 + dataset.v ** 2)
+    if horizontal_vel_th:
+        quality_test["horizontal_vel"] = horizontal_vel_test(dataset, horizontal_vel_th)
 
-    horizontal_velocity_condition = np.greater(
-        horizontal_velocity.values,
-        horizontal_vel_th,
-        where=np.isfinite(horizontal_velocity),
-    )
-    vertical_velocity_condition = np.greater(
-        dataset.w.values,
-        vertical_vel_th,
-        where=np.isfinite(horizontal_velocity),
-    )
+    if vertical_vel_th:
+        quality_test["vertical_velocity"] = vertical_vel_test(dataset, vertical_vel_th)
+
+    vb_quality_test = vertical_beam_test(dataset, amp_th, corr_th, pg_th)
+
+    if sidelobes_correction:
+        quality_test["sidelobe"] = sidelobe_test(
+            dataset, sidelobes_correction, bottom_depth
+        )
 
     # Missing condition (True fails)
+    motion_condition = quality_test["roll"] | quality_test["pitch"]
+
     missing_condition = (
         ~np.isfinite(dataset.u) | ~np.isfinite(dataset.v) | ~np.isfinite(dataset.w)
     ).values
 
-    ## def remove_side_influence(dataset):
-    # Remove side lob influence (True fails) according to a fixed depths (e.g. Moorings)
-    if mode_sidelobes == "dep":
-        #        (sidelobe from fixe depth) FIXME
-
-        adcp_depth = dataset.depth.mean()  # FIXME not mean. Do it throught time
-        beam_angle_cos = np.cos(np.rad(dataset.attrs["beam_angle"]))
-        # Dowward looking
-        if dataset.attrs["orientation"] == "down":
-            if side_lobe_depth != None:
-                sidelobe_condition = dataset.z > (
-                    adcp_depth + (side_lobe_depth - adcp_depth) * beam_angle_cos
-                )
-            else:
-                l.warning("Can not correct for side lobes, depth not provided.")
-
-        # Upward looking
-        elif dataset.attrs["looking"] == "up":
-            sidelobe_condition = dataset.z < adcp_depth * (1 - beam_angle_cos)
-
-        # Orientation unknown
-        else:
-            l.warning("Can not correct for side lobes, looking attribute not set.")
-            sidelobe_condition = np.ones(dataset.z.values.size, dtype="bool")
-
-    # Do not perform side lobe removal
-    else:
-        sidelobe_condition = np.zeros_like(dataset.u.values, dtype="bool")
-
     # Boolean summary of non-critical tests (True fails)
+    # NOTE none critical is not in quality_test
     ncrit_condition = (
-        correlation_condition
-        | amplitude_condition
-        | motion_condition
-        | horizontal_velocity_condition
-        | vertical_velocity_condition
+        quality_test["correlation"]
+        | quality_test["amplitude"]
+        | quality_test["motion"]
+        | quality_test["horizontal_velocity"]
+        | quality_test["vertical_velocity"]
     )
 
     dataset["flags"] = (
         ["depth", "time"],
         np.ones(dataset.depth.shape + dataset.time.shape),
     )
-    dataset["flags"].values = xr.where(percentgood_condition, 3, dataset.flags)
+    dataset["flags"].values = xr.where(quality_test["percentgood"], 3, dataset.flags)
     dataset["flags"].values = xr.where(
-        percentgood_condition & ncrit_condition, 4, dataset.flags
+        quality_test["percentgood"] & ncrit_condition, 4, dataset.flags
     )
-    dataset["flags"].values = xr.where(sidelobe_condition, 4, dataset.flags)
+    dataset["flags"].values = xr.where(quality_test["sidelobe"], 4, dataset.flags)
 
     dataset["flags"].values = xr.where(missing_condition, 9, dataset.flags)
 
-    # QC FOR SENTINEL V
-    # SENTINELV_FLAG
-
     return dataset
-
-
-def set_implausible_vel_to_nan(dataset: tp.Type[xr.Dataset], vel_thresh: float = 10):
-    """Set bin with improbable values to Nan."""
-    for v in ["u", "v", "w"]:
-        plausible = (dataset[v] > -10) & (dataset[v] < 10)
-        dataset["u"] = dataset["u"].where(plausible)
-        dataset["v"] = dataset["v"].where(plausible)
-        dataset["w"] = dataset["w"].where(plausible)
-        # flag 4: bad values ? now missing ?
-
-
-def correlation_test(dataset, threshold):
-    """FIXME"""
-    return (
-        (dataset.corr1 < threshold)
-        & (dataset.corr2 < threshold)
-        & (dataset.corr3 < threshold)
-        & (dataset.corr4 < threshold)
-    )
-
-
-def amplitude_test(dataset, threshold):
-    """FIXME"""
-    return (
-        (dataset.amp1 < threshold)
-        & (dataset.amp2 < threshold)
-        & (dataset.amp3 < threshold)
-        & (dataset.amp4 < threshold)
-    )
-
-
-def percentgood_test(dataset, threshold):
-    """FIXME"""
-    return dataset.pg < threshold
 
 
 def bottom_track_motion_correction(dataset: tp.Type[xr.Dataset]):
@@ -280,11 +218,153 @@ def gps_motion_correction(dataset: tp.Type[xr.Dataset]):
         dataset[f"{field}ship"].values = dataset[field].values
 
 
-def roll_test(dataset: tp.Type[xr.Dataset], thres: float) -> tp.List[bool]:
-    """FIXME"""
+def set_implausible_vel_to_nan(dataset: tp.Type[xr.Dataset], vel_thresh: float = 10):
+    """Set bin with improbable values to Nan."""
+    for v in ["u", "v", "w"]:
+        plausible = (dataset[v] > -10) & (dataset[v] < 10)
+        dataset["u"] = dataset["u"].where(plausible)
+        dataset["v"] = dataset["v"].where(plausible)
+        dataset["w"] = dataset["w"].where(plausible)
+        # flag 4: bad values ? now missing ?
+
+
+def correlation_test(dataset, threshold):
+    """FIXME
+    NOTE JeanLucShaw used absolute but is it needed ?"""
+    return (
+        (dataset.corr1 < threshold)
+        & (dataset.corr2 < threshold)
+        & (dataset.corr3 < threshold)
+        & (dataset.corr4 < threshold)
+    )
+
+
+def amplitude_test(dataset, threshold):
+    """FIXME
+    NOTE JeanLucShaw used absolute but is it needed ?"""
+    return (
+        (dataset.amp1 < threshold)
+        & (dataset.amp2 < threshold)
+        & (dataset.amp3 < threshold)
+        & (dataset.amp4 < threshold)
+    )
+
+
+def percentgood_test(dataset, threshold):
+    """FIXME
+    NOTE JeanLucShaw used absolute but is it needed ?"""
+    return dataset.pg < threshold
+
+
+def roll_test(dataset: tp.Type[xr.Dataset], thres: float) -> tp.Type[np.array]:
+    """FIXME
+    Roll conditions (True fails)
+    Distance from mean"""
     roll_mean = circmean(dataset.roll_.values, low=-180, high=180)
     roll_from_mean = circular_distance(dataset.roll_.values, roll_mean, units="deg")
     return roll_from_mean > thres
+
+
+def pitch_test(dataset: tp.Type[xr.Dataset], thres: float) -> tp.Type[np.array]:
+    """FIXME
+    Pitch conditions (True fails)
+    Distance from Mean
+    """
+    pitch_mean = circmean(dataset.pitch.values, low=-180, high=180)
+    pitch_from_mean = circular_distance(dataset.pitch.values, pitch_mean, units="deg")
+    return pitch_from_mean > thres
+
+
+def horizontal_vel_test(
+    dataset: tp.Type[xr.Dataset], thres: float
+) -> tp.Type[np.array]:
+    """FIXME
+    None finite value value will also fail"""
+    horizontal_velocity = np.sqrt(dataset.u ** 2 + dataset.v ** 2)
+
+    return np.greater(
+        horizontal_velocity.values,
+        thres,
+        where=np.isfinite(horizontal_velocity),
+    )
+
+
+def vertical_vel_test(dataset: tp.Type[xr.Dataset], thres: float) -> tp.Type[np.array]:
+    """FIXME
+    None finite value value will also fail"""
+    return np.greater(
+        abs(dataset.w.values),
+        thres,
+        where=np.isfinite(dataset.w.values),
+    )
+
+
+def error_vel_test(dataset: tp.Type[xr.Dataset], thres: float) -> tp.Type[np.array]:
+    """FIXME
+    None finite value value will also fail"""
+    return np.greater(
+        abs(dataset.e.values),
+        thres,
+        where=np.isfinite(dataset.w.values),
+    )
+
+
+def vertical_beam_test(
+    dataset: tp.Type[xr.Dataset], amp_thres: float, corr_thres: float, pg_thres: float
+) -> tp.Type[np.array]:
+    """FIXME"""
+    quality_test = dict()
+    if "vb_amp" in dataset.variables:
+        quality_test["vb_amp"] = dataset.vb_amp < amp_thres
+    if "vb_corr" in dataset.variables:
+        quality_test["vb_corr"] = dataset.vb_corr < corr_thres
+    if "vb_pg" in dataset.variables:
+        quality_test["vb_pg"] = dataset.vb_pg < pg_thres
+
+    return quality_test
+
+
+def sidelobe_test(dataset: tp.Type[xr.Dataset], bottom_depth: float = None):
+    """FIXME
+    Remove side lob influence (True fails) according to a fixed depths (e.g. Moorings)
+    Parameters
+    ----------
+    depth :
+        Fixed bottom depth used for sidelob correction
+    """
+
+    if dataset.attrs["beam_angle"] and dataset.attrs["orientation"]:
+        cos_angle = np.cos(np.radians(dataset.attrs["beam_angle"]))
+        if dataset.attrs["orientation"] == "down":
+            if "xducer_depth" in dataset:
+                xducer_depth = dataset["xducer_depth"]
+            elif "xducer_depth" in dataset.attrs:
+                xducer_depth = np.full(dataset.time.shape, dataset["xducer_depth"])
+            else:
+                l.warning(
+                    "Sidelobes correct aborded. Adcp depth `xducer_depth` not provided."
+                )
+                return False
+
+            if bottom_depth:
+                bottom_depth = np.full(dataset.time.shape, bottom_depth)
+            elif "bt_depth" in dataset:
+                bottom_depth = dataset.bt_depth
+            else:
+                l.warning(
+                    "Sidelobes correct aborded. Bottom depth not found or provided."
+                )
+                return False
+
+            return dataset.z > (
+                xducer_depth + (bottom_depth - xducer_depth) * cos_angle
+            )
+
+        elif dataset.attrs["orientation"] == "up":
+            return dataset.z < xducer_depth * (1 - cos_angle)
+
+        else:
+            l.warning("Can not correct for sidelobes, looking attribute not set.")
 
 
 if __name__ == "__main__":
@@ -329,4 +409,4 @@ if __name__ == "__main__":
         trailing_index=None,
     )
 
-    adcp_quality_control(ds)
+#    adcp_quality_control(ds)

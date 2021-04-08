@@ -80,6 +80,34 @@ class Bunch(dict):
 
 
 class RtiReader:
+    """Class to read RTI .ENS files.
+
+    Parameters
+    ----------
+    filenames
+        path/to/filename or list(path/to/filenames) or path/to/regex
+
+    Methods
+    -------
+    check_files(self) :
+        Prints info about the .ENS files; ensemble counts, number of bin, bin size, etc.
+
+    read(start_index, stop_index) :
+      Return a Bunch object with the read data.
+
+        Parameters:
+        -----------
+        start_index:
+           Trim leading chunks by start_index.
+
+        stop_index:
+           Trim trailling chunks by stop_index.
+
+        Returns:
+        --------
+            data
+    """
+
     def __init__(self, filenames: Tuple[str, List]):
         """
         Parameters

@@ -15,6 +15,19 @@ from pygeodesy.ellipsoidalVincenty import LatLon
 
 
 class Logger:
+    """Class to log and print message.
+
+    Keeps count of the number of warnings  `self.w_count`.
+    The logbook is formated and accesible with `self.logbook`.
+
+    Parameters
+    ----------
+    logbook: str, default None.
+        Formated logbook `self.logbook` to append to.
+    level: int Default 0.
+        [0,1,2], [prints all, print only warnings, prints None]
+    """
+
     def __init__(self, logbook: str = "", level: int = 0):
 
         self.logbook = logbook

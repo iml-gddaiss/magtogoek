@@ -70,12 +70,11 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
             nargs=1,
         ),
         click.option(
-            "-G",
-            "--gps",
+            "-N",
+            "--nav",
             type=click.Path(exists=True),
-            help="""path/to/netcdf4 file containing the gps data,
-    `longitude`, `latitude`, of the platform. If provided,
-    they will be used instead of the GPS data in the adcp file""",
+            help="""path/to/netcdf4 file containing the nav data made with
+            the `make_navigation` function. (`from magtogoek.utils import make_navigation`)""",
         ),
     ]
     if sonar:
@@ -193,12 +192,12 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
             "-m_cor",
             "--motion_correction",
             help="""Motion correction.
-    Corrects with bottomTrack `bt` or GPS `gsp`.
-    If the adcp file does not contain GPS data, a netcdf file
+    Corrects with bottomTrack `bt` or navigation `nav`.
+    If the adcp file does not contain nav data, a netcdf file
     containing variable named `lon` and `lat` needs to be provided
-    with options `-G` for the `gsp` option""",
+    with options `-N` for the `nav` option""",
             default=False,
-            type=click.Choice("bt", "gps"),
+            type=click.Choice("bt", "nav"),
         ),
         click.option(
             "-P",

@@ -55,7 +55,7 @@ ADCP_CONFIG_STRUCT = {
     "yearbase": "ADCP_PROCESSING",
     "adcp_orientation": "ADCP_PROCESSING",
     "sonar": "ADCP_PROCESSING",
-    "GPS_file": "ADCP_PROCESSING",
+    "nav_file": "ADCP_PROCESSING",
     "quality_control": "ADCP_QUALITY_CONTROL",
     "amplitude_threshold": "ADCP_QUALITY_CONTROL",
     "percentgood_threshold": "ADCP_QUALITY_CONTROL",
@@ -80,7 +80,7 @@ ADCP_CONFIG_STRUCT = {
 
 CONFIG_NAME_TRANSLATOR = dict(
     adcp=dict(
-        GPS_file="gps",
+        nav_file="nav",
         quality_control="qc",
         side_lobe_correction="side_lobe",
         platform_motion_correction="m_corr",
