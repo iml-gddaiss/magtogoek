@@ -51,6 +51,8 @@ logging.getLogger(rdiraw.__name__).setLevel("CRITICAL")
 
 VEL_FILL_VALUE = -32768.0
 
+l = Logger(level=0)
+
 
 class FilesFormatError(Exception):
     pass
@@ -60,15 +62,11 @@ class InvalidSonarError(Exception):
     pass
 
 
-l = Logger(level=0)
-
-
 def load_adcp_binary(
     filenames: tp.Tuple[str, tp.List[str]],
     sonar: str,
     yearbase: int,
     orientation: str = None,
-    sensor_depth: float = None,
     leading_index: int = None,
     trailing_index: int = None,
 ):
@@ -92,13 +90,12 @@ def load_adcp_binary(
     orientation:
         Adcp orientation. Either `up` or `down`. Will overwrite the value
         of the binary file.
-    sensor_depth:
-        Depth of the ADCP. Use to compare with XducerDeppth median
     Returns
     -------
         Dataset with the loaded adcp data
 
     """
+    l.reset()
     l.section("Loading adcp data", t=True)
 
     filenames = get_files_from_expresion(filenames)
@@ -196,10 +193,10 @@ def load_adcp_binary(
     # ----------------------------------------------------------- #
     if sonar != "os":
         xducer_depth = np.median(data.XducerDepth)
-        if sensor_depth:
-            l.log(
-                f"The difference between `sensor_depth` and `XDucerDepth` is {abs(sensor_depth - xducer_depth)} m"
-            )
+        #        if sensor_depth:
+        #            l.log(
+        #                f"The difference between `sensor_depth` and `XDucerDepth` is {abs(sensor_depth - xducer_depth)} #m"
+        #            )
         if orientation == "down":
             depth = xducer_depth + data.dep
         else:
@@ -233,7 +230,7 @@ def load_adcp_binary(
     # Loading the transducer data #
     # --------------------------- #
 
-    data.vel[data.vel == VEL_FILL_VALUE] = np.nan  # fill
+    data.vel[data.vel.data == VEL_FILL_VALUE] = np.nan  # fill
 
     ds["u"] = (["depth", "time"], np.asarray(data.vel[:, :, 0].T))
     ds["v"] = (["depth", "time"], np.asarray(data.vel[:, :, 1].T))
@@ -241,7 +238,7 @@ def load_adcp_binary(
     ds["e"] = (["depth", "time"], np.asarray(data.vel[:, :, 3].T))
 
     if sonar == "sv":
-        data.vbvel[data.vbvel == VEL_FILL_VALUE] = np.nan
+        data.vbvel[data.vbvel.data == VEL_FILL_VALUE] = np.nan
         ds["vb_vel"] = (["depth", "time"], np.asarray(data.vbvel.T))
         ds["vb_corr"] = (["depth", "time"], np.asarray(data.VBCorrelation.T))
         ds["vb_amp"] = (["depth", "time"], np.asarray(data.VBIntensity.T))
@@ -251,7 +248,7 @@ def load_adcp_binary(
 
     if "bt_vel" in data:
         if not (data.bt_vel == 0).all():
-            data.bt_vel[data.bt_vel == VEL_FILL_VALUE] = np.nan
+            data.bt_vel[data.bt_vel.data == VEL_FILL_VALUE] = np.nan
             ds["bt_u"] = (["time"], np.asarray(data.bt_vel[:, 0]))
             ds["bt_v"] = (["time"], np.asarray(data.bt_vel[:, 1]))
             ds["bt_w"] = (["time"], np.asarray(data.bt_vel[:, 2]))
@@ -359,6 +356,9 @@ def load_adcp_binary(
     if "xducer_depth" not in ds:
         ds.attrs["xducer_depth"] = xducer_depth
     ds.attrs["sonar"] = sonar_names[sonar]
+    ds.attrs["manifacturer"] = (
+        "TeledyneRD" if sonar in ["wh", "sv", "os"] else "RoweTech"
+    )
     ds.attrs["coordsystem"] = data.trans["coordsystem"]
     ds.attrs["beam_angle"] = data.sysconfig["angle"]
     ds.attrs["transducer_frequency"] = data.sysconfig["kHz"] * 1000
@@ -543,23 +543,23 @@ if __name__ == "__main__":
     #       "a1_20160713_20170513_0480m.000",
     #        "eh2_20060530_20060717_0007m.000",
     #  ]
-    #   sillex_path = "/media/jeromejguay/5df6ae8c-2af4-4e5b-a1e0-a560a316bde3/home/jeromejguay/WorkSpace_2019/Data/Raw/ADCP/"
-    #    sillex_fns = [
-    # "COR1805-ADCP-150kHz009_000001",
-    # "COR1805-ADCP-150kHz009_000002",
-    # ]
+    sillex_path = "/media/jeromejguay/5df6ae8c-2af4-4e5b-a1e0-a560a316bde3/home/jeromejguay/WorkSpace_2019/Data/Raw/ADCP/"
+    sillex_fns = [
+        "COR1805-ADCP-150kHz009_000001",
+        "COR1805-ADCP-150kHz009_000002",
+    ]
 
-    v50exp = (
-        "/media/jeromejguay/Bruno/TREX2020/V50/TREX2020_V50_20200911T121242_003_*.ENX"
-    )
+    # v50exp = (
+    #    "/media/jeromejguay/Bruno/TREX2020/V50/TREX2020_V50_20200911T121242_003_*.ENX"
+    # )
     # v100file = (
     #    "/media/jeromejguay/Bruno/TREX2020/V100/TREX2020_V100_20200911T115335.pd0"
     #  )
 
-    pd0_sw_path = "/home/jeromejguay/ImlSpace/Projects/magtogoek/test/files/sw_300_4beam_20deg_piston.pd0"
-    ens_sw_path = (
-        "/home/jeromejguay/ImlSpace/Projects/magtogoek/test/files/rowetech_seawatch.ens"
-    )
+    # pd0_sw_path = "/home/jeromejguay/ImlSpace/Projects/magtogoek/test/files/sw_300_4beam_20deg_piston.pd0"
+    # ens_sw_path = (
+    #    "/home/jeromejguay/ImlSpace/Projects/magtogoek/test/files/rowetech_seawatch.ens"
+    # )
 
     #  files = [sillex_path + fn for fn in sillex_fns]
     # sonar = "os"
@@ -569,9 +569,12 @@ if __name__ == "__main__":
     # ens = load_adcp_binary(
     #      [f + ".ENS" for f in files], sonar=sonar, yearbase=2018, orientation="down"
     #   )
-    #    enx = load_adcp_binary(
-    # [f + ".ENX" for f in files], sonar=sonar, yearbase=2018, orientation="down"
-    # )
+    enx = load_adcp_binary(
+        [sillex_path + f + ".ENX" for f in sillex_fns],
+        sonar="os",
+        yearbase=2018,
+        orientation="down",
+    )
 
     # sonar = "wh"
     # ios0 = load_adcp_binary(
@@ -584,28 +587,28 @@ if __name__ == "__main__":
     #    ios_path + ios_fns[2], sonar=sonar, yearbase=2006, orientation="down"
     # )
 
-    v50path = Path(v50exp)
-    v50files = sorted(map(str, v50path.parent.rglob(v50path.name)))
-    sonar = "sv"
+# v50path = Path(v50exp)
+#  v50files = sorted(map(str, v50path.parent.rglob(v50path.name)))
+#   sonar = "sv"
 
-    v50 = load_adcp_binary(
-        v50files,
-        sonar=sonar,
-        yearbase=2020,
-        orientation="down",
-        leading_index=100,
-        trailing_index=10000,
-    )
+#    v50 = load_adcp_binary(
+# v50files,
+# sonar=sonar,
+# yearbase=2020,
+# orientation="down",
+# leading_index=100,
+# trailing_index=10000,
+# )
 
-    # v100 = load_adcp_binary(v100file, sonar=sonar, yearbase=2020, orientation="down")
-    sw_pd0 = load_adcp_binary(
-        pd0_sw_path, sonar="sw_pd0", yearbase=2020, orientation="down"
-    )
-    sw = load_adcp_binary(
-        ens_sw_path,
-        sonar="sw",
-        yearbase=2020,
-        orientation="down",
-        leading_index=100,
-        trailing_index=10,
-    )
+# v100 = load_adcp_binary(v100file, sonar=sonar, yearbase=2020, orientation="down")
+# sw_pd0 = load_adcp_binary(
+#    pd0_sw_path, sonar="sw_pd0", yearbase=2020, orientation="down"
+# )
+# sw = load_adcp_binary(
+#    ens_sw_path,
+#    sonar="sw",
+#    yearbase=2020,
+#    orientation="down",
+#    leading_index=100,
+#    trailing_index=10,
+# )

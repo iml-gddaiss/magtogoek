@@ -22,10 +22,29 @@ class Logger:
 
     Parameters
     ----------
-    logbook: str, default None.
+    logbook : str, default None.
         Formated logbook `self.logbook` to append to.
-    level: int Default 0.
+    level : int Default 0.
         [0,1,2], [prints all, print only warnings, prints None]
+
+    Attributes
+    ----------
+    logbook :
+        logbook
+    w_count :
+        Number of Warning
+
+    Methods
+    -------
+    section :
+        FIXME
+
+    log :
+        FIXME
+    warning :
+        FIXME
+    reset :
+        FIXME
     """
 
     def __init__(self, logbook: str = "", level: int = 0):
@@ -85,6 +104,11 @@ class Logger:
                 self.w_count += 1
             msg = msg if t is False else self._timestamp() + " " + msg
             self.logbook += " " + msg + "\n"
+
+    def reset(self):
+        """Reset w_count and logbook."""
+        self.logbook = ""
+        self.w_count = 0
 
     @staticmethod
     def _timestamp():

@@ -174,7 +174,7 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
             show_default=True,
         ),
         click.option(
-            "-E",
+            "-e",
             "--error-velocity-threshold",
             type=click.FLOAT,
             help="Error velocity threshold. [m/s]",
@@ -183,21 +183,28 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
             show_default=True,
         ),
         click.option(
-            "--side-lobe/--no-side-lobe",
+            "--sidelobes/--no-sidelobes",
             help="Do side lobe correction.",
             default=True,
             show_default=True,
         ),
         click.option(
+            "-d",
+            "--bottom-depth",
+            type=click.FLOAT,
+            help="""If provided, this fixed depth will be
+            used for sidelobes correction.""",
+            default=None,
+            show_default=True,
+        ),
+        click.option(
             "-m_cor",
-            "--motion_correction",
-            help="""Motion correction.
-    Corrects with bottomTrack `bt` or navigation `nav`.
-    If the adcp file does not contain nav data, a netcdf file
-    containing variable named `lon` and `lat` needs to be provided
-    with options `-N` for the `nav` option""",
-            default=False,
-            type=click.Choice("bt", "nav"),
+            "--motion_correction_mode",
+            help="""Corrects motion with bottomTrack `bt` or navigation `nav`.
+            For `nav`, a netcdf file made with `magtogoek.navigation` needs to be
+            with options `-N` for the `nav` option""",
+            default="bt",
+            type=click.Choice(["bt", "nav"]),
         ),
         click.option(
             "-P",

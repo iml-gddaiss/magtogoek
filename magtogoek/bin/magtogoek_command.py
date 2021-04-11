@@ -32,7 +32,6 @@ from subprocess import run as subp_run
 import click
 from magtogoek.bin.command_options import adcp_options, add_options
 from magtogoek.utils import is_valid_filename, json2dict
-from pandas import Timestamp
 
 # ---------- Module or functions imported by commands ----------- #
 # from magtogoek.bin.configfile import make_configfile
@@ -63,13 +62,14 @@ ADCP_CONFIG_STRUCT = {
     "horizontal_velocity_threshold": "ADCP_QUALITY_CONTROL",
     "vertical_velocity_threshold": "ADCP_QUALITY_CONTROL",
     "error_velocity_threshold": "ADCP_QUALITY_CONTROL",
-    "side_lobe_correction": "ADCP_QUALITY_CONTROL",
+    "sidelobes_correction": "ADCP_QUALITY_CONTROL",
+    "bottom_depth": "ADCP_QUALITY_CONTROL",
     "pitch_threshold": "ADCP_QUALITY_CONTROL",
     "roll_threshold": "ADCP_QUALITY_CONTROL",
     "leading_trim": "ADCP_QUALITY_CONTROL",
     "trailing_trim": "ADCP_QUALITY_CONTROL",
-    "platform_motion_correction": "ADCP_QUALITY_CONTROL",
-    "merge_output_file": "ADCP_OUTPUT",
+    "motion_correction_mode": "ADCP_QUALITY_CONTROL",
+    "merge_output_files": "ADCP_OUTPUT",
     "bodc_name": "ADCP_OUTPUT",
     "drop_percent_good": "ADCP_OUTPUT",
     "drop_correlation": "ADCP_OUTPUT",
@@ -82,9 +82,8 @@ CONFIG_NAME_TRANSLATOR = dict(
     adcp=dict(
         nav_file="nav",
         quality_control="qc",
-        side_lobe_correction="side_lobe",
-        platform_motion_correction="m_corr",
-        merge_output_file="merge",
+        sidelobes_correction="sidelobes",
+        merge_output_files="merge",
         drop_percent_good="drop_pg",
         drop_correlation="drop_corr",
         drop_amplitude="drop_amp",
@@ -204,8 +203,7 @@ def config_adcp(
     # check if a file already exists and format the `.ini` extension.
     config_name = is_valid_filename(config_name, ext=".ini")
 
-    # translate names to those used by the configparser.
-    updated_params = _convert_options_to_configfile("adcp", options)
+    updated_params = _format_options_for_configfile("adcp", options)
 
     make_configfile(
         filename=config_name, sensor_type="adcp", updated_params=updated_params
@@ -259,7 +257,11 @@ def quick_adcp(
     before or after the [inputs_files]."""
     from magtogoek.adcp.quick_adcp import quick_process_adcp
 
-    quick_process_adcp(input_files, sonar, yearbase, options)
+    _print_passed_options(options)
+
+    params = _convert_options_names("adcp", options)
+
+    quick_process_adcp(input_files, sonar, yearbase, params)
 
 
 # --------------------------- #
@@ -287,12 +289,14 @@ def check_rti(ctx, input_files, **options):
 # ------------------------ #
 #        Functions         #
 # ------------------------ #
-def _convert_options_to_configfile(sensor_type, options):
-    """transte options name and use put them in the configfile strucutre"""
-    options = _translate_options_name(sensor_type, options)
+def _format_options_for_configfile(sensor_type, options):
+    """format options into the  configfile struture"""
+    options = _convert_options_names(sensor_type, options)
 
     if sensor_type == "adcp":
         configfile_struct = {**BASE_CONFIG_STRUCT, **ADCP_CONFIG_STRUCT}
+        if not options["bottom_depth"]:
+            options["bottom_depth"] = ""
 
     updated_params = dict()
     for section in set(configfile_struct.values()):
@@ -305,8 +309,10 @@ def _convert_options_to_configfile(sensor_type, options):
     return updated_params
 
 
-def _translate_options_name(sensor_type, options):
-    """Translate options name from commad names to the config file names"""
+def _convert_options_names(sensor_type, options):
+    """Translate options name.
+    Translate options anmes from the commad names to
+    the parameters name used by magtogoek."""
 
     for key, item in CONFIG_NAME_TRANSLATOR[sensor_type].items():
         options[key] = options.pop(item)

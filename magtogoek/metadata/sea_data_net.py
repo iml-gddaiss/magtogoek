@@ -26,7 +26,6 @@ FIXME:
 - The attributes "sensor_type" = 'adcp', should only be present for P01 name that explicitly refers to an adcp measuments. Otherwise, it should be added by the instruments subpackage.
 - Long name may also be added later. They could also be overwritten later.
 - Remove other score in long_name
-- It appears that, we do note have a depth variable for instrument depth.
 - PCGDAP01: missing GF3 code.
 NOTE:
 - PCGDAP01: Use for 4 beam solution, adcp or earth coordinate
@@ -428,6 +427,6 @@ sdn = dict(
 )
 
 if __name__ == "__main__":
-    # probably not good practice. Relative path not working.
+    # probably not good practice. Relative path not working. NOTE what
     file_name = "/".join(__file__.split("/")[:-1]) + "/files/sdn.json"
     dict2json(file_name, sdn)
