@@ -26,6 +26,7 @@ FIXME:
 - The attributes "sensor_type" = 'adcp', should only be present for P01 name that explicitly refers to an adcp measuments. Otherwise, it should be added by the instruments subpackage.
 - Long name may also be added later. They could also be overwritten later.
 - Remove other score in long_name
+
 - PCGDAP01: missing GF3 code.
 NOTE:
 - PCGDAP01: Use for 4 beam solution, adcp or earth coordinate

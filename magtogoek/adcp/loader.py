@@ -40,8 +40,9 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from magtogoek.adcp.rti_reader import RtiReader
-from magtogoek.adcp.utils import dday_to_datetime64
-from magtogoek.utils import Logger, get_files_from_expresion, nans
+from magtogoek.adcp.tools import dday_to_datetime64
+from magtogoek.tools import nans
+from magtogoek.utils import Logger, get_files_from_expresion
 from nptyping import NDArray
 from pycurrents.adcp import rdiraw, transform
 from pycurrents.adcp.rdiraw import Bunch, Multiread, rawfile

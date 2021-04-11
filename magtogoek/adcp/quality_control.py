@@ -39,7 +39,8 @@ from pathlib import Path
 
 import numpy as np
 import xarray as xr
-from magtogoek.utils import Logger, circular_distance
+from magtogoek.tools import circular_distance
+from magtogoek.utils import Logger
 from scipy.stats import circmean
 
 # Brand dependent quality control defaults
@@ -54,17 +55,20 @@ MIN_PRESSURE = 0  # dbar
 MAX_PRESSURE = 108  # dbar (mariana trench pressure)
 
 l = Logger(level=0)
-FLAGS = (0,1,2,3,4,5,6,7,8,9)
-FLAGS_MEANING =("no_quality_control",
-      "good_value",
-      "probably_good_value",
-      "probably_bad_value",
-      "bad_value",
-      "changed_value",
-      "value_below_detection",
-      "value_in_excess",
-      "interpolated_value",
-      "missing_value")
+FLAGS = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9)
+FLAGS_MEANING = (
+    "no_quality_control",
+    "good_value",
+    "probably_good_value",
+    "probably_bad_value",
+    "bad_value",
+    "changed_value",
+    "value_below_detection",
+    "value_in_excess",
+    "interpolated_value",
+    "missing_value",
+)
+
 
 def no_adcp_quality_control(dataset):
     """Adds var_QC ancillary variables to dataset with value 0.
@@ -203,7 +207,7 @@ def adcp_quality_control(
     if horizontal_vel_th:
         l.log(f"horizontal velocity threshold {horizontal_vel_th}")
         horizontal_vel_flag = horizontal_vel_test(dataset, horizontal_vel_th)
-w        vel_flags[horizontal_vel_flag] = 3
+        vel_flags[horizontal_vel_flag] = 3
 
     if vertical_vel_th:
         l.log(f"vertical velocity threshold {vertical_vel_th}")

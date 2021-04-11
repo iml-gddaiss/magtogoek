@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Dict, List, Tuple, Type
 
 import numpy as np
-from magtogoek.adcp.utils import datetime_to_dday
+from magtogoek.adcp.tools import datetime_to_dday
 from magtogoek.utils import get_files_from_expresion
 from rti_python.Codecs.BinaryCodec import BinaryCodec
 from rti_python.Ensemble.EnsembleData import *

@@ -92,9 +92,9 @@ def quick_process_adcp(
         # Platform file
         # Add metadata, (buoy, mooring, ship, drift)
 
-        if params["make_figure"]:
-            print("make fig not implemented yet")
-            pass
+        #        if params["make_fig"]:
+        #            print("make fig not implemented yet")
+        #            pass
 
         # Updateting logbook
         dataset.attrs["logbook"] += l.logbook

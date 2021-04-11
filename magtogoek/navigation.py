@@ -9,7 +9,8 @@ from pathlib import Path
 import numpy as np
 import xarray as xr
 
-from magtogoek.utils import Logger, get_gps_bearing, vincenty
+from magtogoek.tools import get_gps_bearing, vincenty
+from magtogoek.utils import Logger
 
 l = Logger(level=0)
 
