@@ -16,17 +16,17 @@ date: Feb. 16, 2021
 
 import json
 import typing as tp
+
 import xarray as xr
-from magtogoek.metadata.toolbox import json2dict
+from magtogoek.utils import json2dict
 
 
 def add_dataset_variables_attributes(
     dataset: tp.Type[xr.Dataset],
     sdn: tp.Tuple[str, tp.Dict],
-    sensors_type: tp.Tuple[str, tp.Dict],
-    long_names: tp.Tuple[str, tp.Dict],
-    drop_tmp: bool = True,
-) -> None:
+    # sensors_type: tp.Tuple[str, tp.Dict],
+    # long_names: tp.Dict,
+):
     """Set dataset variable attributes
 
     Parameters:
@@ -42,21 +42,13 @@ def add_dataset_variables_attributes(
 
     long_name :
         [optional] json file containing the long_name variables  attributes.
-
-    drop_tmp :
-        if 'True', drops global attributes with the prefix: '_vartmp_'
     """
     _add_sdn(dataset, sdn)
-    _add_sensor_attributes(dataset, sensors_type)
-    _add_long_name(dataset, long_names)
+    #    _add_sensor_attributes(dataset, sensors_type) FIXME
+    #    _add_long_name(dataset, long_names)
     _add_data_min_max(dataset)
     _add_ancillary_variables(dataset)
     _add_attributes_to_ancillary_variables(dataset)
-
-    if drop_tmp is True:
-        for attrs in dataset.attrs.keys():
-            if "_vartmp_" in attrs:
-                del dataset.attrs[attrs]
 
     return print("variables attributes set")
 
@@ -86,12 +78,12 @@ def _add_sensor_attributes(dataset: tp.Type[xr.Dataset], sensors_type: tp.Dict) 
 def _add_sensor_type(dataset: tp.Type[xr.Dataset], sensors_type: tp.Dict) -> None:
     """add sensor_type from sensors_type dictionnary if in dataset variables"""
     for sensor, variables in sensors_type.items():
-        variables = set(dataset.variables).intersection(set(sensors_type.keys()))
+        variables = set(dataset.variables).intersection(set(sensors_type[sensor]))
         for var in variables:
             dataset[var].attrs["sensor_type"] = sensor
 
 
-def _add_sensor_depth_and_serial_number(dataset: tp.Type[xr.dataset]) -> None:
+def _add_sensor_depth_and_serial_number(dataset: tp.Type[xr.Dataset]) -> None:
     """add sensor_depth and sensor_serial_number from global attributes"""
     for var in list(dataset.variables):
         if "sensor_type" in var.attrs:

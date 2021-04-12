@@ -52,7 +52,12 @@ BASIC_CONFIG = dict(
         "made_by": getpass.getuser(),
         "last_updated": Timestamp.now().strftime("%Y-%m-%d"),
     },
-    INPUT={"input_files": "", "platform_file": "", "platform_id": ""},
+    INPUT={
+        "input_files": "",
+        "platform_file": "",
+        "platform_id": "",
+        "instrument_id": "",
+    },
     OUTPUT={"netcdf_output": "", "odf_output": ""},
     NETCDF_CF={
         "Conventions": "CF 1.8",
@@ -98,6 +103,8 @@ ADCP_CONFIG = dict(
         "adcp_orientation": "down",
         "sonar": "",
         "navigation_file": "",
+        "magnetic_declination": "",
+        "sensor_depth": "",
     },
     ADCP_QUALITY_CONTROL={
         "quality_control": True,

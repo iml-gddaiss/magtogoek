@@ -22,7 +22,7 @@ def _add_platform():
     return dict(
         platform_name="",
         platform_type="",
-        intruments=dict(__Enter_a_sensor_ID__=_add_sensors()),
+        intruments=dict(Enter_a_sensor_ID=_add_sensors()),
     )
 
 

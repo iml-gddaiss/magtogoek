@@ -64,10 +64,11 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
         ),
         click.option(
             "-F",
-            "--platform-file",
-            type=click.Path(exists=True),
-            help="path/to/platform_file",
-            nargs=1,
+            "--platform",
+            type=(click.Path(exists=True), click.STRING, click.STRING),
+            help="requires 3 args: path/to/platform_file, platform_id, instrument_id",
+            nargs=3,
+            default=(None, None, None),
         ),
         click.option(
             "-N",
@@ -102,6 +103,15 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
             "--adcp-orientation",
             type=click.Choice(["up", "down"]),
             help="""Vertical orientation of the adcp.""",
+            default=None,
+            show_default=True,
+        ),
+        click.option(
+            "-m",
+            "--magnetic-declination",
+            type=click.FLOAT,
+            help="""Magnetic declination, measured in the geographic frame of references,
+            to correct from magnetic to true coordinates""",
             default=None,
             show_default=True,
         ),
@@ -194,6 +204,15 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
             type=click.FLOAT,
             help="""If provided, this fixed depth will be
             used for sidelobes correction.""",
+            default=None,
+            show_default=True,
+        ),
+        click.option(
+            "-D",
+            "--sensor-depth",
+            type=click.FLOAT,
+            help="""If provided, this fixed depth will be
+            used for the adcp depth (XducerDepth).""",
             default=None,
             show_default=True,
         ),

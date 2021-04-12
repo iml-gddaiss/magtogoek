@@ -70,6 +70,7 @@ def load_adcp_binary(
     orientation: str = None,
     leading_index: int = None,
     trailing_index: int = None,
+    sensor_depth: float = None,
 ):
     """Load RDI and RTI adcp data.
 
@@ -91,6 +92,12 @@ def load_adcp_binary(
     orientation:
         Adcp orientation. Either `up` or `down`. Will overwrite the value
         of the binary file.
+    leading_index:
+        FIXME
+    trailing_index:
+        FIXME
+    sensor_depth:
+        If provided, will be used as a static sensor depth.
     Returns
     -------
         Dataset with the loaded adcp data
@@ -192,19 +199,29 @@ def load_adcp_binary(
     # ----------------------------------------------------------- #
     # Convert depth relative to the ADCP to depth below surface   #
     # ----------------------------------------------------------- #
-    if sonar != "os":
+    if sonar == "os":
+        xducer_depth = data.XducerDepth[0]
+        if sensor_depth:
+            l.log(
+                f"The difference between `sensor_depth` and `XducerDepth` is {abs(sensor_depth - xducer_depth)} #m"
+            )
+            xducer_depth = sensor_depth
+            depth = data.dep
+    else:
         xducer_depth = np.median(data.XducerDepth)
-        #        if sensor_depth:
-        #            l.log(
-        #                f"The difference between `sensor_depth` and `XDucerDepth` is {abs(sensor_depth - xducer_depth)} #m"
-        #            )
+        if sensor_depth:
+            l.log(
+                [
+                    f"The difference between the provided `sensor_depth` and `XducerDepth`",
+                    "is {abs(sensor_depth - xducer_depth)} m.",
+                ]
+            )
+            xducer_depth = sensor_depth
+
         if orientation == "down":
             depth = xducer_depth + data.dep
         else:
             depth = xducer_depth - data.dep
-    else:
-        xducer_depth = data.XducerDepth[0]
-        depth = data.dep
 
     if (depth < 0).all():
         l.warning("Bin depths are all negative, ADCP orientation is probably wrong.")
@@ -262,9 +279,14 @@ def load_adcp_binary(
 
     if "bt_depth" in data:
         if not (data.bt_depth == 0).all():
+            if sonar == "os" or orientation == "up":
+                bt_depth = data.bt_depth
+            else:
+                bt_depth = data.bt_depth + xducer_depth
+
             ds["bt_depth"] = (
                 ["time"],
-                np.asarray(np.nanmean(data.bt_depth, axis=-1)),
+                np.asarray(np.nanmean(bt_depth, axis=-1)),
             )
             l.log("Bottom depth  data loaded")
         else:

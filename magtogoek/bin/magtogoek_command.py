@@ -47,6 +47,8 @@ LOGO_PATH = "../files/logo.json"
 BASE_CONFIG_STRUCT = {
     "input_files": "INPUT",
     "platform_file": "INPUT",
+    "platform_id": "INPUT",
+    "instrument_id": "INPUT",
     "netcdf_output": "OUTPUT",
     "odf_output": "OUTPUT",
 }
@@ -55,6 +57,8 @@ ADCP_CONFIG_STRUCT = {
     "adcp_orientation": "ADCP_PROCESSING",
     "sonar": "ADCP_PROCESSING",
     "nav_file": "ADCP_PROCESSING",
+    "magnetic_declination": "ADCP_PROCESSING",
+    "sensor_depth": "ADCP_PROCESSING",
     "quality_control": "ADCP_QUALITY_CONTROL",
     "amplitude_threshold": "ADCP_QUALITY_CONTROL",
     "percentgood_threshold": "ADCP_QUALITY_CONTROL",
@@ -245,6 +249,13 @@ def config_adcp(
     help="""year when the adcp sampling started. ex: `1970`""",
     required=True,
 )
+@click.option(
+    "-T",
+    "--platform_type",
+    type=click.Choice(["ship", "mooring"]),
+    help="type fo measurement platform",
+    default=None,
+)
 @click.pass_context
 def quick_adcp(
     ctx,
@@ -297,6 +308,10 @@ def _format_options_for_configfile(sensor_type, options):
         configfile_struct = {**BASE_CONFIG_STRUCT, **ADCP_CONFIG_STRUCT}
         if not options["bottom_depth"]:
             options["bottom_depth"] = ""
+        options["platform_file"] = options["platform"][0]
+        options["platform_id"] = options["platform"][1]
+        options["instrument_id"] = options["platform"][2]
+        del options["platform"]
 
     updated_params = dict()
     for section in set(configfile_struct.values()):
