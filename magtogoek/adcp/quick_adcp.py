@@ -3,8 +3,7 @@ Constains functions to quickly process adcp data.
 
 Notes
 -----
-  - No BODC names for bottom_depth
-  - Turns this into an object maybe ?
+
 """
 import os
 import typing as tp
@@ -53,10 +52,10 @@ P01_NAMES = dict(
     pg2="PCGDAP02",
     pg3="PCGDAP03",
     pg4="PCGDAP04",
-    cor1="CMAGZZ01",
-    cor2="CMAGZZ02",
-    cor3="CMAGZZ03",
-    cor4="CMAGZZ04",
+    corr1="CMAGZZ01",
+    corr2="CMAGZZ02",
+    corr3="CMAGZZ03",
+    corr4="CMAGZZ04",
     amp1="TNIHCE01",
     amp2="TNIHCE02",
     amp3="TNIHCE03",
@@ -92,12 +91,14 @@ XDUCER_DEPTH_ATTRS = {"ADEPZZ01": "Transducer depth"}
 
 BT_DEPTH_ATTRS = dict(units="m", long_name="Water depth", generic_name="bt_depth")
 
-TIME_ATTRS = {"cf_role": "profil_id"}  # standard_name
+TIME_ATTRS = {"standard_name": "time", "cf_role": "profil_id"}  # standard_name
 
-DEPTH_attrs = {
+DEPTH_ATTRS = {
     "positive": "down",
     "units": "meters",
-}  # standard_name, long_name bin depth below surface
+    "standard_name": "depth",
+    "long_name": "Bin depth below surface.",
+}
 
 TIME_ENCODING = {
     "units": "Seconds since 1970-1-1 00:00:00Z",
@@ -211,13 +212,10 @@ def quick_process_adcp(
                 dataset[var].encoding = {"dtype": DTYPE, "_FillValue": FILL_VALUE}
 
         ###### DATA FORMATING #####
-        if "bt_depth" in dataset:
-            dataset.bt_depth.attrs = BT_DEPTH_ATTRS
-
         if params["platform_type"]:
             dataset.attrs["platform_type"] = params["platform_type"]
 
-        _format_variables_attributes(dataset, params["bodc_name"])
+        dataset = _format_variables_attributes(dataset, params["bodc_name"])
 
         if params["make_figures"]:
             print("make fig not implemented yet")
@@ -255,20 +253,19 @@ def quick_process_adcp(
 
 def _format_variables_attributes(dataset: tp.Type[xr.Dataset], bodc_name: bool):
     """Format variables names and attributes"""
+    dataset.depth.attrs = DEPTH_ATTRS
+    dataset.time.attrs = TIME_ATTRS
+
     for var in dataset.variables:
         if var not in ["depth", "time"]:
             dataset[var].attrs["generic_name"] = var
 
-    dataset.depth.attrs = {"units": "meters"}  # DO ADD COORDS ATTRS
+    if "bt_depth" in dataset:
+        dataset.bt_depth.attrs = BT_DEPTH_ATTRS
 
     for var in SENSOR_TYPE_ATTRS:
         if var in dataset:
             dataset[var].attrs["sensor_type"] = "adcp"
-
-    for var in dataset.variables:
-        if "sensor_type" in dataset[var].attrs:
-            if dataset[var].attrs["sensor_type"] == "adcp":
-                dataset[var].attrs["sensor_depth"] = "TODO"
 
     dataset = _convert_variables_names(dataset)
 
@@ -276,6 +273,8 @@ def _format_variables_attributes(dataset: tp.Type[xr.Dataset], bodc_name: bool):
 
     if not bodc_name:
         dataset = _convert_variables_names(dataset, convert_to_generic=True)
+
+    return dataset
 
 
 def _convert_variables_names(
@@ -302,7 +301,6 @@ def _convert_variables_names(
     if convert_to_generic:
         p01_names = dict((item, key) for key, item in p01_names.items())
 
-    print(p01_names)
     for key in tuple(p01_names.keys()):
         if key not in dataset:
             del p01_names[key]

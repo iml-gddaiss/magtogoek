@@ -142,16 +142,17 @@ def magtogoek(info):
     "--info", is_flag=True, callback=_print_info, help="Show command information"
 )
 def config(info):
+    """Make configuration files or platform files"""
     pass
 
 
-@magtogoek.command("adcp")
+@magtogoek.command("process")
 @click.option(
     "--info", is_flag=True, callback=_print_info, help="Show command information"
 )
-@add_argument("config_file", metavar="[input_files]", type=click.Path(exists=True))
+@click.argument("config_file", metavar="[input_files]", type=click.Path(exists=True))
 def process(config_file, info):
-    """FIXME"""
+    """Process data by reading configfile"""
     from magtogoek.bin.configfile import load_configfile
 
     config = load_configfile(config_file)
@@ -167,6 +168,7 @@ def process(config_file, info):
     "--info", is_flag=True, callback=_print_info, help="Show command information"
 )
 def quick(info):
+    """Quick data process without configfile"""
     pass
 
 
@@ -175,6 +177,7 @@ def quick(info):
     "--info", is_flag=True, callback=_print_info, help="Show command information"
 )
 def check(info):
+    """Get info on raw data files"""
     pass
 
 

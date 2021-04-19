@@ -54,10 +54,8 @@ def add_dataset_variables_attributes(
     """
     _add_sdn(dataset, sdn)
     _add_data_min_max(dataset)
-    _add_ancillary_variables(dataset)
-    _add_attributes_to_ancillary_variables(dataset)
-
-    return print("variables attributes set")
+    # _add_ancillary_variables(dataset)
+    # _add_attributes_to_ancillary_variables(dataset)
 
 
 def _add_sdn(dataset: tp.Type[xr.Dataset], sdn: tp.Dict) -> None:
@@ -71,7 +69,7 @@ def _add_data_min_max(dataset):
     """adds data max and min to variables except ancillary and coords variables)"""
     for var in set(dataset.variables).difference(set(dataset.coords)):
         if "_QC" not in var:
-            if dataset[var].dtype is float:
+            if dataset[var].dtype == float:
                 dataset[var].attrs["data_max"] = dataset[var].max().values
                 dataset[var].attrs["data_min"] = dataset[var].min().values
 

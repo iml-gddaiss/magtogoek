@@ -340,7 +340,7 @@ sdn = dict(
         positive="down",  # depth as standard_name implies positive "down"
         units="m",
         sensor_type="adcp",
-        long_name="depth vector",
+        long_name="bin depth below surface",
         sdn_parameter_urn="SDN:P01::PPSAADCP",
         sdn_parameter_name=(
             "Depth below surface of the water body"
@@ -370,6 +370,8 @@ sdn = dict(
             "relative to ground surface "
             "by unspecified GPS system"
         ),
+        sdn_uom_urn="SDN:P06::UVAA",
+        sdn_uom_name="Metres per second",
     ),
     APNSGP01=dict(
         units="m s-1",
@@ -380,8 +382,10 @@ sdn = dict(
             "relative to ground surface "
             "by unspecified GPS system"
         ),
+        sdn_uom_urn="SDN:P06::UVAA",
+        sdn_uom_name="Metres per second",
     ),
-    ADEPZZ01=dict(  # depth below surface ?
+    ADEPZZ01=dict(  # depth below surface
         standard_name="depth",  # depth as standard_name implies positive "down"
         positive="down",
         units="m",
@@ -410,6 +414,8 @@ sdn = dict(
             "Northward velocity of measurement platform relative to ground surface "
             "by ADCP bottom tracking."
         ),
+        sdn_uom_urn="SDN:P06::UVAA",
+        sdn_uom_name="Metres per second",
     ),
     APEWBT01=dict(
         units="m s-1",
@@ -420,6 +426,8 @@ sdn = dict(
             "Eastward velocity of measurement platform relative to ground surface "
             "by ADCP bottom tracking."
         ),
+        sdn_uom_urn="SDN:P06::UVAA",
+        sdn_uom_name="Metres per second",
     ),
     APZABT01=dict(
         units="m s-1",
@@ -427,6 +435,8 @@ sdn = dict(
         long_name="upward velocity of the measurment platform by bottom tracking",
         sdn_parameter_urn="SDN:P01::APZABT01",
         sdn_parameter_name="Upward velocity of measurement platform by ADCP bottom tracking.",
+        sdn_uom_urn="SDN:P06::UVAA",
+        sdn_uom_name="Metres per second",
     ),
     APERBT01=dict(
         units="m s-1",
@@ -438,7 +448,18 @@ sdn = dict(
             "by ADCP bottom tracking."
         ),
     ),
+    BATHDPTH=dict(
+        units="m s-1",
+        long_name="bottom depth",
+        sdn_parameter_urn="SDN:P01::BATHDPTH",
+        sdn_parameter_name=(
+            "Sea-floor depth (below mean sea level) {bathymetric depth}"
+        ),
+        sdn_uom_urn="SDN:P06::ULAA",
+        sdn_uom_name="Metres",
+    ),
 )
+
 
 if __name__ == "__main__":
     # probably not good practice. Creating the absulute path to load the files.
