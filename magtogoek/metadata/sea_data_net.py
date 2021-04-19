@@ -25,8 +25,7 @@ the surface and positive downward.
 FIXME:
 - The attributes "sensor_type" = 'adcp', should only be present for P01 name that explicitly refers to an adcp measuments. Otherwise, it should be added by the instruments subpackage.
 - Long name may also be added later. They could also be overwritten later.
-- Remove other score in long_name
-
+- Remove under score in long_name
 - PCGDAP01: missing GF3 code.
 NOTE:
 - PCGDAP01: Use for 4 beam solution, adcp or earth coordinate
@@ -50,7 +49,7 @@ def _L_A_01(s0: str, s1: str, s2: str, s3: str, s4: str) -> tp.Dict[str, str]:
         standard_name=f"{s0}ward_sea_water_velocity",
         units="m s-1",
         sensor_type="adcp",
-        long_name=f"{s0}ward_sea_water_velocity",
+        long_name=f"{s0}ward sea water velocity",
         sdn_parameter_urn=f"SDN:P01::{s1}",
         sdn_parameter_name=(
             f"{s2}ward current velocity "
@@ -61,7 +60,6 @@ def _L_A_01(s0: str, s1: str, s2: str, s3: str, s4: str) -> tp.Dict[str, str]:
         sdn_uom_urn="SDN:P06::UVAA",
         sdn_uom_name="Metres per second",
         legacy_GF3_code=f"SDN:GF3::{s3}",
-        generic_name=dict(east="u", north="v", up="w")[s0],
     )
 
 
@@ -71,7 +69,7 @@ def _TNIHCE(s0: str) -> tp.Dict[str, str]:
         standard_name="signal_intensity_from_multibeam_acoustic_doppler_velocity_sensor_in_sea_water",
         units="counts",
         sensor_type="adcp",
-        long_name=f"ADCP_echo_intensity_beam_{s0}",
+        long_name=f"ADCP echo intensity beam {s0}",
         sdn_parameter_urn=f"SDN:P01::TNIHCE0{s0}",
         sdn_parameter_name=(
             "Echo intensity from the water body by moored "
@@ -81,7 +79,6 @@ def _TNIHCE(s0: str) -> tp.Dict[str, str]:
         sdn_uom_urn="SDN:P06::UCNT",
         sdn_uom_name="Counts",
         legacy_GF3_code=f"SDN:GF3::BEAM_0{s0}",
-        generic_name=f"amp{s0}",
     )
 
 
@@ -91,7 +88,7 @@ def _CMAGZZ(s0: str) -> tp.Dict[str, str]:
         standard_name="beam_consistency_indicator_from_multibeam_acoustic_doppler_velocity_profiler_in_sea_water",
         units="counts",
         sensor_type="adcp",
-        long_name=f"ADCP_correlation_magnitude_beam_{s0}",
+        long_name=f"ADCP correlation magnitude beam {s0}",
         sdn_parameter_urn=f"SDN:P01::CMAGZZ0{s0}",
         sdn_parameter_name=(
             "Correlation magnitude of acoustic signal returns "
@@ -99,7 +96,6 @@ def _CMAGZZ(s0: str) -> tp.Dict[str, str]:
             f"current profiler (ADCP) beam {s0}"
         ),
         legacy_GF3_code=f"SDN:GF3::CMAG_0{s0}",
-        generic_name=f"corr{s0}",
     )
 
 
@@ -109,7 +105,7 @@ def _PCGDAP(s0: str, s1: str) -> tp.Dict[str, str]:
         standard_name="proportion_of_acceptable_signal_returns_from_acoustic_instrument_in_sea_water",
         units="percent",
         sensor_type="adcp",
-        long_name=f"percent_good_beam_{s0}",
+        long_name=f"ADCP percent good beam {s0}",
         sdn_parameter_urn=f"SDN:P01::{s1}",
         sdn_parameter_name=(
             "Acceptable proportion of signal returns "
@@ -119,7 +115,6 @@ def _PCGDAP(s0: str, s1: str) -> tp.Dict[str, str]:
         sdn_uom_urn="SDN:P06::UPCT",
         sdn_uom_name="Percent",
         legacy_GF3_code=f"SDN:GF3::PGDP_0{s0}",
-        generic_name=f"pg{s0}",
     )
 
 
@@ -134,7 +129,6 @@ def _A_ZZ01(s0: str, s1: str, s2: str, s3: str, s4: str, s5: str) -> tp.Dict[str
         sdn_uom_urn=f"SDN:P06::{s4}",
         sdn_uom_name=f"Degrees {s1}",
         legacy_GF3_code=f"SDN:GF3::{s5}",
-        generic_name="{s5}",
     )
 
 
@@ -162,7 +156,6 @@ sdn = dict(
         sdn_uom_urn="SDN:P06::UVAA",
         sdn_uom_name="Metres per second",
         legacy_GF3_code="SDN:GF3::ERRV",
-        generic_name="e",
     ),
     LCEWAS01=_L_A_01("east", "LCEWAS01", "East", "EWCT", "shipborne"),
     LCNSAS01=_L_A_01("north", "LCNSAS01", "North", "NWCT", "shipborne"),
@@ -201,7 +194,7 @@ sdn = dict(
         ),
         units="percent",
         sensor_type="adcp",
-        long_name="percent good for 4 beam solution",
+        long_name="ADCP percent good of 4 beams solution",
         sdn_parameter_urn="SDN:P01::PCGDA00",
         sdn_parameter_name=(
             "Acceptable proportion of signal returns "
@@ -210,7 +203,6 @@ sdn = dict(
         ),
         sdn_uom_urn="SDN:P06::UPCT",
         sdn_uom_name="Percent",
-        generic_name="pg",
     ),
     LRZUVP01=dict(
         standard_name="upward_sea_water_velocity",
@@ -221,7 +213,6 @@ sdn = dict(
         sdn_parameter_name=("upward_sea_water_velocity_by_vertical_beam"),
         sdn_uom_urn="SDN:P06::UVAA",
         sdn_uom_name="Metres per second",
-        generic_name="vb_vel",
     ),
     TNIHCE05=dict(
         standard_name="signal_intensity_from_multibeam_acoustic_doppler_velocity_sensor_in_sea_water",
@@ -235,7 +226,6 @@ sdn = dict(
         ),
         sdn_uom_urn="SDN:P06::UCNT",
         sdn_uom_name="Counts",
-        generic_name="vb_amp,",
     ),
     CMAGZZ05=dict(
         standard_name="beam_consistency_indicator_from_multibeam_acoustic_doppler_velocity_profiler_in_sea_water",
@@ -249,13 +239,12 @@ sdn = dict(
         ),
         sdn_uom_urn="SDN:P06::UCNT",
         sdn_uom_name="Counts",
-        generic_name="vb_corr",
     ),
     PCGDAP05=dict(
         standard_name="proportion_of_acceptable_signal_returns_from_acoustic_instrument_in_sea_water",
         units="percent",
         sensor_type="adcp",
-        long_name="percent_good_beam_5",
+        long_name="ADCP percent good beam 5",
         sdn_parameter_urn="SDN:P01::PCGDAP05",
         sdn_parameter_name=(
             "Acceptable proportion of signal returns by moored acoustic doppler "
@@ -263,7 +252,6 @@ sdn = dict(
         ),
         sdn_uom_urn="SDN:P06::UPCT",
         sdn_uom_name="Percent",
-        generic_name="vb_pg",
     ),
     ALATZZ01=_A_ZZ01("latitude", "north", "LAT", "Latitude", "DEGN", "lat"),
     ALONZZ01=_A_ZZ01("longitude", "east", "LON", "Longitude", "DEGE", "lon"),
@@ -278,7 +266,6 @@ sdn = dict(
         sdn_uom_urn="SDN:P06::UAAA",
         sdn_uom_name="Degrees",
         legacy_GF3_code="SDN:GF3::PTCH",
-        generic_name="pitch",
     ),
     HEADCM01=dict(
         standard_name="platform_orientation",
@@ -292,7 +279,6 @@ sdn = dict(
         sdn_uom_urn="SDN:P06::UAAA",
         sdn_uom_name="Degrees",
         legacy_GF3_code="SDN:GF3::HEAD",
-        generic_name="heading",
     ),
     ROLLGP01=dict(
         standard_name="platform_roll",
@@ -306,7 +292,6 @@ sdn = dict(
         sdn_uom_urn="SDN:P06::UAAA",
         sdn_uom_name="Degrees",
         legacy_GF3_code="SDN:GF3::ROLL",
-        generic_name="roll_",  # the undescore is for xarray
     ),
     SVELCV01=dict(
         standard_name="speed of sound in sea water",
@@ -321,7 +306,6 @@ sdn = dict(
         sdn_uom_urn="SDN:P06::UVAA",
         sdn_uom_name="Metres per second",
         legacy_GF3_code="SDN:GF3::SVEL",
-        generic_name="sound_speed",
     ),
     TEMPPR01=dict(
         units="degree_C",
@@ -331,7 +315,6 @@ sdn = dict(
         sdn_uom_urn="SDN:P06::UPAA",
         sdn_uom_name="Celsius degree",
         legacy_GF3_code="SDN:GF3::te90",
-        generic_name="temperature",
     ),
     DISTTRAN=dict(
         units="m",
@@ -351,7 +334,6 @@ sdn = dict(
         sdn_uom_urn="SDN:P06::TISO",
         sdn_uom_name="ISO8601",
         legacy_GF3_code="SDN:GF3::time_string",
-        generic_name="time_string",
     ),
     PPSAADCP=dict(  # bins depth
         standard_name="depth",
@@ -368,7 +350,6 @@ sdn = dict(
         sdn_uom_urn="SDN:P06::ULAA",
         sdn_uom_name="Metres",
         legacy_GF3_code="SDN:GF3::DEPH",
-        generic_name="depth",
     ),
     PRESPR01=dict(
         standard_name="sea_water_pressure",
@@ -379,7 +360,6 @@ sdn = dict(
         sdn_uom_urn="SDN:P06::UPDB",
         sdn_uom_name="Decibards",
         legacy_GF3_code="SDN:GF3::PRES",
-        generic_name="pres",
     ),
     APEWGP01=dict(
         units="m s-1",
@@ -390,7 +370,6 @@ sdn = dict(
             "relative to ground surface "
             "by unspecified GPS system"
         ),
-        generic_name="u_ship",
     ),
     APNSGP01=dict(
         units="m s-1",
@@ -401,7 +380,6 @@ sdn = dict(
             "relative to ground surface "
             "by unspecified GPS system"
         ),
-        generic_name="v_ship",
     ),
     ADEPZZ01=dict(  # depth below surface ?
         standard_name="depth",  # depth as standard_name implies positive "down"
@@ -413,19 +391,15 @@ sdn = dict(
         Sdn_uom_urn="SDN:P06::ULAA",
         sdn_uom_name="Metres",
         legacy_GF3_code="SDN:GF3::DEPH",
-        generic_name="depth",
     ),
     ELTMEP01=dict(
         standard_name="time",
-        units="days since 1970-1-1 0:0:0",
         long_name="time",
         sdn_parameter_urn="SDN:P01::ELTMEP01",
         sdn_parameter_name=("Elapsed time relative to 1970-01-01T00:00:00Z"),
         Sdn_uom_urn="SDN:P06::UTBB",
         sdn_uom_name="Seconds",
         legacy_GF3_code="SDN:GF3::N/A",
-        calendar="gregorian",
-        generic_name="time",
     ),
     APNSBT01=dict(
         units="m s-1",
@@ -436,7 +410,6 @@ sdn = dict(
             "Northward velocity of measurement platform relative to ground surface "
             "by ADCP bottom tracking."
         ),
-        generic_name="bt_u",
     ),
     APEWBT01=dict(
         units="m s-1",
@@ -447,7 +420,6 @@ sdn = dict(
             "Eastward velocity of measurement platform relative to ground surface "
             "by ADCP bottom tracking."
         ),
-        generic_name="bt_v",
     ),
     APZABT01=dict(
         units="m s-1",
@@ -455,7 +427,6 @@ sdn = dict(
         long_name="upward velocity of the measurment platform by bottom tracking",
         sdn_parameter_urn="SDN:P01::APZABT01",
         sdn_parameter_name="Upward velocity of measurement platform by ADCP bottom tracking.",
-        generic_name="bt_w",
     ),
     APERBT01=dict(
         units="m s-1",
@@ -466,12 +437,10 @@ sdn = dict(
             "Error velocity of measurement platform relative to ground surface "
             "by ADCP bottom tracking."
         ),
-        generic_name="bt_e",
     ),
 )
 
 if __name__ == "__main__":
-    # probably not good practice. Relative path not working. NOTE what
+    # probably not good practice. Creating the absulute path to load the files.
     file_name = "/".join(__file__.split("/")[:-2]) + "/files/sdn.json"
-
     dict2json(file_name, sdn)

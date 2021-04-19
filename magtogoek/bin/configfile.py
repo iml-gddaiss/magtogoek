@@ -46,6 +46,11 @@ from configparser import ConfigParser
 
 from pandas import Timestamp
 
+
+class ConfigFileError(Exception):
+    pass
+
+
 BASIC_CONFIG = dict(
     HEADER={
         "sensor_type": "none",
@@ -56,7 +61,7 @@ BASIC_CONFIG = dict(
         "input_files": "",
         "platform_file": "",
         "platform_id": "",
-        "instrument_id": "",
+        "sensor_id": "",
     },
     OUTPUT={"netcdf_output": "", "odf_output": ""},
     NETCDF_CF={
@@ -78,11 +83,10 @@ BASIC_CONFIG = dict(
         "cruise_number": "",
         "organization": "",
         "chief_scientist": "",
-        "start_date": "",
-        "end_date": "",
+        "leading_trim": "",
+        "trailing_trim": "",
     },
     GLOBAL_ATTRIBUTES={
-        "date_created": "",
         "date_created": "",
         "data_type": "",
         "data_subtype": "",
@@ -132,9 +136,44 @@ ADCP_CONFIG = dict(
         "make_log": True,
     },
 )
+ADCP_CONFIG_TYPE = dict(
+    ADCP_PROCESSING={
+        "yearbase": int,
+        "adcp_orientation": str,
+        "sonar": str,
+        "navigation_file": str,
+        "magnetic_declination": float,
+        "sensor_depth": float,
+    },
+    ADCP_QUALITY_CONTROL={
+        "quality_control": bool,
+        "amplitude_threshold": float,
+        "percentgood_threshold": float,
+        "correlation_threshold": float,
+        "horizontal_velocity_threshold": float,
+        "vertical_velocity_threshold": float,
+        "error_velocity_threshold": float,
+        "sidelobes_correction": bool,
+        "bottom_depth": float,
+        "pitch_threshold": float,
+        "roll_threshold": float,
+        "leading_trim": str,
+        "trailing_trim": str,
+        "motion_correction_mode": str,
+    },
+    ADCP_OUTPUT={
+        "merge_output_files": bool,
+        "bodc_name": bool,
+        "drop_percent_good": bool,
+        "drop_correlation": bool,
+        "drop_amplitude": bool,
+        "make_figures": bool,
+        "make_log": bool,
+    },
+)
 
 
-def make_configfile(filename: str, sensor_type: str, updated_params: tp.Dict = None):
+def make_configfile(filename: str, sensor_type: str, config_params: tp.Dict = None):
     """make a configfile with default and update it if `updated_params` are passed"""
 
     # geting the default config as dict
@@ -148,9 +187,9 @@ def make_configfile(filename: str, sensor_type: str, updated_params: tp.Dict = N
         for param, value in params.items():
             parser[section][param] = str(value)
 
-    # Overwrite the default values with `updated_params`.
-    if updated_params is not None:
-        _update_config(parser, updated_params)
+    # Overwrite the default values with the `updated_params`.
+    if config_params:
+        _update_config(parser, config_params)
 
     # Writing
     with open(filename, "w") as f:
@@ -158,28 +197,67 @@ def make_configfile(filename: str, sensor_type: str, updated_params: tp.Dict = N
 
 
 def load_configfile(filename: str, updated_params: tp.Dict = None):
-    """load a configfile and update it if `updated_params` are passed"""
+    """load a configfile.
+    Returns parser as a dictionnary with the appropriate types.
+    - Check for missing sections and options.
+    - Updates it if `updated_params` are passed"""
     # Opening the configfile
     parser = ConfigParser()
     parser.optionxform = str
     parser.read(filename)
 
-    # Overwrite the config values with `updated_params`.
-    if updated_params is not None:
-        _update_config(parser, updated_params)
+    # Check integrity of the configfile
+    _check_config_missing(parser)
 
-    # Overiting the configfile with the new values
-    with open(filename, "w") as f:
-        parser.write(f)
+    # Overwrite the config values with `updated_params`.
+    if updated_params:
+        _update_config(parser, updated_params)
+        # Overwriting the configfile with the new values
+        with open(filename, "w") as f:
+            parser.write(f)
+
+    _convert_options_type(parser)
 
     return parser._sections
 
 
-def _update_config(parser: tp.Type[ConfigParser], updated_params: tp.Dict):
-    """Overwrite the default values with `updated_params`"""
-    for section, params in updated_params.items():
-        for param, value in params.items():
-            parser[section][param] = str(value)
+def _check_config_missing(parser: tp.Type[ConfigParser]):
+    """Check for missing sections or options compared to the expected parser
+
+    Adds the options or section if needed
+    """
+    if parser.has_option("HEADER", "sensor_type"):
+        sensor_type = parser["HEADER"]["sensor_type"]
+        if not sensor_type:
+            raise ConfigFileError("`sensor_type` value missing")
+    else:
+        raise ConfigFileError("`HEADER/sensor_type` Missing from configfile.")
+
+    expected_parser = _get_config_default(sensor_type)
+
+    for section, options in expected_parser._sections.items:
+        if not parser.has_section(section):
+            parser.add_section(section)
+        for option in options.keys():
+            if not parser.has_options(section, option):
+                parser[section][option] = expected_parser[section][option]
+
+
+def _convert_options_type(parser):
+    """Convert some config options to the right type for processing."""
+    sensor_type = parser["HEADER"]["sensor_type"]
+
+    for section, options in parser._sections.items:
+        for option in options.keys():
+            if parser[section][option] == "":
+                parser[section][option] = None
+
+    if sensor_type == "adcp":
+        for section, options in ADCP_CONFIG_TYPE.items():
+            for option in options:
+                if parser[section][option]:
+                    option_type = type(ADCP_CONFIG_TYPE[section][option])
+                    parser[section][option] = option_type(parser[section][option])
 
 
 def _get_config_default(sensor_type: str):
@@ -189,3 +267,10 @@ def _get_config_default(sensor_type: str):
     config_dict["HEADER"]["sensor_type"] = sensor_type
 
     return config_dict
+
+
+def _update_config(parser: tp.Type[ConfigParser], updated_params: tp.Dict):
+    """Overwrite the default values with `updated_params`"""
+    for section, params in updated_params.items():
+        for param, value in params.items():
+            parser[section][param] = str(value)

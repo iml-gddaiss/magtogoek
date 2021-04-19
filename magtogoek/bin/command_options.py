@@ -63,14 +63,6 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
             default=True,
         ),
         click.option(
-            "-F",
-            "--platform",
-            type=(click.Path(exists=True), click.STRING, click.STRING),
-            help="requires 3 args: path/to/platform_file, platform_id, instrument_id",
-            nargs=3,
-            default=(None, None, None),
-        ),
-        click.option(
             "-N",
             "--nav",
             type=click.Path(exists=True),

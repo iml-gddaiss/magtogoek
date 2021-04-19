@@ -382,11 +382,13 @@ def load_adcp_binary(
     ds.attrs["manifacturer"] = (
         "TeledyneRD" if sonar in ["wh", "sv", "os"] else "RoweTech"
     )
-    ds.attrs["coordsystem"] = data.trans["coordsystem"]
+    ds.attrs["coord_system"] = data.trans["coordsystem"]
     ds.attrs["beam_angle"] = data.sysconfig["angle"]
     ds.attrs["transducer_frequency"] = data.sysconfig["kHz"] * 1000
     ds.attrs["bin_size"] = data.CellSize
     ds.attrs["orientation"] = orientation
+    if "SerialNumber" in data:
+        ds.attrs["serial_number"] = data.SerialNumber
 
     l.log(f"File(s) loaded with {l.w_count} warnings")
     ds.attrs["logbook"] = l.logbook

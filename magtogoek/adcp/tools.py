@@ -48,3 +48,28 @@ def datetime_to_dday(
         * 1
         / (3600 * 24)
     )
+
+
+def get_datetime_and_count(trim_arg: str):
+    """Get datime and count from trim_arg.
+
+    If `trim_arg` is None, returns (None, None)
+    If 'T' is a datetimeor a count returns (Timstamp(trim_arg), None)
+    Else returns (None, int(trim_arg))
+
+    Returns:
+    --------
+    datetime:
+        None or pandas.Timstamp
+    count:
+        None or int
+
+    """
+
+    if trim_arg:
+        if "T" in trim_arg:
+            return (Timestamp(trim_arg), None)
+        else:
+            return (None, int(trim_arg))
+    else:
+        return (None, None)

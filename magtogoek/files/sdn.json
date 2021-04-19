@@ -10,37 +10,34 @@
         "standard_name": "eastward_sea_water_velocity",
         "units": "m s-1",
         "sensor_type": "adcp",
-        "long_name": "eastward_sea_water_velocity",
+        "long_name": "eastward sea water velocity",
         "sdn_parameter_urn": "SDN:P01::LCEWAP01",
         "sdn_parameter_name": "Eastward current velocity (Eulerian measurement) in the water body by {s4} acoustic doppler current profiler (ADCP)",
         "sdn_uom_urn": "SDN:P06::UVAA",
         "sdn_uom_name": "Metres per second",
-        "legacy_GF3_code": "SDN:GF3::EWCT",
-        "generic_name": "u"
+        "legacy_GF3_code": "SDN:GF3::EWCT"
     },
     "LCNSAP01": {
         "standard_name": "northward_sea_water_velocity",
         "units": "m s-1",
         "sensor_type": "adcp",
-        "long_name": "northward_sea_water_velocity",
+        "long_name": "northward sea water velocity",
         "sdn_parameter_urn": "SDN:P01::LCNSAP01",
         "sdn_parameter_name": "Northward current velocity (Eulerian measurement) in the water body by {s4} acoustic doppler current profiler (ADCP)",
         "sdn_uom_urn": "SDN:P06::UVAA",
         "sdn_uom_name": "Metres per second",
-        "legacy_GF3_code": "SDN:GF3::NWCT",
-        "generic_name": "v"
+        "legacy_GF3_code": "SDN:GF3::NWCT"
     },
     "LRZAAP01": {
         "standard_name": "upward_sea_water_velocity",
         "units": "m s-1",
         "sensor_type": "adcp",
-        "long_name": "upward_sea_water_velocity",
+        "long_name": "upward sea water velocity",
         "sdn_parameter_urn": "SDN:P01::LRZAAP01",
         "sdn_parameter_name": "Upward current velocity (Eulerian measurement) in the water body by {s4} acoustic doppler current profiler (ADCP)",
         "sdn_uom_urn": "SDN:P06::UVAA",
         "sdn_uom_name": "Metres per second",
-        "legacy_GF3_code": "SDN:GF3::VCSP",
-        "generic_name": "w"
+        "legacy_GF3_code": "SDN:GF3::VCSP"
     },
     "LERRAP01": {
         "units": "m s-1",
@@ -50,44 +47,40 @@
         "sdn_parameter_name": "Current velocity error in the water body by moored acoustic doppler current profiler(ADCP)",
         "sdn_uom_urn": "SDN:P06::UVAA",
         "sdn_uom_name": "Metres per second",
-        "legacy_GF3_code": "SDN:GF3::ERRV",
-        "generic_name": "e"
+        "legacy_GF3_code": "SDN:GF3::ERRV"
     },
     "LCEWAS01": {
         "standard_name": "eastward_sea_water_velocity",
         "units": "m s-1",
         "sensor_type": "adcp",
-        "long_name": "eastward_sea_water_velocity",
+        "long_name": "eastward sea water velocity",
         "sdn_parameter_urn": "SDN:P01::LCEWAS01",
         "sdn_parameter_name": "Eastward current velocity (Eulerian measurement) in the water body by {s4} acoustic doppler current profiler (ADCP)",
         "sdn_uom_urn": "SDN:P06::UVAA",
         "sdn_uom_name": "Metres per second",
-        "legacy_GF3_code": "SDN:GF3::EWCT",
-        "generic_name": "u"
+        "legacy_GF3_code": "SDN:GF3::EWCT"
     },
     "LCNSAS01": {
         "standard_name": "northward_sea_water_velocity",
         "units": "m s-1",
         "sensor_type": "adcp",
-        "long_name": "northward_sea_water_velocity",
+        "long_name": "northward sea water velocity",
         "sdn_parameter_urn": "SDN:P01::LCNSAS01",
         "sdn_parameter_name": "Northward current velocity (Eulerian measurement) in the water body by {s4} acoustic doppler current profiler (ADCP)",
         "sdn_uom_urn": "SDN:P06::UVAA",
         "sdn_uom_name": "Metres per second",
-        "legacy_GF3_code": "SDN:GF3::NWCT",
-        "generic_name": "v"
+        "legacy_GF3_code": "SDN:GF3::NWCT"
     },
     "LRZAAS01": {
         "standard_name": "upward_sea_water_velocity",
         "units": "m s-1",
         "sensor_type": "adcp",
-        "long_name": "upward_sea_water_velocity",
+        "long_name": "upward sea water velocity",
         "sdn_parameter_urn": "SDN:P01::LRZAAS01",
         "sdn_parameter_name": "Upward current velocity (Eulerian measurement) in the water body by {s4} acoustic doppler current profiler (ADCP)",
         "sdn_uom_urn": "SDN:P06::UVAA",
         "sdn_uom_name": "Metres per second",
-        "legacy_GF3_code": "SDN:GF3::VCSP",
-        "generic_name": "w"
+        "legacy_GF3_code": "SDN:GF3::VCSP"
     },
     "LERRAS01": {
         "units": "m s-1",
@@ -103,148 +96,135 @@
         "standard_name": "signal_intensity_from_multibeam_acoustic_doppler_velocity_sensor_in_sea_water",
         "units": "counts",
         "sensor_type": "adcp",
-        "long_name": "ADCP_echo_intensity_beam_1",
+        "long_name": "ADCP echo intensity beam 1",
         "sdn_parameter_urn": "SDN:P01::TNIHCE01",
         "sdn_parameter_name": "Echo intensity from the water body by moored acoustic doppler current profiler (ADCP) beam 1",
         "sdn_uom_urn": "SDN:P06::UCNT",
         "sdn_uom_name": "Counts",
-        "legacy_GF3_code": "SDN:GF3::BEAM_01",
-        "generic_name": "amp_1"
+        "legacy_GF3_code": "SDN:GF3::BEAM_01"
     },
     "TNIHCE02": {
         "standard_name": "signal_intensity_from_multibeam_acoustic_doppler_velocity_sensor_in_sea_water",
         "units": "counts",
         "sensor_type": "adcp",
-        "long_name": "ADCP_echo_intensity_beam_2",
+        "long_name": "ADCP echo intensity beam 2",
         "sdn_parameter_urn": "SDN:P01::TNIHCE02",
         "sdn_parameter_name": "Echo intensity from the water body by moored acoustic doppler current profiler (ADCP) beam 2",
         "sdn_uom_urn": "SDN:P06::UCNT",
         "sdn_uom_name": "Counts",
-        "legacy_GF3_code": "SDN:GF3::BEAM_02",
-        "generic_name": "amp_2"
+        "legacy_GF3_code": "SDN:GF3::BEAM_02"
     },
     "TNIHCE03": {
         "standard_name": "signal_intensity_from_multibeam_acoustic_doppler_velocity_sensor_in_sea_water",
         "units": "counts",
         "sensor_type": "adcp",
-        "long_name": "ADCP_echo_intensity_beam_3",
+        "long_name": "ADCP echo intensity beam 3",
         "sdn_parameter_urn": "SDN:P01::TNIHCE03",
         "sdn_parameter_name": "Echo intensity from the water body by moored acoustic doppler current profiler (ADCP) beam 3",
         "sdn_uom_urn": "SDN:P06::UCNT",
         "sdn_uom_name": "Counts",
-        "legacy_GF3_code": "SDN:GF3::BEAM_03",
-        "generic_name": "amp_3"
+        "legacy_GF3_code": "SDN:GF3::BEAM_03"
     },
     "TNIHCE04": {
         "standard_name": "signal_intensity_from_multibeam_acoustic_doppler_velocity_sensor_in_sea_water",
         "units": "counts",
         "sensor_type": "adcp",
-        "long_name": "ADCP_echo_intensity_beam_4",
+        "long_name": "ADCP echo intensity beam 4",
         "sdn_parameter_urn": "SDN:P01::TNIHCE04",
         "sdn_parameter_name": "Echo intensity from the water body by moored acoustic doppler current profiler (ADCP) beam 4",
         "sdn_uom_urn": "SDN:P06::UCNT",
         "sdn_uom_name": "Counts",
-        "legacy_GF3_code": "SDN:GF3::BEAM_04",
-        "generic_name": "amp_4"
+        "legacy_GF3_code": "SDN:GF3::BEAM_04"
     },
     "CMAGZZ01": {
         "standard_name": "beam_consistency_indicator_from_multibeam_acoustic_doppler_velocity_profiler_in_sea_water",
         "units": "counts",
         "sensor_type": "adcp",
-        "long_name": "ADCP_correlation_magnitude_beam_1",
+        "long_name": "ADCP correlation magnitude beam 1",
         "sdn_parameter_urn": "SDN:P01::CMAGZZ01",
         "sdn_parameter_name": "Correlation magnitude of acoustic signal returns from the water body by moored acoustic doppler current profiler (ADCP) beam 1",
-        "legacy_GF3_code": "SDN:GF3::CMAG_01",
-        "generic_name": "corr_1"
+        "legacy_GF3_code": "SDN:GF3::CMAG_01"
     },
     "CMAGZZ02": {
         "standard_name": "beam_consistency_indicator_from_multibeam_acoustic_doppler_velocity_profiler_in_sea_water",
         "units": "counts",
         "sensor_type": "adcp",
-        "long_name": "ADCP_correlation_magnitude_beam_2",
+        "long_name": "ADCP correlation magnitude beam 2",
         "sdn_parameter_urn": "SDN:P01::CMAGZZ02",
         "sdn_parameter_name": "Correlation magnitude of acoustic signal returns from the water body by moored acoustic doppler current profiler (ADCP) beam 2",
-        "legacy_GF3_code": "SDN:GF3::CMAG_02",
-        "generic_name": "corr_2"
+        "legacy_GF3_code": "SDN:GF3::CMAG_02"
     },
     "CMAGZZ03": {
         "standard_name": "beam_consistency_indicator_from_multibeam_acoustic_doppler_velocity_profiler_in_sea_water",
         "units": "counts",
         "sensor_type": "adcp",
-        "long_name": "ADCP_correlation_magnitude_beam_3",
+        "long_name": "ADCP correlation magnitude beam 3",
         "sdn_parameter_urn": "SDN:P01::CMAGZZ03",
         "sdn_parameter_name": "Correlation magnitude of acoustic signal returns from the water body by moored acoustic doppler current profiler (ADCP) beam 3",
-        "legacy_GF3_code": "SDN:GF3::CMAG_03",
-        "generic_name": "corr_3"
+        "legacy_GF3_code": "SDN:GF3::CMAG_03"
     },
     "CMAGZZ04": {
         "standard_name": "beam_consistency_indicator_from_multibeam_acoustic_doppler_velocity_profiler_in_sea_water",
         "units": "counts",
         "sensor_type": "adcp",
-        "long_name": "ADCP_correlation_magnitude_beam_4",
+        "long_name": "ADCP correlation magnitude beam 4",
         "sdn_parameter_urn": "SDN:P01::CMAGZZ04",
         "sdn_parameter_name": "Correlation magnitude of acoustic signal returns from the water body by moored acoustic doppler current profiler (ADCP) beam 4",
-        "legacy_GF3_code": "SDN:GF3::CMAG_04",
-        "generic_name": "corr_4"
+        "legacy_GF3_code": "SDN:GF3::CMAG_04"
     },
     "PCGDAP00": {
         "standard_name": "proportion_of_acceptable_signal_returns_from_acoustic_instrument_in_sea_water",
         "units": "percent",
         "sensor_type": "adcp",
-        "long_name": "percent_good_beam_1",
+        "long_name": "ADCP percent good beam 1",
         "sdn_parameter_urn": "SDN:P01::PCGDAP00",
         "sdn_parameter_name": "Acceptable proportion of signal returns by moored acoustic doppler current profiler (ADCP) beam 1",
         "sdn_uom_urn": "SDN:P06::UPCT",
         "sdn_uom_name": "Percent",
-        "legacy_GF3_code": "SDN:GF3::PGDP_01",
-        "generic_name": "pg_1"
+        "legacy_GF3_code": "SDN:GF3::PGDP_01"
     },
     "PCGDAP02": {
         "standard_name": "proportion_of_acceptable_signal_returns_from_acoustic_instrument_in_sea_water",
         "units": "percent",
         "sensor_type": "adcp",
-        "long_name": "percent_good_beam_2",
+        "long_name": "ADCP percent good beam 2",
         "sdn_parameter_urn": "SDN:P01::PCGDAP02",
         "sdn_parameter_name": "Acceptable proportion of signal returns by moored acoustic doppler current profiler (ADCP) beam 2",
         "sdn_uom_urn": "SDN:P06::UPCT",
         "sdn_uom_name": "Percent",
-        "legacy_GF3_code": "SDN:GF3::PGDP_02",
-        "generic_name": "pg_2"
+        "legacy_GF3_code": "SDN:GF3::PGDP_02"
     },
     "PCGDAP03": {
         "standard_name": "proportion_of_acceptable_signal_returns_from_acoustic_instrument_in_sea_water",
         "units": "percent",
         "sensor_type": "adcp",
-        "long_name": "percent_good_beam_3",
+        "long_name": "ADCP percent good beam 3",
         "sdn_parameter_urn": "SDN:P01::PCGDAP03",
         "sdn_parameter_name": "Acceptable proportion of signal returns by moored acoustic doppler current profiler (ADCP) beam 3",
         "sdn_uom_urn": "SDN:P06::UPCT",
         "sdn_uom_name": "Percent",
-        "legacy_GF3_code": "SDN:GF3::PGDP_03",
-        "generic_name": "pg_3"
+        "legacy_GF3_code": "SDN:GF3::PGDP_03"
     },
     "PCGDAP04": {
         "standard_name": "proportion_of_acceptable_signal_returns_from_acoustic_instrument_in_sea_water",
         "units": "percent",
         "sensor_type": "adcp",
-        "long_name": "percent_good_beam_4",
+        "long_name": "ADCP percent good beam 4",
         "sdn_parameter_urn": "SDN:P01::PCGDAP04",
         "sdn_parameter_name": "Acceptable proportion of signal returns by moored acoustic doppler current profiler (ADCP) beam 4",
         "sdn_uom_urn": "SDN:P06::UPCT",
         "sdn_uom_name": "Percent",
-        "legacy_GF3_code": "SDN:GF3::PGDP_04",
-        "generic_name": "pg_4"
+        "legacy_GF3_code": "SDN:GF3::PGDP_04"
     },
     "PCGDAP01": {
         "standard_name": "proportion_of_acceptable_signal_returns_from_acoustic_instrument_in_sea_water",
         "units": "percent",
         "sensor_type": "adcp",
-        "long_name": "percent good for 4 beam solution",
+        "long_name": "ADCP percent good of 4 beams solution",
         "sdn_parameter_urn": "SDN:P01::PCGDA00",
         "sdn_parameter_name": "Acceptable proportion of signal returns by moored acoustic doppler current profiler (ADCP)",
         "sdn_uom_urn": "SDN:P06::UPCT",
-        "sdn_uom_name": "Percent",
-        "generic_name": "pg"
+        "sdn_uom_name": "Percent"
     },
     "LRZUVP01": {
         "standard_name": "upward_sea_water_velocity",
@@ -254,8 +234,7 @@
         "sdn_parameter_urn": "SDN:P01::LRZUVP01",
         "sdn_parameter_name": "upward_sea_water_velocity_by_vertical_beam",
         "sdn_uom_urn": "SDN:P06::UVAA",
-        "sdn_uom_name": "Metres per second",
-        "generic_name": "vb_vel"
+        "sdn_uom_name": "Metres per second"
     },
     "TNIHCE05": {
         "standard_name": "signal_intensity_from_multibeam_acoustic_doppler_velocity_sensor_in_sea_water",
@@ -265,8 +244,7 @@
         "sdn_parameter_urn": "SDN:P01::TNIHCE05",
         "sdn_parameter_name": "Echo intensity from the water body by moored acoustic doppler current profiler (ADCP) vertical beam",
         "sdn_uom_urn": "SDN:P06::UCNT",
-        "sdn_uom_name": "Counts",
-        "generic_name": "vb_amp,"
+        "sdn_uom_name": "Counts"
     },
     "CMAGZZ05": {
         "standard_name": "beam_consistency_indicator_from_multibeam_acoustic_doppler_velocity_profiler_in_sea_water",
@@ -276,19 +254,17 @@
         "sdn_parameter_urn": "SDN:P01::CMAGZZ05",
         "sdn_parameter_name": "Correlation magnitude of acoustic signal returns from the water body by moored acoustic doppler current profiler (ADCP) vertical beam",
         "sdn_uom_urn": "SDN:P06::UCNT",
-        "sdn_uom_name": "Counts",
-        "generic_name": "vb_corr"
+        "sdn_uom_name": "Counts"
     },
     "PCGDAP05": {
         "standard_name": "proportion_of_acceptable_signal_returns_from_acoustic_instrument_in_sea_water",
         "units": "percent",
         "sensor_type": "adcp",
-        "long_name": "percent_good_beam_5",
+        "long_name": "ADCP percent good beam 5",
         "sdn_parameter_urn": "SDN:P01::PCGDAP05",
         "sdn_parameter_name": "Acceptable proportion of signal returns by moored acoustic doppler current profiler (ADCP) vertical beam",
         "sdn_uom_urn": "SDN:P06::UPCT",
-        "sdn_uom_name": "Percent",
-        "generic_name": "vb_pg"
+        "sdn_uom_name": "Percent"
     },
     "ALATZZ01": {
         "standard_name": "latitude",
@@ -298,8 +274,7 @@
         "sdn_parameter_name": "Latitude north",
         "sdn_uom_urn": "SDN:P06::DEGN",
         "sdn_uom_name": "Degrees north",
-        "legacy_GF3_code": "SDN:GF3::lat",
-        "generic_name": "{s5}"
+        "legacy_GF3_code": "SDN:GF3::lat"
     },
     "ALONZZ01": {
         "standard_name": "longitude",
@@ -309,8 +284,7 @@
         "sdn_parameter_name": "Longitude east",
         "sdn_uom_urn": "SDN:P06::DEGE",
         "sdn_uom_name": "Degrees east",
-        "legacy_GF3_code": "SDN:GF3::lon",
-        "generic_name": "{s5}"
+        "legacy_GF3_code": "SDN:GF3::lon"
     },
     "PTCHGP01": {
         "standard_name": "platform_pitch",
@@ -320,8 +294,7 @@
         "sdn_parameter_name": "Orientation (pitch) of measurement platform by inclinometer",
         "sdn_uom_urn": "SDN:P06::UAAA",
         "sdn_uom_name": "Degrees",
-        "legacy_GF3_code": "SDN:GF3::PTCH",
-        "generic_name": "pitch"
+        "legacy_GF3_code": "SDN:GF3::PTCH"
     },
     "HEADCM01": {
         "standard_name": "platform_orientation",
@@ -331,8 +304,7 @@
         "sdn_parameter_name": "Orientation (horizontal relative to true north) of measurement device {heading}",
         "sdn_uom_urn": "SDN:P06::UAAA",
         "sdn_uom_name": "Degrees",
-        "legacy_GF3_code": "SDN:GF3::HEAD",
-        "generic_name": "heading"
+        "legacy_GF3_code": "SDN:GF3::HEAD"
     },
     "ROLLGP01": {
         "standard_name": "platform_roll",
@@ -342,8 +314,7 @@
         "sdn_parameter_name": "Orientation (roll angle) of measurement platform by inclinometer (second sensor)",
         "sdn_uom_urn": "SDN:P06::UAAA",
         "sdn_uom_name": "Degrees",
-        "legacy_GF3_code": "SDN:GF3::ROLL",
-        "generic_name": "roll_"
+        "legacy_GF3_code": "SDN:GF3::ROLL"
     },
     "SVELCV01": {
         "standard_name": "speed of sound in sea water",
@@ -353,8 +324,7 @@
         "sdn_parameter_name": "Sound velocity in the water body by computation from temperature and salinity by unspecified algorithm",
         "sdn_uom_urn": "SDN:P06::UVAA",
         "sdn_uom_name": "Metres per second",
-        "legacy_GF3_code": "SDN:GF3::SVEL",
-        "generic_name": "sound_speed"
+        "legacy_GF3_code": "SDN:GF3::SVEL"
     },
     "TEMPPR01": {
         "units": "degree_C",
@@ -363,8 +333,7 @@
         "sdn_parameter_name": "Temperature of the water body",
         "sdn_uom_urn": "SDN:P06::UPAA",
         "sdn_uom_name": "Celsius degree",
-        "legacy_GF3_code": "SDN:GF3::te90",
-        "generic_name": "temperature"
+        "legacy_GF3_code": "SDN:GF3::te90"
     },
     "DISTTRAN": {
         "units": "m",
@@ -379,8 +348,7 @@
         "sdn_parameter_name": "String corresponding to format 'YYYY-MM-DDThh:mm:ss.sssZ' or other valid ISO8601 string",
         "sdn_uom_urn": "SDN:P06::TISO",
         "sdn_uom_name": "ISO8601",
-        "legacy_GF3_code": "SDN:GF3::time_string",
-        "generic_name": "time_string"
+        "legacy_GF3_code": "SDN:GF3::time_string"
     },
     "PPSAADCP": {
         "standard_name": "depth",
@@ -392,8 +360,7 @@
         "sdn_parameter_name": "Depth below surface of the water bodyby acoustic doppler current profiler (ADCP) and computation from traveltime averaged from all operational beams and unknown sound velocity profile",
         "sdn_uom_urn": "SDN:P06::ULAA",
         "sdn_uom_name": "Metres",
-        "legacy_GF3_code": "SDN:GF3::DEPH",
-        "generic_name": "depth"
+        "legacy_GF3_code": "SDN:GF3::DEPH"
     },
     "PRESPR01": {
         "standard_name": "sea_water_pressure",
@@ -403,22 +370,19 @@
         "sdn_parameter_name": "",
         "sdn_uom_urn": "SDN:P06::UPDB",
         "sdn_uom_name": "Decibards",
-        "legacy_GF3_code": "SDN:GF3::PRES",
-        "generic_name": "pres"
+        "legacy_GF3_code": "SDN:GF3::PRES"
     },
     "APEWGP01": {
         "units": "m s-1",
         "long_name": "eastward velocity of the measurement platform",
         "sdn_parameter_urn": "SDN:P01::APEWGP01",
-        "sdn_parameter_name": "Eastward velocity of measurement platform relative to ground surface by unspecified GPS system",
-        "generic_name": "u_ship"
+        "sdn_parameter_name": "Eastward velocity of measurement platform relative to ground surface by unspecified GPS system"
     },
     "APNSGP01": {
         "units": "m s-1",
         "long_name": "northward velocity of the measurement platform",
         "sdn_parameter_urn": "SDN:P01::APNSGP01",
-        "sdn_parameter_name": "Northward velocity of measurement platform relative to ground surface by unspecified GPS system",
-        "generic_name": "v_ship"
+        "sdn_parameter_name": "Northward velocity of measurement platform relative to ground surface by unspecified GPS system"
     },
     "ADEPZZ01": {
         "standard_name": "depth",
@@ -429,51 +393,43 @@
         "sdn_parameter_name": "Depth relative to water surface in the water body",
         "Sdn_uom_urn": "SDN:P06::ULAA",
         "sdn_uom_name": "Metres",
-        "legacy_GF3_code": "SDN:GF3::DEPH",
-        "generic_name": "depth"
+        "legacy_GF3_code": "SDN:GF3::DEPH"
     },
     "ELTMEP01": {
         "standard_name": "time",
-        "units": "days since 1970-1-1 0:0:0",
         "long_name": "time",
         "sdn_parameter_urn": "SDN:P01::ELTMEP01",
         "sdn_parameter_name": "Elapsed time relative to 1970-01-01T00:00:00Z",
         "Sdn_uom_urn": "SDN:P06::UTBB",
         "sdn_uom_name": "Seconds",
-        "legacy_GF3_code": "SDN:GF3::N/A",
-        "calendar": "gregorian",
-        "generic_name": "time"
+        "legacy_GF3_code": "SDN:GF3::N/A"
     },
     "APNSBT01": {
         "units": "m s-1",
         "sensor_type": "adcp",
         "long_name": "northward velocity of the measurment platform by bottom tracking",
         "sdn_parameter_urn": "SDN:P01::",
-        "sdn_parameter_name": "Northward velocity of measurement platform relative to ground surface by ADCP bottom tracking.",
-        "generic_name": "bt_v"
+        "sdn_parameter_name": "Northward velocity of measurement platform relative to ground surface by ADCP bottom tracking."
     },
     "APEWBT01": {
         "units": "m s-1",
         "sensor_type": "adcp",
         "long_name": "eastward velocity of the measurment platform by bottom tracking",
         "sdn_parameter_urn": "SDN:P01::APEWBT01",
-        "sdn_parameter_name": "Eastward velocity of measurement platform relative to ground surface by ADCP bottom tracking.",
-        "generic_name": "bt_u"
+        "sdn_parameter_name": "Eastward velocity of measurement platform relative to ground surface by ADCP bottom tracking."
     },
     "APZABT01": {
         "units": "m s-1",
         "sensor_type": "adcp",
         "long_name": "upward velocity of the measurment platform by bottom tracking",
         "sdn_parameter_urn": "SDN:P01::APZABT01",
-        "sdn_parameter_name": "Upward velocity of measurement platform by ADCP bottom tracking.",
-        "generic_name": "bt_w"
+        "sdn_parameter_name": "Upward velocity of measurement platform by ADCP bottom tracking."
     },
     "APERBT01": {
         "units": "m s-1",
         "sensor_type": "adcp",
         "long_name": "error velocity of the measurment platform by bottom tracking",
         "sdn_parameter_urn": "SDN:P01::APERBT01",
-        "sdn_parameter_name": "Error velocity of measurement platform relative to ground surface by ADCP bottom tracking.",
-        "generic_name": "bt_e"
+        "sdn_parameter_name": "Error velocity of measurement platform relative to ground surface by ADCP bottom tracking."
     }
 }

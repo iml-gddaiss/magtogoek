@@ -48,7 +48,7 @@ BASE_CONFIG_STRUCT = {
     "input_files": "INPUT",
     "platform_file": "INPUT",
     "platform_id": "INPUT",
-    "instrument_id": "INPUT",
+    "sensor_id": "INPUT",
     "netcdf_output": "OUTPUT",
     "odf_output": "OUTPUT",
 }
@@ -145,12 +145,21 @@ def config(info):
     pass
 
 
-@magtogoek.group(context_settings=CONTEXT_SETTINGS)
+@magtogoek.command("adcp")
 @click.option(
     "--info", is_flag=True, callback=_print_info, help="Show command information"
 )
-def process(info):
-    pass
+@add_argument("config_file", metavar="[input_files]", type=click.Path(exists=True))
+def process(config_file, info):
+    """FIXME"""
+    from magtogoek.bin.configfile import load_configfile
+
+    config = load_configfile(config_file)
+
+    if config["HEADER"]["sensor_type"] == "adcp":
+        from magtogoek.adcp.process import process_adcp
+
+        process_adcp(config)
 
 
 @magtogoek.group(context_settings=CONTEXT_SETTINGS)
@@ -191,6 +200,14 @@ def config_platform(ctx, filename, info):
     "--info", is_flag=True, callback=_print_info, help="Show command information"
 )
 @click.argument("config_name", metavar="[config_file]", type=str)
+@click.option(
+    "-T",
+    "--platform",
+    type=(click.Path(exists=True), str, str),
+    help="platform_file, platform_id, sensor_id",
+    default=(None, None, None),
+    nargs=3,
+)
 @add_options(adcp_options())
 @click.pass_context
 def config_adcp(
@@ -207,10 +224,10 @@ def config_adcp(
     # check if a file already exists and format the `.ini` extension.
     config_name = is_valid_filename(config_name, ext=".ini")
 
-    updated_params = _format_options_for_configfile("adcp", options)
+    config_params = _format_options_for_configfile("adcp", options)
 
     make_configfile(
-        filename=config_name, sensor_type="adcp", updated_params=updated_params
+        filename=config_name, sensor_type="adcp", config_params=config_params
     )
 
     click.echo(
@@ -253,8 +270,8 @@ def config_adcp(
     "-T",
     "--platform_type",
     type=click.Choice(["ship", "mooring"]),
-    help="type fo measurement platform",
-    default=None,
+    help="Used for Proper BODC variables names",
+    default="mooring",
 )
 @click.pass_context
 def quick_adcp(
@@ -310,7 +327,7 @@ def _format_options_for_configfile(sensor_type, options):
             options["bottom_depth"] = ""
         options["platform_file"] = options["platform"][0]
         options["platform_id"] = options["platform"][1]
-        options["instrument_id"] = options["platform"][2]
+        options["sensor_id"] = options["platform"][2]
         del options["platform"]
 
     updated_params = dict()

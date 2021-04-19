@@ -247,7 +247,6 @@ class RtiReader:
         Takes into account multiple inputs files with varying
         ensemble counts.
         """
-
         counts = np.array(self.files_ens_count)
         cumsum = np.cumsum(counts)
         start_index, stop_index = None, None
@@ -333,7 +332,7 @@ class RtiReader:
         ppd.nbin = ens.EnsembleData.NumBins
         ppd.NBeams = ens.EnsembleData.NumBeams
         ppd.yearbase = ens.EnsembleData.Year
-        ppd.instrument_serial = ens.EnsembleData.SerialNumber
+        ppd.SerialNumber = ens.EnsembleData.SerialNumber
 
         ppd.CellSize = ens.AncillaryData.BinSize
         ppd.Bin1Dist = round(ens.AncillaryData.FirstBinRange, 3)
@@ -342,7 +341,7 @@ class RtiReader:
 
         ppd.pingtype = ens.SystemSetup.WpBroadband
         ppd.sysconfig = dict(
-            angle=self._beam_angle(ppd.instrument_serial),
+            angle=self._beam_angle(ppd.SerialNumber),
             kHz=ens.SystemSetup.WpSystemFreqHz,
             convex=True,  # Rowetech adcp seems to be convex.
             up=None,

@@ -48,15 +48,16 @@ from scipy.stats import circmean
 #    rdi_qc_defaults = dict(amp_th=0)
 
 
-IMPLAUSIBLE_VEL_TRESHOLD = 15  # meter per secon
+IMPLAUSIBLE_VEL_TRESHOLD = 15  # meter per second
 MIN_TEMPERATURE = -2  # Celcius
 MAX_TEMPERATURE = 32  # Celcius
 MIN_PRESSURE = 0  # dbar
-MAX_PRESSURE = 108  # dbar (mariana trench pressure)
+MAX_PRESSURE = 500  # dbar (mariana trench pressure)
 
 l = Logger(level=0)
-FLAGS = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9)
-FLAGS_MEANING = (
+FLAG_REFERENCE = "BODC SeaDataNet"
+FLAG_VALUES = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9)
+FLAG_MEANINGS = (
     "no_quality_control",
     "good_value",
     "probably_good_value",
@@ -90,11 +91,12 @@ def no_adcp_quality_control(dataset):
     variables = ["temperature", "pres", "u", "v", "w"]
     for var in variables:
         if var in dataset:
-            dataset[var + "_QC"] = dataset[var].copy().astype("int") * 0
+            dataset[var + "_QC"] = dataset[var].copy().astype("int8") * 0
 
-    dataset["temperature_QC"]
-    dataset.attrs["flags"] = FLAGS
-    dataset.attrs["flags_meaning"] = FLAGS_MEANING
+    dataset.attrs["flags_reference"] = FLAG_REFERENCE
+    dataset.attrs["flags_values"] = FLAG_VALUES
+    dataset.attrs["flags_meanings"] = FLAG_MEANINGS
+    dataset.attrs["quality_comments"] = "No quality control."
 
 
 def adcp_quality_control(
@@ -213,6 +215,7 @@ def adcp_quality_control(
         l.log(f"vertical velocity threshold {vertical_vel_th}")
         vertical_vel_flag = vertical_vel_test(dataset, vertical_vel_th)
         vel_flags[vertical_vel_flag] = 3
+
     if error_vel_th:
         l.log(f"error velocity threshold {error_vel_th}")
         error_vel_flag = error_vel_test(dataset, error_vel_th)
@@ -262,12 +265,14 @@ def adcp_quality_control(
     for v in ("u", "v", "w"):
         dataset[v + "_QC"] = (["depth", "time"], vel_flags)
 
-    dataset.attrs["quality_control"] = l.logbook
-    dataset.attrs["logbook"] += l.logbook
-    dataset.attrs["flags"] = FLAGS
-    dataset.attrs["flags_meaning"] = FLAGS_MEANING
+    # TODO add QC attributes here. quality_test, quality_date
 
-    # return dataset
+    dataset.attrs["quality_comments"] = l.logbook
+    dataset.attrs["logbook"] += l.logbook
+
+    dataset.attrs["flags_reference"] = FLAG_REFERENCE
+    dataset.attrs["flags_values"] = FLAG_VALUES
+    dataset.attrs["flags_meanings"] = FLAG_MEANINGS
 
 
 def motion_correction(dataset: tp.Type[xr.Dataset], mode: str):
