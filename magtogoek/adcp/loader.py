@@ -205,7 +205,10 @@ def load_adcp_binary(
             l.log(
                 f"The difference between `sensor_depth` and `XducerDepth` is {abs(sensor_depth - xducer_depth)} #m"
             )
+            # data.dep was computed from the fixed xducer_depth and so needs to be corrected.
+            depth = data.dep + (sensor_depth - xducer_depth)
             xducer_depth = sensor_depth
+        else:
             depth = data.dep
     else:
         xducer_depth = np.median(data.XducerDepth)
@@ -374,7 +377,7 @@ def load_adcp_binary(
     # Add attributes #
     # -------------- #
     sonar_names = dict(
-        wh="WorhHorse", sv="SentinelV", os="OceanSurveyor", sw="SeaWATCH"
+        wh="WorkHorse", sv="SentinelV", os="OceanSurveyor", sw="SeaWATCH"
     )
     if "xducer_depth" not in ds:
         ds.attrs["xducer_depth"] = xducer_depth
@@ -384,8 +387,14 @@ def load_adcp_binary(
     )
     ds.attrs["coord_system"] = data.trans["coordsystem"]
     ds.attrs["beam_angle"] = data.sysconfig["angle"]
-    ds.attrs["transducer_frequency"] = data.sysconfig["kHz"] * 1000
+    ds.attrs["frequency"] = data.sysconfig["kHz"] * 1000
     ds.attrs["bin_size"] = data.CellSize
+
+    ds.attrs["sample_interval"] = np.round(
+        np.mean(np.diff(ds.time).astype("timedelta64[s]")), 2
+    )
+    ds.attr["beam_pattern"] = "janus"
+
     ds.attrs["orientation"] = orientation
     if "SerialNumber" in data:
         ds.attrs["serial_number"] = data.SerialNumber
@@ -394,26 +403,6 @@ def load_adcp_binary(
     ds.attrs["logbook"] = l.logbook
 
     return ds
-
-
-def init_dataset(time: NDArray, depth: NDArray):
-    """Make a default dataset for adcp.
-
-    Parameters
-    ----------
-    time:
-        vector of datetime64[]
-
-    depth:
-        vector of [float/int]
-    """
-
-    dataset = xr.Dataset(
-        data_vars={},
-        coords={"depth": (["depth"], depth), "time": (["time"], time)},
-    )
-
-    return dataset
 
 
 def coordsystem2earth(data: tp.Type[Bunch], orientation: str):

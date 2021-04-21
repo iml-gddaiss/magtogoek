@@ -15,25 +15,28 @@ def make_platform_template(filename):
 
 def platform_template():
     """FIXME"""
-    return dict(__Enter_a_platform_ID__=_add_platform())
+    return dict(__enter_a_platform_id_here__=_add_platform())
 
 
 def _add_platform():
     return dict(
-        platform_name="",
-        platform_type="",
-        intruments=dict(Enter_a_sensor_ID=_add_sensors()),
+        platform_name=None,
+        platform_type=None,
+        sounding=None,
+        longitude=None,
+        latitude=None,
+        intruments=dict(__enter_a_sensor_ID_here=_add_sensors()),
     )
 
 
 def _add_sensors():
     return dict(
-        sensor_type="",
-        sensor_depth="",
-        serial_number="",
-        manufacturer="",
-        model="",
-        firmware_version="",
-        chief_scientist="",
-        description="",
+        sensor_type=None,
+        sensor_depth=None,
+        serial_number=None,
+        manufacturer=None,
+        model=None,
+        firmware_version=None,
+        chief_scientist=None,
+        description=None,
     )

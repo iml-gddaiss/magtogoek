@@ -126,7 +126,27 @@ def compute_navigation(
 
 def plot_navigation(dataset: tp.Type[xr.Dataset]):
     """FIXME"""
-    pass
+
+    fig = plt.figure(12, 8)
+    ax_bearing = fig.subplot(411)
+    ax_bearing.set_ylabel("bearing [degree]")
+    ax_speed = fig.subplot(412, sharex=ax_bearing)
+    ax_speed.set_ylabel("speed [m/s]")
+    ax_uship = fig.subplot(413, sharex=ax_bearing)
+    ax_uship.set_ylabel("uship [m/s]")
+    ax_vship = fig.subplot(414, sharex=ax_bearing)
+    ax_vship.set_ylabel("vship [m/s]")
+
+    dataset.bearing.plot(axe=ax_bearing)
+    dataset.speed.plot(axe=ax_speed)
+    dataset.uship.plot(axe=ax_uship)
+    dataset.vship.plot(axe=ax_vship)
+
+    plt.setp(ax_speed.get_xticklabels(), visible=False)
+    plt.setp(ax_uship.get_xticklabels(), visible=False)
+    plt.setp(ax_vship.get_xticklabels(), visible=False)
+
+    plt.show()
 
 
 if __name__ == "__main__":

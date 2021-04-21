@@ -41,6 +41,7 @@ import numpy as np
 import xarray as xr
 from magtogoek.tools import circular_distance
 from magtogoek.utils import Logger
+from pandas import Timestamp
 from scipy.stats import circmean
 
 # Brand dependent quality control defaults
@@ -52,7 +53,7 @@ IMPLAUSIBLE_VEL_TRESHOLD = 15  # meter per second
 MIN_TEMPERATURE = -2  # Celcius
 MAX_TEMPERATURE = 32  # Celcius
 MIN_PRESSURE = 0  # dbar
-MAX_PRESSURE = 500  # dbar (mariana trench pressure)
+MAX_PRESSURE = 10000  # dbar (mariana trench pressure)
 
 l = Logger(level=0)
 FLAG_REFERENCE = "BODC SeaDataNet"
@@ -191,50 +192,61 @@ def adcp_quality_control(
 
     vel_flags = np.ones(dataset.depth.shape + dataset.time.shape).astype(int)
 
+    vel_qc_test = []
+
     if amp_th:
         l.log(f"amplitude threshold {amp_th}")
         amp_flag = amplitude_test(dataset, amp_th)
         vel_flags[amp_flag] = 3
+        vel_qc_test.append(f"amplitude_threshold:{amp_th}")
 
     if corr_th:
         l.log(f"correlation threshold {corr_th}")
         corr_flag = correlation_test(dataset, corr_th)
         vel_flags[corr_flag] = 3
+        vel_qc_test.append(f"correlation_threshold:{corr_th}")
 
     if pg_th:
         l.log(f"percentgood threshold {pg_th}")
         pg_flag = percentgood_test(dataset, pg_th)
         vel_flags[pg_flag] = 3
+        vel_qc_test.append(f"percentgood_threshold:{pg_th}")
 
     if horizontal_vel_th:
         l.log(f"horizontal velocity threshold {horizontal_vel_th}")
         horizontal_vel_flag = horizontal_vel_test(dataset, horizontal_vel_th)
         vel_flags[horizontal_vel_flag] = 3
+        vel_qc_test.append(f"horizontal_velocity_threshold:{horizontal_vel_th} m/s")
 
     if vertical_vel_th:
         l.log(f"vertical velocity threshold {vertical_vel_th}")
         vertical_vel_flag = vertical_vel_test(dataset, vertical_vel_th)
         vel_flags[vertical_vel_flag] = 3
+        vel_qc_test.append(f"vertical_velocity_threshold:{vertical_vel_th} m/s")
 
     if error_vel_th:
         l.log(f"error velocity threshold {error_vel_th}")
         error_vel_flag = error_vel_test(dataset, error_vel_th)
         vel_flags[error_vel_flag] = 3
+        vel_qc_test.append(f"velocity_error_threshold:{error_vel_th} m/s")
 
     if roll_th:
         l.log(f"roll threshold {roll_th}")
         roll_flag = np.tile(roll_test(dataset, roll_th), dataset.depth.shape + (1,))
         vel_flags[roll_flag] = 3
+        vel_qc_test.append(f"roll_threshold:{roll_th} degree")
 
     if pitch_th:
         l.log(f"pitch threshold {pitch_th}")
         pitch_flag = np.tile(pitch_test(dataset, pitch_th), dataset.depth.shape + (1,))
         vel_flags[pitch_flag] = 3
+        vel_qc_test.append(f"pitch_threshold:{pitch_th} degree")
 
     if sidelobes_correction:
         l.log(f"Sidelobe correction carried out.")
         sidelobe_flag = sidelobe_test(dataset, bottom_depth)
         vel_flags[sidelobe_flag] = 4
+        vel_qc_test.append("sidelobes")
 
     if "pres" in dataset:
         l.log(f"Good pressure range {MIN_PRESSURE} to {MAX_PRESSURE} dbar")
@@ -243,12 +255,19 @@ def adcp_quality_control(
         pressure_QC[pressure_flags] = 4
         dataset["pres_QC"] = (["time"], pressure_QC)
         vel_flags[np.tile(pressure_flags, dataset.depth.shape + (1,))] = 4
+        dataset["pres_QC"].attrs[
+            "quality_test"
+        ] = f"presssure_threshold: less than {MIN_PRESSURE} dbar and greater than {MAX_PRESSURE} dbar"
+        vel_qc_test.append(dataset["pres_QC"].attrs["quality_test"])
 
     if "temperature" in dataset:
         l.log(f"Good temperature range {MIN_TEMPERATURE} to {MAX_TEMPERATURE} Celcius")
         temperature_QC = np.ones(dataset.temperature.shape)
         temperature_QC[temperature_test(dataset)] = 4
         dataset["temperature_QC"] = (["time"], temperature_QC)
+        dataset["temperature_QC"].attrs[
+            "quality_test"
+        ] = f"temperature_threshold: less than {MIN_TEMPERATURE} celcius and greater than {MAX_TEMPERATURE} celcius"
 
     if "vb_vel" in dataset:
         l.log(
@@ -256,6 +275,11 @@ def adcp_quality_control(
         )
         vb_flag = vertical_beam_test(dataset, amp_th, corr_th, pg_th)
         dataset["vb_vel_QC"] = (["depth", "time"], vb_flag * 3)
+        dataset["vb_vel_QC"].attrs["quality_test"] = [
+            f"amplitude_threshold:{amp_th}",
+            f"correlation_threshold:{corr_th}",
+            f"percentgood_threshold:{pg_th}",
+        ]
 
     missing_vel = np.bitwise_or(
         *(~np.isfinite(dataset[v]).data for v in ("u", "v", "w"))
@@ -264,8 +288,14 @@ def adcp_quality_control(
 
     for v in ("u", "v", "w"):
         dataset[v + "_QC"] = (["depth", "time"], vel_flags)
+        dataset[v + "_QC"].attrs["quality_test"] = vel_qc_test
 
-    # TODO add QC attributes here. quality_test, quality_date
+    for var in list(dataset.variables):
+        if "_QC" in var:
+            dataset[var].attrs["quality_date"] = Timestamp.now().strftime("%Y-%m-%d")
+            dataset[var].attrs["flag_meanings"] = FLAG_MEANINGS
+            dataset[var].attrs["flag_values"] = FLAG_VALUES
+            dataset[var].attrs["flag_reference"] = FLAG_REFERENCE
 
     dataset.attrs["quality_comments"] = l.logbook
     dataset.attrs["logbook"] += l.logbook

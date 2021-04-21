@@ -119,7 +119,7 @@ def _PCGDAP(s0: str, s1: str) -> tp.Dict[str, str]:
 
 
 def _A_ZZ01(s0: str, s1: str, s2: str, s3: str, s4: str, s5: str) -> tp.Dict[str, str]:
-    """skeleton for A(---)ZZ01 attributes dictionnary"""
+    """skeleton for A(---)ZZ01 attributes dictionnary Lon, Lat"""
     return dict(
         standard_name=f"{s0}",
         units=f"degrees_{s1}",
