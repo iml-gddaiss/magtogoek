@@ -391,9 +391,9 @@ def load_adcp_binary(
     ds.attrs["bin_size"] = data.CellSize
 
     ds.attrs["sample_interval"] = np.round(
-        np.mean(np.diff(ds.time).astype("timedelta64[s]")), 2
+        np.mean((np.diff(ds.time).astype("timedelta64[s]"))).astype(float), 2
     )
-    ds.attr["beam_pattern"] = "janus"
+    ds.attrs["beam_pattern"] = "janus"
 
     ds.attrs["orientation"] = orientation
     if "SerialNumber" in data:

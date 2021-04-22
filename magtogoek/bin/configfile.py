@@ -71,7 +71,7 @@ BASIC_CONFIG = dict(
         "summary": "",
         "references": "https://github.com/JeromeJGuay/magtogoek",
         "comments": "",
-        "naming_authority": "BODC, SDC, CF, MEDS ; comment",
+        "naming_authority": "BODC, SDC, CF, MEDS",
     },
     PROJECT={
         "project": "",
@@ -83,8 +83,8 @@ BASIC_CONFIG = dict(
         "cruise_number": "",
         "organization": "",
         "chief_scientist": "",
-        "leading_trim": "",
-        "trailing_trim": "",
+        "start_date": "",
+        "end_date": "",
     },
     GLOBAL_ATTRIBUTES={
         "date_created": "",
@@ -216,9 +216,11 @@ def load_configfile(filename: str, updated_params: tp.Dict = None):
         with open(filename, "w") as f:
             parser.write(f)
 
+    parser = parser._sections
+
     _convert_options_type(parser)
 
-    return parser._sections
+    return parser
 
 
 def _check_config_missing(parser: tp.Type[ConfigParser]):
@@ -235,19 +237,23 @@ def _check_config_missing(parser: tp.Type[ConfigParser]):
 
     expected_parser = _get_config_default(sensor_type)
 
-    for section, options in expected_parser._sections.items:
+    for section, options in expected_parser.items():
         if not parser.has_section(section):
             parser.add_section(section)
         for option in options.keys():
-            if not parser.has_options(section, option):
+            if not parser.has_option(section, option):
                 parser[section][option] = expected_parser[section][option]
 
 
-def _convert_options_type(parser):
-    """Convert some config options to the right type for processing."""
+def _convert_options_type(parser: tp.Dict):
+    """Convert some config options to the right type for processing.
+    Notes
+    -----
+    Add more sensor_type options for each different sensor processing
+    """
     sensor_type = parser["HEADER"]["sensor_type"]
 
-    for section, options in parser._sections.items:
+    for section, options in parser.items():
         for option in options.keys():
             if parser[section][option] == "":
                 parser[section][option] = None
@@ -256,7 +262,8 @@ def _convert_options_type(parser):
         for section, options in ADCP_CONFIG_TYPE.items():
             for option in options:
                 if parser[section][option]:
-                    option_type = type(ADCP_CONFIG_TYPE[section][option])
+                    option_value = parser[section][option]
+                    option_type = ADCP_CONFIG_TYPE[section][option]
                     parser[section][option] = option_type(parser[section][option])
 
 

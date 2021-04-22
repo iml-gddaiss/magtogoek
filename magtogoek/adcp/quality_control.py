@@ -213,31 +213,31 @@ def adcp_quality_control(
         vel_qc_test.append(f"percentgood_threshold:{pg_th}")
 
     if horizontal_vel_th:
-        l.log(f"horizontal velocity threshold {horizontal_vel_th}")
+        l.log(f"horizontal velocity threshold {horizontal_vel_th} m/s")
         horizontal_vel_flag = horizontal_vel_test(dataset, horizontal_vel_th)
         vel_flags[horizontal_vel_flag] = 3
         vel_qc_test.append(f"horizontal_velocity_threshold:{horizontal_vel_th} m/s")
 
     if vertical_vel_th:
-        l.log(f"vertical velocity threshold {vertical_vel_th}")
+        l.log(f"vertical velocity threshold {vertical_vel_th} m/s")
         vertical_vel_flag = vertical_vel_test(dataset, vertical_vel_th)
         vel_flags[vertical_vel_flag] = 3
         vel_qc_test.append(f"vertical_velocity_threshold:{vertical_vel_th} m/s")
 
     if error_vel_th:
-        l.log(f"error velocity threshold {error_vel_th}")
+        l.log(f"error velocity threshold {error_vel_th} m/s")
         error_vel_flag = error_vel_test(dataset, error_vel_th)
         vel_flags[error_vel_flag] = 3
         vel_qc_test.append(f"velocity_error_threshold:{error_vel_th} m/s")
 
     if roll_th:
-        l.log(f"roll threshold {roll_th}")
+        l.log(f"roll threshold {roll_th} degree")
         roll_flag = np.tile(roll_test(dataset, roll_th), dataset.depth.shape + (1,))
         vel_flags[roll_flag] = 3
         vel_qc_test.append(f"roll_threshold:{roll_th} degree")
 
     if pitch_th:
-        l.log(f"pitch threshold {pitch_th}")
+        l.log(f"pitch threshold {pitch_th} degree")
         pitch_flag = np.tile(pitch_test(dataset, pitch_th), dataset.depth.shape + (1,))
         vel_flags[pitch_flag] = 3
         vel_qc_test.append(f"pitch_threshold:{pitch_th} degree")
@@ -261,7 +261,7 @@ def adcp_quality_control(
         vel_qc_test.append(dataset["pres_QC"].attrs["quality_test"])
 
     if "temperature" in dataset:
-        l.log(f"Good temperature range {MIN_TEMPERATURE} to {MAX_TEMPERATURE} Celcius")
+        l.log(f"Good temperature range {MIN_TEMPERATURE} to {MAX_TEMPERATURE} celcius")
         temperature_QC = np.ones(dataset.temperature.shape)
         temperature_QC[temperature_test(dataset)] = 4
         dataset["temperature_QC"] = (["time"], temperature_QC)
@@ -318,7 +318,7 @@ def motion_correction(dataset: tp.Type[xr.Dataset], mode: str):
             l.log("Motion correction carried out with bottom track")
         else:
             l.waring(
-                "Motion correction aborded. Bottom velocity (bt_u, bt_v, bt_w)missing"
+                "Motion correction aborded. Bottom velocity (bt_u, bt_v, bt_w) missing"
             )
     elif mode == "nav":
         if all(f"{v}_ship" in dataset for v in ["u", "v"]):

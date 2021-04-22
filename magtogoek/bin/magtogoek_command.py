@@ -158,9 +158,9 @@ def process(config_file, info):
     config = load_configfile(config_file)
 
     if config["HEADER"]["sensor_type"] == "adcp":
-        from magtogoek.adcp.process import process_adcp
+        from magtogoek.adcp.process import process_adcp_config
 
-        process_adcp(config)
+        process_adcp_config(config)
 
 
 @magtogoek.group(context_settings=CONTEXT_SETTINGS)

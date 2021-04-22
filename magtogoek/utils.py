@@ -10,6 +10,10 @@ from pathlib import Path
 import click
 
 
+class FileNotFoundError(Exception):
+    pass
+
+
 class Logger:
     """Class to log and print message.
 
