@@ -261,14 +261,13 @@ def adcp_quality_control(
         vel_qc_test.append(dataset["pres_QC"].attrs["quality_test"])
 
     if "temperature" in dataset:
-        l.log(f"Good temperature range {MIN_TEMPERATURE} to {MAX_TEMPERATURE} celcius")
+        l.log(f"Good temperature range {MIN_TEMPERATURE} to {MAX_TEMPERATURE} celsius")
         temperature_QC = np.ones(dataset.temperature.shape)
         temperature_QC[temperature_test(dataset)] = 4
         dataset["temperature_QC"] = (["time"], temperature_QC)
         dataset["temperature_QC"].attrs[
             "quality_test"
-        ] = f"temperature_threshold: less than {MIN_TEMPERATURE} celcius and greater than {MAX_TEMPERATURE} celcius"
-
+        ] = f"temperature_threshold: less than {MIN_TEMPERATURE} celcius and greater than {MAX_TEMPERATURE} celsius"
     if "vb_vel" in dataset:
         l.log(
             f"Fifth beam quality control done with amp:{amp_th}, corr:{corr_th}, pg:{pg_th}"

@@ -201,40 +201,54 @@ def _process_adcp_data(params: tp.Dict, global_attrs: tp.Dict):
     if params["platform_file"]:
         sensor_metadata = _load_platform(params)
     else:
-        l.warning("platform_file missing, defaulting to `mooring`.")
+        l.warning("platform_file missing, defaulting to `mooring` for platform_type.")
         sensor_metadata["platform_type"] = "mooring"
 
     if sensor_metadata["platform_type"] not in ["mooring", "ship"]:
         raise ValueError("platform_type invalid. Must be one of `mooring` or `ship`")
 
     if params["navigation_file"]:
-        # This is carried before reading the adcp data in case a error arise reading the netcdf.
+        # This is carried before reading the adcp data in case a error arise reading
+        # the  navigation netcdf files.
         nav_ds = xr.open_dataset(params["navigation_file"])
-        if "u_ship" not in nav_ds or "v_ship" not in nav_ds:
+        if "lon" not in nav_ds or "lat" not in nav_ds:
             l.warning("Navigation netcdf file is missing u_ship and v_ship.")
             params["navigation_file"] = None
 
+    # LOADING ADCP DATA.
     dataset = _load_adcp_data(params)
 
+    # ADDING THE GLOBAL ATTRIBUTES.
     # Chief scientist in the ConfigFile is used over the one in the platform file.
+    l.section("Adding Global Attributes")
     if global_attrs["chief_scientist"]:
         del sensor_metadata["chief_scientist"]
     dataset = dataset.assign_attrs({**global_attrs, **sensor_metadata})
     _geospatial_global_attrs(dataset)
     _time_global_attrs(dataset)
 
-    if params["navigation_file"]:
-        nav_ds = nav_ds.interp(time=dataset.time)
-        dataset["u_ship"] = nav_ds.u_ship
-        dataset["v_ship"] = nav_ds.v_ship
-
     if "sensor_depth" in dataset.attrs:
         if not dataset.attrs["sensor_depth"]:
             _xducer_depth_as_sensor_depth(dataset)
 
+    # ADDING THE NAVIGATION DATA TO THE DATASET.
+    if params["navigation_file"]:
+        l.section("Navigation data")
+        nav_ds = nav_ds.interp(time=dataset.time)
+        dataset["lon"] = nav_ds.lon
+        dataset["lat"] = nav_ds.lat
+        l.log(f"lon and lat data added from {params['navigation_file']}")
+        if "u_ship" in nav_ds and "v_ship" in nav_ds:
+            dataset["u_ship"] = nav_ds.u_ship
+            dataset["v_ship"] = nav_ds.v_ship
+            l.log(f"u_ship and v_ship data added from {params['navigation_file']}")
+
     if params["magnetic_declination"]:
         _magnetnic_correction(dataset, params["magnetic_declination"])
         dataset.attrs["magnetic_delination"] = params["magnetic_declination"]
+        l.log(
+            f"Coordinates transformed to true North and True East. magnetic declination:{params['magnetic_declination']} degree"
+        )
 
     if params["quality_control"]:
         _quality_control(dataset, params)
@@ -245,32 +259,42 @@ def _process_adcp_data(params: tp.Dict, global_attrs: tp.Dict):
 
     _drop_beam_data(dataset, params)
 
+    l.section("Data Encoding")
     _format_data_encoding(dataset)
+    l.log("data encoded")
 
+    l.section("Variables attributes")
     dataset = _format_variables_names_and_attributes(
         dataset, bodc_name=params["bodc_name"]
     )
+    l.log("variables attributes added.")
 
     if not dataset.attrs["date_created"]:
         dataset.attrs["date_created"] = pd.Timestamp.now().strftime("%Y-%m-%d")
-
-    dataset.attrs["logbook"] += l.logbook
-    dataset.attrs["history"] = dataset.attrs["logbook"]
 
     for attr in dataset.attrs:
         if not dataset.attrs[attr]:
             dataset.attrs[attr] = "N/A"
 
+    dataset.attrs["logbook"] += l.logbook
+    dataset.attrs["history"] = dataset.attrs["logbook"]
+
+    l.section("Output")
     # OUTPUT TODO to_ODF
 
-    # Remove attributes from params
+    # TODO Remove attributes from params
 
-    dataset.to_netcdf(Path(params["netcdf_output"].with_suffix(".nc")))
+    dataset.to_netcdf(Path(params["netcdf_output"]).with_suffix(".nc"))
     l.log(f"netcdf file made -> {params['netcdf_output']}")
 
-    # MAKE_LOG
+    log_output = Path(params["netcdf_output"]).with_suffix(".log")  # TODO better
 
-    # MAKE_FIG
+    if params["make_log"]:
+        with open(log_output, "w") as log_file:
+            log_file.write(dataset.logbook)
+            print(f"log file made -> {log_output}")
+
+    # MAKE_FIG TODO
 
 
 def _load_adcp_data(params: tp.Dict) -> tp.Type[xr.Dataset]:
@@ -430,10 +454,6 @@ def _xducer_depth_as_sensor_depth(dataset: tp.Type[xr.Dataset]):
             dataset.attrs["sensor_depth"] = dataset.attrs["xducer_depth"]
 
 
-####                  VARIABLES ATTRIBUTES BELLOW                    ####
-#### NOTE ALL THE FUNCTION BELOW COULD BE USED FOR OTHER SENSOR_TYPE ####
-####         IT USED GLOBAL_VARIABLES DEFINED IN THIS MODULE         ####
-####         VAR_NEEDING_SENSOR_TYPE_ATTRS                           ####
 def _drop_beam_data(dataset: tp.Type[xr.Dataset], params: tp.Dict):
     """check in params if pg, corr and amp are to be dropped
     (drop_pg, drop_corr, drop_amp)
@@ -447,6 +467,12 @@ def _drop_beam_data(dataset: tp.Type[xr.Dataset], params: tp.Dict):
         if var[0] in dataset and params[f"drop_{var[1]}"]:
             dataset = dataset.drop_vars([var[0]])
             l.log(f"{var[1]} data dropped.")
+
+
+####                  VARIABLES ATTRIBUTES BELLOW                    ####
+#### NOTE ALL THE FUNCTION BELOW COULD BE USED FOR OTHER SENSOR_TYPE ####
+####         IT USED GLOBAL_VARIABLES DEFINED IN THIS MODULE         ####
+####         VAR_NEEDING_SENSOR_TYPE_ATTRS                           ####
 
 
 def _format_variables_names_and_attributes(

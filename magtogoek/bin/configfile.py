@@ -264,7 +264,16 @@ def _convert_options_type(parser: tp.Dict):
                 if parser[section][option]:
                     option_value = parser[section][option]
                     option_type = ADCP_CONFIG_TYPE[section][option]
-                    parser[section][option] = option_type(parser[section][option])
+                    if ADCP_CONFIG_TYPE[section][option] == bool:
+                        parser[section][option] = (
+                            True
+                            if parser[section][option] in ["True", "true", "1"]
+                            else False
+                        )
+                    if ADCP_CONFIG_TYPE[section][option] == int:
+                        parser[section][option] = int(parser[section][option])
+                    if ADCP_CONFIG_TYPE[section][option] == float:
+                        parser[section][option] = float(parser[section][option])
 
 
 def _get_config_default(sensor_type: str):
