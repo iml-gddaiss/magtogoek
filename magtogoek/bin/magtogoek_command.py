@@ -18,11 +18,22 @@ Descriptions:
 Usage:
     $ mtgk config [adcp, platform] [CONFIG_NAME] [OPTIONS]
 
-    $ mtgk process [adcp, ] [CONFIG_FILE] [OPTIONS]
+    $ mtgk process [CONFIG_FILE]
 
-    $ mtgk quick [adcp, ] [INPUT_FILES] [OPTIONS]
+    $ mtgk quick [adcp, ] [INPUT_FILES] [OPTIONS] FIXME has been modified. Probably not working.
 
-    $ mtgk chekck [rti, ] [INPUT_FILES]
+    $ mtgk check [rti, ] [INPUT_FILES]
+
+
+NOTE
+-Maybe add a fonction for the navigation data. from csv ?
+   -n nc_fileaname
+   -c csv_filename
+   -o output netcdf4 file name
+   -l longitude_var_name latitude_var_name (2 args)
+   -t time_dims_name
+   -w length of the averaging window
+
 
 """
 import typing as tp
@@ -34,11 +45,12 @@ from magtogoek.bin.command_options import adcp_options, add_options
 from magtogoek.utils import is_valid_filename, json2dict
 
 # ---------- Module or functions imported by commands ----------- #
+# FIXME NOT UP TO DATE
 # from magtogoek.bin.configfile import make_configfile
 # from magtogoek.metadata.platforms import make_platform_template
 # from magtogoek.adcp.loader import load_adcp_binary
 # from magtogoek.adcp.utils import Logger
-# from magtogoek.adcp.quick_adcp import quick_adcp
+# from magtogoek.adcp.quick_adcp import _process_adcp_config
 # --------------------------------------------------------------- #
 
 MAGTOGOEK_VERSION = "0.0.2"
@@ -153,6 +165,10 @@ def config(info):
 @click.argument("config_file", metavar="[input_files]", type=click.Path(exists=True))
 def process(config_file, info):
     """Process data by reading configfile"""
+    # NOTE This could be update as a group with sensor specific command.
+    # Doing so would allow the user to pass config options. The load_configfile
+    # command is already able to take uptaded_params options and update de configile.
+    # The same options (or nearly all the same )as for adcp_config could be use.
     from magtogoek.bin.configfile import load_configfile
 
     config = load_configfile(config_file)

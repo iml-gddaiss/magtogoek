@@ -1,4 +1,5 @@
 """
+FIXME
 Script to process adcp data.
 
 - Load
@@ -24,6 +25,11 @@ Notes
 `chief_scientist`:
      The value in the ConfigFile is used over the one in the platform file.
 
+`sounding` :
+    bt_depth data are used for the `sounding` attributes, taking precedent over the value given in
+    the platform file. If the bottom data are shit, set the option (not yet implemented) keep_bt to False.
+
+FIXME
 MISSING METADATA :
     transmit_pulse_length_cm
     pings_per_ensemble
@@ -34,6 +40,8 @@ TODO adcp qualitu control value. Same as quick or config.
 - Remove some metadata.
 - some global variables could be set as gloabal attributes for internal processing flow and
 then removed.
+
+TODO **** ADD THE OPTION `keep_bt`. To dropped the bt_data. This way the processing will ignored them. TODO
 
 -
 """
@@ -103,10 +111,10 @@ P01_NAMES = dict(
     pg2="PCGDAP02",
     pg3="PCGDAP03",
     pg4="PCGDAP04",
-    cor1="CMAGZZ01",
-    cor2="CMAGZZ02",
-    cor3="CMAGZZ03",
-    cor4="CMAGZZ04",
+    corr1="CMAGZZ01",
+    corr2="CMAGZZ02",
+    corr3="CMAGZZ03",
+    corr4="CMAGZZ04",
     amp1="TNIHCE01",
     amp2="TNIHCE02",
     amp3="TNIHCE03",
@@ -137,7 +145,7 @@ P01_NAMES = dict(
 
 VAR_NEEDING_SENSOR_TYPE_ATTRS = ["TEMPPR01", "PRESPR01", "ADEPZZ01", "BATHDPTH"]
 
-TIME_ATTRS = {"cf_role": "profil_id"}
+TIME_ATTRS = {"cf_role": "profile_id"}
 
 TIME_ENCODING = {
     "units": "Seconds since 1970-1-1 00:00:00Z",
@@ -156,14 +164,17 @@ def process_adcp_config(config: tp.Type[ConfigParser]):
     Looks for `merge_output_files` in the ConfigFile and if False,
     each file in `input_files` is process individually.
 
+    Notes
+    -----
+
+    FIXME put this in the app ?.
+
     See Also
     --------
     _process_adcp_data :
         For the processing workflow.
-
-
     """
-    params, global_attrs = _load_config(config)
+    params, global_attrs = _get_config(config)
 
     if len(params["input_files"]) == 0:
         raise ValueError("No adcp file was provided in the configfile.")
@@ -227,6 +238,8 @@ def _process_adcp_data(params: tp.Dict, global_attrs: tp.Dict):
     _geospatial_global_attrs(dataset)
     _time_global_attrs(dataset)
 
+    dataset.attrs["sensor_type"] = "adcp"
+
     if "sensor_depth" in dataset.attrs:
         if not dataset.attrs["sensor_depth"]:
             _xducer_depth_as_sensor_depth(dataset)
@@ -283,6 +296,8 @@ def _process_adcp_data(params: tp.Dict, global_attrs: tp.Dict):
     # OUTPUT TODO to_ODF
 
     # TODO Remove attributes from params
+    # manifacturer, manufacturer
+    # sonar ?
 
     dataset.to_netcdf(Path(params["netcdf_output"]).with_suffix(".nc"))
     l.log(f"netcdf file made -> {params['netcdf_output']}")
@@ -322,7 +337,7 @@ def _load_adcp_data(params: tp.Dict) -> tp.Type[xr.Dataset]:
     return dataset
 
 
-def _load_config(config: tp.Type[ConfigParser]):
+def _get_config(config: tp.Type[ConfigParser]):
     """Flattens the config to a unested_dict""" ""
     params = dict()
     global_attrs = dict()
@@ -340,7 +355,7 @@ def _load_config(config: tp.Type[ConfigParser]):
 def _load_platform(params: dict) -> tp.Dict:
     """load sensor metadata into dict
 
-    Returns a dictionnary `flat` with all the parents metadata
+    Returns a `flat` dictionnary with all the parents metadata
     to `platform.json/platform_id/sensors/sensor_id` and the
     metadata of the `sensor_id.`
     """
@@ -395,20 +410,6 @@ def _quality_control(dataset: tp.Type[xr.Dataset], params: tp.Dict):
         sidelobes_correction=params["sidelobes_correction"],
         bottom_depth=params["bottom_depth"],
     )
-
-
-def _format_data_encoding(dataset: tp.Type[xr.Dataset]):
-    """FIXME"""
-    for var in dataset.variables:
-        if var == "time":
-            dataset.time.encoding = TIME_ENCODING
-        elif var == "depth":
-            dataset.depth.encoding = DEPTH_ENCODING
-        elif "_QC" in var:
-            dataset[var].values = dataset[var].values.astype("int8")
-            dataset[var].encoding = {"dtype": "int8", "_FillValue": 0}
-        elif var != "time_string":
-            dataset[var].encoding = {"dtype": DTYPE, "_FillValue": FILL_VALUE}
 
 
 def _magnetnic_correction(dataset: tp.Type[xr.Dataset], magnetic_declination: float):
@@ -469,6 +470,21 @@ def _drop_beam_data(dataset: tp.Type[xr.Dataset], params: tp.Dict):
             l.log(f"{var[1]} data dropped.")
 
 
+####                  ENCODING VARIABLES BELLOW                    ####
+def _format_data_encoding(dataset: tp.Type[xr.Dataset]):
+    """FIXME"""
+    for var in dataset.variables:
+        if var == "time":
+            dataset.time.encoding = TIME_ENCODING
+        elif var == "depth":
+            dataset.depth.encoding = DEPTH_ENCODING
+        elif "_QC" in var:
+            dataset[var].values = dataset[var].values.astype("int8")
+            dataset[var].encoding = {"dtype": "int8", "_FillValue": 0}
+        elif var != "time_string":
+            dataset[var].encoding = {"dtype": DTYPE, "_FillValue": FILL_VALUE}
+
+
 ####                  VARIABLES ATTRIBUTES BELLOW                    ####
 #### NOTE ALL THE FUNCTION BELOW COULD BE USED FOR OTHER SENSOR_TYPE ####
 ####         IT USED GLOBAL_VARIABLES DEFINED IN THIS MODULE         ####
@@ -485,8 +501,22 @@ def _format_variables_names_and_attributes(
     Convert variables names to BODC and then adds CF and SeaDataNet attributes
     to variables.
 
+    Dataset attributes need: `sensor_type`, `sensor_depth`, `sensor_serial`.
+
     Parameters
     ----------
+    dataset :
+
+    bodc_name :
+
+    Notes
+    -----
+    TODO add params such as bodc_name to the dataset_attrs and only pass the dataset.
+    TODO Global attributes used here, should also be added to the dataset attributes.
+     - VAR_NEEDING_SENSOR_TYPE_ATTRS
+     - P01_VEL_NAME and P01_NAME could be merge previously and also added as attributes.
+    TODO Doing so would allow theses functions (the one called here) to be place in a separate file
+    and be used for all sensors.
 
     """
     dataset.time.attrs["cf_role"] = "profil_id"
@@ -684,8 +714,9 @@ def _geospatial_global_attrs(dataset: tp.Type[xr.Dataset]):
     """
 
     if dataset.attrs["platform_type"] != "ship":
-        if "bt_depth" in dataset:
-            dataset.attrs["sounding"] = round(dataset.bt_depth.data.median(), 2)
+        if dataset["sensor_type"] == "adcp":
+            if "bt_depth" in dataset:
+                dataset.attrs["sounding"] = round(dataset.bt_depth.data.median(), 2)
 
     if "lat" in dataset:
         dataset.attrs["geospatial_lat_min"] = round(dataset.lat.data.min(), 4)

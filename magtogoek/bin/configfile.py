@@ -8,7 +8,6 @@ This make_configparser is called by magtogoek_command.py
 This modules also contains the sections and default parameters values for the configparsers.
 
 
-NOTE update ?
 NOTE: More comments should be added in the configparser files.
 NOTE: Missing,fonctions to open the config files.
 NOTE: Make a class ? Config(config_name, sensor_type=None).{update(options), .load(), .save()}
@@ -26,18 +25,15 @@ ADCP PROCESSING:
 -yearbase: year that the sampling started. ex: `1970`
 -adcp_orientation: `down` or `up`. (horizontal no supported)
 -sonar:  Must be one of `wh`, `os`, `bb`, `nb` or `sw`
--GPS_file: path/to/netcdf4 containing the gps track,
-    `longitude` and `latitude`, of the platform. If provided,
-    will be used instead of GPS data in the adcp file.(optional).
 
 ADCP_QUALITY_CONTROL:
 If quality_control is `False`, no quality control is carried out.
 Blanks are omitted or set False.
-Trims format `YYYYMMDDTHHMMSS`
 
 ADCP_OUTPUT:
 Set True or False.
 If bodc_name False, generic variable names are used.
+FIXME
 """
 
 import getpass
@@ -51,9 +47,11 @@ class ConfigFileError(Exception):
     pass
 
 
+SENSOR_TYPES = ["adcp"]
+
 BASIC_CONFIG = dict(
     HEADER={
-        "sensor_type": "none",
+        "sensor_type": "",
         "made_by": getpass.getuser(),
         "last_updated": Timestamp.now().strftime("%Y-%m-%d"),
     },
@@ -136,7 +134,7 @@ ADCP_CONFIG = dict(
         "make_log": True,
     },
 )
-ADCP_CONFIG_TYPE = dict(
+ADCP_CONFIG_TYPES = dict(
     ADCP_PROCESSING={
         "yearbase": int,
         "adcp_orientation": str,
@@ -198,9 +196,16 @@ def make_configfile(filename: str, sensor_type: str, config_params: tp.Dict = No
 
 def load_configfile(filename: str, updated_params: tp.Dict = None):
     """load a configfile.
+
     Returns parser as a dictionnary with the appropriate types.
-    - Check for missing sections and options.
-    - Updates it if `updated_params` are passed"""
+
+    - Add the missing expected sections and options with empty string as value.
+    - Updates the value if dictionnary is passed as `updated_params`.
+    - saves the edited configuration files.
+    - convert the options from string to the correct type for processing.
+
+    """
+
     # Opening the configfile
     parser = ConfigParser()
     parser.optionxform = str
@@ -226,7 +231,13 @@ def load_configfile(filename: str, updated_params: tp.Dict = None):
 def _check_config_missing(parser: tp.Type[ConfigParser]):
     """Check for missing sections or options compared to the expected parser
 
-    Adds the options or section if needed
+    - Adds the options or section if needed with empty string as value.
+
+    Notes
+    -----
+    This prevents missing key error later in the processing without needing
+    to add tons of conditionnal statements.
+
     """
     if parser.has_option("HEADER", "sensor_type"):
         sensor_type = parser["HEADER"]["sensor_type"]
@@ -242,14 +253,30 @@ def _check_config_missing(parser: tp.Type[ConfigParser]):
             parser.add_section(section)
         for option in options.keys():
             if not parser.has_option(section, option):
-                parser[section][option] = expected_parser[section][option]
+                parser[section][option] = ""
 
 
 def _convert_options_type(parser: tp.Dict):
     """Convert some config options to the right type for processing.
+
+    - Replace empty string  by `None`.
+    - Convert the sensor specific configuration parameters values to the right
+    data type, skipping `None` value set previously.
+    - Anything that should be a boolean and not a string in ['True','true','1'] is set to
+    `False`.
+
+    Raises
+    ------
+    ConfigFileError :
+        Error are rised if the options value cannot be converted to the right type.
+        (str to int or float)
+
     Notes
     -----
-    Add more sensor_type options for each different sensor processing
+    Setting options to `None` is equivalent to `False` for later processing but does not
+    imply that the expected value is a boolean.
+
+    There should be additinal sensor_type options for each different sensor processing
     """
     sensor_type = parser["HEADER"]["sensor_type"]
 
@@ -259,21 +286,36 @@ def _convert_options_type(parser: tp.Dict):
                 parser[section][option] = None
 
     if sensor_type == "adcp":
-        for section, options in ADCP_CONFIG_TYPE.items():
-            for option in options:
-                if parser[section][option]:
-                    option_value = parser[section][option]
-                    option_type = ADCP_CONFIG_TYPE[section][option]
-                    if ADCP_CONFIG_TYPE[section][option] == bool:
-                        parser[section][option] = (
-                            True
-                            if parser[section][option] in ["True", "true", "1"]
-                            else False
-                        )
-                    if ADCP_CONFIG_TYPE[section][option] == int:
+        config_types = ADCP_CONFIG_TYPES
+    else:
+        raise ConfigFileError(
+            f"sensor_type {sensor_type} is invalid. Must be one of {SENSOR_TYPES}"
+        )
+
+    for section, options in config_types.items():
+        for option in options:
+            if parser[section][option]:
+                if config_types[section][option] == bool:
+                    parser[section][option] = (
+                        True
+                        if parser[section][option] in ["True", "true", "1"]
+                        else False
+                    )
+                if config_types[section][option] == int:
+                    try:
                         parser[section][option] = int(parser[section][option])
-                    if ADCP_CONFIG_TYPE[section][option] == float:
+                    except ValueError:
+                        raise ConfigFileError(
+                            f"{section}/{option} value, {parser[section][option]}, is invalid. The expected value is an integer."
+                        )
+
+                if config_types[section][option] == float:
+                    try:
                         parser[section][option] = float(parser[section][option])
+                    except ValueError:
+                        raise ConfigFileError(
+                            f"{section}/{option} value, {parser[section][option]}, is invalid. The expected value is an float."
+                        )
 
 
 def _get_config_default(sensor_type: str):
