@@ -15,6 +15,8 @@ Script to process adcp data.
 
 Notes
 -----
+Unspecified attributes fill value "N/A".
+
 `sensor_depth`:
     `sensor_depth` in the platform file is used for the variables attributes. If no
     value is given, it is computed from the XducerDepth. However, the `sensor_depth`
@@ -29,6 +31,10 @@ Notes
     bt_depth data are used for the `sounding` attributes, taking precedent over the value given in
     the platform file. If the bottom data are shit, set the option (not yet implemented) keep_bt to False.
 
+`manufacturer` :
+   The manufactuer is automaticaly added to the dataset by the loader. However, the value given in the platform file will
+   overwrite it.
+
 FIXME
 MISSING METADATA :
     transmit_pulse_length_cm
@@ -41,9 +47,7 @@ TODO adcp qualitu control value. Same as quick or config.
 - some global variables could be set as gloabal attributes for internal processing flow and
 then removed.
 
-TODO **** ADD THE OPTION `keep_bt`. To dropped the bt_data. This way the processing will ignored them. TODO
 
--
 """
 import os
 import typing as tp
@@ -62,9 +66,11 @@ l = Logger(level=0)
 
 from pathlib import Path
 
-CONFIG_GLOBAL_ATTRS_SECTIONS = ["NETCDF_CF", "PROJECT", "CRUISE", "GLOBAL_ATTRIBUTES"]
-
 SDN_FILE_PATH = os.path.join(os.path.dirname(__file__), "../files/sdn.json")
+
+ADCP_GLOBAL_ATTRIBUTES = {"sensor_type": "adcp", "featureType": "timeSeriesProfile"}
+
+CONFIG_GLOBAL_ATTRS_SECTIONS = ["NETCDF_CF", "PROJECT", "CRUISE", "GLOBAL_ATTRIBUTES"]
 
 PLATFORM_FILE_KEYS = [
     "platform_name",
@@ -81,7 +87,7 @@ PLATFORM_FILE_KEYS = [
     "chief_scientist",
     "description",
 ]
-P01_VEL_NAMES = dict(
+P01_VEL_CODES = dict(
     mooring=dict(
         u="LCEWAP01",
         v="LCNSAP01",
@@ -103,7 +109,7 @@ P01_VEL_NAMES = dict(
         e_QC="LERRAS01_QC",
     ),
 )
-P01_NAMES = dict(
+P01_CODES = dict(
     time="ELTMEP01",
     depth="PPSAADCP",
     pg="PCGDAP01",
@@ -154,8 +160,9 @@ TIME_ENCODING = {
 }
 DEPTH_ENCODING = {"_FillValue": None}
 
-FILL_VALUE = -9999
-DTYPE = "float32"
+DATA_FILL_VALUE = -9999
+
+DATA_DTYPE = "float32"
 
 
 def process_adcp_config(config: tp.Type[ConfigParser]):
@@ -229,16 +236,20 @@ def _process_adcp_data(params: tp.Dict, global_attrs: tp.Dict):
     # LOADING ADCP DATA.
     dataset = _load_adcp_data(params)
 
+    if not params["keep_bt"]:
+        for var in ["bt_u", "bt_v", "bt_w", "bt_e", "bt_depht"]:
+            if var in dataset:
+                dataset = dataset.drop_vars([var])
+
     # ADDING THE GLOBAL ATTRIBUTES.
     # Chief scientist in the ConfigFile is used over the one in the platform file.
     l.section("Adding Global Attributes")
-    if global_attrs["chief_scientist"]:
-        del sensor_metadata["chief_scientist"]
-    dataset = dataset.assign_attrs({**global_attrs, **sensor_metadata})
+
+    dataset = dataset.assign_attrs(ADCP_GLOBAL_ATTRIBUTES)
+    dataset = dataset.assign_attrs(sensor_metadata)
+    dataset = dataset.assign_attrs(global_attrs)
     _geospatial_global_attrs(dataset)
     _time_global_attrs(dataset)
-
-    dataset.attrs["sensor_type"] = "adcp"
 
     if "sensor_depth" in dataset.attrs:
         if not dataset.attrs["sensor_depth"]:
@@ -296,11 +307,10 @@ def _process_adcp_data(params: tp.Dict, global_attrs: tp.Dict):
     # OUTPUT TODO to_ODF
 
     # TODO Remove attributes from params
-    # manifacturer, manufacturer
     # sonar ?
-
-    dataset.to_netcdf(Path(params["netcdf_output"]).with_suffix(".nc"))
-    l.log(f"netcdf file made -> {params['netcdf_output']}")
+    nc_output = Path(params["netcdf_output"]).with_suffix(".nc")
+    dataset.to_netcdf(nc_output)
+    l.log(f"netcdf file made -> {nc_output}")
 
     log_output = Path(params["netcdf_output"]).with_suffix(".log")  # TODO better
 
@@ -482,7 +492,7 @@ def _format_data_encoding(dataset: tp.Type[xr.Dataset]):
             dataset[var].values = dataset[var].values.astype("int8")
             dataset[var].encoding = {"dtype": "int8", "_FillValue": 0}
         elif var != "time_string":
-            dataset[var].encoding = {"dtype": DTYPE, "_FillValue": FILL_VALUE}
+            dataset[var].encoding = {"dtype": DATA_DTYPE, "_FillValue": DATA_FILL_VALUE}
 
 
 ####                  VARIABLES ATTRIBUTES BELLOW                    ####
@@ -571,7 +581,7 @@ def _convert_variables_names(
     else:
         platform_type = "mooring"
         l.log("Platform type defaulted to `mooring` for BODC velocity variables name")
-    name_converter = {**P01_VEL_NAMES[platform_type], **P01_NAMES}
+    name_converter = {**P01_VEL_CODES[platform_type], **P01_CODES}
 
     if convert_back_to_generic:
         # mapping key and value and value to key

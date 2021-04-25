@@ -382,7 +382,7 @@ def load_adcp_binary(
     if "xducer_depth" not in ds:
         ds.attrs["xducer_depth"] = xducer_depth
     ds.attrs["sonar"] = sonar_names[sonar]
-    ds.attrs["manifacturer"] = (
+    ds.attrs["manufacturer"] = (
         "TeledyneRD" if sonar in ["wh", "sv", "os"] else "RoweTech"
     )
     ds.attrs["coord_system"] = data.trans["coordsystem"]

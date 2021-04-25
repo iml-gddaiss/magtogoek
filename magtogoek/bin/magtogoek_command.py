@@ -71,6 +71,7 @@ ADCP_CONFIG_STRUCT = {
     "nav_file": "ADCP_PROCESSING",
     "magnetic_declination": "ADCP_PROCESSING",
     "sensor_depth": "ADCP_PROCESSING",
+    "keep_bt": "ADCP_PROCESSING",
     "quality_control": "ADCP_QUALITY_CONTROL",
     "amplitude_threshold": "ADCP_QUALITY_CONTROL",
     "percentgood_threshold": "ADCP_QUALITY_CONTROL",

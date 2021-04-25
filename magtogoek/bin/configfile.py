@@ -70,6 +70,7 @@ BASIC_CONFIG = dict(
         "references": "https://github.com/JeromeJGuay/magtogoek",
         "comments": "",
         "naming_authority": "BODC, SDC, CF, MEDS",
+        "source": "",
     },
     PROJECT={
         "project": "",
@@ -83,16 +84,18 @@ BASIC_CONFIG = dict(
         "chief_scientist": "",
         "start_date": "",
         "end_date": "",
+        "envent_number": "",
     },
     GLOBAL_ATTRIBUTES={
         "date_created": "",
         "data_type": "",
         "data_subtype": "",
+        "cdm_data_type": "",
         "country_code": "",
-        "keywords": "",
         "publisher_email": "",
         "creator_type": "",
         "publisher_name": "",
+        "keywords": "",
         "keywords_vocabulary": "",
         "standard_name_vocabulary": "CF v.52",
         "aknowledgment": "",
@@ -107,6 +110,7 @@ ADCP_CONFIG = dict(
         "navigation_file": "",
         "magnetic_declination": "",
         "sensor_depth": "",
+        "keep_bt": True,
     },
     ADCP_QUALITY_CONTROL={
         "quality_control": True,
@@ -142,6 +146,7 @@ ADCP_CONFIG_TYPES = dict(
         "navigation_file": str,
         "magnetic_declination": float,
         "sensor_depth": float,
+        "keep_bt": bool,
     },
     ADCP_QUALITY_CONTROL={
         "quality_control": bool,
@@ -295,6 +300,10 @@ def _convert_options_type(parser: tp.Dict):
     for section, options in config_types.items():
         for option in options:
             if parser[section][option]:
+                if config_types[section][option] == list:
+                    parser[section][option] = _format_string_sequence_to_list(
+                        parser[section][option]
+                    )
                 if config_types[section][option] == bool:
                     parser[section][option] = (
                         True
@@ -332,3 +341,22 @@ def _update_config(parser: tp.Type[ConfigParser], updated_params: tp.Dict):
     for section, params in updated_params.items():
         for param, value in params.items():
             parser[section][param] = str(value)
+
+
+def _format_string_sequence_to_list(sequence: str) -> tp.List:
+    """Decode string containing a sequence of value.
+
+    The sequence can be between brakets, parenthesis or nothing
+    and have comma, colon, semi-colon or spaces as separators.
+
+    Example
+    -------
+     _format_string_list'(arg1, arg2, arg3)' -> [arg1 arg2 arg3]
+
+    """
+    stripped = sequence.split("(")[-1].split("[")[-1].split("]")[0].split(")")[0]
+
+    for sep in (":", ";", " "):
+        comma_formated = stripped.replace(sep, ",")
+
+    return [s for s in comma_formated.split(",") if s != ""]

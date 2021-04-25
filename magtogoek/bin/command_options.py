@@ -272,5 +272,11 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
     [default: --bodc-name]""",
             default=True,
         ),
+        click.option(
+            "--keep_bt/--discard-bt",
+            help="""Weather to use or discard the bottom (bt) track data.""",
+            default=True,
+            show_default=True,
+        ),
     ]
     return options
