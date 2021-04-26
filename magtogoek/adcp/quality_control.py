@@ -316,7 +316,7 @@ def motion_correction(dataset: tp.Type[xr.Dataset], mode: str):
                 dataset[field] -= dataset[f"bt_{field}"].values
             l.log("Motion correction carried out with bottom track")
         else:
-            l.waring(
+            l.warning(
                 "Motion correction aborded. Bottom velocity (bt_u, bt_v, bt_w) missing"
             )
     elif mode == "nav":

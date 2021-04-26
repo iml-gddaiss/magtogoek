@@ -40,16 +40,9 @@ MISSING METADATA :
     transmit_pulse_length_cm
     pings_per_ensemble
 
-TODO adcp qualitu control value. Same as quick or config.
-- print 
-- Multiple file entry. list not accepted.
-- Remove some metadata.
-- some global variables could be set as gloabal attributes for internal processing flow and
-then removed.
-
 
 """
-import os
+
 import typing as tp
 from configparser import ConfigParser
 
@@ -59,14 +52,14 @@ import xarray as xr
 from magtogoek.adcp.loader import load_adcp_binary
 from magtogoek.adcp.quality_control import (adcp_quality_control,
                                             no_adcp_quality_control)
+from magtogoek.metadata.attributes_formatter import (
+    format_global_attrs, format_variables_names_and_attributes)
 from magtogoek.tools import get_gps_bearing, magnetic_to_true, vincenty
 from magtogoek.utils import Logger, json2dict
 
 l = Logger(level=0)
 
 from pathlib import Path
-
-SDN_FILE_PATH = os.path.join(os.path.dirname(__file__), "../files/sdn.json")
 
 ADCP_GLOBAL_ATTRIBUTES = {"sensor_type": "adcp", "featureType": "timeSeriesProfile"}
 
@@ -149,7 +142,7 @@ P01_CODES = dict(
     bt_depth="BATHDPTH",
 )
 
-VAR_NEEDING_SENSOR_TYPE_ATTRS = ["TEMPPR01", "PRESPR01", "ADEPZZ01", "BATHDPTH"]
+VAR_TO_ADD_SENSOR_TYPE = ["TEMPPR01", "PRESPR01", "ADEPZZ01", "BATHDPTH"]
 
 TIME_ATTRS = {"cf_role": "profile_id"}
 
@@ -203,7 +196,15 @@ def process_adcp_config(config: tp.Type[ConfigParser]):
 def _process_adcp_data(params: tp.Dict, global_attrs: tp.Dict):
     """Process adcp data
 
-    EXPLAIN THE PROCESSING WORKFLOW
+    FIXME EXPLAIN THE PROCESSING WORKFLOW FIXME
+
+    Parameters
+    ----------
+    params :
+        Processing parameters from the ConfigFile.
+
+    gloabal_attrs :
+        Global attributes  parameter from the configFile.
 
     Notes
     -----
@@ -213,6 +214,11 @@ def _process_adcp_data(params: tp.Dict, global_attrs: tp.Dict):
         value in the ConfigFile is used to compute the bin depth coordinates. If no
         `sensor_depth` value is given in both the ConfigFile and platform file, the
         `sensor_depth` attributes is computed from the adcp `Xducer_depth`.
+    Raises
+    ------
+    ValueError :
+        `platform_type` value in the platform file must be either 'mooring' or 'ship'.
+
     """
     l.reset()
 
@@ -233,7 +239,7 @@ def _process_adcp_data(params: tp.Dict, global_attrs: tp.Dict):
             l.warning("Navigation netcdf file is missing u_ship and v_ship.")
             params["navigation_file"] = None
 
-    # LOADING ADCP DATA.
+    # ---- LOADING ADCP DATA ---- #
     dataset = _load_adcp_data(params)
 
     if not params["keep_bt"]:
@@ -241,21 +247,20 @@ def _process_adcp_data(params: tp.Dict, global_attrs: tp.Dict):
             if var in dataset:
                 dataset = dataset.drop_vars([var])
 
-    # ADDING THE GLOBAL ATTRIBUTES.
+    # ---- ADDING THE GLOBAL ATTRIBUTES ---- #
     # Chief scientist in the ConfigFile is used over the one in the platform file.
     l.section("Adding Global Attributes")
 
     dataset = dataset.assign_attrs(ADCP_GLOBAL_ATTRIBUTES)
     dataset = dataset.assign_attrs(sensor_metadata)
     dataset = dataset.assign_attrs(global_attrs)
-    _geospatial_global_attrs(dataset)
-    _time_global_attrs(dataset)
 
+    format_global_attrs(dataset)
     if "sensor_depth" in dataset.attrs:
         if not dataset.attrs["sensor_depth"]:
             _xducer_depth_as_sensor_depth(dataset)
 
-    # ADDING THE NAVIGATION DATA TO THE DATASET.
+    # ---- ADDING THE NAVIGATION DATA TO THE DATASET ---- #
     if params["navigation_file"]:
         l.section("Navigation data")
         nav_ds = nav_ds.interp(time=dataset.time)
@@ -274,6 +279,7 @@ def _process_adcp_data(params: tp.Dict, global_attrs: tp.Dict):
             f"Coordinates transformed to true North and True East. magnetic declination:{params['magnetic_declination']} degree"
         )
 
+    # ---- QUALITY CONTROL ---- #
     if params["quality_control"]:
         _quality_control(dataset, params)
     else:
@@ -283,25 +289,45 @@ def _process_adcp_data(params: tp.Dict, global_attrs: tp.Dict):
 
     _drop_beam_data(dataset, params)
 
-    l.section("Data Encoding")
+    # ---- DATA ENCONDING ---- #
     _format_data_encoding(dataset)
-    l.log("data encoded")
+
+    # ---- VARIABLES ATTRIBUTES ---- #
+    dataset.attrs["VAR_TO_ADD_SENSOR_TYPE"] = VAR_TO_ADD_SENSOR_TYPE
+
+    if not dataset.attrs["platform_type"]:
+        dataset.attrs["platform_type"] = "mooring"
+        l.log("Platform type defaulted to `mooring` for BODC velocity variables name")
+
+    dataset.attrs["P01_CODES"] = {
+        **P01_VEL_CODES[dataset.attrs["platform_type"]],
+        **P01_CODES,
+    }
 
     l.section("Variables attributes")
-    dataset = _format_variables_names_and_attributes(
-        dataset, bodc_name=params["bodc_name"]
+    dataset = format_variables_names_and_attributes(
+        dataset, use_bodc_codes=params["bodc_name"]
     )
     l.log("variables attributes added.")
 
+    del dataset.attrs["VAR_TO_ADD_SENSOR_TYPE"]
+    del dataset.attrs["P01_CODES"]
+
+    # ---- OUTPUT ---- #
+    # Clearing some gloabal attributes
     if not dataset.attrs["date_created"]:
         dataset.attrs["date_created"] = pd.Timestamp.now().strftime("%Y-%m-%d")
+
+    dataset.attrs["logbook"] += l.logbook
+    dataset.attrs["history"] = dataset.attrs["logbook"]
 
     for attr in dataset.attrs:
         if not dataset.attrs[attr]:
             dataset.attrs[attr] = "N/A"
 
-    dataset.attrs["logbook"] += l.logbook
-    dataset.attrs["history"] = dataset.attrs["logbook"]
+    del dataset.attrs["logbook"]
+    del dataset.attrs["xducer_depth"]
+    del dataset.attrs["sonar"]
 
     l.section("Output")
     # OUTPUT TODO to_ODF
@@ -316,7 +342,7 @@ def _process_adcp_data(params: tp.Dict, global_attrs: tp.Dict):
 
     if params["make_log"]:
         with open(log_output, "w") as log_file:
-            log_file.write(dataset.logbook)
+            log_file.write(dataset.history)
             print(f"log file made -> {log_output}")
 
     # MAKE_FIG TODO
@@ -480,9 +506,9 @@ def _drop_beam_data(dataset: tp.Type[xr.Dataset], params: tp.Dict):
             l.log(f"{var[1]} data dropped.")
 
 
-####                  ENCODING VARIABLES BELLOW                    ####
 def _format_data_encoding(dataset: tp.Type[xr.Dataset]):
     """FIXME"""
+    l.section("Data Encoding")
     for var in dataset.variables:
         if var == "time":
             dataset.time.encoding = TIME_ENCODING
@@ -494,259 +520,5 @@ def _format_data_encoding(dataset: tp.Type[xr.Dataset]):
         elif var != "time_string":
             dataset[var].encoding = {"dtype": DATA_DTYPE, "_FillValue": DATA_FILL_VALUE}
 
-
-####                  VARIABLES ATTRIBUTES BELLOW                    ####
-#### NOTE ALL THE FUNCTION BELOW COULD BE USED FOR OTHER SENSOR_TYPE ####
-####         IT USED GLOBAL_VARIABLES DEFINED IN THIS MODULE         ####
-####         VAR_NEEDING_SENSOR_TYPE_ATTRS                           ####
-
-
-def _format_variables_names_and_attributes(
-    dataset: tp.Type[xr.Dataset], bodc_name: bool
-) -> tp.Type[xr.Dataset]:
-    """Format variables names and attributes
-
-    Returns dataset with variables attributes set.
-
-    Convert variables names to BODC and then adds CF and SeaDataNet attributes
-    to variables.
-
-    Dataset attributes need: `sensor_type`, `sensor_depth`, `sensor_serial`.
-
-    Parameters
-    ----------
-    dataset :
-
-    bodc_name :
-
-    Notes
-    -----
-    TODO add params such as bodc_name to the dataset_attrs and only pass the dataset.
-    TODO Global attributes used here, should also be added to the dataset attributes.
-     - VAR_NEEDING_SENSOR_TYPE_ATTRS
-     - P01_VEL_NAME and P01_NAME could be merge previously and also added as attributes.
-    TODO Doing so would allow theses functions (the one called here) to be place in a separate file
-    and be used for all sensors.
-
-    """
-    dataset.time.attrs["cf_role"] = "profil_id"
-
-    for var in dataset.variables:
-        dataset[var].attrs["generic_name"] = var
-
-    dataset = _convert_variables_names(dataset)
-
-    for var in VAR_NEEDING_SENSOR_TYPE_ATTRS:
-        if var in dataset:
-            dataset[var].attrs["sensor_type"] = dataset.attrs["sensor_type"]
-
-    _add_sdn_and_cf_var_attrs(dataset, json2dict(SDN_FILE_PATH))
-
-    if not bodc_name:
-        dataset = _convert_variables_names(dataset, convert_back_to_generic=True)
-
-    _add_data_min_max_to_var_attrs(dataset)
-
-    if dataset.attrs["sensor_depth"]:
-        _add_sensor_depth_to_var_attrs(dataset)
-    if dataset.attrs["serial_number"]:
-        _add_sensor_serial_to_var_attrs(dataset)
-
-    _add_ancillary_variables_to_var_attrs(dataset)
-    _add_names_to_QC_var_attrs(dataset)
-
-    return dataset
-
-
-def _convert_variables_names(
-    dataset: tp.Type[xr.Dataset], convert_back_to_generic: bool = False
-):
-    """Convert variable and coords names.
-
-    From generic to BODC P01 names or from BODC P01 to generic names if
-    `convert_back_to_generic` is True.
-
-    Parameters
-    ----------
-    dataset :
-        FIXME
-    convert_to_generic:
-       converts from bodc to generitc.
-    Notes
-    -----
-    Conveting names is used to add the conventionned attributes to variables.
-    """
-    if dataset.attrs["platform_type"]:
-        platform_type = dataset.attrs["platform_type"]
-    else:
-        platform_type = "mooring"
-        l.log("Platform type defaulted to `mooring` for BODC velocity variables name")
-    name_converter = {**P01_VEL_CODES[platform_type], **P01_CODES}
-
-    if convert_back_to_generic:
-        # mapping key and value and value to key
-        name_converter = dict((value, key) for key, value in name_converter.items())
-
-    for key in tuple(name_converter.keys()):
-        if key not in dataset:
-            del name_converter[key]
-
-    dataset = dataset.rename(name_converter)
-
-    return dataset
-
-
-def _add_sdn_and_cf_var_attrs(dataset: tp.Type[xr.Dataset], sdn: tp.Dict) -> None:
-    """add sdn (sea data net) attributes.
-
-    Parameters
-    ----------
-    sdn :
-        sdn is a dictionnary with the P01 variable Code as `key` and dictionnary
-    of attributes as `value`. The dictionnary is saved as a json file in
-    magtogoek/files/sdn.json
-
-    Notes
-    -----
-    SeaDataNet attributes include:
-     -'standard_name'
-     -'units'
-     -'long_name'
-     -'ancillary_variables'
-     -'sdn_parameter_urn'
-     -'sdn_parameter_name'
-     -'sdn_uom_urn'
-     -'sdn_uom_name'
-     -'legacy_GF3_code'
-
-    """
-    variables = set(dataset.variables).intersection(set(sdn.keys()))
-    for var in variables:
-        dataset[var].attrs = sdn[var]
-
-
-def _add_data_min_max_to_var_attrs(dataset):
-    """adds data max and min to variables except ancillary and coords variables)"""
-    for var in set(dataset.variables).difference(set(dataset.coords)):
-        if "_QC" not in var:
-            if dataset[var].dtype == float:
-                dataset[var].attrs["data_max"] = dataset[var].max().values
-                dataset[var].attrs["data_min"] = dataset[var].min().values
-
-
-def _add_sensor_depth_to_var_attrs(dataset: tp.Type[xr.Dataset]):
-    """Add sensor depth to variables with sensor_type"""
-    for var in dataset.variables:
-        if "sensor_type" in dataset[var].attrs:
-            if dataset[var].attrs["sensor_type"] == dataset.attrs["sensor_type"]:
-                dataset[var].attrs["sensor_depth"] = dataset.attrs["sensor_depth"]
-
-
-def _add_sensor_serial_to_var_attrs(dataset: tp.Type[xr.Dataset]):
-    """Add sensor serial number `dataset['serial_number'] to variables using XducerDepth."""
-    for var in dataset.variables:
-        if "sensor_type" in dataset[var].attrs:
-            if dataset[var].attrs["sensor_type"] == dataset.attrs["sensor_type"]:
-                dataset[var].attrs["serial_number"] = dataset.attrs["serial_number"]
-
-
-def _add_ancillary_variables_to_var_attrs(dataset: tp.Type[xr.Dataset]):
-    """add accillary_variables to variables attributes
-
-    Looks for `_QC` variable names and adds 'ancillary_variables` attributes
-    to the corresponding variables.
-    """
-    for var in list(dataset.variables):
-        if "_QC" in var:
-            dataset[var.split("_")[0]].attrs["ancillary_variables"] = var
-
-
-def _add_names_to_QC_var_attrs(dataset: tp.Type[xr.Dataset]) -> None:
-    """add long_name and standard_name to QualityControl `_QC` variables."""
-    for var in list(dataset.variables):
-        if "_QC" in var:
-            value = f"Quality flag for {var.split('_')[0]}"
-            dataset[var].attrs["long_name"] = value
-            dataset[var].attrs["standard_name"] = value
-
-
-def _time_global_attrs(dataset: tp.Type[xr.Dataset]):
-    """
-    Notes
-    -----
-    Attributes added :
-     -time_coverage_start
-     -time_coverage_end
-     -time_coverage_duration
-     -time_coverage_duration_units (days)
-    """
-    dataset.attrs["time_coverage_start"] = str(
-        dataset.time.data[0].astype("datetime64[s]")
-    )
-    dataset.attrs["time_coverage_end"] = str(
-        dataset.time.data[-1].astype("datetime64[s]")
-    )
-    number_day = np.round(
-        (dataset.time[-1].data - dataset.time.data[0]).astype(float)
-        / (1e9 * 60 * 60 * 24),
-        3,
-    )
-
-    dataset.attrs["time_coverage_duration"] = number_day
-    dataset.attrs["time_coverage_duration_units"] = "days"
-
-
-def _geospatial_global_attrs(dataset: tp.Type[xr.Dataset]):
-    """Compute and add geospatial global attributes to dataset.
-
-    If `lon` and `lon` are variables in the dataset, lat/lon
-    min and max are compute from them. If `lon` and `lat`
-    are not present, the values are taken form the `longitude` and
-    `latitude` dataset attributes.
-
-    The 'longitude' and 'latitude' attributes shoud previously be
-    taken from the platform file attributes
-
-    Notes
-    -----
-    Attributes added :
-     -sounding: (Sounding not added if platform_type is ship.)
-     -geospatial_lat_min
-     -geospatial_lat_max
-     -geospatial_lat_units
-     -geospatial_lon_min
-     -geospatial_lon_max
-     -geospatial_lon_units
-     -geospatial_vertical_min
-     -geospatial_vertical_max
-     -geospatial_vertical_positive
-     -geospatial_vertical_units
-    """
-
-    if dataset.attrs["platform_type"] != "ship":
-        if dataset["sensor_type"] == "adcp":
-            if "bt_depth" in dataset:
-                dataset.attrs["sounding"] = round(dataset.bt_depth.data.median(), 2)
-
-    if "lat" in dataset:
-        dataset.attrs["geospatial_lat_min"] = round(dataset.lat.data.min(), 4)
-        dataset.attrs["geospatial_lat_max"] = round(dataset.lat.data.max(), 4)
-        dataset.attrs["geospatial_lat_units"] = "degrees north"
-    elif dataset.attrs["longitude"]:
-        dataset.attrs["geospatial_lat_min"] = round(dataset.attrs["longitude"], 4)
-        dataset.attrs["geospatial_lat_max"] = round(dataset.attrs["longitude"], 4)
-        dataset.attrs["geospatial_lat_units"] = "degrees north"
-
-    if "lon" in dataset:
-        dataset.attrs["geospatial_lon_min"] = round(dataset.lon.data.min(), 4)
-        dataset.attrs["geospatial_lon_max"] = round(dataset.lon.data.max(), 4)
-        dataset.attrs["geospatial_lon_units"] = "degrees east"
-    elif dataset.attrs["latitude"]:
-        dataset.attrs["geospatial_lon_min"] = round(dataset.attrs["latitude"], 4)
-        dataset.attrs["geospatial_lon_max"] = round(dataset.attrs["latitude"], 4)
-        dataset.attrs["geospatial_lon_units"] = "degrees east"
-
-    dataset.attrs["geospatial_vertical_min"] = round(dataset.depth.data.min(), 2)
-    dataset.attrs["geospatial_vertical_max"] = round(dataset.depth.data.max(), 2)
-    dataset.attrs["geospatial_vertical_positive"] = "down"
-    dataset.attrs["geospatial_vertical_units"] = "meters"
+    l.log(f"adcp Data _FillValue: {DATA_FILL_VALUE}")
+    l.log(f"Ancillary Data _FillValue: {DATA_FILL_VALUE}")
