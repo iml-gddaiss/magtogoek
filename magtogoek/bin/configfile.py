@@ -80,6 +80,7 @@ BASIC_CONFIG = dict(
     CRUISE={
         "country_institue_code": "",
         "cruise_number": "",
+        "cruise_name": "",
         "organization": "",
         "chief_scientist": "",
         "start_date": "",
@@ -289,6 +290,10 @@ def _convert_options_type(parser: tp.Dict):
         for option in options.keys():
             if parser[section][option] == "":
                 parser[section][option] = None
+            if option == "input_files":
+                parser[section][option] = _format_string_sequence_to_list(
+                    parser[section][option]
+                )
 
     if sensor_type == "adcp":
         config_types = ADCP_CONFIG_TYPES
@@ -300,10 +305,6 @@ def _convert_options_type(parser: tp.Dict):
     for section, options in config_types.items():
         for option in options:
             if parser[section][option]:
-                if config_types[section][option] == list:
-                    parser[section][option] = _format_string_sequence_to_list(
-                        parser[section][option]
-                    )
                 if config_types[section][option] == bool:
                     parser[section][option] = (
                         True
@@ -356,7 +357,7 @@ def _format_string_sequence_to_list(sequence: str) -> tp.List:
     """
     stripped = sequence.split("(")[-1].split("[")[-1].split("]")[0].split(")")[0]
 
-    for sep in (":", ";", " "):
+    for sep in (":", ";", " ", "\n"):
         comma_formated = stripped.replace(sep, ",")
 
     return [s for s in comma_formated.split(",") if s != ""]

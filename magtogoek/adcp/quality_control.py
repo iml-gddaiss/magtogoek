@@ -32,7 +32,16 @@ Notes:
    * 8: interpolated_value
    * 9: missing_value
 
-NOTE Data seems not te be masked properly in the dataset. Wtf is going on with the bottom track
+NOTE
+IML flags meaning : (Basicaly the same)
+   * 0: no_quality_control
+   * 1: value_seems_correct
+   * 2: value_appears_inconsistent_with_other_values
+   * 3: values_seems_doubtfull
+   * 4: value_seems_erroneuous
+   * 5: value_was_modified
+   * 9: value_missing
+
 """
 import typing as tp
 from pathlib import Path

@@ -22,17 +22,24 @@ def _add_platform():
     return dict(
         platform_name=None,
         platform_type=None,
+        paltform_model=None,
         mooring_number=None,
         sounding=None,
         longitude=None,
         latitude=None,
+        platform_specs=_add_platform_specs(),
         sensors=dict(__enter_a_sensor_ID_here=_add_sensors()),
     )
+
+
+def _add_platform_specs():
+    return dict()
 
 
 def _add_sensors():
     return dict(
         sensor_type=None,
+        data_subtype=None,
         sensor_depth=None,
         serial_number=None,
         manufacturer=None,

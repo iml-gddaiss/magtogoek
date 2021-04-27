@@ -62,6 +62,12 @@ l = Logger(level=0)
 from pathlib import Path
 
 ADCP_GLOBAL_ATTRIBUTES = {"sensor_type": "adcp", "featureType": "timeSeriesProfile"}
+GLOBAL_ATTRS_TO_DROP = [
+    "sensor_type",
+    "platform_type",
+    "VAR_TO_ADD_SENSOR_TYPE",
+    "P01_CODES",
+]
 
 CONFIG_GLOBAL_ATTRS_SECTIONS = ["NETCDF_CF", "PROJECT", "CRUISE", "GLOBAL_ATTRIBUTES"]
 
@@ -224,6 +230,7 @@ def _process_adcp_data(params: tp.Dict, global_attrs: tp.Dict):
 
     if params["platform_file"]:
         sensor_metadata = _load_platform(params)
+
     else:
         l.warning("platform_file missing, defaulting to `mooring` for platform_type.")
         sensor_metadata["platform_type"] = "mooring"
@@ -247,7 +254,7 @@ def _process_adcp_data(params: tp.Dict, global_attrs: tp.Dict):
             if var in dataset:
                 dataset = dataset.drop_vars([var])
 
-    # ---- ADDING THE GLOBAL ATTRIBUTES ---- #
+    # ---- ADDING SOME GLOBAL ATTRIBUTES ---- #
     # Chief scientist in the ConfigFile is used over the one in the platform file.
     l.section("Adding Global Attributes")
 
@@ -272,12 +279,18 @@ def _process_adcp_data(params: tp.Dict, global_attrs: tp.Dict):
             dataset["v_ship"] = nav_ds.v_ship
             l.log(f"u_ship and v_ship data added from {params['navigation_file']}")
 
+    # ---- CORRECTION FOR MAGNETIC DECLINATION ---- #
     if params["magnetic_declination"]:
-        _magnetnic_correction(dataset, params["magnetic_declination"])
-        dataset.attrs["magnetic_delination"] = params["magnetic_declination"]
-        l.log(
-            f"Coordinates transformed to true North and True East. magnetic declination:{params['magnetic_declination']} degree"
-        )
+        if "lon" in dataset and "lat" in dataset:
+            _magnetnic_correction(dataset, params["magnetic_declination"])
+            dataset.attrs["magnetic_delination"] = params["magnetic_declination"]
+            l.log(
+                f"Coordinates transformed to true North and True East. magnetic declination:{params['magnetic_declination']} degree"
+            )
+        else:
+            l.warning(
+                "Correction for magnetic declination was not carried out. Longitude and latitude data are missing."
+            )
 
     # ---- QUALITY CONTROL ---- #
     if params["quality_control"]:
@@ -308,15 +321,25 @@ def _process_adcp_data(params: tp.Dict, global_attrs: tp.Dict):
     dataset = format_variables_names_and_attributes(
         dataset, use_bodc_codes=params["bodc_name"]
     )
+
+    dataset["time"].assign_attrs(TIME_ATTRS)
+
     l.log("variables attributes added.")
 
-    del dataset.attrs["VAR_TO_ADD_SENSOR_TYPE"]
-    del dataset.attrs["P01_CODES"]
+    # ---- FINAL FORMATING OF GLOBAL ATTRIBUTES ---- #
+
+    dataset.attrs["platform"] = dataset.attrs.pop("platform_name")
+
+    for attrs in GLOBAL_ATTRS_TO_DROP:
+        if attrs in dataset.attrs:
+            del dataset.attrs[attrs]
 
     # ---- OUTPUT ---- #
     # Clearing some gloabal attributes
     if not dataset.attrs["date_created"]:
         dataset.attrs["date_created"] = pd.Timestamp.now().strftime("%Y-%m-%d")
+
+    dataset.attrs["date_modified"] = pd.Timestamp.now().strftime("%Y-%m-%d")
 
     dataset.attrs["logbook"] += l.logbook
     dataset.attrs["history"] = dataset.attrs["logbook"]
@@ -326,14 +349,13 @@ def _process_adcp_data(params: tp.Dict, global_attrs: tp.Dict):
             dataset.attrs[attr] = "N/A"
 
     del dataset.attrs["logbook"]
-    del dataset.attrs["xducer_depth"]
+    if "xducer_depth" in dataset.attrs:
+        del dataset.attrs["xducer_depth"]
     del dataset.attrs["sonar"]
 
     l.section("Output")
     # OUTPUT TODO to_ODF
 
-    # TODO Remove attributes from params
-    # sonar ?
     nc_output = Path(params["netcdf_output"]).with_suffix(".nc")
     dataset.to_netcdf(nc_output)
     l.log(f"netcdf file made -> {nc_output}")

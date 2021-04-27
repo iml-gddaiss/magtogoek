@@ -37,7 +37,7 @@ class FilesFormatError(Exception):
     pass
 
 
-class DepLengthMismatch(Exception):
+class BinDepMismatch(Exception):
     pass
 
 
@@ -346,6 +346,7 @@ class RtiReader:
             convex=True,  # Rowetech adcp seems to be convex.
             up=None,
         )
+
         if ens.IsBeamVelocity:
             ppd.trans = dict(coordsystem="beam")
         if ens.IsInstrumentVelocity:
@@ -579,17 +580,17 @@ class RtiReader:
         """
         mismatch = None
         filenames = [b.filename for b in bunches]
-        deps = np.array([b.dep for b in bunches])
-        if (np.diff(deps, axis=0) != 0).any():
+        deps = [len(b.dep) for b in bunches]
+        if np.diff(deps).any() != 0:
             msg = "\n".join([f"{f} has {len(d)} bin" for f, d in zip(filenames, deps)])
-            raise DepLengthMismatch("\n" + msg)
+            raise BinDepMismatch("\n" + msg)
 
         bin1dist0 = bunches[0].Bin1Dist
         bin1dists = np.array([b.Bin1Dist - bin1dist0 for b in bunches])
         if bin1dists.any() != 0:
-            print(f"Bin depth computed from {filenames[0]}")
+            print(f"Bin depth computed from {filenames[0]}. The differences are")
             for d, f in zip(bin1dists, filenames):
-                print(f"{d} : {f}")
+                print(f"{f} : {np.round(d,3)} meters")
 
         return mismatch
 

@@ -1,15 +1,36 @@
 #!/usr/bin/python3
 """
-author: Jérôme Guay
-date: Feb. 16, 2021
+author : jerome.guay@protonamil.com
+date : Feb. 16, 2021
 
-:NOTE var_attrs:
-_:add sea data net attrisbtes
--:add ancillary_variables:
--:add attributes to accilary variables:
-:FIXME
+This script contains `format_variables_namnes_and_attributes()` function that, as the name may
+suggest, formats a xarray dataset variables attributes have SeaDataNet, CF Conventions and other
+attributes. This script requires json files containing the `static` metadata to add to variables.
+The json files can be made by executing sea_data_net.py FIXME script which can be edited to change
+where the json is saved.
 
---:time variable need to have a "time_zone" attributes.
+   $ python sea_data_net.py
+
+static variables attributes :
+ -'standard_name'
+ -'units'
+ -'long_name'
+ -'ancillary_variables'
+ -'sdn_parameter_urn'
+ -'sdn_parameter_name'
+ -'sdn_uom_urn'
+ -'sdn_uom_name'
+ -'legacy_GF3_code'
+
+dynamic variables attributes :
+ -'data_min'
+ -'data_max'
+ FIXME
+
+Sea Also
+--------
+Read the functions and the docs below. They are pretty explicit.
+
 """
 import json
 import os
@@ -29,37 +50,54 @@ def format_variables_names_and_attributes(
 
     Returns dataset with variables attributes set.
 
-    Convert variables names to BODC and then adds CF and SeaDataNet attributes
-    to variables.
+    Convert variables names to BODC and then adds CF and SeaDataNet metadata
+    to variables attributes. Coordinates names are always changed back to their
+    original names (generic_name). Variables names can also be changed back to
+    their original names (generic_name) setting `use_bodc_codes` as `False`/
 
-    Dataset attributes needed :
-        `sensor_type`, `sensor_depth`, `sensor_serial`, `VAR_TO_ADD_SENSOR_TYPE`, `P01_CODE_TRANSLATOR`.
+    Require dataset global attributes  :
+        `P01_CODE_TRANSLATOR` : a dictionnary containing `generic_name`:`p01_codes`
+             as keys and items.
+
+    None essential global attributes :
+        `sensor_type` :
+        `sensor_depth` :
+        `sensor_serial` :
+        `VAR_TO_ADD_SENSOR_TYPE` : List of P01 parameters codes of variables to which
+            add the sensor_type attributes.
 
     Parameters
     ----------
     dataset :
+        dataset to format. The dataset must contain a global_attributes named `P01_CODE_TRANSLATOR`
+    which has to be a dictionnary containing `generic_name`:`p01_code` as keys and items.
 
-    bodc_name :
+    use_bodc_name :
+       If `True`, the variable names are changed to th BODC P01 parameters codes.
 
     Notes
     -----
-
     """
-    dataset.time.attrs["cf_role"] = "profil_id"
-
     for var in dataset.variables:
         dataset[var].attrs["generic_name"] = var
 
+    original_coords_name = dataset.coords
+
     dataset = _convert_variables_names(dataset)
 
-    for var in dataset.attrs["VAR_TO_ADD_SENSOR_TYPE"]:
-        if var in dataset:
-            dataset[var].attrs["sensor_type"] = dataset.attrs["sensor_type"]
+    if "VAR_TO_ADD_SENSOR_TPYE" in dataset.attrs:
+        for var in dataset.attrs["VAR_TO_ADD_SENSOR_TYPE"]:
+            if var in dataset:
+                dataset[var].attrs["sensor_type"] = dataset.attrs["sensor_type"]
 
     _add_sdn_and_cf_var_attrs(dataset, json2dict(SDN_FILE_PATH))
 
     if not use_bodc_codes:
         dataset = _convert_variables_names(dataset, convert_back_to_generic=True)
+    else:
+        dataset = dataset.rename(
+            {dataset.attrs["P01_CODES"][name]: name for name in original_coords_name}
+        )
 
     _add_data_min_max_to_var_attrs(dataset)
 
@@ -109,7 +147,9 @@ def _convert_variables_names(
     return dataset
 
 
-def _add_sdn_and_cf_var_attrs(dataset: tp.Type[xr.Dataset], sdn: tp.Dict) -> None:
+def _add_sdn_and_cf_var_attrs(
+    dataset: tp.Type[xr.Dataset], sdn: tp.Dict
+) -> tp.Type[xr.Dataset]:
     """add sdn (sea data net) attributes.
 
     Parameters
@@ -135,7 +175,7 @@ def _add_sdn_and_cf_var_attrs(dataset: tp.Type[xr.Dataset], sdn: tp.Dict) -> Non
     """
     variables = set(dataset.variables).intersection(set(sdn.keys()))
     for var in variables:
-        dataset[var].assign_attrs(sdn[var])
+        dataset[var] = dataset[var].assign_attrs(sdn[var])
 
 
 def _add_data_min_max_to_var_attrs(dataset):
@@ -261,26 +301,32 @@ def _geospatial_global_attrs(dataset: tp.Type[xr.Dataset]):
     """
 
     if dataset.attrs["platform_type"] != "ship":
-        if dataset["sensor_type"] == "adcp":
+        if dataset.attrs["sensor_type"] == "adcp":
             if "bt_depth" in dataset:
-                dataset.attrs["sounding"] = round(dataset.bt_depth.data.median(), 2)
+                dataset.attrs["sounding"] = round(np.median(dataset.bt_depth.data), 2)
+
+        if "lon" in dataset.attrs:
+            dataset.attrs["longitude"] = np.round(dataset.lon.data.mean(), 4)
+
+        if "lat" in dataset.attrs:
+            dataset.attrs["latitude"] = np.round(dataset.lat.data.mean(), 4)
 
     if "lat" in dataset:
         dataset.attrs["geospatial_lat_min"] = round(dataset.lat.data.min(), 4)
         dataset.attrs["geospatial_lat_max"] = round(dataset.lat.data.max(), 4)
         dataset.attrs["geospatial_lat_units"] = "degrees north"
-    elif dataset.attrs["longitude"]:
-        dataset.attrs["geospatial_lat_min"] = round(dataset.attrs["longitude"], 4)
-        dataset.attrs["geospatial_lat_max"] = round(dataset.attrs["longitude"], 4)
+    elif "latitude" in dataset.attrs:
+        dataset.attrs["geospatial_lat_min"] = round(dataset.attrs["latitude"], 4)
+        dataset.attrs["geospatial_lat_max"] = round(dataset.attrs["latitude"], 4)
         dataset.attrs["geospatial_lat_units"] = "degrees north"
 
     if "lon" in dataset:
         dataset.attrs["geospatial_lon_min"] = round(dataset.lon.data.min(), 4)
         dataset.attrs["geospatial_lon_max"] = round(dataset.lon.data.max(), 4)
         dataset.attrs["geospatial_lon_units"] = "degrees east"
-    elif dataset.attrs["latitude"]:
-        dataset.attrs["geospatial_lon_min"] = round(dataset.attrs["latitude"], 4)
-        dataset.attrs["geospatial_lon_max"] = round(dataset.attrs["latitude"], 4)
+    elif "longitude" in dataset.attrs:
+        dataset.attrs["geospatial_lon_min"] = round(dataset.attrs["longitude"], 4)
+        dataset.attrs["geospatial_lon_max"] = round(dataset.attrs["longitude"], 4)
         dataset.attrs["geospatial_lon_units"] = "degrees east"
 
     dataset.attrs["geospatial_vertical_min"] = round(dataset.depth.data.min(), 2)

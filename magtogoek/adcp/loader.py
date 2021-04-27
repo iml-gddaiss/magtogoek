@@ -182,13 +182,15 @@ def load_adcp_binary(
     # Convert `dday` to datetime64 #
     # ---------------------------- #
     bad_dday = False
-    if (data.dday < 0).any() or (np.diff(data.dday) < 0).any():
+    if (data.dday < 0).any():
         bad_dday = True
         l.warning(
-            [
-                f"The `dday` vector contains either negative values or is not monotonically increasing."
-                f"Time was replaced by a default datetime vector: len(dday) with a 1 second time step since {yearbase}-1-1 00:00:00"
-            ]
+            f"The `dday` vector contains negative values. The time coords was replaced by a default datetime vector: len(dday) with a 1 second time step since {yearbase}-1-1 00:00:00"
+        )
+    elif (np.diff(data.dday) < 0).any():
+        bad_dday = True
+        l.warning(
+            f"The `dday` vector is not monotonically increasing. The time coords was replaced by a default datetime vector: len(dday) with a 1 second time step since {yearbase}-1-1 00:00:00"
         )
         time, time_string = dday_to_datetime64(
             np.arange(len(data.dday)) / (3600 * 24), yearbase
@@ -203,7 +205,7 @@ def load_adcp_binary(
         xducer_depth = data.XducerDepth[0]
         if sensor_depth:
             l.log(
-                f"The difference between `sensor_depth` and `XducerDepth` is {abs(sensor_depth - xducer_depth)} #m"
+                f"The difference between `sensor_depth` and `XducerDepth` is {abs(sensor_depth - xducer_depth)} m"
             )
             # data.dep was computed from the fixed xducer_depth and so needs to be corrected.
             depth = data.dep + (sensor_depth - xducer_depth)
@@ -215,8 +217,8 @@ def load_adcp_binary(
         if sensor_depth:
             l.log(
                 [
-                    f"The difference between the provided `sensor_depth` and `XducerDepth`",
-                    "is {abs(sensor_depth - xducer_depth)} m.",
+                    "The difference between the provided `sensor_depth` and `XducerDepth`",
+                    f"is {round(abs(sensor_depth - xducer_depth),3)} m.",
                 ]
             )
             xducer_depth = sensor_depth
@@ -367,6 +369,7 @@ def load_adcp_binary(
     # ------------------------------- #
     if bad_dday:
         ds["dday"] = (["time"], np.asarray(data.dday))
+
     else:
         ds["time_string"] = (["time"], time_string)
 
@@ -377,23 +380,29 @@ def load_adcp_binary(
     # Add attributes #
     # -------------- #
     sonar_names = dict(
-        wh="WorkHorse", sv="SentinelV", os="OceanSurveyor", sw="SeaWATCH"
+        wh="WorkHorse", sv="Sentinel V", os="Ocean Surveyor", sw="SeaWATCH"
     )
     if "xducer_depth" not in ds:
         ds.attrs["xducer_depth"] = xducer_depth
     ds.attrs["sonar"] = sonar_names[sonar]
     ds.attrs["manufacturer"] = (
-        "TeledyneRD" if sonar in ["wh", "sv", "os"] else "RoweTech"
+        "Teledyne RD Instruments Inc."
+        if sonar in ["wh", "sv", "os"]
+        else "Rowe Technologie Inc. (RTI)"
     )
     ds.attrs["coord_system"] = data.trans["coordsystem"]
     ds.attrs["beam_angle"] = data.sysconfig["angle"]
     ds.attrs["frequency"] = data.sysconfig["kHz"] * 1000
     ds.attrs["bin_size"] = data.CellSize
 
-    ds.attrs["sample_interval"] = np.round(
+    ds.attrs["delta_t_sec"] = np.round(
         np.mean((np.diff(ds.time).astype("timedelta64[s]"))).astype(float), 2
     )
-    ds.attrs["beam_pattern"] = "janus"
+    ds.attrs["sampling_interval"] = str(ds.attrs["delta_t_sec"]) + "seconds"
+
+    ds.attrs["beam_pattern"] = "convex" if data.sysconfig["convex"] else "concave"
+
+    ds.attrs["janus"] = 4
 
     ds.attrs["orientation"] = orientation
     if "SerialNumber" in data:
@@ -445,7 +454,7 @@ def coordsystem2earth(data: tp.Type[Bunch], orientation: str):
             f"Coordsystem value of {data.sysconfig.coordsystem} not recognized. Conversion to enu not available."
         )
 
-    beam_pattern = "convex" if data.sysconfig.convex else "concave"
+    beam_pattern = "convex" if data.sysconfig["convex"] else "concave"
 
     xyze, xyze_bt = data.vel.data, data.bt_vel.data
 
@@ -543,86 +552,3 @@ def check_PD0_invalid_config(
         invalid_cfg_count = np.sum((syscfg == 2 ** 16 - 1))
 
     return invalid_cfg_count
-
-
-if __name__ == "__main__":
-    import matplotlib.pyplot as plt
-
-    # ios_path = (
-    #      "/home/jeromejguay/ImlSpace/Projects/"
-    #       + "pycurrents_ADCP_processing/sample_data/"
-    #    )
-    # ios_fns = [
-    #      "a1_20050503_20050504_0221m.000",
-    #       "a1_20160713_20170513_0480m.000",
-    #        "eh2_20060530_20060717_0007m.000",
-    #  ]
-    sillex_path = "/media/jeromejguay/5df6ae8c-2af4-4e5b-a1e0-a560a316bde3/home/jeromejguay/WorkSpace_2019/Data/Raw/ADCP/"
-    sillex_fns = [
-        "COR1805-ADCP-150kHz009_000001",
-        "COR1805-ADCP-150kHz009_000002",
-    ]
-
-    # v50exp = (
-    #    "/media/jeromejguay/Bruno/TREX2020/V50/TREX2020_V50_20200911T121242_003_*.ENX"
-    # )
-    # v100file = (
-    #    "/media/jeromejguay/Bruno/TREX2020/V100/TREX2020_V100_20200911T115335.pd0"
-    #  )
-
-    # pd0_sw_path = "/home/jeromejguay/ImlSpace/Projects/magtogoek/test/files/sw_300_4beam_20deg_piston.pd0"
-    # ens_sw_path = (
-    #    "/home/jeromejguay/ImlSpace/Projects/magtogoek/test/files/rowetech_seawatch.ens"
-    # )
-
-    #  files = [sillex_path + fn for fn in sillex_fns]
-    # sonar = "os"
-    #  enr = load_adcp_binary(
-    #       [f + ".ENR" for f in files], sonar=sonar, yearbase=2018, orientation="down"
-    #    )
-    # ens = load_adcp_binary(
-    #      [f + ".ENS" for f in files], sonar=sonar, yearbase=2018, orientation="down"
-    #   )
-    enx = load_adcp_binary(
-        [sillex_path + f + ".ENX" for f in sillex_fns],
-        sonar="os",
-        yearbase=2018,
-        orientation="down",
-    )
-
-    # sonar = "wh"
-    # ios0 = load_adcp_binary(
-    # ios_path + ios_fns[0], sonar=sonar, yearbase=2005, orientation="down"
-    # )
-    # ios1 = load_adcp_binary(
-    #    ios_path + ios_fns[1], sonar=sonar, yearbase=2016, orientation="down"
-    # )
-    # ios2 = load_adcp_binary(
-    #    ios_path + ios_fns[2], sonar=sonar, yearbase=2006, orientation="down"
-    # )
-
-# v50path = Path(v50exp)
-#  v50files = sorted(map(str, v50path.parent.rglob(v50path.name)))
-#   sonar = "sv"
-
-#    v50 = load_adcp_binary(
-# v50files,
-# sonar=sonar,
-# yearbase=2020,
-# orientation="down",
-# leading_index=100,
-# trailing_index=10000,
-# )
-
-# v100 = load_adcp_binary(v100file, sonar=sonar, yearbase=2020, orientation="down")
-# sw_pd0 = load_adcp_binary(
-#    pd0_sw_path, sonar="sw_pd0", yearbase=2020, orientation="down"
-# )
-# sw = load_adcp_binary(
-#    ens_sw_path,
-#    sonar="sw",
-#    yearbase=2020,
-#    orientation="down",
-#    leading_index=100,
-#    trailing_index=10,
-# )
