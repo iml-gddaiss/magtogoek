@@ -41,13 +41,14 @@ from pathlib import Path
 from subprocess import run as subp_run
 
 import click
-from magtogoek.bin.command_options import adcp_options, add_options
+
+from magtogoek.app_options import adcp_options, add_options
 from magtogoek.utils import is_valid_filename, json2dict
 
 # ---------- Module or functions imported by commands ----------- #
 # FIXME NOT UP TO DATE
-# from magtogoek.bin.configfile import make_configfile
-# from magtogoek.metadata.platforms import make_platform_template
+# from magtogoek.configfile import make_configfile
+# from magtogoek.platforms import make_platform_template
 # from magtogoek.adcp.loader import load_adcp_binary
 # from magtogoek.adcp.utils import Logger
 # from magtogoek.adcp.quick_adcp import _process_adcp_config
@@ -170,7 +171,7 @@ def process(config_file, info):
     # Doing so would allow the user to pass config options. The load_configfile
     # command is already able to take uptaded_params options and update de configile.
     # The same options (or nearly all the same )as for adcp_config could be use.
-    from magtogoek.bin.configfile import load_configfile
+    from magtogoek.configfile import load_configfile
 
     config = load_configfile(config_file)
 
@@ -208,7 +209,7 @@ def check(info):
 @click.argument("filename", metavar="[filename]", type=str)
 @click.pass_context
 def config_platform(ctx, filename, info):
-    from magtogoek.metadata.platforms import make_platform_template
+    from magtogoek.platforms import make_platform_template
 
     filename = is_valid_filename(filename, ext=".json")
     make_platform_template(filename)
@@ -237,7 +238,7 @@ def config_adcp(
 ):
     """Command to make an adcp config files. The [OPTIONS] can be added
     before or after the [config_name]."""
-    from magtogoek.bin.configfile import make_configfile
+    from magtogoek.configfile import make_configfile
 
     _print_passed_options(options)
 

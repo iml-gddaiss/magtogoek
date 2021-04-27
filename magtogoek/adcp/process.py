@@ -16,6 +16,8 @@ Script to process adcp data.
 Notes
 -----
 Unspecified attributes fill value "N/A".
+`magnetic_declination`:
+    declination of the magnetic north in `degree east`.
 
 `sensor_depth`:
     `sensor_depth` in the platform file is used for the variables attributes. If no
@@ -52,7 +54,7 @@ import xarray as xr
 from magtogoek.adcp.loader import load_adcp_binary
 from magtogoek.adcp.quality_control import (adcp_quality_control,
                                             no_adcp_quality_control)
-from magtogoek.metadata.attributes_formatter import (
+from magtogoek.attributes_formatter import (
     format_global_attrs, format_variables_names_and_attributes)
 from magtogoek.tools import get_gps_bearing, magnetic_to_true, vincenty
 from magtogoek.utils import Logger, json2dict
@@ -160,6 +162,7 @@ TIME_ENCODING = {
 DEPTH_ENCODING = {"_FillValue": None}
 
 DATA_FILL_VALUE = -9999
+QC_FILL_VALUE = 127
 
 DATA_DTYPE = "float32"
 
@@ -182,6 +185,9 @@ def process_adcp_config(config: tp.Type[ConfigParser]):
     """
     params, global_attrs = _get_config(config)
 
+    if isinstance(params["input_files"], str):
+        params["input_files"] = list(params["input_files"])
+
     if len(params["input_files"]) == 0:
         raise ValueError("No adcp file was provided in the configfile.")
 
@@ -190,9 +196,9 @@ def process_adcp_config(config: tp.Type[ConfigParser]):
         for fn, count in zip(params["input_files"], range(len(params["input_files"]))):
             if params["netcdf_output"]:
                 params["netcdf_output"] = (
-                    Path(params["netcdf_output"]).with_suffix("") + f"_{count}"
+                    str(Path(params["netcdf_output"]).name) + f"_{count}"
                 )
-            params["input_files"] = list(fn)
+            params["input_files"] = fn
 
             _process_adcp_data(params, global_attrs)
     else:
@@ -246,7 +252,9 @@ def _process_adcp_data(params: tp.Dict, global_attrs: tp.Dict):
             l.warning("Navigation netcdf file is missing u_ship and v_ship.")
             params["navigation_file"] = None
 
-    # ---- LOADING ADCP DATA ---- #
+    # ----------------- #
+    # LOADING ADCP DATA #
+    # ----------------- #
     dataset = _load_adcp_data(params)
 
     if not params["keep_bt"]:
@@ -254,7 +262,9 @@ def _process_adcp_data(params: tp.Dict, global_attrs: tp.Dict):
             if var in dataset:
                 dataset = dataset.drop_vars([var])
 
-    # ---- ADDING SOME GLOBAL ATTRIBUTES ---- #
+    # ----------------------------- #
+    # ADDING SOME GLOBAL ATTRIBUTES #
+    # ----------------------------- #
     # Chief scientist in the ConfigFile is used over the one in the platform file.
     l.section("Adding Global Attributes")
 
@@ -267,7 +277,9 @@ def _process_adcp_data(params: tp.Dict, global_attrs: tp.Dict):
         if not dataset.attrs["sensor_depth"]:
             _xducer_depth_as_sensor_depth(dataset)
 
-    # ---- ADDING THE NAVIGATION DATA TO THE DATASET ---- #
+    # ----------------------------------------- #
+    # ADDING THE NAVIGATION DATA TO THE DATASET #
+    # ----------------------------------------- #
     if params["navigation_file"]:
         l.section("Navigation data")
         nav_ds = nav_ds.interp(time=dataset.time)
@@ -279,20 +291,20 @@ def _process_adcp_data(params: tp.Dict, global_attrs: tp.Dict):
             dataset["v_ship"] = nav_ds.v_ship
             l.log(f"u_ship and v_ship data added from {params['navigation_file']}")
 
-    # ---- CORRECTION FOR MAGNETIC DECLINATION ---- #
+    # ----------------------------------- #
+    # CORRECTION FOR MAGNETIC DECLINATION #
+    # ----------------------------------- #
     if params["magnetic_declination"]:
-        if "lon" in dataset and "lat" in dataset:
-            _magnetnic_correction(dataset, params["magnetic_declination"])
-            dataset.attrs["magnetic_delination"] = params["magnetic_declination"]
-            l.log(
-                f"Coordinates transformed to true North and True East. magnetic declination:{params['magnetic_declination']} degree"
-            )
-        else:
-            l.warning(
-                "Correction for magnetic declination was not carried out. Longitude and latitude data are missing."
-            )
+        _magnetnic_correction(dataset, params["magnetic_declination"])
+        dataset.attrs["magnetic_delination"] = (
+            str(params["magnetic_declination"]) + " degree east"
+        )
+    else:
+        dataset.attrs["magnetic_delination"] = "No correction carried out."
 
-    # ---- QUALITY CONTROL ---- #
+    # --------------- #
+    # QUALITY CONTROL #
+    # --------------- #
     if params["quality_control"]:
         _quality_control(dataset, params)
     else:
@@ -300,12 +312,16 @@ def _process_adcp_data(params: tp.Dict, global_attrs: tp.Dict):
             dataset,
         )
 
-    _drop_beam_data(dataset, params)
+    dataset = _drop_beam_data(dataset, params)
 
-    # ---- DATA ENCONDING ---- #
+    # -------------- #
+    # DATA ENCONDING #
+    # -------------- #
     _format_data_encoding(dataset)
 
-    # ---- VARIABLES ATTRIBUTES ---- #
+    # -------------------- #
+    # VARIABLES ATTRIBUTES #
+    # -------------------- #
     dataset.attrs["VAR_TO_ADD_SENSOR_TYPE"] = VAR_TO_ADD_SENSOR_TYPE
 
     if not dataset.attrs["platform_type"]:
@@ -326,7 +342,9 @@ def _process_adcp_data(params: tp.Dict, global_attrs: tp.Dict):
 
     l.log("variables attributes added.")
 
-    # ---- FINAL FORMATING OF GLOBAL ATTRIBUTES ---- #
+    # ------------------------------------ #
+    # FINAL FORMATING OF GLOBAL ATTRIBUTES #
+    # ------------------------------------ #
 
     dataset.attrs["platform"] = dataset.attrs.pop("platform_name")
 
@@ -334,7 +352,9 @@ def _process_adcp_data(params: tp.Dict, global_attrs: tp.Dict):
         if attrs in dataset.attrs:
             del dataset.attrs[attrs]
 
-    # ---- OUTPUT ---- #
+    # ------- #
+    # OUTPUTS #
+    # ------- #
     # Clearing some gloabal attributes
     if not dataset.attrs["date_created"]:
         dataset.attrs["date_created"] = pd.Timestamp.now().strftime("%Y-%m-%d")
@@ -391,6 +411,13 @@ def _load_adcp_data(params: tp.Dict) -> tp.Type[xr.Dataset]:
 
     if len(dataset.time) == 0:
         l.warning(f"{params['input_files']} time dims is of lenght 0 after slicing.")
+
+    l.log(
+        f"Bins count : {len(dataset.depth.data)}, Min depth : {dataset.depth.min().data} m, Max depth : {dataset.depth.max().data} m"
+    )
+    l.log(
+        f"Ensembles count : {len(dataset.time.data)}, Start time : {np.datetime_as_string(dataset.time.min().data, unit='s')}, End time : {np.datetime_as_string(dataset.time.min().data, unit='s')}"
+    )
 
     return dataset
 
@@ -474,9 +501,15 @@ def _magnetnic_correction(dataset: tp.Type[xr.Dataset], magnetic_declination: fl
     """Correct for magnetic declination and adds `magnetic_declination`
     to dataset attributes."""
 
-    dataset.lon.values, dataset.lat.values = magnetic_to_true(
-        dataset.lon, dataset.lat, magnetic_declination
-    )
+    if "lon" in dataset and "lat" in dataset:
+        dataset.lon.values, dataset.lat.values = magnetic_to_true(
+            dataset.lon, dataset.lat, magnetic_declination
+        )
+        l.log(f"Coordinates transformed to true North and True East.")
+
+    if "heading" in dataset:
+        dataset.heading.values = dataset.heading.data - magnetic_declination
+        l.log(f"Heading transformed to true North.")
 
 
 def _get_datetime_and_count(trim_arg: str):
@@ -523,9 +556,13 @@ def _drop_beam_data(dataset: tp.Type[xr.Dataset], params: tp.Dict):
         ("corr", "correlation"),
         ("amp", "amplitude"),
     ]:
-        if var[0] in dataset and params[f"drop_{var[1]}"]:
-            dataset = dataset.drop_vars([var[0]])
+        if params[f"drop_{var[1]}"]:
+            for i in ["", "1", "2", "3", "4"]:
+                if var[0] + i in dataset:
+                    dataset = dataset.drop_vars([var[0] + i])
             l.log(f"{var[1]} data dropped.")
+
+    return dataset
 
 
 def _format_data_encoding(dataset: tp.Type[xr.Dataset]):
@@ -538,7 +575,7 @@ def _format_data_encoding(dataset: tp.Type[xr.Dataset]):
             dataset.depth.encoding = DEPTH_ENCODING
         elif "_QC" in var:
             dataset[var].values = dataset[var].values.astype("int8")
-            dataset[var].encoding = {"dtype": "int8", "_FillValue": 0}
+            dataset[var].encoding = {"dtype": "int8", "_FillValue": QC_FILL_VALUE}
         elif var != "time_string":
             dataset[var].encoding = {"dtype": DATA_DTYPE, "_FillValue": DATA_FILL_VALUE}
 

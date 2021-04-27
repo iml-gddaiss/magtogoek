@@ -3,7 +3,7 @@ from setuptools import find_packages, setup
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
-version = "0.0.2"
+version = "0.0.1"
 
 
 setup(
@@ -31,14 +31,11 @@ setup(
         "click",
         "configparser",
         "tqdm",
-        "path"
-        # - RTI_PYTHON REQUIEREMENT - #
-        #        "pytest",  # no
+        "path",
         "pynmea2",
         "obsub",
-        #        "mttkinter",  # no
-        "pygeodesy",  # no
-        "crc16",  # needed
+        "pygeodesy",
+        "crc16",
     ],
     packages=find_packages(),
     package_data={"magtogoek": ["*.geojson"]},
@@ -46,7 +43,7 @@ setup(
     python_requires="~=3.7",
     entry_points={
         "console_scripts": [
-            "mtgk=magtogoek.bin.magtogoek_command:magtogoek",
+            "mtgk=magtogoek.app:magtogoek",
         ]
     },
 )

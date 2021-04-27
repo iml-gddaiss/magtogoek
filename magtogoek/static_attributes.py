@@ -463,5 +463,5 @@ sdn = dict(
 
 if __name__ == "__main__":
     # probably not good practice. Creating the absulute path to load the files.
-    file_name = "/".join(__file__.split("/")[:-2]) + "/files/sdn.json"
+    file_name = "files/static_attributes.json"
     dict2json(file_name, sdn)

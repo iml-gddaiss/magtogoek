@@ -279,15 +279,17 @@ def adcp_quality_control(
         ] = f"temperature_threshold: less than {MIN_TEMPERATURE} celcius and greater than {MAX_TEMPERATURE} celsius"
     if "vb_vel" in dataset:
         l.log(
-            f"Fifth beam quality control done with amp:{amp_th}, corr:{corr_th}, pg:{pg_th}"
+            f"Fifth beam quality control done with amp: {amp_th}, corr: {corr_th}, pg: {pg_th}"
         )
         vb_flag = vertical_beam_test(dataset, amp_th, corr_th, pg_th)
         dataset["vb_vel_QC"] = (["depth", "time"], vb_flag * 3)
-        dataset["vb_vel_QC"].attrs["quality_test"] = [
-            f"amplitude_threshold:{amp_th}",
-            f"correlation_threshold:{corr_th}",
-            f"percentgood_threshold:{pg_th}",
-        ]
+        dataset["vb_vel_QC"].attrs["quality_test"] = "\n".join(
+            [
+                f"amplitude_threshold: {amp_th}",
+                f"correlation_threshold: {corr_th}",
+                f"percentgood_threshold: {pg_th}",
+            ]
+        )
 
     missing_vel = np.bitwise_or(
         *(~np.isfinite(dataset[v]).data for v in ("u", "v", "w"))
@@ -296,7 +298,7 @@ def adcp_quality_control(
 
     for v in ("u", "v", "w"):
         dataset[v + "_QC"] = (["depth", "time"], vel_flags)
-        dataset[v + "_QC"].attrs["quality_test"] = vel_qc_test
+        dataset[v + "_QC"].attrs["quality_test"] = "\n".join(vel_qc_test)
 
     for var in list(dataset.variables):
         if "_QC" in var:

@@ -147,6 +147,10 @@ def load_adcp_binary(
             data = Multiread(fnames=filenames, sonar=sonar, yearbase=yearbase).read(
                 start=leading_index, stop=trailing_index
             )
+            if not data:
+                raise ValueError(
+                    "The sum of the trim values is greater than the number of ensemble."
+                )
         except RuntimeError:
             raise FilesFormatError("Not RDI pd0 file format.")
 
@@ -283,7 +287,15 @@ def load_adcp_binary(
             )
 
     if "bt_depth" in data:
-        if not (data.bt_depth == 0).all():
+        if (data.bt_depth == 0).all():
+            l.log(
+                "Bottom depth values were all `0` and so they were dropped from the ouput."
+            )
+        elif not np.isfinite(data.bt_depth).all():
+            l.log(
+                "Bottom depth values were all `nan` and so they were dropped from the ouput."
+            )
+        else:
             if sonar == "os" or orientation == "up":
                 bt_depth = data.bt_depth
             else:
@@ -294,10 +306,6 @@ def load_adcp_binary(
                 np.asarray(np.nanmean(bt_depth, axis=-1)),
             )
             l.log("Bottom depth  data loaded")
-        else:
-            l.log(
-                "Bottom depth values were all `0` and so they were dropped from the ouput."
-            )
 
     if "pg" in data:
         if original_coordsystem == "beam":
@@ -398,7 +406,7 @@ def load_adcp_binary(
     ds.attrs["delta_t_sec"] = np.round(
         np.mean((np.diff(ds.time).astype("timedelta64[s]"))).astype(float), 2
     )
-    ds.attrs["sampling_interval"] = str(ds.attrs["delta_t_sec"]) + "seconds"
+    ds.attrs["sampling_interval"] = str(ds.attrs["delta_t_sec"]) + " seconds"
 
     ds.attrs["beam_pattern"] = "convex" if data.sysconfig["convex"] else "concave"
 

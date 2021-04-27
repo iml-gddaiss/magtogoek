@@ -102,8 +102,8 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
             "-m",
             "--magnetic-declination",
             type=click.FLOAT,
-            help="""Magnetic declination, measured in the geographic frame of references,
-            to correct from magnetic to true coordinates""",
+            help="""Declination of the magnetic north in degree east.
+            Corrects from magnetic to true (geographic) coordinates and heading.""",
             default=None,
             show_default=True,
         ),

@@ -38,9 +38,12 @@ import typing as tp
 
 import numpy as np
 import xarray as xr
+
 from magtogoek.utils import json2dict
 
-SDN_FILE_PATH = os.path.join(os.path.dirname(__file__), "../files/sdn.json")
+STATIC_ATTRIBUTES_FILE_PATH = os.path.join(
+    os.path.dirname(__file__), "files/static_attributes.json"
+)
 
 
 def format_variables_names_and_attributes(
@@ -90,7 +93,7 @@ def format_variables_names_and_attributes(
             if var in dataset:
                 dataset[var].attrs["sensor_type"] = dataset.attrs["sensor_type"]
 
-    _add_sdn_and_cf_var_attrs(dataset, json2dict(SDN_FILE_PATH))
+    _add_sdn_and_cf_var_attrs(dataset, json2dict(STATIC_ATTRIBUTES_FILE_PATH))
 
     if not use_bodc_codes:
         dataset = _convert_variables_names(dataset, convert_back_to_generic=True)
