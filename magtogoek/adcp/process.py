@@ -171,13 +171,11 @@ DATA_DTYPE = "float32"
 def process_adcp(config: tp.Type[ConfigParser]):
     """Process adcp data with parameters from a ConfigFile.
 
-    Pipes the ConfigFiles options to  _process_adcp_data.
+    Pipes the params to _to_process_adcp_data which in turn pipes
+    it to _process_adcp_data.
 
     Using `platform_id`, `sensor_id`, the sensor metadata are loaded
     into a dictionnary and pass to _process_adcp_data.
-
-    Looks for `merge_output_files` in the ConfigFile and if False,
-    each file in `input_files` is process individually.
 
     Notes
     -----
@@ -200,30 +198,17 @@ def process_adcp(config: tp.Type[ConfigParser]):
 
     sensor_metadata = _load_platform(params) if params["platform_file"] else None
 
-    if not params["merge_output_files"]:
-        params["merge"] = True
-        for fn, count in zip(params["input_files"], range(len(params["input_files"]))):
-            if params["netcdf_output"]:
-                params["netcdf_output"] = (
-                    str(Path(params["netcdf_output"]).name) + f"_{count}"
-                )
-            params["input_files"] = fn
-
-            _process_adcp_data(params, sensor_metadata, global_attrs)
-    else:
-        _process_adcp_data(params, sensor_metadata, global_attrs)
+    _to_process_adcp_data(params, sensor_metadata, global_attrs)
 
 
 def quick_process_adcp(params: tp.Dict):
     """Process adcp data with quick_process options(params).
 
-    Pipes the params to _process_adcp_data.
+    Pipes the params to _to_process_adcp_data which in turn pipes
+    it to _process_adcp_data.
 
     Using `platform_id`, `sensor_id`, the sensor metadata are loaded
     into a dictionnary and pass to _process_adcp_data.
-
-    Looks for `merge_output_files` in the ConfigFile and if False,
-    each file in `input_files` is process individually.
 
     Notes
     -----
@@ -248,6 +233,15 @@ def quick_process_adcp(params: tp.Dict):
         if key not in sensor_metadata:
             sensor_metadata[key] = None
 
+    _to_process_adcp_data(params, sensor_metadata, global_attrs)
+
+
+def _to_process_adcp_data(params, sensor_metadata, global_attrs):
+    """Check if the input_file must be split in mutiple output.
+
+        Looks for `merge_output_files` in the ConfigFile and if False,
+    each file in `input_files` is process individually.
+    """
     if not params["merge_output_files"]:
         params["merge"] = True
         for fn, count in zip(params["input_files"], range(len(params["input_files"]))):
