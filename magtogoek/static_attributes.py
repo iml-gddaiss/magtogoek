@@ -22,12 +22,8 @@ Some may have additionals attributes, such has depth variables (position = 'down
 In that case, using "depth" as standard_name implies that depth are measured from
 the surface and positive downward.
 
-FIXME:
-- The attributes "sensor_type" = 'adcp', should only be present for P01 name that explicitly refers to an adcp measuments. Otherwise, it should be added by the instruments subpackage.
-- Long name may also be added later. They could also be overwritten later.
-- Remove under score in long_name
-- PCGDAP01: missing GF3 code.
 NOTE:
+- PCGDAP01: missing GF3 code.
 - PCGDAP01: Use for 4 beam solution, adcp or earth coordinate
 - PCGDAP00: Use for beam 1, beam coordinate
 - PCGDAP02: Use for beam 2, beam coordinate

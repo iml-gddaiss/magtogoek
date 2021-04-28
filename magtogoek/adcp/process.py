@@ -1,6 +1,9 @@
 """
-FIXME
-Script to process adcp data.
+This script has to functions to process and quick process adcp data.
+These functions are called by the app command `process` and `quick adcp`.
+
+
+Script to process adcp data. FIXME
 
 - Load
 - Global_attributes
@@ -10,7 +13,6 @@ Script to process adcp data.
 - Make Figure
 - Make Logbook
 - Export -> .nc or .odf
-- Ancillary variables names (gen vs bodc)
 
 
 Notes
@@ -37,14 +39,9 @@ Unspecified attributes fill value "N/A".
    The manufactuer is automaticaly added to the dataset by the loader. However, the value given in the platform file will
    overwrite it.
 
-FIXME
-MISSING METADATA :
-    transmit_pulse_length_cm
-    pings_per_ensemble
-
-
 """
 
+import getpass
 import typing as tp
 from configparser import ConfigParser
 
@@ -64,6 +61,7 @@ l = Logger(level=0)
 from pathlib import Path
 
 ADCP_GLOBAL_ATTRIBUTES = {"sensor_type": "adcp", "featureType": "timeSeriesProfile"}
+
 GLOBAL_ATTRS_TO_DROP = [
     "sensor_type",
     "platform_type",
@@ -73,6 +71,9 @@ GLOBAL_ATTRS_TO_DROP = [
 
 CONFIG_GLOBAL_ATTRS_SECTIONS = ["NETCDF_CF", "PROJECT", "CRUISE", "GLOBAL_ATTRIBUTES"]
 
+DROP_NONE_ATTRS = False
+
+PLATFORM_TYPES = ["mooring", "ship"]
 PLATFORM_FILE_KEYS = [
     "platform_name",
     "platform_type",
@@ -167,16 +168,22 @@ QC_FILL_VALUE = 127
 DATA_DTYPE = "float32"
 
 
-def process_adcp_config(config: tp.Type[ConfigParser]):
-    """Wrap around _process_adcp_data
+def process_adcp(config: tp.Type[ConfigParser]):
+    """Process adcp data with parameters from a ConfigFile.
+
+    Pipes the ConfigFiles options to  _process_adcp_data.
+
+    Using `platform_id`, `sensor_id`, the sensor metadata are loaded
+    into a dictionnary and pass to _process_adcp_data.
 
     Looks for `merge_output_files` in the ConfigFile and if False,
     each file in `input_files` is process individually.
 
     Notes
     -----
-
-    FIXME put this in the app ?.
+    missing `platform_type` :
+        If the platform_type cannot be found, the function automaticaly default to
+        `mooring` to set the correct BODC P01 parameter codes.
 
     See Also
     --------
@@ -191,6 +198,8 @@ def process_adcp_config(config: tp.Type[ConfigParser]):
     if len(params["input_files"]) == 0:
         raise ValueError("No adcp file was provided in the configfile.")
 
+    sensor_metadata = _load_platform(params) if params["platform_file"] else None
+
     if not params["merge_output_files"]:
         params["merge"] = True
         for fn, count in zip(params["input_files"], range(len(params["input_files"]))):
@@ -200,15 +209,64 @@ def process_adcp_config(config: tp.Type[ConfigParser]):
                 )
             params["input_files"] = fn
 
-            _process_adcp_data(params, global_attrs)
+            _process_adcp_data(params, sensor_metadata, global_attrs)
     else:
-        _process_adcp_data(params, global_attrs)
+        _process_adcp_data(params, sensor_metadata, global_attrs)
 
 
-def _process_adcp_data(params: tp.Dict, global_attrs: tp.Dict):
+def quick_process_adcp(params: tp.Dict):
+    """Process adcp data with quick_process options(params).
+
+    Pipes the params to _process_adcp_data.
+
+    Using `platform_id`, `sensor_id`, the sensor metadata are loaded
+    into a dictionnary and pass to _process_adcp_data.
+
+    Looks for `merge_output_files` in the ConfigFile and if False,
+    each file in `input_files` is process individually.
+
+    Notes
+    -----
+    missing `platform_type` :
+        If the platform_type cannot be found, the function automaticaly default to
+        `mooring` to set the correct BODC P01 parameter codes.
+
+    See Also
+    --------
+    _process_adcp_data :
+        For the processing workflow."""
+
+    DROP_NONE_ATTRS = True
+    global_attrs = {
+        "date_created": pd.Timestamp.now().strftime("%Y-%m-%d"),
+        "publisher_name": getpass.getuser(),
+    }
+
+    sensor_metadata = {"platform_type": params["platform_type"]}
+    # Adding the keys with None Value if missing.
+    for key in PLATFORM_FILE_KEYS:
+        if key not in sensor_metadata:
+            sensor_metadata[key] = None
+
+    if not params["merge_output_files"]:
+        params["merge"] = True
+        for fn, count in zip(params["input_files"], range(len(params["input_files"]))):
+            if params["netcdf_output"]:
+                params["netcdf_output"] = (
+                    str(Path(params["netcdf_output"]).name) + f"_{count}"
+                )
+            params["input_files"] = fn
+            _process_adcp_data(params, sensor_metadata, global_attrs)
+    else:
+        _process_adcp_data(params, sensor_metadata, global_attrs)
+
+
+def _process_adcp_data(params: tp.Dict, sensor_metadata: tp.Dict, global_attrs):
     """Process adcp data
 
     FIXME EXPLAIN THE PROCESSING WORKFLOW FIXME
+
+    Meanwhile, the code is pretty explicit. Go check it out if need be.
 
     Parameters
     ----------
@@ -216,7 +274,10 @@ def _process_adcp_data(params: tp.Dict, global_attrs: tp.Dict):
         Processing parameters from the ConfigFile.
 
     gloabal_attrs :
-        Global attributes  parameter from the configFile.
+        Global attributes parameter from the configFile.
+
+    sensor_metadata :
+        Metadata from the platform file.
 
     Notes
     -----
@@ -234,15 +295,12 @@ def _process_adcp_data(params: tp.Dict, global_attrs: tp.Dict):
     """
     l.reset()
 
-    if params["platform_file"]:
-        sensor_metadata = _load_platform(params)
-
-    else:
+    if not sensor_metadata["platform_type"]:
         l.warning("platform_file missing, defaulting to `mooring` for platform_type.")
         sensor_metadata["platform_type"] = "mooring"
 
-    if sensor_metadata["platform_type"] not in ["mooring", "ship"]:
-        raise ValueError("platform_type invalid. Must be one of `mooring` or `ship`")
+    if sensor_metadata["platform_type"] not in PLATFORM_TYPES:
+        raise ValueError(f"platform_type invalid. Must be one of {PLATFORM_TYPES}")
 
     if params["navigation_file"]:
         # This is carried before reading the adcp data in case a error arise reading
@@ -273,9 +331,10 @@ def _process_adcp_data(params: tp.Dict, global_attrs: tp.Dict):
     dataset = dataset.assign_attrs(global_attrs)
 
     format_global_attrs(dataset)
-    if "sensor_depth" in dataset.attrs:
-        if not dataset.attrs["sensor_depth"]:
-            _xducer_depth_as_sensor_depth(dataset)
+
+    # choose wheter to compute sensor_depth of use the one from the platform file.
+    if not dataset.attrs["sensor_depth"]:
+        _xducer_depth_as_sensor_depth(dataset)
 
     # ----------------------------------------- #
     # ADDING THE NAVIGATION DATA TO THE DATASET #
@@ -348,14 +407,6 @@ def _process_adcp_data(params: tp.Dict, global_attrs: tp.Dict):
 
     dataset.attrs["platform"] = dataset.attrs.pop("platform_name")
 
-    for attrs in GLOBAL_ATTRS_TO_DROP:
-        if attrs in dataset.attrs:
-            del dataset.attrs[attrs]
-
-    # ------- #
-    # OUTPUTS #
-    # ------- #
-    # Clearing some gloabal attributes
     if not dataset.attrs["date_created"]:
         dataset.attrs["date_created"] = pd.Timestamp.now().strftime("%Y-%m-%d")
 
@@ -363,24 +414,48 @@ def _process_adcp_data(params: tp.Dict, global_attrs: tp.Dict):
 
     dataset.attrs["logbook"] += l.logbook
     dataset.attrs["history"] = dataset.attrs["logbook"]
-
-    for attr in dataset.attrs:
-        if not dataset.attrs[attr]:
-            dataset.attrs[attr] = "N/A"
-
     del dataset.attrs["logbook"]
+
+    for attrs in GLOBAL_ATTRS_TO_DROP:
+        if attrs in dataset.attrs:
+            del dataset.attrs[attrs]
+
+    for attr in list(dataset.attrs.keys()):
+        if not dataset.attrs[attr]:
+            if DROP_NONE_ATTRS:
+                del dataset.attrs[attr]
+            else:
+                dataset.attrs[attr] = "N/A"
+
     if "xducer_depth" in dataset.attrs:
         del dataset.attrs["xducer_depth"]
     del dataset.attrs["sonar"]
 
+    # ------- #
+    # OUTPUTS #
+    # ------- #
+
+    # OUTPUT TODO
     l.section("Output")
-    # OUTPUT TODO to_ODF
+    if params["odf_output"]:
+        odf_output = "TODO"
 
-    nc_output = Path(params["netcdf_output"]).with_suffix(".nc")
-    dataset.to_netcdf(nc_output)
-    l.log(f"netcdf file made -> {nc_output}")
+    export_to_netcdf = (
+        not (params["odf_output"] and params["netcdf_output"])
+        or params["netcdf_output"]
+    )
 
-    log_output = Path(params["netcdf_output"]).with_suffix(".log")  # TODO better
+    if export_to_netcdf:
+        if params["netcdf_output"]:
+            nc_output = Path(params["netcdf_output"]).with_suffix(".nc")
+        else:
+            nc_output = Path(params["input_files"][0]).with_suffix(".nc")
+        dataset.to_netcdf(nc_output)
+        l.log(f"netcdf file made -> {nc_output}")
+
+        log_output = Path(nc_output).with_suffix(".log")
+    else:
+        log_output = Path(odf_output).with_suffix(".log")
 
     if params["make_log"]:
         with open(log_output, "w") as log_file:
@@ -465,8 +540,8 @@ def _load_platform(params: dict) -> tp.Dict:
             l.warning("`sensors` section missing from platform file")
 
         # Adding the keys with None Value if missing.
-        for key in sensor_metadata:
-            if key not in PLATFORM_FILE_KEYS:
+        for key in PLATFORM_FILE_KEYS:
+            if key not in sensor_metadata:
                 sensor_metadata[key] = None
 
     else:
@@ -538,12 +613,11 @@ def _get_datetime_and_count(trim_arg: str):
 
 def _xducer_depth_as_sensor_depth(dataset: tp.Type[xr.Dataset]):
     """Set xducer_depth value to dataset attributes sensor_depth"""
-    if not dataset.attrs["sensor_depth"]:
-        if "xducer_depth" in dataset:
-            dataset.attrs["sensor_depth"] = np.median(dataset["xducer_depth"].data)
+    if "xducer_depth" in dataset:
+        dataset.attrs["sensor_depth"] = np.median(dataset["xducer_depth"].data)
 
-        if "xducer_depth" in dataset.attrs:
-            dataset.attrs["sensor_depth"] = dataset.attrs["xducer_depth"]
+    if "xducer_depth" in dataset.attrs:
+        dataset.attrs["sensor_depth"] = dataset.attrs["xducer_depth"]
 
 
 def _drop_beam_data(dataset: tp.Type[xr.Dataset], params: tp.Dict):

@@ -64,7 +64,7 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
         ),
         click.option(
             "-N",
-            "--nav",
+            "--navigation_file",
             type=click.Path(exists=True),
             help="""path/to/netcdf4 file containing the nav data made with
             the `make_navigation` function. (`from magtogoek.utils import make_navigation`)""",

@@ -6,10 +6,10 @@ date : Feb. 16, 2021
 This script contains `format_variables_namnes_and_attributes()` function that, as the name may
 suggest, formats a xarray dataset variables attributes have SeaDataNet, CF Conventions and other
 attributes. This script requires json files containing the `static` metadata to add to variables.
-The json files can be made by executing sea_data_net.py FIXME script which can be edited to change
+The json files can be made by executing static_attributes.py script which can be edited to change
 where the json is saved.
 
-   $ python sea_data_net.py
+   $ python static_attributes.py
 
 static variables attributes :
  -'standard_name'
@@ -319,18 +319,20 @@ def _geospatial_global_attrs(dataset: tp.Type[xr.Dataset]):
         dataset.attrs["geospatial_lat_max"] = round(dataset.lat.data.max(), 4)
         dataset.attrs["geospatial_lat_units"] = "degrees north"
     elif "latitude" in dataset.attrs:
-        dataset.attrs["geospatial_lat_min"] = round(dataset.attrs["latitude"], 4)
-        dataset.attrs["geospatial_lat_max"] = round(dataset.attrs["latitude"], 4)
-        dataset.attrs["geospatial_lat_units"] = "degrees north"
+        if dataset.attrs["latitude"]:
+            dataset.attrs["geospatial_lat_min"] = round(dataset.attrs["latitude"], 4)
+            dataset.attrs["geospatial_lat_max"] = round(dataset.attrs["latitude"], 4)
+            dataset.attrs["geospatial_lat_units"] = "degrees north"
 
     if "lon" in dataset:
         dataset.attrs["geospatial_lon_min"] = round(dataset.lon.data.min(), 4)
         dataset.attrs["geospatial_lon_max"] = round(dataset.lon.data.max(), 4)
         dataset.attrs["geospatial_lon_units"] = "degrees east"
     elif "longitude" in dataset.attrs:
-        dataset.attrs["geospatial_lon_min"] = round(dataset.attrs["longitude"], 4)
-        dataset.attrs["geospatial_lon_max"] = round(dataset.attrs["longitude"], 4)
-        dataset.attrs["geospatial_lon_units"] = "degrees east"
+        if dataset.attrs["longitude"]:
+            dataset.attrs["geospatial_lon_min"] = round(dataset.attrs["longitude"], 4)
+            dataset.attrs["geospatial_lon_max"] = round(dataset.attrs["longitude"], 4)
+            dataset.attrs["geospatial_lon_units"] = "degrees east"
 
     dataset.attrs["geospatial_vertical_min"] = round(dataset.depth.data.min(), 2)
     dataset.attrs["geospatial_vertical_max"] = round(dataset.depth.data.max(), 2)

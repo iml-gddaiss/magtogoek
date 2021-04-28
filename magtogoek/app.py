@@ -51,7 +51,7 @@ from magtogoek.utils import is_valid_filename, json2dict
 # from magtogoek.platforms import make_platform_template
 # from magtogoek.adcp.loader import load_adcp_binary
 # from magtogoek.adcp.utils import Logger
-# from magtogoek.adcp.quick_adcp import _process_adcp_config
+# from magtogoek.adcp.process import process_adcp, quick_process_adcp
 # --------------------------------------------------------------- #
 
 MAGTOGOEK_VERSION = "0.0.2"
@@ -69,7 +69,7 @@ ADCP_CONFIG_STRUCT = {
     "yearbase": "ADCP_PROCESSING",
     "adcp_orientation": "ADCP_PROCESSING",
     "sonar": "ADCP_PROCESSING",
-    "nav_file": "ADCP_PROCESSING",
+    "navigation_file": "ADCP_PROCESSING",
     "magnetic_declination": "ADCP_PROCESSING",
     "sensor_depth": "ADCP_PROCESSING",
     "keep_bt": "ADCP_PROCESSING",
@@ -98,7 +98,6 @@ ADCP_CONFIG_STRUCT = {
 
 CONFIG_NAME_TRANSLATOR = dict(
     adcp=dict(
-        nav_file="nav",
         quality_control="qc",
         sidelobes_correction="sidelobes",
         merge_output_files="merge",
@@ -164,7 +163,7 @@ def config(info):
 @click.option(
     "--info", is_flag=True, callback=_print_info, help="Show command information"
 )
-@click.argument("config_file", metavar="[input_files]", type=click.Path(exists=True))
+@click.argument("config_file", metavar="[config_file]", type=click.Path(exists=True))
 def process(config_file, info):
     """Process data by reading configfile"""
     # NOTE This could be update as a group with sensor specific command.
@@ -176,9 +175,9 @@ def process(config_file, info):
     config = load_configfile(config_file)
 
     if config["HEADER"]["sensor_type"] == "adcp":
-        from magtogoek.adcp.process import process_adcp_config
+        from magtogoek.adcp.process import process_adcp
 
-        process_adcp_config(config)
+        process_adcp(config)
 
 
 @magtogoek.group(context_settings=CONTEXT_SETTINGS)
@@ -304,13 +303,17 @@ def quick_adcp(
 ):
     """Command to make an quickly process adcp files. The [OPTIONS] can be added
     before or after the [inputs_files]."""
-    from magtogoek.adcp.quick_adcp import quick_process_adcp
+    from magtogoek.adcp.process import quick_process_adcp
 
+    options = {
+        **{"input_files": input_files, "yearbase": yearbase, "sonar": sonar},
+        **options,
+    }
     _print_passed_options(options)
 
     params = _convert_options_names("adcp", options)
 
-    quick_process_adcp(input_files, sonar, yearbase, params)
+    quick_process_adcp(params)
 
 
 # --------------------------- #
