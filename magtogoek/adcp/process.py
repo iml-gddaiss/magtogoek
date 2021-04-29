@@ -539,8 +539,10 @@ def _load_platform(params: dict) -> tp.Dict:
                 sensor_metadata[key] = None
 
     else:
-        l.warning(f"{params['platform_id']} not found in platform file")
-        sensor_metadata = None
+        l.warning(
+            f"{params['platform_id']} not found in platform file. Defaulting to platform_type: mooring"
+        )
+        sensor_metadata = {"platform_type": "mooring"}
 
     return sensor_metadata
 
