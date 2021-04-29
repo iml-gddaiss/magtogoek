@@ -1,0 +1,53 @@
+{
+    "IML4_2017": {
+        "platform_name": "IML-4",
+        "platform_type": "mooring",
+        "mooring_number": "",
+        "sounding": 335,
+        "longitude": null,
+        "latitude": null,
+        "platform_specs": {"type": "MTE",
+                           "model": "Viking",
+                           "height": "4.5 m",
+                           "diameter": "2.1 m",
+                           "description": "bouée noire (partie immergée) avec jaune."},
+        "sensors": {
+            "ADCP_01": {
+                "sensor_type": "adcp",
+                "sensor_depth": 1,
+                "serial_number": 553,
+                "manufacturer": "Rowe Technologie Inc. (RTI)",
+                "model": "SeaWATCH",
+                "firmware_version": "0.2.125-4",
+                "chief_scientist": "Peter Galbraith",
+                "description": "The model and serial number are the same for the temperature and pressure sensors as the ADCP."
+            }
+        }
+    },
+    "IML6_2017": {
+        "platform_name": "IML-6",
+        "platform_type": "mooring",
+        "mooring_number": "",
+        "sounding": null,
+        "longitude": null,
+        "latitude": null,
+        "platform_specs": {"type": "MTE",
+                           "model": "Viking",
+                           "height": "4.5 m",
+                           "diameter": "2.1 m",
+                           "description": "bouée noire (partie immergée) avec jaune."},
+        "sensors": {
+            "ADCP_01": {
+                "sensor_type": "adcp",
+                "sensor_depth": 1,
+                "serial_number": null,
+                "manufacturer": "Teledyne RD Instruments Inc.",
+                "model": "WorkHorse",
+                "firmware_version": "",
+                "chief_scientist": "Peter Galbraith",
+                "description": "The model and serial number are the same for the temperature and pressure sensors as the ADCP."
+            }
+        }
+   } 
+}
+
