@@ -50,6 +50,9 @@ from pycurrents.adcp.rdiraw import Bunch, Multiread, rawfile
 # This is to prevent pycurrents from printing warnings.
 logging.getLogger(rdiraw.__name__).setLevel("CRITICAL")
 
+RDI_SONAR = ["wh", "sv", "os", "sw_pd0"]
+RTI_SONAR = ["sw"]
+
 VEL_FILL_VALUE = -32768.0
 
 l = Logger(level=0)
@@ -120,7 +123,7 @@ def load_adcp_binary(
     # ------------------------ #
     # Reading the data file(s) #
     # ------------------------ #
-    if sonar == "sw":
+    if sonar in RTI_SONAR:
         l.log(
             "RTI ens files:\n-"
             + "\n-".join([p.name for p in list(map(Path, filenames))])
@@ -128,7 +131,7 @@ def load_adcp_binary(
         data = RtiReader(filenames=filenames).read(
             start_index=leading_index, stop_index=trailing_index
         )
-    elif sonar in ["wh", "sv", "os", "sw_pd0"]:
+    elif sonar in RDI_SONAR:
         if sonar == "sw_pd0":
             sonar = "wh"
             l.log(
@@ -152,7 +155,7 @@ def load_adcp_binary(
                     "The sum of the trim values is greater than the number of ensemble."
                 )
         except RuntimeError:
-            raise FilesFormatError("Not RDI pd0 file format.")
+            raise FilesFormatError(f"Not RDI pd0 file format. RDI sonar : {RDI_SONAR}")
 
         # Reading the files FixedLeaders to check for invalid config.
         invalid_config_count = check_PD0_invalid_config(

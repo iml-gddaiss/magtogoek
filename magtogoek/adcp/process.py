@@ -301,7 +301,7 @@ def _process_adcp_data(params: tp.Dict, sensor_metadata: tp.Dict, global_attrs):
         # the  navigation netcdf files.
         nav_ds = xr.open_dataset(params["navigation_file"])
         if "lon" not in nav_ds or "lat" not in nav_ds:
-            l.warning("Navigation netcdf file is missing u_ship and v_ship.")
+            l.warning("Navigation netcdf file is missing lon or/and lat.")
             params["navigation_file"] = None
 
     # ----------------- #

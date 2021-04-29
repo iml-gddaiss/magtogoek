@@ -53,9 +53,10 @@ from magtogoek.utils import is_valid_filename, json2dict
 # from magtogoek.adcp.utils import Logger
 # from magtogoek.adcp.process import process_adcp, quick_process_adcp
 # --------------------------------------------------------------- #
+# with open("../version.txt", "r") as f:
+MAGTOGOEK_VERSION = "0.0.1"
 
-MAGTOGOEK_VERSION = "0.0.2"
-LOGO_PATH = "../files/logo.json"
+LOGO_PATH = "files/logo.json"
 
 BASE_CONFIG_STRUCT = {
     "input_files": "INPUT",

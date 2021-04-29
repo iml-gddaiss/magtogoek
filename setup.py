@@ -1,9 +1,9 @@
 from setuptools import find_packages, setup
 
-with open("README.md", "r") as fh:
-    long_description = fh.read()
-
-version = "0.0.1"
+with open("README.md", "r") as f:
+    long_description = f.read()
+with open("version.txt", "r") as f:
+    version = f.read()[:-1]
 
 
 setup(
@@ -15,7 +15,7 @@ setup(
     This package aim to process ocean data from the different instruments.
     Magtogoek is the Algonquin name for the Saint-Lawrence River which mean
     'the path that walks.'""",
-    long_description=long_description,
+    long_description="",
     long_description_content_type="text/markdown",
     url="https://github.com/JeromeJGuay/magtogoek",
     install_requires=[
