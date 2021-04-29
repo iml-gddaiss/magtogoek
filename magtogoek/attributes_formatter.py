@@ -42,7 +42,7 @@ import xarray as xr
 from magtogoek.utils import json2dict
 
 STATIC_ATTRIBUTES_FILE_PATH = os.path.join(
-    os.path.dirname(__file__), "files/static_attributes.json"
+    os.path.dirname(__file__), "files/CF_P01_GF3_formats.json"
 )
 
 

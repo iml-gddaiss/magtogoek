@@ -1,14 +1,14 @@
 from setuptools import find_packages, setup
 
+from magtogoek.version import VERSION
+
 with open("README.md", "r") as f:
     long_description = f.read()
-with open("version.txt", "r") as f:
-    version = f.read()[:-1]
 
 
 setup(
     name="magtogoek",
-    version=version,
+    version=VERSION,
     author="JeromeJGuay,",
     author_email="jerome.guay@dfo-mpo.gc.ca",
     description="""

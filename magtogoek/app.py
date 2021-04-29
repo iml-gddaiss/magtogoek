@@ -44,6 +44,7 @@ import click
 
 from magtogoek.app_options import adcp_options, add_options
 from magtogoek.utils import is_valid_filename, json2dict
+from magtogoek.version import VERSION
 
 # ---------- Module or functions imported by commands ----------- #
 # FIXME NOT UP TO DATE
@@ -54,7 +55,7 @@ from magtogoek.utils import is_valid_filename, json2dict
 # from magtogoek.adcp.process import process_adcp, quick_process_adcp
 # --------------------------------------------------------------- #
 # with open("../version.txt", "r") as f:
-MAGTOGOEK_VERSION = "0.0.1"
+
 
 LOGO_PATH = "files/logo.json"
 
@@ -121,7 +122,7 @@ def _print_info(ctx, callback):
     if callback:
         subp_run(["printf", "\e[8;40;81t"])
         click.clear()
-        _print_logo(logo_path=LOGO_PATH, group=ctx.info_name, version=MAGTOGOEK_VERSION)
+        _print_logo(logo_path=LOGO_PATH, group=ctx.info_name, version=VERSION)
         click.secho("\nDescriptions:", fg="red")
         _print_description(ctx.info_name)
         click.secho("\nUsage:", fg="red")
@@ -415,7 +416,7 @@ def _print_logo(
 
     click.echo(
         click.style(
-            f"version: {MAGTOGOEK_VERSION}" + f" {group} ".rjust(67, " "),
+            f"version: {VERSION}" + f" {group} ".rjust(67, " "),
             fg="green",
             bold=True,
         )
