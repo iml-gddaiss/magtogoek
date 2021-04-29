@@ -289,9 +289,12 @@ def _process_adcp_data(params: tp.Dict, sensor_metadata: tp.Dict, global_attrs):
     """
     l.reset()
 
-    if not sensor_metadata["platform_type"]:
+    if not sensor_metadata:
+        sensor_metadata = {"platform_type": "mooring"}
         l.warning("platform_file missing, defaulting to `mooring` for platform_type.")
+    elif not sensor_metadata["platform_type"]:
         sensor_metadata["platform_type"] = "mooring"
+        l.warning("platform_file missing, defaulting to `mooring` for platform_type.")
 
     if sensor_metadata["platform_type"] not in PLATFORM_TYPES:
         raise ValueError(f"platform_type invalid. Must be one of {PLATFORM_TYPES}")
@@ -539,10 +542,8 @@ def _load_platform(params: dict) -> tp.Dict:
                 sensor_metadata[key] = None
 
     else:
-        l.warning(
-            f"{params['platform_id']} not found in platform file. Defaulting to platform_type: mooring"
-        )
-        sensor_metadata = {"platform_type": "mooring"}
+        l.warning(f"{params['platform_id']} not found in platform file.")
+        sensor_metadata = None
 
     return sensor_metadata
 
