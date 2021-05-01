@@ -41,7 +41,6 @@ import pandas as pd
 import xarray as xr
 from magtogoek.adcp.rti_reader import RtiReader
 from magtogoek.adcp.tools import dday_to_datetime64
-from magtogoek.tools import nans
 from magtogoek.utils import Logger, get_files_from_expresion
 from nptyping import NDArray
 from pycurrents.adcp import rdiraw, transform
@@ -116,7 +115,6 @@ def load_adcp_binary(
             """(from pycurrents)
 - The SV support is under development.  Missing features:
 - The 0x7000-0x7004 IDs are not being parsed and stored.
-- The `Fixed Leader` can change within a file
 - See pycurrents.adcp.rdiraw module for for information"""
         )
 
@@ -124,25 +122,17 @@ def load_adcp_binary(
     # Reading the data file(s) #
     # ------------------------ #
     if sonar in RTI_SONAR:
-        l.log(
-            "RTI ens files:\n-"
-            + "\n-".join([p.name for p in list(map(Path, filenames))])
-        )
+        l.log(_fprint_filenames("RTI ENS", filenames))
         data = RtiReader(filenames=filenames).read(
             start_index=leading_index, stop_index=trailing_index
         )
     elif sonar in RDI_SONAR:
         if sonar == "sw_pd0":
             sonar = "wh"
-            l.log(
-                "RTI pd0 files:\n-"
-                + "\n-".join([p.name for p in list(map(Path, filenames))])
-            )
+            l.log(_fprint_filenames("RTI pd0", filenames))
         else:
-            l.log(
-                "RDI pd0 files:\n-"
-                + "\n-".join([p.name for p in list(map(Path, filenames))])
-            )
+            l.log(_fprint_filenames("RDI pd0", filenames))
+
         if trailing_index:
             trailing_index = -trailing_index
 
@@ -393,18 +383,25 @@ def load_adcp_binary(
     sonar_names = dict(
         wh="WorkHorse", sv="Sentinel V", os="Ocean Surveyor", sw="SeaWATCH"
     )
-    if "xducer_depth" not in ds:
-        ds.attrs["xducer_depth"] = xducer_depth
     ds.attrs["sonar"] = sonar_names[sonar]
     ds.attrs["manufacturer"] = (
         "Teledyne RD Instruments Inc."
         if sonar in ["wh", "sv", "os"]
         else "Rowe Technologie Inc. (RTI)"
     )
+    if "xducer_depth" not in ds:
+        ds.attrs["xducer_depth"] = xducer_depth
     ds.attrs["coord_system"] = data.trans["coordsystem"]
     ds.attrs["beam_angle"] = data.sysconfig["angle"]
     ds.attrs["frequency"] = data.sysconfig["kHz"] * 1000
     ds.attrs["bin_size"] = data.CellSize
+    ds.attrs["ping_per_ensemble"] = data.NPings
+    ds.attrs["ping_type"] = data.pingtype
+
+    ds.attrs["firmware_version"] = ".".join(
+        list(str(data.FL["FWV"])) + list(str(data.FL["FWR"]))
+    )
+    ds.attrs["xmit_lag"] = data.FL["Pulse"] / 100  # centimeters to meters
 
     ds.attrs["delta_t_sec"] = np.round(
         np.mean((np.diff(ds.time).astype("timedelta64[s]"))).astype(float), 2
@@ -413,7 +410,15 @@ def load_adcp_binary(
 
     ds.attrs["beam_pattern"] = "convex" if data.sysconfig["convex"] else "concave"
 
-    ds.attrs["janus"] = 4
+    ds.attrs["janus"] = "5-Beam" if sonar == "sv" else "4-Beam"
+
+    ds.attrs["magnetic_declination"] = None
+    if "FL" in data:
+        if "EV" in data.FL:
+            if data.FL["EV"] == 0:
+                ds.attrs["magnetic_declination"] = None
+            else:
+                ds.attrs["magnetic_declination"] = data.FL["EV"] / 100
 
     ds.attrs["orientation"] = orientation
     if "SerialNumber" in data:
@@ -563,3 +568,18 @@ def check_PD0_invalid_config(
         invalid_cfg_count = np.sum((syscfg == 2 ** 16 - 1))
 
     return invalid_cfg_count
+
+
+def _fprint_filenames(file_type: str, filenames: tp.List) -> str:
+    """Format a string of filenames for prints
+    `file_type` files :
+      |-filename1
+           :
+      |-filenameN
+    """
+    return (
+        file_type
+        + " files :\n"
+        + "  |-".join([p.name for p in list(map(Path, filenames))])
+        + "\n"
+    )

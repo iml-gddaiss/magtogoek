@@ -11,6 +11,45 @@ from pandas import Timestamp, to_datetime
 from path import Path
 
 
+def magnetic_to_true(
+    magnetic_east: NDArray, magnetic_north: NDArray, magnetic_declination: float
+) -> tp.Tuple[NDArray, NDArray]:
+    """Convert velocities from magnetic to true(geographic).
+    FIXME
+
+    angle = - magnetic_declination
+
+    [true_east,  = [[np.cos(angle), -np.sin(angle)] * [magnetic_east,
+     true_north]    [np.sin(angle), np.cos(angle)]]    magnetic_north]
+
+    Parameters
+    ----------
+    magnetic_east :
+       Eastward velocities in the magnetic frame of reference.
+
+    magnetic_north :
+       Northward velocities in the magnetic frame of reference.
+
+    declination :
+        Measured in the geographic frame of reference in decimal degrees.
+
+    Returns
+    -------
+    true_east :
+        Eastward velocities in the geographic frame of reference
+    true_north :
+        Northward velocities in the geographic frame of reference
+    """
+
+    def R(angle):
+        return [[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]]
+
+    angle_rad = -np.radians(magnetic_declination)
+    true_east, true_north = np.split(
+        np.dot(R(angle_rad), [magnetic_east, magnetic_north]), 2
+    )
+
+
 def dday_to_datetime64(dday: tp.List, yearbase: int) -> tp.Tuple[NDArray, NDArray]:
     """Convert time recorded time to pandas time (np.datetime64[s]).
 

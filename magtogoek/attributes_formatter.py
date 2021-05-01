@@ -87,8 +87,7 @@ def format_variables_names_and_attributes(
     original_coords_name = dataset.coords
 
     dataset = _convert_variables_names(dataset)
-
-    if "VAR_TO_ADD_SENSOR_TPYE" in dataset.attrs:
+    if "VAR_TO_ADD_SENSOR_TYPE" in dataset.attrs:
         for var in dataset.attrs["VAR_TO_ADD_SENSOR_TYPE"]:
             if var in dataset:
                 dataset[var].attrs["sensor_type"] = dataset.attrs["sensor_type"]
@@ -204,6 +203,7 @@ def _add_sensor_serial_to_var_attrs(dataset: tp.Type[xr.Dataset]):
         if "sensor_type" in dataset[var].attrs:
             if dataset[var].attrs["sensor_type"] == dataset.attrs["sensor_type"]:
                 dataset[var].attrs["serial_number"] = dataset.attrs["serial_number"]
+                print("sn")
 
 
 def _add_ancillary_variables_to_var_attrs(dataset: tp.Type[xr.Dataset]):
@@ -213,8 +213,8 @@ def _add_ancillary_variables_to_var_attrs(dataset: tp.Type[xr.Dataset]):
     to the corresponding variables.
     """
     for var in list(dataset.variables):
-        if "_QC" in var:
-            dataset[var.split("_")[0]].attrs["ancillary_variables"] = var
+        if "_QC" == var[-3:]:
+            dataset[var[:-3]].attrs["ancillary_variables"] = var
 
 
 def _add_names_to_QC_var_attrs(dataset: tp.Type[xr.Dataset]) -> None:
@@ -229,7 +229,12 @@ def _add_names_to_QC_var_attrs(dataset: tp.Type[xr.Dataset]) -> None:
 def format_global_attrs(dataset: tp.Type[xr.Dataset]):
     """
     Sets :
-    -sounding: (Sounding not added if platform_type is ship.)
+     -time_coverage_start
+     -time_coverage_end
+     -time_coverage_duration
+     -time_coverage_duration_units (days)
+
+     -sounding: (Sounding not added if platform_type is ship.)
      -geospatial_lat_min
      -geospatial_lat_max
      -geospatial_lat_units
@@ -241,10 +246,7 @@ def format_global_attrs(dataset: tp.Type[xr.Dataset]):
      -geospatial_vertical_positive
      -geospatial_vertical_units
 
-     -time_coverage_start
-     -time_coverage_end
-     -time_coverage_duration
-     -time_coverage_duration_units (days)
+
     """
     _geospatial_global_attrs(dataset)
     _time_global_attrs(dataset)
@@ -308,13 +310,8 @@ def _geospatial_global_attrs(dataset: tp.Type[xr.Dataset]):
             if "bt_depth" in dataset:
                 dataset.attrs["sounding"] = round(np.median(dataset.bt_depth.data), 2)
 
-        if "lon" in dataset.attrs:
-            dataset.attrs["longitude"] = np.round(dataset.lon.data.mean(), 4)
-
-        if "lat" in dataset.attrs:
-            dataset.attrs["latitude"] = np.round(dataset.lat.data.mean(), 4)
-
     if "lat" in dataset:
+        dataset.attrs["latitude"] = round(dataset.lat.data.mean(), 4)
         dataset.attrs["geospatial_lat_min"] = round(dataset.lat.data.min(), 4)
         dataset.attrs["geospatial_lat_max"] = round(dataset.lat.data.max(), 4)
         dataset.attrs["geospatial_lat_units"] = "degrees north"
@@ -330,6 +327,7 @@ def _geospatial_global_attrs(dataset: tp.Type[xr.Dataset]):
         dataset.attrs["geospatial_lon_units"] = "degrees east"
     elif "longitude" in dataset.attrs:
         if dataset.attrs["longitude"]:
+            dataset.attrs["longitude"] = round(dataset.lon.data.mean(), 4)
             dataset.attrs["geospatial_lon_min"] = round(dataset.attrs["longitude"], 4)
             dataset.attrs["geospatial_lon_max"] = round(dataset.attrs["longitude"], 4)
             dataset.attrs["geospatial_lon_units"] = "degrees east"

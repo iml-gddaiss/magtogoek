@@ -10,40 +10,6 @@ from nptyping import NDArray
 from pygeodesy.ellipsoidalVincenty import LatLon
 
 
-def magnetic_to_true(
-    magnetic_longitude: NDArray, magnetic_latitude: NDArray, magnetic_declination: float
-) -> tp.Tuple[NDArray, NDArray]:
-    """Convert coordiniates from magnetic to true(geographic).
-
-    [true_longitude,  = [[np.cos(m_d), -np.sin(m_d)]   [magnetic_longitude,
-     true_latitude]     [np.sin(m_d), np.cos(m_d)]] *  magnetic_latitude]
-
-    Parameters
-    ----------
-    longitude :
-        Decimal degrees (East)
-    latitude:
-        Decimal degress (North)
-    declination:
-        Measured in the geographic frame of reference in decimal degrees.
-
-    Returns:
-    --------
-    true_longitude:
-
-    true_latitude:
-
-    """
-
-    def R(angle):
-        return [[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]]
-
-    angle_rad = -np.radians(magnetic_declination)
-    longitude, longitude = np.split(
-        np.dot(R(angle_rad), [magnetic_longitude, magnetic_latitude]), 2
-    )
-
-
 def nans(shape: tp.Tuple[list, tuple, NDArray]) -> NDArray:
     """return array of nan of shape `shape`"""
     return np.full(shape, np.nan)

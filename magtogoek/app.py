@@ -115,12 +115,13 @@ CONTEXT_SETTINGS = dict(
     allow_extra_args=True,
     help_option_names=["-h", "--help"],
 )
+TERMINAL_WIDTH = 80
 
 
 def _print_info(ctx, callback):
     """Show command information"""
     if callback:
-        subp_run(["printf", "\e[8;40;81t"])
+        subp_run(["printf", "\e[8;40;" + str(TERMINAL_WIDTH + 1) + "t"])
         click.clear()
         _print_logo(logo_path=LOGO_PATH, group=ctx.info_name, version=VERSION)
         click.secho("\nDescriptions:", fg="red")
@@ -381,6 +382,7 @@ def _convert_options_names(sensor_type, options):
 def _print_passed_options(ctx_params: tp.Dict):
     """print pass and default options/paramsd"""
     click.secho("Options:", fg="green")
+    click.echo(click.style("=" * TERMINAL_WIDTH, fg="white", bold=True))
     for key, item in ctx_params.items():
         if item is not None:
             if item is True:
@@ -391,6 +393,7 @@ def _print_passed_options(ctx_params: tp.Dict):
                 click.echo(key + ": " + click.style(str(item), fg="yellow"))
             else:
                 click.echo(key + ": " + click.style(str(item), fg="blue"))
+    click.echo(click.style("=" * TERMINAL_WIDTH, fg="white", bold=True))
 
 
 def _print_logo(
@@ -402,7 +405,7 @@ def _print_logo(
     If a process is given, prints the process logo.
     """
     logos = json2dict(Path(__file__).parents[0] / Path(logo_path))
-    click.secho("=" * 80, fg="white", bold=True)
+    click.secho("=" * TERMINAL_WIDTH, fg="white", bold=True)
 
     try:
         click.echo(click.style(logos["magtogoek"], fg="blue", bold=True))
@@ -421,7 +424,7 @@ def _print_logo(
             bold=True,
         )
     )
-    click.echo(click.style("=" * 80, fg="white", bold=True))
+    click.echo(click.style("=" * TERMINAL_WIDTH, fg="white", bold=True))
 
 
 def _print_arguments(group, parent):
@@ -453,7 +456,11 @@ def _print_arguments(group, parent):
     if group == "quick":
         click.secho("  adcp".ljust(20, " ") + "Process adcp data. ", fg="white")
     if group == "process":
-        click.secho("FIXME")
+        click.secho(
+            "  [config_name]".ljust(20, " ")
+            + "Filename (path/to/file) of the configuration file.",
+            fg="white",
+        )
     if group == "adcp":
         click.secho(
             "  [config_name]".ljust(20, " ")
@@ -479,25 +486,35 @@ def _print_description(group):
         click.echo("""FIXME""")
     if group == "config":
         click.echo(
-            """  The config command creates a `.ini`  configuration file. After the command is
-  called, a `sensor_type` (type of date to be process) and  a `config_name` for
-  the configuration file. The configuration file  can then be passed to  to the
-  process command.
-
-  The configuration `.ini` files  contain global and sensor specific parameters.
-  These parameters can be edited afterward in a text editor  or set here with
-  optionals arguments.""",
+            """  The config command creates a `.ini`  configuration file.
+  The configuration `.ini` files is used to write the desired processing configuration
+  for different type of sensor (adcp, ctd, etc). Once created the configuration file
+  can be filled in any text editor or via the command optional arguments.""",
         )
     if group == "quick":
         click.echo("""Quick way to process files.""")
     if group == "process":
-        click.echo("""FIXME""")
+        click.echo(
+            """  Command to execute the processing orders from a configuration file. If
+  relative path where used in the configuration file, they are relative to directory
+  where the command is called and not where the configuration file is located."""
+        )
     if group == "check":
         click.echo(
             """Print somes raw files informations. Only available for adcp RTI .ENS files."""
         )
     if group == "adcp":
-        click.echo(""" FIXME""")
+        click.echo(
+            """
+        sonar
+        -----
+           os : OceanSurveillor (RDI)
+           wh : WorkHorse (RDI)
+           sv : SentinelV (RDI)
+           sw : SeaWatch (RTI)
+           sw_pd0 : SeaWatch (RTI in RDI pd0 file format)
+        """
+        )
     if group == "platform":
         click.echo("""Creates an empty platform.json file FIXME""")
 
@@ -507,13 +524,13 @@ def _print_usage(group, parent):
     _parent = parent.info_name if parent else ""
 
     if group == "mtgk":
-        click.echo("  mtgk [config, process, quick]")
+        click.echo("  mtgk [config, process, quick, check]")
     if group == "config":
         click.echo("  mtgk config [adcp, platform,] [CONFIG_NAME] [OPTIONS]")
     if group == "platform":
         click.echo(f"  mtgk config platform [FILENAME] [OPTIONS]")
     if group == "process":
-        click.echo("  mtgk process [adcp, ] [CONFIG_FILE] [OPTIONS]")
+        click.echo("  mtgk process [CONFIG_FILE] [OPTIONS]")
     if group == "quick":
         click.echo("  mtgk quick [adcp, ] [FILENAME,...] [OPTIONS]")
     if group == "adcp":

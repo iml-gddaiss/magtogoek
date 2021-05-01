@@ -9,6 +9,8 @@ Usage:
 data = RtiReader(filenames).read()
 filenames: path/to/filename or list(path/to/filenames) or path/to/regex.
 
+ens.EnsembleData.ActualPingCount # ping_per_ensemble.
+
 """
 
 import logging
@@ -192,7 +194,7 @@ class RtiReader:
                     "Start_index + stop_index is greater than the number of ensemble"
                 )
 
-        self.get_file_start_stop_index()
+        self.get_files_start_stop_index()
 
         files_bunch = []
         for filename in self.filenames:
@@ -239,7 +241,7 @@ class RtiReader:
         self.filenames = np.array(self.filenames)[counts != 0].tolist()
         self.files_ens_count = counts[counts != 0].tolist()
 
-    def get_file_start_stop_index(self):
+    def get_files_start_stop_index(self):
         """Get the start and stop index for the files
 
         Drops files if they have less counts thant index to trims.
@@ -333,6 +335,7 @@ class RtiReader:
         ppd.NBeams = ens.EnsembleData.NumBeams
         ppd.yearbase = ens.EnsembleData.Year
         ppd.SerialNumber = ens.EnsembleData.SerialNumber
+        ppd.NPings = ens.EnsembleData.ActualPingCount
 
         ppd.CellSize = ens.AncillaryData.BinSize
         ppd.Bin1Dist = round(ens.AncillaryData.FirstBinRange, 3)
@@ -346,6 +349,13 @@ class RtiReader:
             convex=True,  # Rowetech adcp seems to be convex.
             up=None,
         )
+        ppd.FL = dict()
+        ppd.FL["FWV"] = int(
+            str(ens.EnsembleData.SysFirmwareMajor)
+            + str(ens.EnsembleData.SysFirmwareMinor)
+        )
+        ppd.FL["FWR"] = ens.EnsembleData.SysFirmwareRevision
+        ppd.FL["Pulse"] = ens.SystemSetup.WpLagLength * 100  # meters to centimeters
 
         if ens.IsBeamVelocity:
             ppd.trans = dict(coordsystem="beam")
