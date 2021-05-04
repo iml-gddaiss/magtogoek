@@ -40,6 +40,17 @@ Unspecified attributes fill value "N/A".
    overwrite it.
 
 TODO TEST NAVIGATIN FILES !
+FIXME DATA_TYPES: Missing for ship adcp
+
+NOTE
+TODO add option to force platform file metadata over over those computed from the adcp file.
+- Global Attributes Priorities:
+  `force_platform` is False True:
+      CONFIGFILE > COMPUTED > PLATFORM
+  `force_platform` is False False:
+      CONFIGFILE > PLATFORM > COMPUTED 
+
+
 
 """
 
@@ -56,7 +67,7 @@ from magtogoek.adcp.quality_control import (adcp_quality_control,
                                             no_adcp_quality_control)
 from magtogoek.adcp.tools import magnetic_to_true
 from magtogoek.attributes_formatter import (
-    format_global_attrs, format_variables_names_and_attributes)
+    compute_global_attrs, format_variables_names_and_attributes)
 from magtogoek.tools import get_gps_bearing, vincenty
 from magtogoek.utils import Logger, json2dict
 
@@ -66,17 +77,24 @@ from pathlib import Path
 
 TERMINAL_WIDTH = 80
 
-ADCP_GLOBAL_ATTRIBUTES = {"sensor_type": "adcp", "featureType": "timeSeriesProfile"}
+STANDARD_ADCP_GLOBAL_ATTRIBUTES = {
+    "sensor_type": "adcp",
+    "featureType": "timeSeriesProfile",
+}
 
 GLOBAL_ATTRS_TO_DROP = [
     "sensor_type",
     "platform_type",
     "VAR_TO_ADD_SENSOR_TYPE",
     "P01_CODES",
+    "xducer_depth",
+    "sonar",
 ]
+
 
 CONFIG_GLOBAL_ATTRS_SECTIONS = ["NETCDF_CF", "PROJECT", "CRUISE", "GLOBAL_ATTRIBUTES"]
 PLATFORM_TYPES = ["mooring", "ship"]
+DATA_TYPES = {"mooring": "MADCP", "ship": None}
 DEFAULT_PLATFORM_TYPE = "mooring"
 PLATFORM_FILE_REQUIRED_KEYS = [
     "platform_type",
@@ -202,9 +220,13 @@ def process_adcp(config: tp.Type[ConfigParser]):
     if len(params["input_files"]) == 0:
         raise ValueError("No adcp file was provided in the configfile.")
 
-    sensor_metadata = (
-        _load_platform(params) if params["platform_file"] else _default_platform()
-    )
+    if Path(params["platform_file"]).is_file():
+        sensor_metadata = _load_platform(params)
+    else:
+        l.warning(f"platform_file, {params['platform_file']}, not found")
+        sensor_metadata = None
+    if not sensor_metadata:
+        sensor_metadata = _default_platform()
 
     _to_process_adcp_data(params, sensor_metadata, global_attrs)
 
@@ -270,6 +292,7 @@ def _process_adcp_data(params: tp.Dict, sensor_metadata: tp.Dict, global_attrs):
 
     Meanwhile, the code is pretty explicit. Go check it out if need be.
 
+
     Parameters
     ----------
     params :
@@ -307,12 +330,15 @@ def _process_adcp_data(params: tp.Dict, sensor_metadata: tp.Dict, global_attrs):
         l.warning(f"platform_type invalid. Must be one of {PLATFORM_TYPES}")
 
     if params["navigation_file"]:
-        # This is carried before reading the adcp data in case a error arise reading
-        # the  navigation netcdf files.
-        nav_ds = xr.open_dataset(params["navigation_file"])
-        if "lon" not in nav_ds or "lat" not in nav_ds:
-            l.warning("Navigation netcdf file is missing lon or/and lat.")
-            params["navigation_file"] = None
+        if Path(params["navigation_file"]).is_file():
+            # This is carried before reading the adcp data in case a error arise reading
+            # the  navigation netcdf files.
+            nav_ds = xr.open_dataset(params["navigation_file"])
+            if "lon" not in nav_ds or "lat" not in nav_ds:
+                l.warning("Navigation netcdf file is missing lon or/and lat.")
+                params["navigation_file"] = None
+            else:
+                l.warning(f"navigation file, {params['navigation_file']}, not found.")
 
     # ----------------- #
     # LOADING ADCP DATA #
@@ -323,28 +349,6 @@ def _process_adcp_data(params: tp.Dict, sensor_metadata: tp.Dict, global_attrs):
         for var in ["bt_u", "bt_v", "bt_w", "bt_e", "bt_depht"]:
             if var in dataset:
                 dataset = dataset.drop_vars([var])
-
-    # ----------------------------- #
-    # ADDING SOME GLOBAL ATTRIBUTES #
-    # ----------------------------- #
-    # - `chief_scientist` in the ConfigFile takes precedent over the one in the platform file.
-    # - Metadata computed from the adcp files take precedent over those in the platform file.
-    # - TODO add option to force platform file metadata over over those computed from the adcp file.
-
-    l.section("Adding Global Attributes")
-
-    dataset.attrs["sensor_metadata"] = sensor_metadata
-    # TODO
-    dataset = dataset.assign_attrs(ADCP_GLOBAL_ATTRIBUTES)
-    if "serial_number" in dataset.attrs and not sensor_metadata["serial_number"]:
-        del sensor_metadata["serial_number"]
-    dataset = dataset.assign_attrs(sensor_metadata)
-    dataset = dataset.assign_attrs(global_attrs)
-
-    format_global_attrs(dataset)
-
-    if not dataset.attrs["sensor_depth"]:
-        _xducer_depth_as_sensor_depth(dataset)
 
     # ----------------------------------------- #
     # ADDING THE NAVIGATION DATA TO THE DATASET #
@@ -360,18 +364,62 @@ def _process_adcp_data(params: tp.Dict, sensor_metadata: tp.Dict, global_attrs):
             dataset["v_ship"] = nav_ds.v_ship
             l.log(f"u_ship and v_ship data added from {params['navigation_file']}")
 
+    # ----------------------------- #
+    # ADDING SOME GLOBAL ATTRIBUTES #
+    # ----------------------------- #
+
+    l.section("Adding Global Attributes")
+
+    dataset = dataset.assign_attrs(STANDARD_ADCP_GLOBAL_ATTRIBUTES)
+
+    dataset.attrs["data_type"] = DATA_TYPES[sensor_metadata["platform_type"]]
+
+    if sensor_metadata["longitude"]:
+        dataset.attrs["longitude"] = sensor_metadata["longitude"]
+    if sensor_metadata["latitude"]:
+        dataset.attrs["latitude"] = sensor_metadata["latitude"]
+
+    compute_global_attrs(dataset)
+
+    if sensor_metadata["platform_type"] != "ship":
+        if "bt_depth" in dataset:
+            dataset.attrs["sounding"] = round(np.median(dataset.bt_depth.data), 2)
+
+    _xducer_depth_as_sensor_depth(dataset)
+
+    # setting Metadata from the platform_file
+    if params["force_platform_metadata"]:
+        for meta in sensor_metadata:
+            if sensor_metadata[meta]:
+                dataset.attrs[meta] = sensor_metadata[meta]
+    else:
+        for meta in sensor_metadata:
+            if meta in dataset.attrs:
+                if not dataset.attrs[meta] and sensor_metadata[meta]:
+                    dataset.attrs[meta] = sensor_metadata[meta]
+
+    # setting Metadata from the config_files
+    dataset = dataset.assign_attrs(global_attrs)
+
     # ----------------------------------- #
     # CORRECTION FOR MAGNETIC DECLINATION #
     # ----------------------------------- #
-    if dataset.attrs["magnetic_declination"] != 0:
-        if params["magnetic_declination"]:
+    if params["magnetic_declination"]:
+        if not dataset.attrs["magnetic_declination"]:
             _magnetnic_correction(dataset, params["magnetic_declination"])
-            dataset.attrs["magnetic_declination"] = (
-                str(params["magnetic_declination"]) + " degree east"
+        else:
+            _magnetnic_correction(
+                dataset,
+                params["magnetic_declination"] - dataset.attrs["magnetic_declination"],
             )
+            l.log(
+                f'Magnetic declination found in adcp file: {dataset.attrs["magnetic_declination"]} degree east.'
+            )
+
     else:
-        pass
-        dataset.attrs["magnetic_declination"] = "No correction carried out."
+        dataset.attrs["magnetic_declination"] = 0
+    dataset.attrs["magnetic_declination"] = params["magnetic_declination"]
+    dataset.attrs["magnetic_declination_untis"] = "degree east"
 
     # --------------- #
     # QUALITY CONTROL #
@@ -395,12 +443,8 @@ def _process_adcp_data(params: tp.Dict, sensor_metadata: tp.Dict, global_attrs):
     # -------------------- #
     dataset.attrs["VAR_TO_ADD_SENSOR_TYPE"] = VAR_TO_ADD_SENSOR_TYPE
 
-    if not dataset.attrs["platform_type"]:
-        dataset.attrs["platform_type"] = "mooring"
-        l.log("Platform type defaulted to `mooring` for BODC velocity variables name")
-
     dataset.attrs["P01_CODES"] = {
-        **P01_VEL_CODES[dataset.attrs["platform_type"]],
+        **P01_VEL_CODES[sensor_metadata["platform_type"]],
         **P01_CODES,
     }
 
@@ -439,10 +483,6 @@ def _process_adcp_data(params: tp.Dict, sensor_metadata: tp.Dict, global_attrs):
                 del dataset.attrs[attr]
             else:
                 dataset.attrs[attr] = "N/A"
-
-    if "xducer_depth" in dataset.attrs:
-        del dataset.attrs["xducer_depth"]
-    del dataset.attrs["sonar"]
 
     # ------- #
     # OUTPUTS #
@@ -589,7 +629,7 @@ def _magnetnic_correction(dataset: tp.Type[xr.Dataset], magnetic_declination: fl
     to dataset attributes."""
 
     dataset.u.values, dataset.v.values = magnetic_to_true(
-        dataset.lon, dataset.lat, magnetic_declination
+        dataset.u, dataset.v, magnetic_declination
     )
     l.log(f"Velocities transformed to true north and True east.")
 

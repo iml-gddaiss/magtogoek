@@ -45,9 +45,11 @@ def magnetic_to_true(
         return [[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]]
 
     angle_rad = -np.radians(magnetic_declination)
-    true_east, true_north = np.split(
-        np.dot(R(angle_rad), [magnetic_east, magnetic_north]), 2
-    )
+
+    true_east = np.cos(angle_rad) * magnetic_east - np.sin(angle_rad) * magnetic_north
+    true_north = np.sin(angle_rad) * magnetic_east + np.cos(angle_rad) * magnetic_north
+
+    return true_east, true_north
 
 
 def dday_to_datetime64(dday: tp.List, yearbase: int) -> tp.Tuple[NDArray, NDArray]:

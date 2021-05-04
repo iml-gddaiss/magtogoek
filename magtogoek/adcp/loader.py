@@ -390,7 +390,7 @@ def load_adcp_binary(
         else "Rowe Technologie Inc. (RTI)"
     )
     if "xducer_depth" not in ds:
-        ds.attrs["xducer_depth"] = xducer_depth
+        ds.attrs["xducer_depth"] = round(xducer_depth, 2)
     ds.attrs["coord_system"] = data.trans["coordsystem"]
     ds.attrs["beam_angle"] = data.sysconfig["angle"]
     ds.attrs["frequency"] = data.sysconfig["kHz"] * 1000
@@ -401,7 +401,9 @@ def load_adcp_binary(
     ds.attrs["firmware_version"] = ".".join(
         list(str(data.FL["FWV"])) + list(str(data.FL["FWR"]))
     )
-    ds.attrs["xmit_lag"] = data.FL["Pulse"] / 100  # centimeters to meters
+    ds.attrs["transmit_pulse_lenght_cm"] = (
+        data.FL["Pulse"] / 100
+    )  # centimeters to meters
 
     ds.attrs["delta_t_sec"] = np.round(
         np.mean((np.diff(ds.time).astype("timedelta64[s]"))).astype(float), 2
@@ -415,11 +417,10 @@ def load_adcp_binary(
     ds.attrs["magnetic_declination"] = None
     if "FL" in data:
         if "EV" in data.FL:
-            if data.FL["EV"] == 0:
-                ds.attrs["magnetic_declination"] = None
-            else:
+            if data.FL["EV"] != 0:
                 ds.attrs["magnetic_declination"] = data.FL["EV"] / 100
 
+    ds.attrs["serial_number"] = None
     ds.attrs["orientation"] = orientation
     if "SerialNumber" in data:
         ds.attrs["serial_number"] = data.SerialNumber
@@ -579,7 +580,6 @@ def _fprint_filenames(file_type: str, filenames: tp.List) -> str:
     """
     return (
         file_type
-        + " files :\n"
-        + "  |-".join([p.name for p in list(map(Path, filenames))])
-        + "\n"
+        + " files :"
+        + "\n  |-".join([p.name for p in list(map(Path, filenames))])
     )

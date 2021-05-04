@@ -39,7 +39,6 @@ def _add_platform_specs():
 def _add_sensors():
     return dict(
         sensor_type=None,
-        data_subtype=None,
         sensor_depth=None,
         serial_number=None,
         manufacturer=None,

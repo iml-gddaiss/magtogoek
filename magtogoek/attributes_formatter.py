@@ -226,7 +226,7 @@ def _add_names_to_QC_var_attrs(dataset: tp.Type[xr.Dataset]) -> None:
             dataset[var].attrs["standard_name"] = value
 
 
-def format_global_attrs(dataset: tp.Type[xr.Dataset]):
+def compute_global_attrs(dataset: tp.Type[xr.Dataset]):
     """
     Sets :
      -time_coverage_start
@@ -292,7 +292,6 @@ def _geospatial_global_attrs(dataset: tp.Type[xr.Dataset]):
     Notes
     -----
     Attributes added :
-     -sounding: (Sounding not added if platform_type is ship.)
      -geospatial_lat_min
      -geospatial_lat_max
      -geospatial_lat_units
@@ -304,11 +303,6 @@ def _geospatial_global_attrs(dataset: tp.Type[xr.Dataset]):
      -geospatial_vertical_positive
      -geospatial_vertical_units
     """
-
-    if dataset.attrs["platform_type"] != "ship":
-        if dataset.attrs["sensor_type"] == "adcp":
-            if "bt_depth" in dataset:
-                dataset.attrs["sounding"] = round(np.median(dataset.bt_depth.data), 2)
 
     if "lat" in dataset:
         dataset.attrs["latitude"] = round(dataset.lat.data.mean(), 4)

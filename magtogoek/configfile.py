@@ -61,7 +61,10 @@ BASIC_CONFIG = dict(
         "platform_id": "",
         "sensor_id": "",
     },
-    OUTPUT={"netcdf_output": "", "odf_output": ""},
+    OUTPUT={
+        "netcdf_output": "",
+        "odf_output": "",
+    },
     NETCDF_CF={
         "Conventions": "CF 1.8",
         "title": "",
@@ -132,6 +135,7 @@ ADCP_CONFIG = dict(
     ADCP_OUTPUT={
         "merge_output_files": True,
         "bodc_name": True,
+        "force_platform_metadata": False,
         "drop_percent_good": True,
         "drop_correlation": True,
         "drop_amplitude": True,
@@ -168,6 +172,7 @@ ADCP_CONFIG_TYPES = dict(
     ADCP_OUTPUT={
         "merge_output_files": bool,
         "bodc_name": bool,
+        "force_platform_metadata": bool,
         "drop_percent_good": bool,
         "drop_correlation": bool,
         "drop_amplitude": bool,
