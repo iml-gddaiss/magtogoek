@@ -316,12 +316,12 @@ def _geospatial_global_attrs(dataset: tp.Type[xr.Dataset]):
             dataset.attrs["geospatial_lat_units"] = "degrees north"
 
     if "lon" in dataset:
+        dataset.attrs["longitude"] = round(dataset.lon.data.mean(), 4)
         dataset.attrs["geospatial_lon_min"] = round(dataset.lon.data.min(), 4)
         dataset.attrs["geospatial_lon_max"] = round(dataset.lon.data.max(), 4)
         dataset.attrs["geospatial_lon_units"] = "degrees east"
     elif "longitude" in dataset.attrs:
         if dataset.attrs["longitude"]:
-            dataset.attrs["longitude"] = round(dataset.lon.data.mean(), 4)
             dataset.attrs["geospatial_lon_min"] = round(dataset.attrs["longitude"], 4)
             dataset.attrs["geospatial_lon_max"] = round(dataset.attrs["longitude"], 4)
             dataset.attrs["geospatial_lon_units"] = "degrees east"

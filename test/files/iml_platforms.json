@@ -29,7 +29,7 @@
         "platform_type": "mooring",
         "mooring_number": "",
         "sounding": null,
-        "longitude": null,
+        "longitude":null,
         "latitude": null,
         "platform_specs": {"type": "MTE",
                            "model": "Viking",

@@ -204,7 +204,7 @@ def load_adcp_binary(
             l.log(
                 f"The difference between `sensor_depth` and `XducerDepth` is {abs(sensor_depth - xducer_depth)} m"
             )
-            # data.dep was computed from the fixed xducer_depth and so needs to be corrected.
+            # data.dep was computed from the fixed xducer_depth therefore it  needs to be corrected.
             depth = data.dep + (sensor_depth - xducer_depth)
             xducer_depth = sensor_depth
         else:
@@ -276,17 +276,17 @@ def load_adcp_binary(
             l.log("Bottom track data loaded")
         else:
             l.log(
-                "Bottom track values were all `0` and so they were dropped from the ouput."
+                "Bottom track values were all `0`, therefore they were dropped from the ouput."
             )
 
     if "bt_depth" in data:
         if (data.bt_depth == 0).all():
             l.log(
-                "Bottom depth values were all `0` and so they were dropped from the ouput."
+                "Bottom depth values were all `0`, therefore they were dropped from the ouput."
             )
         elif not np.isfinite(data.bt_depth).all():
             l.log(
-                "Bottom depth values were all `nan` and so they were dropped from the ouput."
+                "Bottom depth values were all `nan`, therefore they were dropped from the ouput."
             )
         else:
             if sonar == "os" or orientation == "up":

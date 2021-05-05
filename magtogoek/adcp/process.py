@@ -96,7 +96,7 @@ CONFIG_GLOBAL_ATTRS_SECTIONS = ["NETCDF_CF", "PROJECT", "CRUISE", "GLOBAL_ATTRIB
 PLATFORM_TYPES = ["mooring", "ship"]
 DATA_TYPES = {"mooring": "MADCP", "ship": None}
 DEFAULT_PLATFORM_TYPE = "mooring"
-PLATFORM_FILE_REQUIRED_KEYS = [
+PLATFORM_FILE_DEFAULT_KEYS = [
     "platform_type",
     "platform_subtype",
     "longitude",
@@ -228,7 +228,7 @@ def process_adcp(config: tp.Type[ConfigParser]):
     if not sensor_metadata:
         sensor_metadata = _default_platform()
 
-    _to_process_adcp_data(params, sensor_metadata, global_attrs)
+    _pipe_to_process_adcp_data(params, sensor_metadata, global_attrs)
 
 
 def quick_process_adcp(params: tp.Dict):
@@ -261,14 +261,14 @@ def quick_process_adcp(params: tp.Dict):
     sensor_metadata = _default_platform()
     sensor_metadata = {"platform_type": params["platform_type"]}
 
-    _to_process_adcp_data(params, sensor_metadata, global_attrs)
+    _pipe_to_process_adcp_data(params, sensor_metadata, global_attrs)
 
 
-def _to_process_adcp_data(params, sensor_metadata, global_attrs):
+def _pipe_to_process_adcp_data(params, sensor_metadata, global_attrs):
     """Check if the input_file must be split in mutiple output.
 
         Looks for `merge_output_files` in the ConfigFile and if False,
-    each file in `input_files` is process individually.
+    each file in `input_files` is process individually and then call _porcess_adcp_data.
     """
     if not params["merge_output_files"]:
         params["merge"] = True
@@ -319,50 +319,23 @@ def _process_adcp_data(params: tp.Dict, sensor_metadata: tp.Dict, global_attrs):
 
     """
     l.reset()
-    if (
-        not sensor_metadata["platform_type"]
-        or sensor_metadata["platform_type"] not in PLATFORM_TYPES
-    ):
-        sensor_metadata["platform_type"] = DEFAULT_PLATFORM_TYPE
-        l.warning(
-            f"platform_file missing or invalid, defaulting to `{DEFAULT_PLATFORM_TYPE}` for platform_type."
-        )
-        l.warning(f"platform_type invalid. Must be one of {PLATFORM_TYPES}")
 
-    if params["navigation_file"]:
-        if Path(params["navigation_file"]).is_file():
-            # This is carried before reading the adcp data in case a error arise reading
-            # the  navigation netcdf files.
-            nav_ds = xr.open_dataset(params["navigation_file"])
-            if "lon" not in nav_ds or "lat" not in nav_ds:
-                l.warning("Navigation netcdf file is missing lon or/and lat.")
-                params["navigation_file"] = None
-            else:
-                l.warning(f"navigation file, {params['navigation_file']}, not found.")
+    _check_platform_type(sensor_metadata)
 
     # ----------------- #
     # LOADING ADCP DATA #
     # ----------------- #
     dataset = _load_adcp_data(params)
 
-    if not params["keep_bt"]:
-        for var in ["bt_u", "bt_v", "bt_w", "bt_e", "bt_depht"]:
-            if var in dataset:
-                dataset = dataset.drop_vars([var])
-
     # ----------------------------------------- #
     # ADDING THE NAVIGATION DATA TO THE DATASET #
     # ----------------------------------------- #
     if params["navigation_file"]:
         l.section("Navigation data")
-        nav_ds = nav_ds.interp(time=dataset.time)
-        dataset["lon"] = nav_ds.lon
-        dataset["lat"] = nav_ds.lat
-        l.log(f"lon and lat data added from {params['navigation_file']}")
-        if "u_ship" in nav_ds and "v_ship" in nav_ds:
-            dataset["u_ship"] = nav_ds.u_ship
-            dataset["v_ship"] = nav_ds.v_ship
-            l.log(f"u_ship and v_ship data added from {params['navigation_file']}")
+        if not Path(params["navigation_file"]).is_file():
+            l.warning(f"navigation file, {params['navigation_file']}, not found.")
+        else:
+            _load_navigation_data(dataset, params["navigation_file"])
 
     # ----------------------------- #
     # ADDING SOME GLOBAL ATTRIBUTES #
@@ -381,11 +354,11 @@ def _process_adcp_data(params: tp.Dict, sensor_metadata: tp.Dict, global_attrs):
 
     compute_global_attrs(dataset)
 
-    if sensor_metadata["platform_type"] != "ship":
+    if sensor_metadata["platform_type"] == "mooring":
         if "bt_depth" in dataset:
             dataset.attrs["sounding"] = round(np.median(dataset.bt_depth.data), 2)
 
-    _xducer_depth_as_sensor_depth(dataset)
+    _set_xducer_depth_as_sensor_depth(dataset)
 
     # setting Metadata from the platform_file
     if params["force_platform_metadata"]:
@@ -395,8 +368,10 @@ def _process_adcp_data(params: tp.Dict, sensor_metadata: tp.Dict, global_attrs):
     else:
         for meta in sensor_metadata:
             if meta in dataset.attrs:
-                if not dataset.attrs[meta] and sensor_metadata[meta]:
+                if not dataset.attrs[meta]:
                     dataset.attrs[meta] = sensor_metadata[meta]
+            elif sensor_metadata[meta]:
+                dataset.attrs[meta] = sensor_metadata[meta]
 
     # setting Metadata from the config_files
     dataset = dataset.assign_attrs(global_attrs)
@@ -408,12 +383,17 @@ def _process_adcp_data(params: tp.Dict, sensor_metadata: tp.Dict, global_attrs):
         if not dataset.attrs["magnetic_declination"]:
             _magnetnic_correction(dataset, params["magnetic_declination"])
         else:
+            additional_correction = round(
+                params["magnetic_declination"] - dataset.attrs["magnetic_declination"],
+                4,
+            )
             _magnetnic_correction(
                 dataset,
-                params["magnetic_declination"] - dataset.attrs["magnetic_declination"],
+                additional_correction,
             )
             l.log(
-                f'Magnetic declination found in adcp file: {dataset.attrs["magnetic_declination"]} degree east.'
+                f"""Magnetic declination found in adcp file: {dataset.attrs["magnetic_declination"]} degree east.
+An additionnal correction of {additional_correction} degree east was added."""
             )
 
     else:
@@ -520,7 +500,8 @@ def _process_adcp_data(params: tp.Dict, sensor_metadata: tp.Dict, global_attrs):
 
 def _load_adcp_data(params: tp.Dict) -> tp.Type[xr.Dataset]:
     """
-    Load an trim the adcp data.
+    Load and trim the adcp data into a xarray.Dataset.
+    Drops bottom track data if params `keep_bt` is False.
     """
     start_time, leading_index = _get_datetime_and_count(params["leading_trim"])
     end_time, trailing_index = _get_datetime_and_count(params["trailing_trim"])
@@ -546,6 +527,11 @@ def _load_adcp_data(params: tp.Dict) -> tp.Type[xr.Dataset]:
     l.log(
         f"Ensembles count : {len(dataset.time.data)}, Start time : {np.datetime_as_string(dataset.time.min().data, unit='s')}, End time : {np.datetime_as_string(dataset.time.min().data, unit='s')}"
     )
+
+    if not params["keep_bt"]:
+        for var in ["bt_u", "bt_v", "bt_w", "bt_e", "bt_depht"]:
+            if var in dataset:
+                dataset = dataset.drop_vars([var])
 
     return dataset
 
@@ -597,10 +583,38 @@ def _load_platform(params: dict) -> tp.Dict:
 def _default_platform() -> dict:
     """Return an empty platform_file_structure"""
     sensor_metadata = dict()
-    for key in PLATFORM_FILE_REQUIRED_KEYS:
+    for key in PLATFORM_FILE_DEFAULT_KEYS:
         if key not in sensor_metadata:
             sensor_metadata[key] = None
     return sensor_metadata
+
+
+def _check_platform_type(sensor_metadata: dict):
+    """DEFINED BELOW"""
+    if sensor_metadata["platform_type"] not in PLATFORM_TYPES:
+        sensor_metadata["platform_type"] = DEFAULT_PLATFORM_TYPE
+        l.warning(
+            f"platform_file missing or invalid, defaulting to `{DEFAULT_PLATFORM_TYPE}` for platform_type."
+        )
+        l.warning(f"platform_type invalid. Must be one of {PLATFORM_TYPES}")
+
+
+_check_platform_type.__doc__ = f"""Check the validity of the `plaform_type`.
+    `platform _type` must be one of {PLATFORM_TYPES}.
+    `platform_type` defaults to {DEFAULT_PLATFORM_TYPE}"""
+
+
+def _load_navigation_data(dataset: tp.Type[xr.Dataset], navigation_file: str):
+    """Load navigation netcdf file and add `lon`, `lat`, `u_ship`,`v_ship` to dataset."""
+    nav_ds = xr.open_dataset(navigation_file).interp(time=dataset.time)
+    if "lon" in nav_ds and "lat" in nav_ds:
+        dataset["lon"] = nav_ds.lon
+        dataset["lat"] = nav_ds.lat
+        l.log(f"`lon` and `lat` data added from {navigation_file}")
+        if "u_ship" in nav_ds and "v_ship" in nav_ds:
+            dataset["u_ship"] = nav_ds.u_ship
+            dataset["v_ship"] = nav_ds.v_ship
+            l.log(f"`u_ship` and `v_ship` data added from {navigation_file}")
 
 
 def _quality_control(dataset: tp.Type[xr.Dataset], params: tp.Dict):
@@ -662,7 +676,7 @@ def _get_datetime_and_count(trim_arg: str):
         return (None, None)
 
 
-def _xducer_depth_as_sensor_depth(dataset: tp.Type[xr.Dataset]):
+def _set_xducer_depth_as_sensor_depth(dataset: tp.Type[xr.Dataset]):
     """Set xducer_depth value to dataset attributes sensor_depth"""
     if "xducer_depth" in dataset:
         dataset.attrs["sensor_depth"] = np.median(dataset["xducer_depth"].data)
