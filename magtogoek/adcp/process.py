@@ -68,6 +68,7 @@ from magtogoek.adcp.quality_control import (adcp_quality_control,
 from magtogoek.adcp.tools import magnetic_to_true
 from magtogoek.attributes_formatter import (
     compute_global_attrs, format_variables_names_and_attributes)
+from magtogoek.navigation import load_navigation
 from magtogoek.tools import get_gps_bearing, vincenty
 from magtogoek.utils import Logger, json2dict
 
@@ -205,12 +206,13 @@ def process_adcp(config: tp.Type[ConfigParser]):
     -----
     missing `platform_type` :
         If the platform_type cannot be found, the function automaticaly default to
-        `mooring` to set the correct BODC P01 parameter codes.
+        `mooring` to set BODC P01 parameter codes.
 
     See Also
     --------
     _process_adcp_data :
         For the processing workflow.
+
     """
     params, global_attrs = _get_config(config)
 
@@ -259,7 +261,10 @@ def quick_process_adcp(params: tp.Dict):
     }
 
     sensor_metadata = _default_platform()
-    sensor_metadata = {"platform_type": params["platform_type"]}
+
+    sensor_metadata["platform_type"] = params["platform_type"]
+
+    params["force_platform_metadata"] = False
 
     _pipe_to_process_adcp_data(params, sensor_metadata, global_attrs)
 
@@ -332,10 +337,7 @@ def _process_adcp_data(params: tp.Dict, sensor_metadata: tp.Dict, global_attrs):
     # ----------------------------------------- #
     if params["navigation_file"]:
         l.section("Navigation data")
-        if not Path(params["navigation_file"]).is_file():
-            l.warning(f"navigation file, {params['navigation_file']}, not found.")
-        else:
-            _load_navigation_data(dataset, params["navigation_file"])
+        dataset = _load_navigation(dataset, params["navigation_file"])
 
     # ----------------------------- #
     # ADDING SOME GLOBAL ATTRIBUTES #
@@ -384,7 +386,10 @@ def _process_adcp_data(params: tp.Dict, sensor_metadata: tp.Dict, global_attrs):
             _magnetnic_correction(dataset, params["magnetic_declination"])
         else:
             additional_correction = round(
-                params["magnetic_declination"] - dataset.attrs["magnetic_declination"],
+                (
+                    params["magnetic_declination"]
+                    - dataset.attrs["magnetic_declination"]
+                ),
                 4,
             )
             _magnetnic_correction(
@@ -581,11 +586,10 @@ def _load_platform(params: dict) -> tp.Dict:
 
 
 def _default_platform() -> dict:
-    """Return an empty platform_file_structure"""
+    """Return an empty platform data dictionnary"""
     sensor_metadata = dict()
     for key in PLATFORM_FILE_DEFAULT_KEYS:
-        if key not in sensor_metadata:
-            sensor_metadata[key] = None
+        sensor_metadata[key] = None
     return sensor_metadata
 
 
@@ -604,17 +608,29 @@ _check_platform_type.__doc__ = f"""Check the validity of the `plaform_type`.
     `platform_type` defaults to {DEFAULT_PLATFORM_TYPE}"""
 
 
-def _load_navigation_data(dataset: tp.Type[xr.Dataset], navigation_file: str):
-    """Load navigation netcdf file and add `lon`, `lat`, `u_ship`,`v_ship` to dataset."""
-    nav_ds = xr.open_dataset(navigation_file).interp(time=dataset.time)
-    if "lon" in nav_ds and "lat" in nav_ds:
-        dataset["lon"] = nav_ds.lon
-        dataset["lat"] = nav_ds.lat
-        l.log(f"`lon` and `lat` data added from {navigation_file}")
-        if "u_ship" in nav_ds and "v_ship" in nav_ds:
-            dataset["u_ship"] = nav_ds.u_ship
-            dataset["v_ship"] = nav_ds.v_ship
-            l.log(f"`u_ship` and `v_ship` data added from {navigation_file}")
+def _load_navigation(dataset: tp.Type[xr.Dataset], navigation_files: str):
+    """Load navigation data from nmea, gpx or netcdf files.
+
+    Returns the dataset with the added navigation data. Data from the navigation file
+    are interpolated on the dataset time vector.
+
+    Parameters
+    ----------
+    dataset :
+        Dataset to which add the navigation data.
+
+    navigation_files :
+        nmea(ascii), gpx(xml) or netcdf files containing the navigation data. For the
+        netcdf file, variable must be `lon`, `lat` and the coordinates `time`.
+
+    Notes
+    -----
+        Using the magtogoek function `mtgk compute nav`, u_ship, v_ship can be computed from `lon`, `lat`
+    data to correct the data for the platform motion by setting the config parameter `m_corr` to `nav`.
+    """
+    nav_ds = load_navigation(navigation_files).interp(time=dataset.time)
+    dataset = xr.merge((dataset, nav_ds), combine_attrs="no_conflicts")
+    return dataset
 
 
 def _quality_control(dataset: tp.Type[xr.Dataset], params: tp.Dict):
@@ -639,16 +655,19 @@ def _quality_control(dataset: tp.Type[xr.Dataset], params: tp.Dict):
 
 
 def _magnetnic_correction(dataset: tp.Type[xr.Dataset], magnetic_declination: float):
-    """Correct for magnetic declination and adds `magnetic_declination`
-    to dataset attributes."""
+    """Correct for magnetic declination.
+    Rotate eastward and northward velocities from magnetic to geographic and
+    """
 
     dataset.u.values, dataset.v.values = magnetic_to_true(
         dataset.u, dataset.v, magnetic_declination
     )
     l.log(f"Velocities transformed to true north and True east.")
-
+    # heading goes from -180 to 180
     if "heading" in dataset:
-        dataset.heading.values = dataset.heading.data - magnetic_declination
+        dataset.heading.values = (
+            dataset.heading.data + 360 + magnetic_declination
+        ) % 360 - 180
         l.log(f"Heading transformed to true north.")
 
 

@@ -103,7 +103,7 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
             "--magnetic-declination",
             type=click.FLOAT,
             help="""Declination of the magnetic north in degree east.
-            Corrects from magnetic to true (geographic) coordinates and heading.""",
+            Corrects from magnetic to true (geographic) coordinates.""",
             default=None,
             show_default=True,
         ),
@@ -209,7 +209,7 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
             show_default=True,
         ),
         click.option(
-            "-m_cor",
+            "-M",
             "--motion_correction_mode",
             help="""Corrects motion with bottomTrack `bt` or navigation `nav`.
             For `nav`, a netcdf file made with `magtogoek.navigation` needs to be

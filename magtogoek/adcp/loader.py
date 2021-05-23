@@ -76,12 +76,12 @@ def load_adcp_binary(
 ):
     """Load RDI and RTI adcp data.
 
-    Return a dataset with the ADCP data loaded.
+    Return a dataset with the ADCP data loaded. For RDI FIXME pycurcurents...
 
     Notes:
     -----
-    Orientation is taken from the first profile of the first file
-    if not no value is pass.
+    The adcp prientation is taken from the first profile of the first file
+    if no orientation is given.
 
     Parameters
     ----------
@@ -183,6 +183,9 @@ def load_adcp_binary(
         bad_dday = True
         l.warning(
             f"The `dday` vector contains negative values. The time coords was replaced by a default datetime vector: len(dday) with a 1 second time step since {yearbase}-1-1 00:00:00"
+        )
+        time, time_string = dday_to_datetime64(
+            np.arange(len(data.dday)) / (3600 * 24), yearbase
         )
     elif (np.diff(data.dday) < 0).any():
         bad_dday = True

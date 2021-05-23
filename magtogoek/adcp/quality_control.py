@@ -279,16 +279,18 @@ def adcp_quality_control(
         ] = f"temperature_threshold: less than {MIN_TEMPERATURE} celcius and greater than {MAX_TEMPERATURE} celsius"
     if "vb_vel" in dataset:
         l.log(
-            f"Fifth beam quality control done with amp: {amp_th}, corr: {corr_th}, pg: {pg_th}"
+            "Fifth beam quality control carried out with"
+            + f"amplitude_threshold: {amp_th}" * ("vb_amp" in dataset)
+            + f", correlation_threshold: {corr_th}" * ("vb_corr" in dataset)
+            + f", percentgood_threshold: {pg_th}" * ("vb_pg" in dataset)
+            + "."
         )
         vb_flag = vertical_beam_test(dataset, amp_th, corr_th, pg_th)
         dataset["vb_vel_QC"] = (["depth", "time"], vb_flag * 3)
-        dataset["vb_vel_QC"].attrs["quality_test"] = "\n".join(
-            [
-                f"amplitude_threshold: {amp_th}",
-                f"correlation_threshold: {corr_th}",
-                f"percentgood_threshold: {pg_th}",
-            ]
+        dataset["vb_vel_QC"].attrs["quality_test"] = (
+            f"amplitude_threshold: {amp_th}\n" * ("vb_amp" in dataset)
+            + f"correlation_threshold: {corr_th}\n" * ("vb_corr" in dataset)
+            + f"percentgood_threshold: {pg_th}\n" * ("vb_pg" in dataset)
         )
 
     missing_vel = np.bitwise_or(
@@ -316,10 +318,10 @@ def adcp_quality_control(
 
 
 def motion_correction(dataset: tp.Type[xr.Dataset], mode: str):
-    """FIXME
+    """Carry motion correction on velocities.
 
     If mode is 'bt' the motion correction is along x, y, z.
-    If moe is 'nav' the motnion correction is along x, y.
+    If mode is 'nav' the motion correction is along x, y.
     """
     if mode == "bt":
         if all(f"bt_{v}" in dataset for v in ["u", "v", "w"]):

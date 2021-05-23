@@ -153,15 +153,6 @@ def magtogoek(info):
 # --------------------------- #
 #        mtgk command         #
 # --------------------------- #
-@magtogoek.group(context_settings=CONTEXT_SETTINGS)
-@click.option(
-    "--info", is_flag=True, callback=_print_info, help="Show command information"
-)
-def config(info):
-    """Make configuration files or platform files"""
-    pass
-
-
 @magtogoek.command("process")
 @click.option(
     "--info", is_flag=True, callback=_print_info, help="Show command information"
@@ -183,7 +174,19 @@ def process(config_file, info):
         process_adcp(config)
 
 
-@magtogoek.group(context_settings=CONTEXT_SETTINGS)
+# --------------------------- #
+#        mtgk groups          #
+# --------------------------- #
+@magtogoek.group("config", context_settings=CONTEXT_SETTINGS)
+@click.option(
+    "--info", is_flag=True, callback=_print_info, help="Show command information"
+)
+def config(info):
+    """Make configuration files or platform files"""
+    pass
+
+
+@magtogoek.group("quick", context_settings=CONTEXT_SETTINGS)
 @click.option(
     "--info", is_flag=True, callback=_print_info, help="Show command information"
 )
@@ -192,12 +195,21 @@ def quick(info):
     pass
 
 
-@magtogoek.group(context_settings=CONTEXT_SETTINGS)
+@magtogoek.group("check", context_settings=CONTEXT_SETTINGS)
 @click.option(
     "--info", is_flag=True, callback=_print_info, help="Show command information"
 )
 def check(info):
     """Get info on raw data files"""
+    pass
+
+
+@magtogoek.group("compute", context_settings=CONTEXT_SETTINGS)
+@click.option(
+    "--info", is_flag=True, callback=_print_info, help="Show command information"
+)
+def compute(info):
+    """Command to compute certain quantities."""
     pass
 
 
@@ -341,6 +353,43 @@ def check_rti(ctx, input_files, **options):
     RtiReader(input_files).check_files()
 
 
+@compute.command("nav", context_settings=CONTEXT_SETTINGS)
+@click.option(
+    "--info", is_flag=True, callback=_print_info, help="Show command information"
+)
+@click.argument(
+    "input_files",
+    metavar="[input_files]",
+    nargs=-1,
+    type=click.Path(exists=True),
+    required=True,
+)
+@click.option(
+    "-o",
+    "--output-name",
+    type=click.STRING,
+    default=None,
+    help="Name for the output file.",
+)
+@click.option(
+    "-w",
+    "--window",
+    type=click.INT,
+    default=1,
+    help="Length of the averaging window.",
+)
+@click.pass_context
+def navigation(ctx, input_files, **options):
+    """Command to compute u_ship, v_ship, bearing from gsp data."""
+    from magtogoek.navigation import compute_navigation
+
+    compute_navigation(
+        filenames=input_files,
+        output_name=options["output_name"],
+        window=options["window"],
+    )
+
+
 # ------------------------ #
 #        Functions         #
 # ------------------------ #
@@ -436,16 +485,21 @@ def _print_arguments(group, parent):
             fg="white",
         )
         click.secho(
-            "  process".ljust(20, " ") + "Command process configuration files",
+            "  process".ljust(20, " ")
+            + "Command process data with configuration files",
             fg="white",
         )
         click.secho(
-            "  quick".ljust(20, " ") + "Command to quickly process files",
+            "  quick".ljust(20, " ") + "Command to quickly process data files",
             fg="white",
         )
         click.secho(
             "  check".ljust(20, " ")
-            + "Command to check the inforamtions on some file type.",
+            + "Command to check the informations on some file type.",
+            fg="white",
+        )
+        click.secho(
+            "  compute".ljust(20, " ") + "Command to compute certain quantities.",
             fg="white",
         )
     if group == "config":
@@ -453,29 +507,48 @@ def _print_arguments(group, parent):
         click.secho(
             "  platform".ljust(20, " ") + "Creates a platform.json file", fg="white"
         )
+
     if group == "quick":
         click.secho("  adcp".ljust(20, " ") + "Process adcp data. ", fg="white")
+
     if group == "process":
         click.secho(
             "  [config_name]".ljust(20, " ")
             + "Filename (path/to/file) of the configuration file.",
             fg="white",
         )
+
+    if group == "compute":
+        click.secho(
+            "  nav".ljust(20, " ")
+            + "Command to compute u_ship, v_ship, bearing from gsp data.",
+            fg="white",
+        )
+
+    if group == "nav":
+        click.secho(
+            "  [file_name]".ljust(20, " ")
+            + "Filename (path/to/file, or expression) of the GPS files.",
+            fg="white",
+        )
+
+    if group == "check":
+        click.secho(
+            "  rti".ljust(20, " ") + "Print information on the rti .ens files. ",
+            fg="white",
+        )
+
     if group == "adcp":
         click.secho(
             "  [config_name]".ljust(20, " ")
             + "Filename (path/to/file) for the new configuration file.",
             fg="white",
         )
+
     if group == "platform":
         click.secho(
             "  [filename]".ljust(20, " ")
             + "Filename (path/to/file) for the new platform file.",
-            fg="white",
-        )
-    if group == "check":
-        click.secho(
-            "  rti".ljust(20, " ") + "Print information on the rti .ens files. ",
             fg="white",
         )
 
@@ -515,8 +588,15 @@ def _print_description(group):
            sw_pd0 : SeaWatch (RTI in RDI pd0 file format)
         """
         )
+    if group == "nav":
+        click.echo(
+            """ Compute u_ship (eastward velocity), v_ship (northward velocity) and the bearing
+of the input gps data. The GPS input files can be nmea text file, gpx XML files or
+a netcdf files with `lon`, `lat` variables and `time` coordinates. Using the command `-w`, an averaging window can be use to smooth the computed navigation data. A matplotlib plot is made after each computation."""
+        )
+
     if group == "platform":
-        click.echo("""Creates an empty platform.json file FIXME""")
+        click.echo("""Creates an empty platform.json file""")  # FIXME
 
 
 def _print_usage(group, parent):
@@ -542,3 +622,5 @@ def _print_usage(group, parent):
         click.echo(f"  mtgk check [rti,] [INPUT_FILES] ")
     if group == "rti":
         click.echo(f"  mtgk check rti [INPUT_FILES] ")
+    if group == "nav":
+        click.echo(f"  mtgk compute nav [INPUT_FILES] ")

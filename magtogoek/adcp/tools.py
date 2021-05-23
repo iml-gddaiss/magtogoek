@@ -17,10 +17,10 @@ def magnetic_to_true(
     """Convert velocities from magnetic to true(geographic).
     FIXME
 
-    angle = - magnetic_declination
+    angle:  magnetic_declination
 
     [true_east,  = [[np.cos(angle), -np.sin(angle)] * [magnetic_east,
-     true_north]    [np.sin(angle), np.cos(angle)]]    magnetic_north]
+     true_north]    [np.sin(angle),  np.cos(angle)]]    magnetic_north]
 
     Parameters
     ----------
@@ -44,7 +44,7 @@ def magnetic_to_true(
     def R(angle):
         return [[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]]
 
-    angle_rad = -np.radians(magnetic_declination)
+    angle_rad = np.radians(magnetic_declination)
 
     true_east = np.cos(angle_rad) * magnetic_east - np.sin(angle_rad) * magnetic_north
     true_north = np.sin(angle_rad) * magnetic_east + np.cos(angle_rad) * magnetic_north
