@@ -1,0 +1,21 @@
+rti\_python.Codecs package
+==========================
+
+Submodules
+----------
+
+rti\_python.Codecs.BinaryCodec module
+-------------------------------------
+
+.. automodule:: rti_python.Codecs.BinaryCodec
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: rti_python.Codecs
+   :members:
+   :undoc-members:
+   :show-inheritance:

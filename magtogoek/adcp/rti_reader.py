@@ -51,8 +51,8 @@ class Bunch(dict):
     the version in pycurrents.system.misc, which has extra
     methods for handling parameter sets.
 
-    Notes:
-    ------
+    Notes
+    -----
        Bunch Class was copied from UHDAS pycurrents.adcp.rdiraw
     """
 
@@ -97,17 +97,17 @@ class RtiReader:
     read(start_index, stop_index) :
       Return a Bunch object with the read data.
 
-        Parameters:
-        -----------
-        start_index:
+        Parameters
+        ----------
+        start_index :
            Trim leading chunks by start_index.
 
-        stop_index:
+        stop_index :
            Trim trailling chunks by stop_index.
 
-        Returns:
-        --------
-            data
+        Returns
+        -------
+            data :
     """
 
     def __init__(self, filenames: Tuple[str, List]):
@@ -151,15 +151,15 @@ class RtiReader:
     def read(self, start_index: int = None, stop_index: int = None) -> Type[Bunch]:
         """Return a Bunch object with the read data.
 
-        Parameters:
+        Parameters
         -----------
-        start_index:
+        start_index :
            Trim leading chunks by start_index.
 
-        stop_index:
+        stop_index :
            Trim trailling chunks by stop_index.
 
-        Returns:
+        Returns
         --------
             data
         TODO add inline comments
@@ -314,12 +314,12 @@ class RtiReader:
 
         Parameters
         ----------
-        ens_file_path
+        ens_file_path :
             path/to/ens_file_path
 
         Returns
         -------
-        Bunch:
+        Bunch :
             bunch with the read data.
 
         """
@@ -391,8 +391,8 @@ class RtiReader:
     def read_chunks(self) -> Type[Bunch]:
         """Read and decode chunks over multple process
 
-        Notes:
-        ------
+        Notes
+        -----
         This could be somewhat faster if the tqdm was removed. It takes ~.25 additional seconds
         (~5s total) for ~4000 chunks. Exiting the processes to output progress could be time consuming
         for bigger files.
@@ -442,15 +442,15 @@ class RtiReader:
     def decode_chunk(ii: int, chunk: str) -> Type[Bunch]:
         """Decode single chunk of data.
 
-        Parameters:
-        -----------
-        ii:
+        Parameters
+        ----------
+        ii :
             Index of the chunk in the file. It is passed one with the Bunch
-        chunk:
+        chunk :
             chunk of binary data containing one ensemble.
 
-        Notes:
-        ------
+        Notes
+        -----
         Correlation are multipled by 255 to be between 0 and 255 (like RDI).
         Pressure is divided by 10. Pascal to decapascal(like RDI).
         """
@@ -540,16 +540,16 @@ class RtiReader:
         Uses the first file bunch data for static values ( e.g. dep,
         orientation, frequency, beam angle, etc)
 
-        Parameters:
-        -----------
-        bunches:
+        Parameters
+        ----------
+        bunches :
             List of the files bunches to concatenante.
-        Returns:
+        Returns :
         --------
-        ppd:
+        ppd :
             Bunch fo the concatenate files.
-        Raise:
-        ------
+        Raise
+        -----
         DepLengthMismatch: (check_mismatch_depth())
             Bin depth vector lenght mismatch.
             Lenght, thus values, of the dep vector can change through files.
@@ -575,14 +575,14 @@ class RtiReader:
     def check_mismatch_dep(bunches: List[Type[Bunch]]):
         """Look for mismatch in bin depth.
 
-        Parameters:
-        -----------
-        bunches:
+        Parameters
+        ----------
+        bunches :
             List of the files bunches to concatenante.
 
-        Raise:
-        ------
-        DepLengthMismatch: (check_mismatch_depth())
+        Raise
+        -----
+        DepLengthMismatch : (check_mismatch_depth())
             Bin depth vector lenght mismatch.
             Lenght, thus values, of the dep vector can change through files.
             In that case, files need the be processed individually.
