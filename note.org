@@ -1,0 +1,19 @@
+#+Author: jerome.guay@protonmail.com
+#+TITLE: Notes on Magtogoek
+
+
+* Future Developpement
+** Add the options to use certain variables attributes
+   + P01, GF3, CF, etc.
+   + Maybe put this in the ConfigFiles.
+** navigation command
+   + Make a command for the navigation.py module.
+** ~/.magtogoek configuration files.
+   + Set the default configuration for the ConfigFiles.
+   + Set default Value for the quick processing.
+** Rotation command.
+   + Only for directional quantities (u,v, adcp ?)
+   + mtgk rotate NETCDF_FILES ANGLE -o [output_files]
+   + Rotate data clockwise and adds u, v are then not East and North anymore.
+      
+
