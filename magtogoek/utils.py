@@ -24,9 +24,9 @@ class Logger:
 
     Parameters
     ----------
-    logbook : str, default None.
+    logbook : str, Default None.
         Formatted logbook.
-    level : int  Default 0.
+    level : int,  Default 0.
         Level controls which messages are printed.
         [0: prints all, 1: print only warnings, 2: prints None]
 
