@@ -1,4 +1,4 @@
-# Magtogoek
+# Magtogoek 
 *Name origin: Magtogoek is Algonquin name for the Saint-Lawrence River which mean "the path that walks".*
 
 ## PACKAGE (LINUX/MacOS ONLY)
@@ -23,7 +23,7 @@ $: pip install magtogoek
 ```
 ## REQUIREMENTS
 Magtogoek requires the external package pycurrents from UH Currents Group at the University of Hawaii.
-Visit [https://currents.soest.hawaii.edu/ocn_data_analysis/installation.html] for more details.
+Visit [pycurrents webesite](https://currents.soest.hawaii.edu/ocn_data_analysis/installation.html) for more details.
 
 
 ```shell
