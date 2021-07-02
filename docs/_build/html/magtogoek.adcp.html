@@ -276,9 +276,9 @@ heading, roll, pitch sysconfig.convex, sysconfig.angle  and trans.coordsytem.</p
 <dt id="magtogoek.adcp.loader.load_adcp_binary">
 <code class="sig-prename descclassname">magtogoek.adcp.loader.</code><code class="sig-name descname">load_adcp_binary</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filenames</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>str<span class="p">, </span>List<span class="p">[</span>str<span class="p">]</span><span class="p">]</span></span></em>, <em class="sig-param"><span class="n">sonar</span><span class="p">:</span> <span class="n">str</span></em>, <em class="sig-param"><span class="n">yearbase</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="n">orientation</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">leading_index</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">trailing_index</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">sensor_depth</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#magtogoek.adcp.loader.load_adcp_binary" title="Permalink to this definition">¶</a></dt>
 <dd><p>Load RDI and RTI adcp data.</p>
-<p>Return a dataset with the ADCP data loaded.</p>
-<p>Orientation is taken from the first profile of the first file
-if not no value is pass.</p>
+<p>Return a dataset with the ADCP data loaded. For RDI FIXME pycurcurents…</p>
+<p>The adcp prientation is taken from the first profile of the first file
+if no orientation is given.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
@@ -364,7 +364,7 @@ into a dictionnary and pass to _process_adcp_data.</p>
 <p class="rubric">Notes</p>
 <dl class="simple">
 <dt>missing <cite>platform_type</cite> :</dt><dd><p>If the platform_type cannot be found, the function automaticaly default to
-<cite>mooring</cite> to set the correct BODC P01 parameter codes.</p>
+<cite>mooring</cite> to set BODC P01 parameter codes.</p>
 </dd>
 </dl>
 <div class="admonition seealso">
@@ -552,9 +552,9 @@ None finite value value will also fail</p>
 <dl class="py function">
 <dt id="magtogoek.adcp.quality_control.motion_correction">
 <code class="sig-prename descclassname">magtogoek.adcp.quality_control.</code><code class="sig-name descname">motion_correction</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dataset</span><span class="p">:</span> <span class="n">Type<span class="p">[</span>xarray.core.dataset.Dataset<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">mode</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span><a class="headerlink" href="#magtogoek.adcp.quality_control.motion_correction" title="Permalink to this definition">¶</a></dt>
-<dd><p>FIXME</p>
+<dd><p>Carry motion correction on velocities.</p>
 <p>If mode is ‘bt’ the motion correction is along x, y, z.
-If moe is ‘nav’ the motnion correction is along x, y.</p>
+If mode is ‘nav’ the motion correction is along x, y.</p>
 </dd></dl>
 
 <dl class="py function">
@@ -900,9 +900,9 @@ Else returns (None, int(trim_arg))</p>
 <code class="sig-prename descclassname">magtogoek.adcp.tools.</code><code class="sig-name descname">magnetic_to_true</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">magnetic_east</span><span class="p">:</span> <span class="n">nptyping.types._ndarray.NDArray</span></em>, <em class="sig-param"><span class="n">magnetic_north</span><span class="p">:</span> <span class="n">nptyping.types._ndarray.NDArray</span></em>, <em class="sig-param"><span class="n">magnetic_declination</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; Tuple<span class="p">[</span>nptyping.types._ndarray.NDArray<span class="p">, </span>nptyping.types._ndarray.NDArray<span class="p">]</span><a class="headerlink" href="#magtogoek.adcp.tools.magnetic_to_true" title="Permalink to this definition">¶</a></dt>
 <dd><p>Convert velocities from magnetic to true(geographic).
 FIXME</p>
-<p>angle = - magnetic_declination</p>
+<p>angle:  magnetic_declination</p>
 <dl class="simple">
-<dt>[true_east,  = [[np.cos(angle), -np.sin(angle)] * [magnetic_east,</dt><dd><p>true_north]    [np.sin(angle), np.cos(angle)]]    magnetic_north]</p>
+<dt>[true_east,  = [[np.cos(angle), -np.sin(angle)] * [magnetic_east,</dt><dd><p>true_north]    [np.sin(angle),  np.cos(angle)]]    magnetic_north]</p>
 </dd>
 </dl>
 <dl class="field-list simple">

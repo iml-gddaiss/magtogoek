@@ -96,10 +96,7 @@
 </li>
 <li><a class="reference internal" href="#module-magtogoek.configfile">magtogoek.configfile module</a></li>
 <li><a class="reference internal" href="#module-magtogoek.navigation">magtogoek.navigation module</a></li>
-<li><a class="reference internal" href="#module-magtogoek.odf_format">magtogoek.odf_format module</a><ul>
-<li><a class="reference internal" href="#odf-class-method">ODF class method:</a></li>
-</ul>
-</li>
+<li><a class="reference internal" href="#magtogoek-odf-format-module">magtogoek.odf_format module</a></li>
 <li><a class="reference internal" href="#module-magtogoek.platforms">magtogoek.platforms module</a></li>
 <li><a class="reference internal" href="#module-magtogoek.tools">magtogoek.tools module</a></li>
 <li><a class="reference internal" href="#module-magtogoek.utils">magtogoek.utils module</a></li>
@@ -406,250 +403,40 @@ FIXME</p>
 </div>
 <div class="section" id="module-magtogoek.navigation">
 <span id="magtogoek-navigation-module"></span><h2>magtogoek.navigation module<a class="headerlink" href="#module-magtogoek.navigation" title="Permalink to this headline">¶</a></h2>
-<p>Module to make navigation files from <cite>longitude</cite> and <cite>lattitude</cite> data.</p>
+<p>author: <a class="reference external" href="mailto:jerome&#46;guay&#37;&#52;&#48;protonmail&#46;com">jerome<span>&#46;</span>guay<span>&#64;</span>protonmail<span>&#46;</span>com</a></p>
+<p>Module to load GPS data and compute navigation data from <cite>nmea</cite>, <cite>gpx</cite> or <cite>netcdf</cite> file format</p>
+<p class="rubric">Notes</p>
+<dl class="simple">
+<dt>compute_navigation:</dt><dd><p>After testing, the u_ship, v_ship computation need more work, using a large value for the rolling
+average window could do the trick.</p>
+</dd>
+</dl>
 <dl class="py function">
 <dt id="magtogoek.navigation.compute_navigation">
-<code class="sig-prename descclassname">magtogoek.navigation.</code><code class="sig-name descname">compute_navigation</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dataset</span><span class="p">:</span> <span class="n">Type<span class="p">[</span>xarray.core.dataset.Dataset<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">window</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">60</span></em><span class="sig-paren">)</span> &#x2192; Type<span class="p">[</span>xarray.core.dataset.Dataset<span class="p">]</span><a class="headerlink" href="#magtogoek.navigation.compute_navigation" title="Permalink to this definition">¶</a></dt>
-<dd><p>compute bearing, speed, u_ship and v_ship</p>
-<p>Computes the distance between each GPS coordinates with Vincenty and
-WGS84 and speed = distance / time_delta.</p>
+<code class="sig-prename descclassname">magtogoek.navigation.</code><code class="sig-name descname">compute_navigation</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filenames</span><span class="p">:</span> <span class="n">str</span></em>, <em class="sig-param"><span class="n">output_name</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">window</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">1</span></em><span class="sig-paren">)</span><a class="headerlink" href="#magtogoek.navigation.compute_navigation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the <cite>bearing</cite>, <cite>speed</cite>, <cite>u_ship</cite> and <cite>v_ship</cite> from gps data in nmea text format or gpx xml format.</p>
+<p>Returns an xarray.dataset object with the compute data and gps data.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>window</strong> – Size of the centered averaging window.</p>
+<dd class="field-odd"><p><strong>window</strong> – Size of the centered averaging window for u_ship, v_ship and bearing computation.</p>
 </dd>
 </dl>
+<p class="rubric">Notes</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>After testing, the u_ship, v_ship computation need more works.</p>
+</div>
 </dd></dl>
 
 <dl class="py function">
-<dt id="magtogoek.navigation.make_navigation">
-<code class="sig-prename descclassname">magtogoek.navigation.</code><code class="sig-name descname">make_navigation</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filename</span><span class="p">:</span> <span class="n">str</span></em>, <em class="sig-param"><span class="n">output</span><span class="p">:</span> <span class="n">str</span></em>, <em class="sig-param"><span class="n">window</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">60</span></em>, <em class="sig-param"><span class="n">plot</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">True</span></em><span class="sig-paren">)</span> &#x2192; Type<span class="p">[</span>xarray.core.dataset.Dataset<span class="p">]</span><a class="headerlink" href="#magtogoek.navigation.make_navigation" title="Permalink to this definition">¶</a></dt>
-<dd><p>Load navigation data from netcdf file.</p>
-<p>The netcd files must contains <cite>lon</cite> and <cite>lat</cite>
-(longitude and latitude in decimal degrees) along a <cite>time</cite>
-coordinates.</p>
-<p>This functions computes the <cite>bearing</cite>, <cite>u_ship</cite> and <cite>v_ship</cite> from
-<cite>lon</cite> and <cite>lat</cite>.</p>
-<p>Computes the distance between each GPS coordinates with Vincenty and
-WGS84 and speed = distance / time_delta. The navigation data computed
-are averaged over <cite>window</cite> number of assemble and interpolated of the
-original time vector.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>filename</strong> – GPS netcdf filename.</p></li>
-<li><p><strong>output</strong> – name for the ouput ncdf4 file.</p></li>
-<li><p><strong>window</strong> – Size of the centered averaging window.</p></li>
-<li><p><strong>plot</strong> – If <cite>True`</cite>, will plot the computed navigation data.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p></p>
-</dd>
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p>dataset with the loaded navigation data.</p>
-</dd>
-</dl>
-<p class="rubric">Notes</p>
-<p>Not properly tested.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt id="magtogoek.navigation.plot_navigation">
-<code class="sig-prename descclassname">magtogoek.navigation.</code><code class="sig-name descname">plot_navigation</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dataset</span><span class="p">:</span> <span class="n">Type<span class="p">[</span>xarray.core.dataset.Dataset<span class="p">]</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#magtogoek.navigation.plot_navigation" title="Permalink to this definition">¶</a></dt>
-<dd><p>FIXME</p>
+<dt id="magtogoek.navigation.load_navigation">
+<code class="sig-prename descclassname">magtogoek.navigation.</code><code class="sig-name descname">load_navigation</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filenames</span></em><span class="sig-paren">)</span><a class="headerlink" href="#magtogoek.navigation.load_navigation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load gps data from  <cite>nmea</cite>, <cite>gpx</cite> or <cite>netcdf</cite> file format.</p>
 </dd></dl>
 
 </div>
-<div class="section" id="module-magtogoek.odf_format">
-<span id="magtogoek-odf-format-module"></span><h2>magtogoek.odf_format module<a class="headerlink" href="#module-magtogoek.odf_format" title="Permalink to this headline">¶</a></h2>
-<p>Author : <a class="reference external" href="mailto:jerome&#46;guay&#37;&#52;&#48;protonmail&#46;com">jerome<span>&#46;</span>guay<span>&#64;</span>protonmail<span>&#46;</span>com</a>
-Date : 29-04-2021</p>
-<p>Module to open and write  ODF (Ocean Data Format) files used by Maurice Lamontagne Institute.</p>
-<div class="section" id="odf-class-method">
-<h3>ODF class method:<a class="headerlink" href="#odf-class-method" title="Permalink to this headline">¶</a></h3>
-<p>read()</p>
-<p>save()</p>
-<p>to_dataset()</p>
-<p>add_buoy_instrument()</p>
-<p>add_general_cal()</p>
-<p>add_polynomial_cal()</p>
-<p>add_compass_cal()</p>
-<p>add_history()</p>
-<p>add_parameter()</p>
-<p>from_dataframe()</p>
-<p class="rubric">Notes</p>
-<dl>
-<dt>ODF object structure:</dt><dd><p>Headers are stored as dictionnaries containing. They are either direction attributes or store
-in one of the following attributes .buoy_instrument, .general_cal, .polynomial_cal, .compass, .history
-or .parameter.
-Data are pandas dataframe. ODF.data.</p>
-</dd>
-<dt>Writing ODF files.</dt><dd><p>Using .save(filename), the ODF file will be written.
-- Headers keys are always printed in upper case.
-Headers values can be one of: int, float, str, list, tuple, or list(tuple).</p>
-<blockquote>
-<div><ul class="simple">
-<li><p>floats are printed with the number of significan digit specified by the gloabal variable PRECISION.</p></li>
-<li><p>list elements are printed with the same headers key.</p></li>
-<li><p>coefficients, directions and corrections items need to be stored as tuple for the correct formatting
-field width of 12 and 8 decimals precision.</p></li>
-</ul>
-</div></blockquote>
-</dd>
-</dl>
-<dl class="py class">
-<dt id="magtogoek.odf_format.Odf">
-<em class="property">class </em><code class="sig-prename descclassname">magtogoek.odf_format.</code><code class="sig-name descname">Odf</code><a class="headerlink" href="#magtogoek.odf_format.Odf" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<p>ODF class object can make, read and write ODF (ocean data format) files.</p>
-<p>read()</p>
-<p>save()</p>
-<p>to_dataset()</p>
-<p>add_instruments()</p>
-<p>add_parameter()</p>
-<p>from_dataframe()</p>
-<p class="rubric">Notes</p>
-<dl>
-<dt>ODF object structure:</dt><dd><p>Headers are stored as dictionnaries containing. They are either direction attributes or store
-in one of the following attributes .buoy_instrument, .general_cal, .polynomial_cal, .compass, .history
-or .parameter.</p>
-</dd>
-<dt>Data are pandas dataframe. ODF.data.</dt><dd><p>Writing ODF files.
-Using .save(filename), the ODF file will be written.
-- Headers keys are always printed in upper case.
-Headers values can be one of: int, float, str, list, tuple, or list(tuple).
-- floats are printed with the number of significan digit specified by the gloabal variable PRECISION.
-- list elements are printed with the same headers key.
-- coefficients, directions and corrections items need to be stored as tuple for the correct formatting</p>
-<blockquote>
-<div><p>field width of 12 and 8 decimals precision.</p>
-</div></blockquote>
-</dd>
-</dl>
-<dl class="py method">
-<dt id="magtogoek.odf_format.Odf.add_buoy_instrument">
-<code class="sig-name descname">add_buoy_instrument</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">name</span><span class="p">:</span> <span class="n">str</span></em>, <em class="sig-param"><span class="n">items</span><span class="p">:</span> <span class="n">dict</span> <span class="o">=</span> <span class="default_value">{}</span></em><span class="sig-paren">)</span><a class="headerlink" href="#magtogoek.odf_format.Odf.add_buoy_instrument" title="Permalink to this definition">¶</a></dt>
-<dd><p>Add a buoy instrument headers to ODF.instruments.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>name</strong> – Name(key) for the instrument header.</p></li>
-<li><p><strong>items</strong> – Dictionnary containing parameter header items.</p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt id="magtogoek.odf_format.Odf.add_compass_cal">
-<code class="sig-name descname">add_compass_cal</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">code</span><span class="p">:</span> <span class="n">str</span></em>, <em class="sig-param"><span class="n">items</span><span class="p">:</span> <span class="n">dict</span> <span class="o">=</span> <span class="default_value">{}</span></em><span class="sig-paren">)</span><a class="headerlink" href="#magtogoek.odf_format.Odf.add_compass_cal" title="Permalink to this definition">¶</a></dt>
-<dd><p>Add a compass cal headers to ODF.compass_cal</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>code</strong> – Name(key) for the parameter code.</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt id="magtogoek.odf_format.Odf.add_general_cal">
-<code class="sig-name descname">add_general_cal</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">code</span><span class="p">:</span> <span class="n">str</span></em>, <em class="sig-param"><span class="n">items</span><span class="p">:</span> <span class="n">dict</span> <span class="o">=</span> <span class="default_value">{}</span></em><span class="sig-paren">)</span><a class="headerlink" href="#magtogoek.odf_format.Odf.add_general_cal" title="Permalink to this definition">¶</a></dt>
-<dd><p>Add a general cal headers to ODF.general_cal</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>code</strong> – Name(key) for the parameter code.</p></li>
-<li><p><strong>items</strong> – Dictionnary containing parameter header items.</p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt id="magtogoek.odf_format.Odf.add_parameter">
-<code class="sig-name descname">add_parameter</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">code</span><span class="p">:</span> <span class="n">str</span></em>, <em class="sig-param"><span class="n">data</span><span class="p">:</span> <span class="n">Union<span class="p">[</span>list<span class="p">, </span>Type<span class="p">[</span>numpy.ndarray<span class="p">]</span><span class="p">]</span></span></em>, <em class="sig-param"><span class="n">items</span><span class="p">:</span> <span class="n">dict</span> <span class="o">=</span> <span class="default_value">{}</span></em>, <em class="sig-param"><span class="n">null_value</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#magtogoek.odf_format.Odf.add_parameter" title="Permalink to this definition">¶</a></dt>
-<dd><p>Add a the parameter to ODF.parameters and the data to ODF.data.</p>
-<p>Computes <cite>number_valid</cite>, <cite>number_null</cite>, <cite>minimum_value</cite> and <cite>maximum_value</cite> from
-the data and a provided null_value.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>code</strong> – Name(key) for the parameter code.</p></li>
-<li><p><strong>data</strong> – 1-D sequence of data. Each parameters must have the same length.</p></li>
-<li><p><strong>null_value</strong> – Value used for missing or null value in data. From this value <cite>number_valid</cite>,
-<cite>number_null</cite> will be computed.</p></li>
-<li><p><strong>items</strong> – Dictionnary containing parameter header items.</p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt id="magtogoek.odf_format.Odf.add_polynomial_cal">
-<code class="sig-name descname">add_polynomial_cal</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">code</span><span class="p">:</span> <span class="n">str</span></em>, <em class="sig-param"><span class="n">items</span><span class="p">:</span> <span class="n">dict</span></em><span class="sig-paren">)</span><a class="headerlink" href="#magtogoek.odf_format.Odf.add_polynomial_cal" title="Permalink to this definition">¶</a></dt>
-<dd><p>Add a polynomial cal headers to ODF.polynomial_cal</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>code</strong> – Name(key) for the parameter code.</p></li>
-<li><p><strong>items</strong> – Dictionnary containing parameter header items.</p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt id="magtogoek.odf_format.Odf.from_dataframe">
-<code class="sig-name descname">from_dataframe</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dataframe</span><span class="p">:</span> <span class="n">Type<span class="p">[</span>pandas.core.frame.DataFrame<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">items</span><span class="p">:</span> <span class="n">dict</span> <span class="o">=</span> <span class="default_value">{}</span></em>, <em class="sig-param"><span class="n">null_values</span><span class="p">:</span> <span class="n">Union<span class="p">[</span>int<span class="p">, </span>float<span class="p">, </span>list<span class="p">, </span>tuple<span class="p">, </span>dict<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#magtogoek.odf_format.Odf.from_dataframe" title="Permalink to this definition">¶</a></dt>
-<dd><p>Add data and parameters from a pandas.dataframe. Collumns names are used for
-the new parameters code.</p>
-<dl class="simple">
-<dt>dataframe :</dt><dd><p>The data to be added to the ODF. All data must be 1 dimensional.</p>
-</dd>
-<dt>null_values :</dt><dd><p>Value used for missing or null value in data. From this value <cite>number_valid</cite>,
-<cite>number_null</cite> will be computed. If a single value is provided, it will be
-applied to all the data. A dictionnary of with matching keys matching dataframe
-collumns or list and tuple can be pass with different null_value but all null_value
-must have the same length as the number of collumns in the dataframe.</p>
-</dd>
-<dt>items :</dt><dd><p>Dictionnary containing parameter header items. Keys must be the parameters code.</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt id="magtogoek.odf_format.Odf.read">
-<code class="sig-name descname">read</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filename</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span><a class="headerlink" href="#magtogoek.odf_format.Odf.read" title="Permalink to this definition">¶</a></dt>
-<dd><p>Read ODF files.
-The ODF headers section in nested dictionnaries in ODF.headers and
-ODF.parameters. The data is store in a pandas.DataFrame.</p>
-<p class="rubric">Notes</p>
-<p>All items values are stored in list. After all the headers are read, list of lenght one
-are converted to int, float or str.</p>
-<p>Calibration coefficients, directions and corrections are stored in tuple.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt id="magtogoek.odf_format.Odf.save">
-<code class="sig-name descname">save</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filename</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span><a class="headerlink" href="#magtogoek.odf_format.Odf.save" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt id="magtogoek.odf_format.Odf.to_dataset">
-<code class="sig-name descname">to_dataset</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dims</span><span class="p">:</span> <span class="n">Union<span class="p">[</span>str<span class="p">, </span>List<span class="p">[</span>str<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">time</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#magtogoek.odf_format.Odf.to_dataset" title="Permalink to this definition">¶</a></dt>
-<dd><dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>dims</strong> – Dimensions names.</p></li>
-<li><p><strong>time</strong> – Specify wich dimensions is time.</p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-
-</dd></dl>
-
-</div>
+<div class="section" id="magtogoek-odf-format-module">
+<h2>magtogoek.odf_format module<a class="headerlink" href="#magtogoek-odf-format-module" title="Permalink to this headline">¶</a></h2>
 </div>
 <div class="section" id="module-magtogoek.platforms">
 <span id="magtogoek-platforms-module"></span><h2>magtogoek.platforms module<a class="headerlink" href="#module-magtogoek.platforms" title="Permalink to this headline">¶</a></h2>
@@ -772,8 +559,8 @@ logbook from them. The logbook is formatted as a string in
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>logbook</strong> (<em>str</em><em>, </em><em>default None.</em>) – Formatted logbook.</p></li>
-<li><p><strong>level</strong> (<em>int  Default 0.</em>) – Level controls which messages are printed.
+<li><p><strong>logbook</strong> (<em>str</em><em>, </em><em>Default None.</em>) – Formatted logbook.</p></li>
+<li><p><strong>level</strong> (<em>int</em><em>,  </em><em>Default 0.</em>) – Level controls which messages are printed.
 [0: prints all, 1: print only warnings, 2: prints None]</p></li>
 </ul>
 </dd>
