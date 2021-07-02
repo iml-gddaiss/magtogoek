@@ -15,36 +15,39 @@ class FileNotFoundError(Exception):
 
 
 class Logger:
-    """Class to log and print message.
+    """Logger object can log and print messages.
 
-    Keeps count of the number of warnings  `self.w_count`.
-    The logbook is formated and accesible with `self.logbook`.
+    Logger objects print log and warning messages  while building a
+    logbook from them. The logbook is formatted as a string in
+    `self.logbook`. Logger objects keep count of the warnings in
+    `self.w_count`.
 
     Parameters
     ----------
     logbook : str, default None.
-        Formated logbook `self.logbook` to append to.
-    level : int Default 0.
-        [0,1,2], [prints all, print only warnings, prints None]
+        Formatted logbook.
+    level : int  Default 0.
+        Level controls which messages are printed.
+        [0: prints all, 1: print only warnings, 2: prints None]
 
     Attributes
     ----------
     logbook :
-        logbook
+        String of the formatted logbook build from the different entries.
     w_count :
-        Number of Warning
+        Number of Warning.
 
     Methods
     -------
     section :
-        FIXME
+        Makes a new sections.
 
     log :
-        FIXME
+        Log and print a log message. Prints if level is greater or equal 0
     warning :
-        FIXME
+        Log and print warning message. Prints if level is greater or equal 1
     reset :
-        FIXME
+        Resets the logbook and the warning count.
     """
 
     def __init__(self, logbook: str = "", level: int = 0):
@@ -57,7 +60,7 @@ class Logger:
         return self.logbook
 
     def section(self, section: str, t: bool = False):
-        """
+        """Add a new section.
         Parameters:
         -----------
         section:
@@ -71,7 +74,7 @@ class Logger:
         click.secho(section, fg="green") if self.level < 1 else None
 
     def log(self, msg: str, t: bool = False):
-        """
+        """Add a log.
         Parameters
         ----------
         msg :
@@ -88,7 +91,7 @@ class Logger:
             self.logbook += " " + msg + "\n"
 
     def warning(self, msg: str, t: bool = False):
-        """
+        """Add a warning.
         Parameters
         ----------
         msg :
@@ -112,6 +115,7 @@ class Logger:
 
     @staticmethod
     def _timestamp():
+        """Make a time stamp"""
         return datetime.now().strftime("%Y-%m-%d %Hh%M:%S")
 
 

@@ -1,16 +1,8 @@
 """
 Author: JeromeJGuay
-Date: Mars 2
+Date: March 2 2021
 
-This module contains the entry point for  `mtgk`.
-
-================================================================================
-        __  ___    ____    _____ ________ ______ _____  ______ _____  __ __
-       /  |/   |  / _  |  / ___//__  ___// __  // ___/ / __  //  __/ / // /
-      / /|  /| | / /_| | / /_ \   / /   / /_/ // /_ \ / /_/ //  __/ / _  /
-     /_/ |_/ |_|/_/  |_|/_____|  /_/   /_____//_____|/_____//_____//_/ \_\.
-
-================================================================================
+This module contains the entry point for magtogoek CLI app `mtgk`.
 
 Descriptions:
   FIXME
@@ -23,6 +15,7 @@ Usage:
     $ mtgk quick [adcp, ] [INPUT_FILES] [OPTIONS] FIXME has been modified. Probably not working.
 
     $ mtgk check [rti, ] [INPUT_FILES]
+
 
 
 NOTE
