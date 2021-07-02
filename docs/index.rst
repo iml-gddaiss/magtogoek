@@ -10,12 +10,6 @@ Welcome to Magtogoek's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-<<<<<<< HEAD
-   app
-   navigation
-   
-=======
->>>>>>> 73bdc2e12fb56adb9f16cd10eca1e0aa78a094dc
           
 
 
