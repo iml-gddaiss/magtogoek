@@ -6,10 +6,10 @@ Magtogoek is a python package and command line application (CLI) to process ocea
 only Accoustisc Doopler Current Profiler (ADCP) data can be processed. 
 
 ### Supported data type.
-- ADCP: Accoustisc Doopler Current Profiler (Linux/MacOS Only)
--- RDI Teledyne: WorkHorse, SentinelV, OceanSurveilor
+* ADCP: Accoustisc Doopler Current Profiler (Linux/MacOS Only)
+** RDI Teledyne: WorkHorse, SentinelV, OceanSurveilor
    Uses Pycurrent from ....
--- RTI Rowtech: 
+** RTI Rowtech: 
    Uses Rowtech ... and custom reader. .
    
 ## INSTALLATION
