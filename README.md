@@ -10,7 +10,7 @@ only Accoustisc Doopler Current Profiler (ADCP) data can be processed.
 -- RDI Teledyne: WorkHorse, SentinelV, OceanSurveilor
    Uses Pycurrent from ....
 -- RTI Rowtech: 
-   Uses Rowtech ... and custom reader.
+   Uses Rowtech ... and custom reader. .
    
 ## INSTALLATION
 Clone the respository and and install it with `pip install`. Follow the instruction below. 
