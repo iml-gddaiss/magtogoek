@@ -49,7 +49,7 @@ Platform file are structured as follow:
 
 ```json
 {
-    "__enter_a_platform_id_here__": {
+    __PLATFORM_ID__: {
         "platform_name": null,
         "platform_type": null,
         "paltform_model": null,
@@ -59,7 +59,7 @@ Platform file are structured as follow:
         "latitude": null,
         "platform_specs": {},
         "sensors": {
-            "__enter_a_sensor_ID_here": {
+            __SENSOR_ID__: {
                 "sensor_type": null,
                 "sensor_depth": null,
                 "serial_number": null,
@@ -73,7 +73,7 @@ Platform file are structured as follow:
     }
 }
 ```
-Note that in Magtogoek, instrument are refered to as sensors. 
+Note that in Magtogoek, instruments are refered to as sensors. 
 
 The different sensors(instruemnts) of a a platform (ship, mooring, buoy, drifet, Rossete, etc) can therefore be place in the same platform limiting the risk of error in the platform metadata across. 
 Platform\_id should include the year or the version of the platform and a new platform should be added if any modification is made to a sensor or to the platform.
