@@ -6,7 +6,7 @@ Magtogoek is a python package and command line application (CLI) to process ocea
 At the moment, only Accoustisc Doopler Current Profiler (ADCP) data can be processed. 
 This package is developped by the Scientific Advice, Information and Support Branch at the Fisheries and Ocean Canada Maurice-Lamontagne Institute.
 
-(Magtogoek documentation here)[https://jeromejguay.github.io/magtogoek/]
+[Magtogoek documentation here](https://jeromejguay.github.io/magtogoek/)
 
 ### Supported data type.
 * ADCP : Accoustisc Doopler Current Profiler 
