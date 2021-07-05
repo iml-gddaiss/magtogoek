@@ -1,0 +1,620 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>magtogoek package &#8212; magtogoek 0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">magtogoek 0.0.1 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">magtogoek package</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="magtogoek-package">
+<h1>magtogoek package<a class="headerlink" href="#magtogoek-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="subpackages">
+<h2>Subpackages<a class="headerlink" href="#subpackages" title="Permalink to this headline">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="magtogoek.adcp.html">magtogoek.adcp package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="magtogoek.adcp.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="magtogoek.adcp.html#module-magtogoek.adcp.loader">magtogoek.adcp.loader module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="magtogoek.adcp.html#notes">Notes:</a></li>
+<li class="toctree-l3"><a class="reference internal" href="magtogoek.adcp.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="magtogoek.adcp.html#module-magtogoek.adcp.process">magtogoek.adcp.process module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="magtogoek.adcp.html#id1">Notes</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="magtogoek.adcp.html#module-magtogoek.adcp.quality_control">magtogoek.adcp.quality_control module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="magtogoek.adcp.html#id2">Notes:</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="magtogoek.adcp.html#module-magtogoek.adcp.rti_reader">magtogoek.adcp.rti_reader module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="magtogoek.adcp.html#module-magtogoek.adcp.tools">magtogoek.adcp.tools module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="magtogoek.adcp.html#module-magtogoek.adcp">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-magtogoek.app">
+<span id="magtogoek-app-module"></span><h2>magtogoek.app module<a class="headerlink" href="#module-magtogoek.app" title="Permalink to this headline">¶</a></h2>
+<p>Author: JeromeJGuay
+Date: March 2 2021</p>
+<p>This module contains the entry point for magtogoek CLI app <cite>mtgk</cite>.</p>
+<dl>
+<dt>Descriptions:</dt><dd><p>FIXME</p>
+</dd>
+<dt>Usage:</dt><dd><p>$ mtgk config [adcp, platform] [CONFIG_NAME] [OPTIONS]</p>
+<p>$ mtgk process [CONFIG_FILE]</p>
+<p>$ mtgk quick [adcp, ] [INPUT_FILES] [OPTIONS] FIXME has been modified. Probably not working.</p>
+<p>$ mtgk check [rti, ] [INPUT_FILES]</p>
+</dd>
+</dl>
+<p>NOTE
+-Maybe add a fonction for the navigation data. from csv ?</p>
+<blockquote>
+<div><p>-n nc_fileaname
+-c csv_filename
+-o output netcdf4 file name
+-l longitude_var_name latitude_var_name (2 args)
+-t time_dims_name
+-w length of the averaging window</p>
+</div></blockquote>
+</div>
+<div class="section" id="module-magtogoek.app_options">
+<span id="magtogoek-app-options-module"></span><h2>magtogoek.app_options module<a class="headerlink" href="#module-magtogoek.app_options" title="Permalink to this headline">¶</a></h2>
+<p>Script that contains different click options and the functions to add them to the click command.</p>
+<p>FIXME</p>
+<dl class="py function">
+<dt id="magtogoek.app_options.adcp_options">
+<code class="sig-prename descclassname">magtogoek.app_options.</code><code class="sig-name descname">adcp_options</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">input_files</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">yearbase</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">sonar</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="headerlink" href="#magtogoek.app_options.adcp_options" title="Permalink to this definition">¶</a></dt>
+<dd><p>return shared adcp options. They can they be passe with the add option decorator
+Paramters:
+———-
+inputs_files:</p>
+<blockquote>
+<div><p>Adds input_options</p>
+</div></blockquote>
+<dl class="simple">
+<dt>yearbase:</dt><dd><p>Adds yearbase</p>
+</dd>
+<dt>sonar:</dt><dd><p>Adds sonar</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="magtogoek.app_options.add_options">
+<code class="sig-prename descclassname">magtogoek.app_options.</code><code class="sig-name descname">add_options</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">options</span></em><span class="sig-paren">)</span><a class="headerlink" href="#magtogoek.app_options.add_options" title="Permalink to this definition">¶</a></dt>
+<dd><p>decorator to pass list of options to click commands.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-magtogoek.attributes_formatter">
+<span id="magtogoek-attributes-formatter-module"></span><h2>magtogoek.attributes_formatter module<a class="headerlink" href="#module-magtogoek.attributes_formatter" title="Permalink to this headline">¶</a></h2>
+<p>author : <a class="reference external" href="mailto:jerome&#46;guay&#37;&#52;&#48;protonamil&#46;com">jerome<span>&#46;</span>guay<span>&#64;</span>protonamil<span>&#46;</span>com</a>
+date : Feb. 16, 2021</p>
+<p>This script contains <cite>format_variables_namnes_and_attributes()</cite> function that, as the name may
+suggest, formats a xarray dataset variables attributes have SeaDataNet, CF Conventions and other
+attributes. This script requires json files containing the <cite>static</cite> metadata to add to variables.
+The json files can be made by executing static_attributes.py script which can be edited to change
+where the json is saved.</p>
+<blockquote>
+<div><p>$ python static_attributes.py</p>
+</div></blockquote>
+<dl class="simple">
+<dt>static variables attributes :</dt><dd><p>-‘standard_name’
+-‘units’
+-‘long_name’
+-‘ancillary_variables’
+-‘sdn_parameter_urn’
+-‘sdn_parameter_name’
+-‘sdn_uom_urn’
+-‘sdn_uom_name’
+-‘legacy_GF3_code’</p>
+</dd>
+<dt>dynamic variables attributes :</dt><dd><p>-‘data_min’
+-‘data_max’
+FIXME</p>
+</dd>
+</dl>
+<div class="section" id="sea-also">
+<h3>Sea Also<a class="headerlink" href="#sea-also" title="Permalink to this headline">¶</a></h3>
+<p>Read the functions and the docs below. They are pretty explicit.</p>
+<dl class="py function">
+<dt id="magtogoek.attributes_formatter.compute_global_attrs">
+<code class="sig-prename descclassname">magtogoek.attributes_formatter.</code><code class="sig-name descname">compute_global_attrs</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dataset</span><span class="p">:</span> <span class="n">Type<span class="p">[</span>xarray.core.dataset.Dataset<span class="p">]</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#magtogoek.attributes_formatter.compute_global_attrs" title="Permalink to this definition">¶</a></dt>
+<dd><dl>
+<dt>Sets :</dt><dd><p>-time_coverage_start
+-time_coverage_end
+-time_coverage_duration
+-time_coverage_duration_units (days)</p>
+<p>-sounding: (Sounding not added if platform_type is ship.)
+-geospatial_lat_min
+-geospatial_lat_max
+-geospatial_lat_units
+-geospatial_lon_min
+-geospatial_lon_max
+-geospatial_lon_units
+-geospatial_vertical_min
+-geospatial_vertical_max
+-geospatial_vertical_positive
+-geospatial_vertical_units</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="magtogoek.attributes_formatter.format_variables_names_and_attributes">
+<code class="sig-prename descclassname">magtogoek.attributes_formatter.</code><code class="sig-name descname">format_variables_names_and_attributes</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dataset</span><span class="p">:</span> <span class="n">Type<span class="p">[</span>xarray.core.dataset.Dataset<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">use_bodc_codes</span><span class="p">:</span> <span class="n">bool</span></em><span class="sig-paren">)</span> &#x2192; Type<span class="p">[</span>xarray.core.dataset.Dataset<span class="p">]</span><a class="headerlink" href="#magtogoek.attributes_formatter.format_variables_names_and_attributes" title="Permalink to this definition">¶</a></dt>
+<dd><p>Format variables names and attributes</p>
+<p>Returns dataset with variables attributes set.</p>
+<p>Convert variables names to BODC and then adds CF and SeaDataNet metadata
+to variables attributes. Coordinates names are always changed back to their
+original names (generic_name). Variables names can also be changed back to
+their original names (generic_name) setting <cite>use_bodc_codes</cite> as <cite>False</cite>/</p>
+<dl>
+<dt>Require dataset global attributes  :</dt><dd><dl>
+<dt><cite>P01_CODE_TRANSLATOR</cite><span class="classifier">a dictionnary containing <cite>generic_name</cite>:<cite>p01_codes</cite></span></dt><dd><p>as keys and items.</p>
+</dd>
+</dl>
+</dd>
+<dt>None essential global attributes :</dt><dd><p><cite>sensor_type</cite> :
+<cite>sensor_depth</cite> :
+<cite>sensor_serial</cite> :
+<cite>VAR_TO_ADD_SENSOR_TYPE</cite> : List of P01 parameters codes of variables to which</p>
+<blockquote>
+<div><p>add the sensor_type attributes.</p>
+</div></blockquote>
+</dd>
+</dl>
+<dl class="simple">
+<dt>dataset :</dt><dd><p>dataset to format. The dataset must contain a global_attributes named <cite>P01_CODE_TRANSLATOR</cite></p>
+</dd>
+</dl>
+<p>which has to be a dictionnary containing <cite>generic_name</cite>:<cite>p01_code</cite> as keys and items.</p>
+<dl class="simple">
+<dt>use_bodc_name :</dt><dd><p>If <cite>True</cite>, the variable names are changed to th BODC P01 parameters codes.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="module-magtogoek.configfile">
+<span id="magtogoek-configfile-module"></span><h2>magtogoek.configfile module<a class="headerlink" href="#module-magtogoek.configfile" title="Permalink to this headline">¶</a></h2>
+<p>author: Jérôme Guay
+date: March 4, 2021</p>
+<dl class="simple">
+<dt>This make_configparser is called by magtogoek_command.py</dt><dd><p>$ mtgk config …</p>
+</dd>
+</dl>
+<p>This modules also contains the sections and default parameters values for the configparsers.</p>
+<p>NOTE: More comments should be added in the configparser files.
+NOTE: Missing,fonctions to open the config files.
+NOTE: Make a class ? Config(config_name, sensor_type=None).{update(options), .load(), .save()}</p>
+<p>INPUT:
+Expression identifying the file or files to be process.
+platform file: (file name) Can be omitted.</p>
+<p>OUTPUT:
+Expression for odf and netcdf output files names.
+Leave blank for <cite>False</cite>.
+If both are left blank, a netcdf file with be made with <a href="#id1"><span class="problematic" id="id2">`</span></a>input_files`+’mtgk.nc’</p>
+<p>ADCP PROCESSING:
+-yearbase: year that the sampling started. ex: <cite>1970</cite>
+-adcp_orientation: <cite>down</cite> or <cite>up</cite>. (horizontal no supported)
+-sonar:  Must be one of <cite>wh</cite>, <cite>os</cite>, <cite>bb</cite>, <cite>nb</cite> or <cite>sw</cite></p>
+<p>ADCP_QUALITY_CONTROL:
+If quality_control is <cite>False</cite>, no quality control is carried out.
+Blanks are omitted or set False.</p>
+<p>ADCP_OUTPUT:
+Set True or False.
+If bodc_name False, generic variable names are used.
+FIXME</p>
+<dl class="py exception">
+<dt id="magtogoek.configfile.ConfigFileError">
+<em class="property">exception </em><code class="sig-prename descclassname">magtogoek.configfile.</code><code class="sig-name descname">ConfigFileError</code><a class="headerlink" href="#magtogoek.configfile.ConfigFileError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Exception</span></code></p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="magtogoek.configfile.load_configfile">
+<code class="sig-prename descclassname">magtogoek.configfile.</code><code class="sig-name descname">load_configfile</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filename</span><span class="p">:</span> <span class="n">str</span></em>, <em class="sig-param"><span class="n">updated_params</span><span class="p">:</span> <span class="n">Dict</span> <span class="o">=</span> <span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#magtogoek.configfile.load_configfile" title="Permalink to this definition">¶</a></dt>
+<dd><p>load a configfile.</p>
+<p>Returns parser as a dictionnary with the appropriate types.</p>
+<ul class="simple">
+<li><p>Add the missing expected sections and options with empty string as value.</p></li>
+<li><p>Updates the value if dictionnary is passed as <cite>updated_params</cite>.</p></li>
+<li><p>saves the edited configuration files.</p></li>
+<li><p>convert the options from string to the correct type for processing.</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py function">
+<dt id="magtogoek.configfile.make_configfile">
+<code class="sig-prename descclassname">magtogoek.configfile.</code><code class="sig-name descname">make_configfile</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filename</span><span class="p">:</span> <span class="n">str</span></em>, <em class="sig-param"><span class="n">sensor_type</span><span class="p">:</span> <span class="n">str</span></em>, <em class="sig-param"><span class="n">config_params</span><span class="p">:</span> <span class="n">Dict</span> <span class="o">=</span> <span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#magtogoek.configfile.make_configfile" title="Permalink to this definition">¶</a></dt>
+<dd><p>make a configfile with default and update it if <cite>updated_params</cite> are passed</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-magtogoek.navigation">
+<span id="magtogoek-navigation-module"></span><h2>magtogoek.navigation module<a class="headerlink" href="#module-magtogoek.navigation" title="Permalink to this headline">¶</a></h2>
+<p>author: <a class="reference external" href="mailto:jerome&#46;guay&#37;&#52;&#48;protonmail&#46;com">jerome<span>&#46;</span>guay<span>&#64;</span>protonmail<span>&#46;</span>com</a></p>
+<p>Module to load GPS data and compute navigation data from <cite>nmea</cite>, <cite>gpx</cite> or <cite>netcdf</cite> file format</p>
+<div class="section" id="notes">
+<h3>Notes<a class="headerlink" href="#notes" title="Permalink to this headline">¶</a></h3>
+<dl class="simple">
+<dt>compute_navigation:</dt><dd><p>After testing, the u_ship, v_ship computation need more work, using a large value for the rolling
+average window could do the trick.</p>
+</dd>
+</dl>
+<dl class="py function">
+<dt id="magtogoek.navigation.compute_navigation">
+<code class="sig-prename descclassname">magtogoek.navigation.</code><code class="sig-name descname">compute_navigation</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filenames</span><span class="p">:</span> <span class="n">str</span></em>, <em class="sig-param"><span class="n">output_name</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">window</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">1</span></em><span class="sig-paren">)</span><a class="headerlink" href="#magtogoek.navigation.compute_navigation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the <cite>bearing</cite>, <cite>speed</cite>, <cite>u_ship</cite> and <cite>v_ship</cite> from gps data in nmea text format or gpx xml format.</p>
+<p>Returns an xarray.dataset object with the compute data and gps data.</p>
+<dl class="simple">
+<dt>window :</dt><dd><p>Size of the centered averaging window for u_ship, v_ship and bearing computation.</p>
+</dd>
+</dl>
+<dl class="simple">
+<dt>WARNINGS:</dt><dd><p>After testing, the u_ship, v_ship computation need more works.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="magtogoek.navigation.load_navigation">
+<code class="sig-prename descclassname">magtogoek.navigation.</code><code class="sig-name descname">load_navigation</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filenames</span></em><span class="sig-paren">)</span><a class="headerlink" href="#magtogoek.navigation.load_navigation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load gps data from  <cite>nmea</cite>, <cite>gpx</cite> or <cite>netcdf</cite> file format.</p>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="module-magtogoek.platforms">
+<span id="magtogoek-platforms-module"></span><h2>magtogoek.platforms module<a class="headerlink" href="#module-magtogoek.platforms" title="Permalink to this headline">¶</a></h2>
+<p>author: Jérôme Guay
+date: Feb. 22, 2021</p>
+<p>This script makes platform template
+:TODO:
+-:everything:</p>
+<dl class="py function">
+<dt id="magtogoek.platforms.make_platform_template">
+<code class="sig-prename descclassname">magtogoek.platforms.</code><code class="sig-name descname">make_platform_template</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filename</span></em><span class="sig-paren">)</span><a class="headerlink" href="#magtogoek.platforms.make_platform_template" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt id="magtogoek.platforms.platform_template">
+<code class="sig-prename descclassname">magtogoek.platforms.</code><code class="sig-name descname">platform_template</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#magtogoek.platforms.platform_template" title="Permalink to this definition">¶</a></dt>
+<dd><p>FIXME</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-magtogoek.tools">
+<span id="magtogoek-tools-module"></span><h2>magtogoek.tools module<a class="headerlink" href="#module-magtogoek.tools" title="Permalink to this headline">¶</a></h2>
+<p>This modules contains mathematical and scientific functions.
+They are separated from utils.py due to longer import time.</p>
+<dl class="py function">
+<dt id="magtogoek.tools.circular_distance">
+<code class="sig-prename descclassname">magtogoek.tools.</code><code class="sig-name descname">circular_distance</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">a1</span></em>, <em class="sig-param"><span class="n">a2</span></em>, <em class="sig-param"><span class="n">units</span><span class="o">=</span><span class="default_value">'rad'</span></em><span class="sig-paren">)</span><a class="headerlink" href="#magtogoek.tools.circular_distance" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="simple">
+<dt>Function circdist usage:</dt><dd><p>d   =   circdist(a1,a2,units=’rad’)</p>
+</dd>
+</dl>
+<p>Returns to ‘d’ the distance between angles a1 and a2
+expected to be radians by default, or degrees if units
+is specified to ‘deg’.
+Parameters
+———-
+a1, a2 : float</p>
+<blockquote>
+<div><p>Input angle.</p>
+</div></blockquote>
+<dl class="simple">
+<dt>units<span class="classifier">str</span></dt><dd><p>Units of input angles (‘deg’, ‘rad’)</p>
+</dd>
+</dl>
+<dl class="simple">
+<dt>float</dt><dd><p>Angular distance between <cite>a1</cite> and <cite>a2</cite>.</p>
+</dd>
+</dl>
+<p>Taken from jeanlucshaw adcp2nc: <a class="reference external" href="https://github.com/jeanlucshaw/adcp2nc/">https://github.com/jeanlucshaw/adcp2nc/</a></p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="magtogoek.tools.get_gps_bearing">
+<code class="sig-prename descclassname">magtogoek.tools.</code><code class="sig-name descname">get_gps_bearing</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">p0</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">p1</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span></span></em><span class="sig-paren">)</span> &#x2192; float<a class="headerlink" href="#magtogoek.tools.get_gps_bearing" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate the bearing between two coordinates with pygeodesy.ellipsoidalVincenty.LatLon</p>
+<p>Datum = WGS84</p>
+<dl class="simple">
+<dt>p0 :</dt><dd><p>(longitude, latitude) of the first points in decimal degrees</p>
+</dd>
+<dt>p1 :</dt><dd><p>(longitude, latitude) of the second points in decimal degrees</p>
+</dd>
+</dl>
+<p>bearing in degrees [0, 360]</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="magtogoek.tools.nans">
+<code class="sig-prename descclassname">magtogoek.tools.</code><code class="sig-name descname">nans</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">shape</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>list<span class="p">, </span>tuple<span class="p">, </span>nptyping.types._ndarray.NDArray<span class="p">]</span></span></em><span class="sig-paren">)</span> &#x2192; nptyping.types._ndarray.NDArray<a class="headerlink" href="#magtogoek.tools.nans" title="Permalink to this definition">¶</a></dt>
+<dd><p>return array of nan of shape <cite>shape</cite></p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="magtogoek.tools.vincenty">
+<code class="sig-prename descclassname">magtogoek.tools.</code><code class="sig-name descname">vincenty</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">p0</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">p1</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>float<span class="p">, </span>float<span class="p">]</span></span></em><span class="sig-paren">)</span> &#x2192; float<a class="headerlink" href="#magtogoek.tools.vincenty" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate the distance between 2 coordinates with pygeodesy.ellipsoidalVincenty.LatLon</p>
+<p>Great Circule Distance with Datum = WGS84</p>
+<dl class="simple">
+<dt>p0 :</dt><dd><p>(longitude, latitude) of the first points in decimal degrees</p>
+</dd>
+<dt>p1 :</dt><dd><p>(longitude, latitude) of the second points in decimal degrees</p>
+</dd>
+</dl>
+<dl class="simple">
+<dt>distance :</dt><dd><p>distance between the two points in meters.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="module-magtogoek.utils">
+<span id="magtogoek-utils-module"></span><h2>magtogoek.utils module<a class="headerlink" href="#module-magtogoek.utils" title="Permalink to this headline">¶</a></h2>
+<p>magotogek utils</p>
+<dl class="py exception">
+<dt id="magtogoek.utils.FileNotFoundError">
+<em class="property">exception </em><code class="sig-prename descclassname">magtogoek.utils.</code><code class="sig-name descname">FileNotFoundError</code><a class="headerlink" href="#magtogoek.utils.FileNotFoundError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Exception</span></code></p>
+</dd></dl>
+
+<dl class="py class">
+<dt id="magtogoek.utils.Logger">
+<em class="property">class </em><code class="sig-prename descclassname">magtogoek.utils.</code><code class="sig-name descname">Logger</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">logbook</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">''</span></em>, <em class="sig-param"><span class="n">level</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">0</span></em><span class="sig-paren">)</span><a class="headerlink" href="#magtogoek.utils.Logger" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Logger object can log and print messages.</p>
+<p>Logger objects print log and warning messages  while building a
+logbook from them. The logbook is formatted as a string in
+<cite>self.logbook</cite>. Logger objects keep count of the warnings in
+<cite>self.w_count</cite>.</p>
+<dl class="simple">
+<dt>logbook<span class="classifier">str, Default None.</span></dt><dd><p>Formatted logbook.</p>
+</dd>
+<dt>level<span class="classifier">int,  Default 0.</span></dt><dd><p>Level controls which messages are printed.
+[0: prints all, 1: print only warnings, 2: prints None]</p>
+</dd>
+</dl>
+<dl class="simple">
+<dt>logbook :</dt><dd><p>String of the formatted logbook build from the different entries.</p>
+</dd>
+<dt>w_count :</dt><dd><p>Number of Warning.</p>
+</dd>
+</dl>
+<dl class="simple">
+<dt>section :</dt><dd><p>Makes a new sections.</p>
+</dd>
+<dt>log :</dt><dd><p>Log and print a log message. Prints if level is greater or equal 0</p>
+</dd>
+<dt>warning :</dt><dd><p>Log and print warning message. Prints if level is greater or equal 1</p>
+</dd>
+<dt>reset :</dt><dd><p>Resets the logbook and the warning count.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="magtogoek.utils.Logger.log">
+<code class="sig-name descname">log</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">msg</span><span class="p">:</span> <span class="n">str</span></em>, <em class="sig-param"><span class="n">t</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#magtogoek.utils.Logger.log" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add a log.
+Parameters
+———-
+msg :</p>
+<blockquote>
+<div><p>Message to log.</p>
+</div></blockquote>
+<dl class="simple">
+<dt>t :</dt><dd><p>Log time if True.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="magtogoek.utils.Logger.reset">
+<code class="sig-name descname">reset</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#magtogoek.utils.Logger.reset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reset w_count and logbook.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="magtogoek.utils.Logger.section">
+<code class="sig-name descname">section</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">section</span><span class="p">:</span> <span class="n">str</span></em>, <em class="sig-param"><span class="n">t</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#magtogoek.utils.Logger.section" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add a new section.
+Parameters:
+———–
+section:</p>
+<blockquote>
+<div><p>Section’s names.</p>
+</div></blockquote>
+<dl class="simple">
+<dt>t:</dt><dd><p>Log time if True.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="magtogoek.utils.Logger.warning">
+<code class="sig-name descname">warning</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">msg</span><span class="p">:</span> <span class="n">str</span></em>, <em class="sig-param"><span class="n">t</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#magtogoek.utils.Logger.warning" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add a warning.
+Parameters
+———-
+msg :</p>
+<blockquote>
+<div><p>Message to log.</p>
+</div></blockquote>
+<dl class="simple">
+<dt>t :</dt><dd><p>Log time if True.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt id="magtogoek.utils.ask_for_filename">
+<code class="sig-prename descclassname">magtogoek.utils.</code><code class="sig-name descname">ask_for_filename</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ext</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span> &#x2192; str<a class="headerlink" href="#magtogoek.utils.ask_for_filename" title="Permalink to this definition">¶</a></dt>
+<dd><p>ckick.prompt that ask for <cite>filename</cite></p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="magtogoek.utils.dict2json">
+<code class="sig-prename descclassname">magtogoek.utils.</code><code class="sig-name descname">dict2json</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">file_name</span><span class="p">:</span> <span class="n">str</span></em>, <em class="sig-param"><span class="n">dictionnary</span><span class="p">:</span> <span class="n">Dict</span></em>, <em class="sig-param"><span class="n">indent</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">4</span></em><span class="sig-paren">)</span> &#x2192; None<a class="headerlink" href="#magtogoek.utils.dict2json" title="Permalink to this definition">¶</a></dt>
+<dd><p>Makes json file from dictionnary</p>
+<dl class="simple">
+<dt>indent :</dt><dd><p>argument is passed to json.dump(…, indent=indent)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="magtogoek.utils.get_files_from_expresion">
+<code class="sig-prename descclassname">magtogoek.utils.</code><code class="sig-name descname">get_files_from_expresion</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filenames</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>str<span class="p">, </span>List<span class="p">[</span>str<span class="p">]</span><span class="p">]</span></span></em><span class="sig-paren">)</span> &#x2192; List<span class="p">[</span>str<span class="p">]</span><a class="headerlink" href="#magtogoek.utils.get_files_from_expresion" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get existing files from expression.</p>
+<p>Returns a list of existing files.</p>
+<dl class="simple">
+<dt>FileNotFoundError :</dt><dd><p>If files does not exist, or a matching regex not found.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="magtogoek.utils.is_valid_filename">
+<code class="sig-prename descclassname">magtogoek.utils.</code><code class="sig-name descname">is_valid_filename</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filename</span><span class="p">:</span> <span class="n">str</span></em>, <em class="sig-param"><span class="n">ext</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span> &#x2192; str<a class="headerlink" href="#magtogoek.utils.is_valid_filename" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check if directory or/and file name exist.</p>
+<p>-Ask to make the directories if they don’t exist.
+-Ask  to ovewrite the file if a file already exist.
+-Adds the correct suffix (extension) if it was not added</p>
+<blockquote>
+<div><dl class="simple">
+<dt>but keeps other suffixes.</dt><dd><p>Ex. path/to/file.ext1.ext2.ini</p>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
+<dl class="py function">
+<dt id="magtogoek.utils.json2dict">
+<code class="sig-prename descclassname">magtogoek.utils.</code><code class="sig-name descname">json2dict</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">json_file</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span><a class="headerlink" href="#magtogoek.utils.json2dict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Open json file as a dictionnary.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-magtogoek.version">
+<span id="magtogoek-version-module"></span><h2>magtogoek.version module<a class="headerlink" href="#module-magtogoek.version" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-magtogoek">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-magtogoek" title="Permalink to this headline">¶</a></h2>
+</div>
+</div>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">Table of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">magtogoek package</a><ul>
+<li><a class="reference internal" href="#subpackages">Subpackages</a></li>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+<li><a class="reference internal" href="#module-magtogoek.app">magtogoek.app module</a></li>
+<li><a class="reference internal" href="#module-magtogoek.app_options">magtogoek.app_options module</a></li>
+<li><a class="reference internal" href="#module-magtogoek.attributes_formatter">magtogoek.attributes_formatter module</a><ul>
+<li><a class="reference internal" href="#sea-also">Sea Also</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-magtogoek.configfile">magtogoek.configfile module</a></li>
+<li><a class="reference internal" href="#module-magtogoek.navigation">magtogoek.navigation module</a><ul>
+<li><a class="reference internal" href="#notes">Notes</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-magtogoek.platforms">magtogoek.platforms module</a></li>
+<li><a class="reference internal" href="#module-magtogoek.tools">magtogoek.tools module</a></li>
+<li><a class="reference internal" href="#module-magtogoek.utils">magtogoek.utils module</a></li>
+<li><a class="reference internal" href="#module-magtogoek.version">magtogoek.version module</a></li>
+<li><a class="reference internal" href="#module-magtogoek">Module contents</a></li>
+</ul>
+</li>
+</ul>
+
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/html/magtogoek.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">magtogoek 0.0.1 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">magtogoek package</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2021, jeromejguay.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 3.2.1.
+    </div>
+  </body>
+</html>
