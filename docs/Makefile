@@ -5,8 +5,8 @@
 # from the environment for the first two.
 SPHINXOPTS    ?=
 SPHINXBUILD   ?= sphinx-build
-SOURCEDIR     = .
-BUILDDIR      = ../
+SOURCEDIR     = ../magtogoek
+BUILDDIR      = .
 
 # Put it first so that "make" without argument is like "make help".
 help:
@@ -18,5 +18,3 @@ help:
 # "make mode" option.  $(O) is meant as a shortcut for $(SPHINXOPTS).
 %: Makefile
 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
-
-	mv -f $(BUILDDIR)/html/* $(SOURCEDIR)/

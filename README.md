@@ -4,7 +4,9 @@
 ## PACKAGE
 Magtogoek is a python package and command line application (CLI) to process ocean data. 
 At the moment, only Accoustisc Doopler Current Profiler (ADCP) data can be processed. 
-This package is developped by the Scientific Advice, Information and Support Branch at the Fisheries and Ocean Canada Maurice-Lamontagne Institute .
+This package is developped by the Scientific Advice, Information and Support Branch at the Fisheries and Ocean Canada Maurice-Lamontagne Institute.
+
+(Magtogoek documentation here)[https://jeromejguay.github.io/magtogoek/]
 
 ### Supported data type.
 * ADCP : Accoustisc Doopler Current Profiler 
@@ -20,10 +22,10 @@ This package is developped by the Scientific Advice, Information and Support Bra
 Clone the respository and and install it with `pip install`. Follow the instruction below. 
 
 ```shell
-$: mkdir ~/magtogoek
-$: cd ~/magtogoek
-$: git clone https://github.com/JeromeJGuay/magtogoek
-$: pip install magtogoek
+:$ mkdir ~/magtogoek
+:$ cd ~/magtogoek
+:$ git clone https://github.com/JeromeJGuay/magtogoek
+:$ pip install magtogoek
 ```
 ## REQUIREMENTS
 Magtogoek requires the external python package pycurrents made by UH Currents Group at the University of Hawaii to process Teledyne data. Visit [pycurrents webesite](https://currents.soest.hawaii.edu/ocn_data_analysis/installation.html) for more details.
@@ -31,9 +33,9 @@ Magtogoek requires the external python package pycurrents made by UH Currents Gr
 ### Pycurrents installation instruction:
 
 ```shell
-$: cd ~/magtogoek
-$: hg clone https://currents.soest.hawaii.edu/hgstage/pycurrents
-$: pip install pycurrents
+:$ cd ~/magtogoek
+:$ hg clone https://currents.soest.hawaii.edu/hgstage/pycurrents
+:$ pip install pycurrents
 ```
 
 ## CLI APPLICATION USAGE
@@ -49,22 +51,22 @@ Data can be processed in two ways: Using the `quick` command or the `process` co
 The `quick` commands allows to process instrument data directly from the command line where the default processing parameters can be modified with optionnal arguments.
 The `process` commands allows the users to add more metadata to the output netcdf files using configuration files which are `.ini` files.
 
-#### quick 
+#### `mtgk quick`
 ```Shell
-$: mtgk quick [adcp,] FILENAME [options]
+:$ mtgk quick [adcp,] FILENAME [options]
 ```
 
-#### process
+#### `mtgk process`
 Configuration files are made with the command `config` followed by a specific sensors. 
 Optionnal arguments can also be use to set some values in the configuration file directly from the terminal.
                         
 ```Shell
-$: mtgk config [adcp, ] FILENAME options
+:$ mtgk config [adcp, ] FILENAME options
 ```
 Once filled out, configuration files can by passed to the `process` command as follow
 
 ```Shell
-$: mtgk process CONFIG_NAME
+:$ mtgk process CONFIG_NAME
 ```
 
 #### platform files
@@ -73,9 +75,8 @@ Note that in Magtogoek, instruments are refered to as sensors.
 Platform could be anything that has some instruments/sensors e.g. ship, mooring, buoy, drifter, rossete, etc.
 
 A plaform file is made with the command `config platform`:
-#### Config
 ```Shell
-$: mtgk config  platform FILENAME 
+:$ mtgk config  platform FILENAME 
 ```
 Platform files are structured as follow:
 
