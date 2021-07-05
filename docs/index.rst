@@ -1,27 +1,15 @@
 
-Welcome to magtogoek's documentation!
-=====================================
+=========================
+Magtogoek's documentation
+=========================
 
+.. include:: ../README.md
+  
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
-   
-   magtogeok
-   magtogoek/adcp
+   :caption: Modules:
 
-.. automodule:: magtogoek
-  :members:
-
-.. automodule:: magtogoek.adcp
-   :members:
-
-
-
-
-
-  
-
-
+   html/modules
 
 Indices and tables
 ==================

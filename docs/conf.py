@@ -35,6 +35,7 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.githubpages",
     "sphinx.ext.mathjax",
+    "recommonmark",
 ]
 
 source_suffix = [".rst", ".md"]
