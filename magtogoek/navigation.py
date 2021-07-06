@@ -37,7 +37,9 @@ VARIABLE_TRANSLATOR = dict(
 
 
 def load_navigation(filenames):
-    """Load gps data from  `nmea`, `gpx` or `netcdf` file format."""
+    """Load gps data from  `nmea`, `gpx` or `netcdf` file format.
+    Returns a xarray.Dataset with the loaded data.
+    """
 
     filenames = get_files_from_expresion(filenames)
 

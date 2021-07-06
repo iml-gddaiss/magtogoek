@@ -227,7 +227,7 @@ def config_platform(ctx, filename, info):
 @click.option(
     "--info", is_flag=True, callback=_print_info, help="Show command information"
 )
-@click.argument("config_name", metavar="[config_file]", type=str)
+@click.argument("config_name", metavar="[config_name]", type=str)
 @click.option(
     "-T",
     "--platform",
@@ -608,7 +608,7 @@ def _print_usage(group, parent):
         click.echo("  mtgk quick [adcp, ] [FILENAME,...] [OPTIONS]")
     if group == "adcp":
         if _parent == "config":
-            click.echo(f"  mtgk config adcp [CONFIG_FILE] [OPTIONS]")
+            click.echo(f"  mtgk config adcp [CONFIG_NAME] [OPTIONS]")
         if _parent == "quick":
             click.echo(f"  mtgk quick adcp [INPUT_FILES] [SONAR] [YEARBASE] [OPTIONS]")
     if group == "check":

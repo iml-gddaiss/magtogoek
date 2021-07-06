@@ -203,7 +203,6 @@ def _add_sensor_serial_to_var_attrs(dataset: tp.Type[xr.Dataset]):
         if "sensor_type" in dataset[var].attrs:
             if dataset[var].attrs["sensor_type"] == dataset.attrs["sensor_type"]:
                 dataset[var].attrs["serial_number"] = dataset.attrs["serial_number"]
-                print("sn")
 
 
 def _add_ancillary_variables_to_var_attrs(dataset: tp.Type[xr.Dataset]):
