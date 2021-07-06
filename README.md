@@ -17,7 +17,7 @@ Supported data type:
 * More to come.
 
 ## Installation
-### Install via `git clone`.
+### Install via `git clone`
 Clone the respository from the (github repository)[https://github.com/JeromeJGuay/magtogoek] and and install it with `pip install`. 
 ```shell
 $ git clone https://github.com/JeromeJGuay/magtogoek
@@ -102,16 +102,16 @@ When processing data, a platform\_file, platform\_id and sensor\_id have to be p
 In future version of Magtogoek, a single platform files could be use to store all the sensors metadata. 
 That way, only the platform\_id and sensor\_id would be required to add sensors and platform metadata. 
 
-### Example
+### Examples
 Example of platform and configuration files are available in th `test` section of the Magtogoek project. 
 Data are also included to test the `quick` and `process` command.
 Supposing you are in the test/files directory of the project, the `iml4_2017_sw_01.ENS` and `iml4_2017_sw_02.ENS` Rowtech files can be process using the `adcp_iml4_2017.ini` config file and the `process` command,
 ```shell
-../magtogeok/test/files$ mtgk process adcp_iml4_2017.ini
+../magtogoek/test/files$ mtgk process adcp_iml4_2017.ini
 ```
 or with th `quick` command:
 ```shell
-../magtogeok/test/files$ mtgk quick adcp iml4_2017_sw_0*.ENS -s sw -y 2017 -n iml4_2017_sw_quick
+../magtogoek/test/files$ mtgk quick adcp iml4_2017_sw_0*.ENS -s sw -y 2017 -n iml4_2017_sw_quick
 ```
 
 
