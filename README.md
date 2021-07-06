@@ -1,9 +1,8 @@
-Magtogoek 
-===========
+# Magtogoek 
 *Name origin: Magtogoek is Algonquin name for the Saint-Lawrence River which mean "the path that walks".*
 
-PACKAGE
---------
+## PACKAGE
+
 
 Magtogoek is a python package and command line application (CLI) to process ocean data. 
 At the moment, only Accoustisc Doopler Current Profiler (ADCP) data can be processed. 
@@ -11,8 +10,9 @@ This package is developped by the Scientific Advice, Information and Support Bra
 
 [Magtogoek documentation here](https://jeromejguay.github.io/magtogoek/)
 
-Supported data type
-^^^^^^^^^^^^^^^^^^^
+### Supported data type:
+
+
 * ADCP : Accoustisc Doopler Current Profiler 
   - RDI Teledyne: WorkHorse, SentinelV, OceanSurveilor **(Only available on Linux/MacOS Only)**
     Magtogoek uses the pycurrents package made by UH Currents Group of the University of Hawaii.
@@ -22,7 +22,7 @@ Supported data type
     their (repository TODO)[TODO].
 * More to come.
 
-## INSTALLATION
+## Installation
 Clone the respository and and install it with `pip install`. Follow the instruction below. 
 
 ```shell

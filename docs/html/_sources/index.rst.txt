@@ -3,7 +3,7 @@
 Magtogoek's documentation
 =========================
 
-.. include:: ../README.md
+.. mdinclude:: ../README.md
   
 .. toctree::
    :maxdepth: 2

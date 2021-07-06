@@ -1,0 +1,254 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>&lt;no title&gt; &#8212; magtogoek 0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="&lt;no title&gt;" href="magtogoek.version.html" />
+    <link rel="prev" title="&lt;no title&gt;" href="magtogoek.tools.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="magtogoek.version.html" title="&lt;no title&gt;"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="magtogoek.tools.html" title="&lt;no title&gt;"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">magtogoek 0.0.1 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="modules.html" >magtogoek</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="magtogoek.html" accesskey="U">magtogoek package</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">&lt;no title&gt;</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <span class="target" id="module-magtogoek.utils"></span><p>magotogek utils</p>
+<dl class="py exception">
+<dt id="magtogoek.utils.FileNotFoundError">
+<em class="property">exception </em><code class="sig-prename descclassname">magtogoek.utils.</code><code class="sig-name descname">FileNotFoundError</code><a class="headerlink" href="#magtogoek.utils.FileNotFoundError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Exception</span></code></p>
+</dd></dl>
+
+<dl class="py class">
+<dt id="magtogoek.utils.Logger">
+<em class="property">class </em><code class="sig-prename descclassname">magtogoek.utils.</code><code class="sig-name descname">Logger</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">logbook</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">''</span></em>, <em class="sig-param"><span class="n">level</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">0</span></em><span class="sig-paren">)</span><a class="headerlink" href="#magtogoek.utils.Logger" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Logger object can log and print messages.</p>
+<p>Logger objects print log and warning messages  while building a
+logbook from them. The logbook is formatted as a string in
+<cite>self.logbook</cite>. Logger objects keep count of the warnings in
+<cite>self.w_count</cite>.</p>
+<dl class="simple">
+<dt>logbook<span class="classifier">str, Default None.</span></dt><dd><p>Formatted logbook.</p>
+</dd>
+<dt>level<span class="classifier">int,  Default 0.</span></dt><dd><p>Level controls which messages are printed.
+[0: prints all, 1: print only warnings, 2: prints None]</p>
+</dd>
+</dl>
+<dl class="simple">
+<dt>logbook :</dt><dd><p>String of the formatted logbook build from the different entries.</p>
+</dd>
+<dt>w_count :</dt><dd><p>Number of Warning.</p>
+</dd>
+</dl>
+<dl class="simple">
+<dt>section :</dt><dd><p>Makes a new sections.</p>
+</dd>
+<dt>log :</dt><dd><p>Log and print a log message. Prints if level is greater or equal 0</p>
+</dd>
+<dt>warning :</dt><dd><p>Log and print warning message. Prints if level is greater or equal 1</p>
+</dd>
+<dt>reset :</dt><dd><p>Resets the logbook and the warning count.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="magtogoek.utils.Logger.log">
+<code class="sig-name descname">log</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">msg</span><span class="p">:</span> <span class="n">str</span></em>, <em class="sig-param"><span class="n">t</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#magtogoek.utils.Logger.log" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add a log.
+Parameters
+———-
+msg :</p>
+<blockquote>
+<div><p>Message to log.</p>
+</div></blockquote>
+<dl class="simple">
+<dt>t :</dt><dd><p>Log time if True.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="magtogoek.utils.Logger.reset">
+<code class="sig-name descname">reset</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#magtogoek.utils.Logger.reset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reset w_count and logbook.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="magtogoek.utils.Logger.section">
+<code class="sig-name descname">section</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">section</span><span class="p">:</span> <span class="n">str</span></em>, <em class="sig-param"><span class="n">t</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#magtogoek.utils.Logger.section" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add a new section.
+Parameters:
+———–
+section:</p>
+<blockquote>
+<div><p>Section’s names.</p>
+</div></blockquote>
+<dl class="simple">
+<dt>t:</dt><dd><p>Log time if True.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="magtogoek.utils.Logger.warning">
+<code class="sig-name descname">warning</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">msg</span><span class="p">:</span> <span class="n">str</span></em>, <em class="sig-param"><span class="n">t</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#magtogoek.utils.Logger.warning" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add a warning.
+Parameters
+———-
+msg :</p>
+<blockquote>
+<div><p>Message to log.</p>
+</div></blockquote>
+<dl class="simple">
+<dt>t :</dt><dd><p>Log time if True.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt id="magtogoek.utils.ask_for_filename">
+<code class="sig-prename descclassname">magtogoek.utils.</code><code class="sig-name descname">ask_for_filename</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ext</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span> &#x2192; str<a class="headerlink" href="#magtogoek.utils.ask_for_filename" title="Permalink to this definition">¶</a></dt>
+<dd><p>ckick.prompt that ask for <cite>filename</cite></p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="magtogoek.utils.dict2json">
+<code class="sig-prename descclassname">magtogoek.utils.</code><code class="sig-name descname">dict2json</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">file_name</span><span class="p">:</span> <span class="n">str</span></em>, <em class="sig-param"><span class="n">dictionnary</span><span class="p">:</span> <span class="n">Dict</span></em>, <em class="sig-param"><span class="n">indent</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">4</span></em><span class="sig-paren">)</span> &#x2192; None<a class="headerlink" href="#magtogoek.utils.dict2json" title="Permalink to this definition">¶</a></dt>
+<dd><p>Makes json file from dictionnary</p>
+<dl class="simple">
+<dt>indent :</dt><dd><p>argument is passed to json.dump(…, indent=indent)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="magtogoek.utils.get_files_from_expresion">
+<code class="sig-prename descclassname">magtogoek.utils.</code><code class="sig-name descname">get_files_from_expresion</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filenames</span><span class="p">:</span> <span class="n">Tuple<span class="p">[</span>str<span class="p">, </span>List<span class="p">[</span>str<span class="p">]</span><span class="p">]</span></span></em><span class="sig-paren">)</span> &#x2192; List<span class="p">[</span>str<span class="p">]</span><a class="headerlink" href="#magtogoek.utils.get_files_from_expresion" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get existing files from expression.</p>
+<p>Returns a list of existing files.</p>
+<dl class="simple">
+<dt>FileNotFoundError :</dt><dd><p>If files does not exist, or a matching regex not found.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="magtogoek.utils.is_valid_filename">
+<code class="sig-prename descclassname">magtogoek.utils.</code><code class="sig-name descname">is_valid_filename</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filename</span><span class="p">:</span> <span class="n">str</span></em>, <em class="sig-param"><span class="n">ext</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span> &#x2192; str<a class="headerlink" href="#magtogoek.utils.is_valid_filename" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check if directory or/and file name exist.</p>
+<p>-Ask to make the directories if they don’t exist.
+-Ask  to ovewrite the file if a file already exist.
+-Adds the correct suffix (extension) if it was not added</p>
+<blockquote>
+<div><dl class="simple">
+<dt>but keeps other suffixes.</dt><dd><p>Ex. path/to/file.ext1.ext2.ini</p>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
+<dl class="py function">
+<dt id="magtogoek.utils.json2dict">
+<code class="sig-prename descclassname">magtogoek.utils.</code><code class="sig-name descname">json2dict</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">json_file</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span><a class="headerlink" href="#magtogoek.utils.json2dict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Open json file as a dictionnary.</p>
+</dd></dl>
+
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="magtogoek.tools.html"
+                        title="previous chapter">&lt;no title&gt;</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="magtogoek.version.html"
+                        title="next chapter">&lt;no title&gt;</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/html/magtogoek.utils.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="magtogoek.version.html" title="&lt;no title&gt;"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="magtogoek.tools.html" title="&lt;no title&gt;"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">magtogoek 0.0.1 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="modules.html" >magtogoek</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="magtogoek.html" >magtogoek package</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">&lt;no title&gt;</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2021, jeromejguay.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 3.2.1.
+    </div>
+  </body>
+</html>

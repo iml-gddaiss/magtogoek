@@ -1,0 +1,199 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sea Also &#8212; magtogoek 0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="&lt;no title&gt;" href="magtogoek.configfile.html" />
+    <link rel="prev" title="&lt;no title&gt;" href="magtogoek.app_options.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="magtogoek.configfile.html" title="&lt;no title&gt;"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="magtogoek.app_options.html" title="&lt;no title&gt;"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">magtogoek 0.0.1 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="modules.html" >magtogoek</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="magtogoek.html" accesskey="U">magtogoek package</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Sea Also</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <span class="target" id="module-magtogoek.attributes_formatter"></span><p>author : <a class="reference external" href="mailto:jerome&#46;guay&#37;&#52;&#48;protonamil&#46;com">jerome<span>&#46;</span>guay<span>&#64;</span>protonamil<span>&#46;</span>com</a>
+date : Feb. 16, 2021</p>
+<p>This script contains <cite>format_variables_namnes_and_attributes()</cite> function that, as the name may
+suggest, formats a xarray dataset variables attributes have SeaDataNet, CF Conventions and other
+attributes. This script requires json files containing the <cite>static</cite> metadata to add to variables.
+The json files can be made by executing static_attributes.py script which can be edited to change
+where the json is saved.</p>
+<blockquote>
+<div><p>$ python static_attributes.py</p>
+</div></blockquote>
+<dl class="simple">
+<dt>static variables attributes :</dt><dd><p>-‘standard_name’
+-‘units’
+-‘long_name’
+-‘ancillary_variables’
+-‘sdn_parameter_urn’
+-‘sdn_parameter_name’
+-‘sdn_uom_urn’
+-‘sdn_uom_name’
+-‘legacy_GF3_code’</p>
+</dd>
+<dt>dynamic variables attributes :</dt><dd><p>-‘data_min’
+-‘data_max’
+FIXME</p>
+</dd>
+</dl>
+<div class="section" id="sea-also">
+<h1>Sea Also<a class="headerlink" href="#sea-also" title="Permalink to this headline">¶</a></h1>
+<p>Read the functions and the docs below. They are pretty explicit.</p>
+<dl class="py function">
+<dt id="magtogoek.attributes_formatter.compute_global_attrs">
+<code class="sig-prename descclassname">magtogoek.attributes_formatter.</code><code class="sig-name descname">compute_global_attrs</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dataset</span><span class="p">:</span> <span class="n">Type<span class="p">[</span>xarray.core.dataset.Dataset<span class="p">]</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#magtogoek.attributes_formatter.compute_global_attrs" title="Permalink to this definition">¶</a></dt>
+<dd><dl>
+<dt>Sets :</dt><dd><p>-time_coverage_start
+-time_coverage_end
+-time_coverage_duration
+-time_coverage_duration_units (days)</p>
+<p>-sounding: (Sounding not added if platform_type is ship.)
+-geospatial_lat_min
+-geospatial_lat_max
+-geospatial_lat_units
+-geospatial_lon_min
+-geospatial_lon_max
+-geospatial_lon_units
+-geospatial_vertical_min
+-geospatial_vertical_max
+-geospatial_vertical_positive
+-geospatial_vertical_units</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="magtogoek.attributes_formatter.format_variables_names_and_attributes">
+<code class="sig-prename descclassname">magtogoek.attributes_formatter.</code><code class="sig-name descname">format_variables_names_and_attributes</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dataset</span><span class="p">:</span> <span class="n">Type<span class="p">[</span>xarray.core.dataset.Dataset<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">use_bodc_codes</span><span class="p">:</span> <span class="n">bool</span></em><span class="sig-paren">)</span> &#x2192; Type<span class="p">[</span>xarray.core.dataset.Dataset<span class="p">]</span><a class="headerlink" href="#magtogoek.attributes_formatter.format_variables_names_and_attributes" title="Permalink to this definition">¶</a></dt>
+<dd><p>Format variables names and attributes</p>
+<p>Returns dataset with variables attributes set.</p>
+<p>Convert variables names to BODC and then adds CF and SeaDataNet metadata
+to variables attributes. Coordinates names are always changed back to their
+original names (generic_name). Variables names can also be changed back to
+their original names (generic_name) setting <cite>use_bodc_codes</cite> as <cite>False</cite>/</p>
+<dl>
+<dt>Require dataset global attributes  :</dt><dd><dl>
+<dt><cite>P01_CODE_TRANSLATOR</cite><span class="classifier">a dictionnary containing <cite>generic_name</cite>:<cite>p01_codes</cite></span></dt><dd><p>as keys and items.</p>
+</dd>
+</dl>
+</dd>
+<dt>None essential global attributes :</dt><dd><p><cite>sensor_type</cite> :
+<cite>sensor_depth</cite> :
+<cite>sensor_serial</cite> :
+<cite>VAR_TO_ADD_SENSOR_TYPE</cite> : List of P01 parameters codes of variables to which</p>
+<blockquote>
+<div><p>add the sensor_type attributes.</p>
+</div></blockquote>
+</dd>
+</dl>
+<dl class="simple">
+<dt>dataset :</dt><dd><p>dataset to format. The dataset must contain a global_attributes named <cite>P01_CODE_TRANSLATOR</cite></p>
+</dd>
+</dl>
+<p>which has to be a dictionnary containing <cite>generic_name</cite>:<cite>p01_code</cite> as keys and items.</p>
+<dl class="simple">
+<dt>use_bodc_name :</dt><dd><p>If <cite>True</cite>, the variable names are changed to th BODC P01 parameters codes.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="magtogoek.app_options.html"
+                        title="previous chapter">&lt;no title&gt;</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="magtogoek.configfile.html"
+                        title="next chapter">&lt;no title&gt;</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/html/magtogoek.attributes_formatter.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="magtogoek.configfile.html" title="&lt;no title&gt;"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="magtogoek.app_options.html" title="&lt;no title&gt;"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">magtogoek 0.0.1 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="modules.html" >magtogoek</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="magtogoek.html" >magtogoek package</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Sea Also</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2021, jeromejguay.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 3.2.1.
+    </div>
+  </body>
+</html>

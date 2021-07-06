@@ -1,0 +1,142 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Notes &#8212; magtogoek 0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="&lt;no title&gt;" href="magtogoek.platforms.html" />
+    <link rel="prev" title="&lt;no title&gt;" href="magtogoek.configfile.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="magtogoek.platforms.html" title="&lt;no title&gt;"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="magtogoek.configfile.html" title="&lt;no title&gt;"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">magtogoek 0.0.1 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="modules.html" >magtogoek</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="magtogoek.html" accesskey="U">magtogoek package</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Notes</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <span class="target" id="module-magtogoek.navigation"></span><p>author: <a class="reference external" href="mailto:jerome&#46;guay&#37;&#52;&#48;protonmail&#46;com">jerome<span>&#46;</span>guay<span>&#64;</span>protonmail<span>&#46;</span>com</a></p>
+<p>Module to load GPS data and compute navigation data from <cite>nmea</cite>, <cite>gpx</cite> or <cite>netcdf</cite> file format</p>
+<div class="section" id="notes">
+<h1>Notes<a class="headerlink" href="#notes" title="Permalink to this headline">¶</a></h1>
+<dl class="simple">
+<dt>compute_navigation:</dt><dd><p>After testing, the u_ship, v_ship computation need more work, using a large value for the rolling
+average window could do the trick.</p>
+</dd>
+</dl>
+<dl class="py function">
+<dt id="magtogoek.navigation.compute_navigation">
+<code class="sig-prename descclassname">magtogoek.navigation.</code><code class="sig-name descname">compute_navigation</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filenames</span><span class="p">:</span> <span class="n">str</span></em>, <em class="sig-param"><span class="n">output_name</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">window</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">1</span></em><span class="sig-paren">)</span><a class="headerlink" href="#magtogoek.navigation.compute_navigation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the <cite>bearing</cite>, <cite>speed</cite>, <cite>u_ship</cite> and <cite>v_ship</cite> from gps data in nmea text format or gpx xml format.</p>
+<p>Returns an xarray.dataset object with the compute data and gps data.</p>
+<dl class="simple">
+<dt>window :</dt><dd><p>Size of the centered averaging window for u_ship, v_ship and bearing computation.</p>
+</dd>
+</dl>
+<dl class="simple">
+<dt>WARNINGS:</dt><dd><p>After testing, the u_ship, v_ship computation need more works.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="magtogoek.navigation.load_navigation">
+<code class="sig-prename descclassname">magtogoek.navigation.</code><code class="sig-name descname">load_navigation</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filenames</span></em><span class="sig-paren">)</span><a class="headerlink" href="#magtogoek.navigation.load_navigation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load gps data from  <cite>nmea</cite>, <cite>gpx</cite> or <cite>netcdf</cite> file format.</p>
+</dd></dl>
+
+</div>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="magtogoek.configfile.html"
+                        title="previous chapter">&lt;no title&gt;</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="magtogoek.platforms.html"
+                        title="next chapter">&lt;no title&gt;</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/html/magtogoek.navigation.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="magtogoek.platforms.html" title="&lt;no title&gt;"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="magtogoek.configfile.html" title="&lt;no title&gt;"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">magtogoek 0.0.1 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="modules.html" >magtogoek</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="magtogoek.html" >magtogoek package</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Notes</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2021, jeromejguay.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 3.2.1.
+    </div>
+  </body>
+</html>

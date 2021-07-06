@@ -1,0 +1,174 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>&lt;no title&gt; &#8212; magtogoek 0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="&lt;no title&gt;" href="magtogoek.app.html" />
+    <link rel="prev" title="&lt;no title&gt;" href="magtogoek.adcp.rti_reader.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="magtogoek.app.html" title="&lt;no title&gt;"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="magtogoek.adcp.rti_reader.html" title="&lt;no title&gt;"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">magtogoek 0.0.1 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="modules.html" >magtogoek</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="magtogoek.html" >magtogoek package</a> &#187;</li>
+          <li class="nav-item nav-item-3"><a href="magtogoek.adcp.html" accesskey="U">magtogoek.adcp package</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">&lt;no title&gt;</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <span class="target" id="module-magtogoek.adcp.tools"></span><p>Set of functions and objects used for adcp processing</p>
+<dl class="py function">
+<dt id="magtogoek.adcp.tools.datetime_to_dday">
+<code class="sig-prename descclassname">magtogoek.adcp.tools.</code><code class="sig-name descname">datetime_to_dday</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">datetimes</span><span class="p">:</span> <span class="n">List<span class="p">[</span>Type<span class="p">[</span>datetime.datetime<span class="p">]</span><span class="p">]</span></span></em>, <em class="sig-param"><span class="n">yearbase</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">None</span></em><span class="sig-paren">)</span> &#x2192; nptyping.types._ndarray.NDArray<a class="headerlink" href="#magtogoek.adcp.tools.datetime_to_dday" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert sequence of datetime to an array of dday since yearbase</p>
+<p>If yearbase is none, default to the year of the first datetime.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="magtogoek.adcp.tools.dday_to_datetime64">
+<code class="sig-prename descclassname">magtogoek.adcp.tools.</code><code class="sig-name descname">dday_to_datetime64</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dday</span><span class="p">:</span> <span class="n">List</span></em>, <em class="sig-param"><span class="n">yearbase</span><span class="p">:</span> <span class="n">int</span></em><span class="sig-paren">)</span> &#x2192; Tuple<span class="p">[</span>nptyping.types._ndarray.NDArray<span class="p">, </span>nptyping.types._ndarray.NDArray<span class="p">]</span><a class="headerlink" href="#magtogoek.adcp.tools.dday_to_datetime64" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert time recorded time to pandas time (np.datetime64[s]).</p>
+<p>Replace time coordinates with datetime64 in strftime=’%Y-%m-%d %H:%M:%S’
+Add <cite>time_string</cite> variables to dataset (strftime=’%Y-%m-%d %H:%M:%S’)</p>
+<dl class="simple">
+<dt>dataset:</dt><dd><p>FIXME</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="magtogoek.adcp.tools.get_datetime_and_count">
+<code class="sig-prename descclassname">magtogoek.adcp.tools.</code><code class="sig-name descname">get_datetime_and_count</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">trim_arg</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span><a class="headerlink" href="#magtogoek.adcp.tools.get_datetime_and_count" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get datime and count from trim_arg.</p>
+<p>If <cite>trim_arg</cite> is None, returns (None, None)
+If ‘T’ is a datetimeor a count returns (Timstamp(trim_arg), None)
+Else returns (None, int(trim_arg))</p>
+<dl class="simple">
+<dt>datetime:</dt><dd><p>None or pandas.Timstamp</p>
+</dd>
+<dt>count:</dt><dd><p>None or int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="magtogoek.adcp.tools.magnetic_to_true">
+<code class="sig-prename descclassname">magtogoek.adcp.tools.</code><code class="sig-name descname">magnetic_to_true</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">magnetic_east</span><span class="p">:</span> <span class="n">nptyping.types._ndarray.NDArray</span></em>, <em class="sig-param"><span class="n">magnetic_north</span><span class="p">:</span> <span class="n">nptyping.types._ndarray.NDArray</span></em>, <em class="sig-param"><span class="n">magnetic_declination</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; Tuple<span class="p">[</span>nptyping.types._ndarray.NDArray<span class="p">, </span>nptyping.types._ndarray.NDArray<span class="p">]</span><a class="headerlink" href="#magtogoek.adcp.tools.magnetic_to_true" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert velocities from magnetic to true(geographic).
+FIXME</p>
+<p>angle:  magnetic_declination</p>
+<dl class="simple">
+<dt>[true_east,  = [[np.cos(angle), -np.sin(angle)] * [magnetic_east,</dt><dd><p>true_north]    [np.sin(angle),  np.cos(angle)]]    magnetic_north]</p>
+</dd>
+</dl>
+<dl class="simple">
+<dt>magnetic_east :</dt><dd><p>Eastward velocities in the magnetic frame of reference.</p>
+</dd>
+<dt>magnetic_north :</dt><dd><p>Northward velocities in the magnetic frame of reference.</p>
+</dd>
+<dt>declination :</dt><dd><p>Measured in the geographic frame of reference in decimal degrees.</p>
+</dd>
+</dl>
+<dl class="simple">
+<dt>true_east :</dt><dd><p>Eastward velocities in the geographic frame of reference</p>
+</dd>
+<dt>true_north :</dt><dd><p>Northward velocities in the geographic frame of reference</p>
+</dd>
+</dl>
+</dd></dl>
+
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="magtogoek.adcp.rti_reader.html"
+                        title="previous chapter">&lt;no title&gt;</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="magtogoek.app.html"
+                        title="next chapter">&lt;no title&gt;</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/html/magtogoek.adcp.tools.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="magtogoek.app.html" title="&lt;no title&gt;"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="magtogoek.adcp.rti_reader.html" title="&lt;no title&gt;"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">magtogoek 0.0.1 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="modules.html" >magtogoek</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="magtogoek.html" >magtogoek package</a> &#187;</li>
+          <li class="nav-item nav-item-3"><a href="magtogoek.adcp.html" >magtogoek.adcp package</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">&lt;no title&gt;</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2021, jeromejguay.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 3.2.1.
+    </div>
+  </body>
+</html>

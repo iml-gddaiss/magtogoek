@@ -1,0 +1,360 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Notes: &#8212; magtogoek 0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="&lt;no title&gt;" href="magtogoek.adcp.rti_reader.html" />
+    <link rel="prev" title="Notes" href="magtogoek.adcp.process.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="magtogoek.adcp.rti_reader.html" title="&lt;no title&gt;"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="magtogoek.adcp.process.html" title="Notes"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">magtogoek 0.0.1 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="modules.html" >magtogoek</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="magtogoek.html" >magtogoek package</a> &#187;</li>
+          <li class="nav-item nav-item-3"><a href="magtogoek.adcp.html" accesskey="U">magtogoek.adcp package</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Notes:</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <span class="target" id="module-magtogoek.adcp.quality_control"></span><p>Module that contains fonction for adcp data quality control.</p>
+<p>Based on the adcp2nc package by jeanlucshaw: <a class="reference external" href="https://github.com/jeanlucshaw/adcp2nc/">https://github.com/jeanlucshaw/adcp2nc/</a></p>
+<div class="section" id="notes">
+<h1>Notes:<a class="headerlink" href="#notes" title="Permalink to this headline">¶</a></h1>
+<blockquote>
+<div><p>Velocity in any direction are set to NaN if greater than 15 meter per seconds.
+Temperature has a fixed thresholds for flags [-2, 32] Celcius value outside
+have Flag == 4. Pressure has a fixed thresholds for flags [0, 180] dbar value
+outside have Flag == 4. Failing amplitude, correlation and percentgood, roll,
+pitch, horizontal velocity or vertical velocity test returns Flags == 3.
+Value below sidelobe depth returns Flags == 4.</p>
+<p>The same threshold for amplitude, correlation and percentgood are applied to
+sentinelV fifth beam data.</p>
+<p>Tests returns True when failed.</p>
+<p>SeaDataNet Quality Control Flags Value
+* 0: no_quality_control
+* 1: good_value
+* 2: probably_good_value
+* 3: probably_bad_value</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Unusual data value, inconsistent with real phenomena.</p></li>
+</ul>
+</div></blockquote>
+<ul class="simple">
+<li><dl class="simple">
+<dt>4: bad_value</dt><dd><ul>
+<li><p>Obviously erroneous data value.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p>5: changed_value</p></li>
+<li><p>6: value_below_detection</p></li>
+<li><p>7: value_in_excess</p></li>
+<li><p>8: interpolated_value</p></li>
+<li><p>9: missing_value</p></li>
+</ul>
+</div></blockquote>
+<p>NOTE
+IML flags meaning : (Basicaly the same)</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>0: no_quality_control</p></li>
+<li><p>1: value_seems_correct</p></li>
+<li><p>2: value_appears_inconsistent_with_other_values</p></li>
+<li><p>3: values_seems_doubtfull</p></li>
+<li><p>4: value_seems_erroneuous</p></li>
+<li><p>5: value_was_modified</p></li>
+<li><p>9: value_missing</p></li>
+</ul>
+</div></blockquote>
+<dl class="py function">
+<dt id="magtogoek.adcp.quality_control.adcp_quality_control">
+<code class="sig-prename descclassname">magtogoek.adcp.quality_control.</code><code class="sig-name descname">adcp_quality_control</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dataset</span><span class="p">:</span> <span class="n">Type<span class="p">[</span>xarray.core.dataset.Dataset<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">amp_th</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">30</span></em>, <em class="sig-param"><span class="n">corr_th</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">64</span></em>, <em class="sig-param"><span class="n">pg_th</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">90</span></em>, <em class="sig-param"><span class="n">roll_th</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">20</span></em>, <em class="sig-param"><span class="n">pitch_th</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">20</span></em>, <em class="sig-param"><span class="n">horizontal_vel_th</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">5</span></em>, <em class="sig-param"><span class="n">vertical_vel_th</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">5</span></em>, <em class="sig-param"><span class="n">error_vel_th</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">5</span></em>, <em class="sig-param"><span class="n">motion_correction_mode</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">sidelobes_correction</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">bottom_depth</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">None</span></em><span class="sig-paren">)</span> &#x2192; Type<span class="p">[</span>xarray.core.dataset.Dataset<span class="p">]</span><a class="headerlink" href="#magtogoek.adcp.quality_control.adcp_quality_control" title="Permalink to this definition">¶</a></dt>
+<dd><p>Perform ADCP quality control.</p>
+<p>This was adaptated from jeanlucshaw adcp2nc package.</p>
+<dl class="simple">
+<dt>dataset :</dt><dd><p>ADCP dataset formatted as done by adcp_init.</p>
+</dd>
+<dt>amp_th :</dt><dd><p>Require more than this amplitude values.</p>
+</dd>
+<dt>pg_th :</dt><dd><p>Require more than this percentage of good 4-beam transformations.</p>
+</dd>
+<dt>corr_th :</dt><dd><p>Require more than this beam correlation value.</p>
+</dd>
+<dt>roll_th :</dt><dd><p>Require roll values be smaller than this value (degrees).</p>
+</dd>
+<dt>pitch_th :</dt><dd><p>Require pitch values be smaller than this value (degrees).</p>
+</dd>
+<dt>horizontal_vel_th:</dt><dd><p>Require u, v  values be smaller than this value (meter per seconds).</p>
+</dd>
+<dt>veritcal_vel_th:</dt><dd><p>Require w values be smaller than this value (meter per seconds).</p>
+</dd>
+<dt>error_vel_th:</dt><dd><p>Require e values be smaller than this value (meter per seconds).</p>
+</dd>
+<dt>motion_correction</dt><dd><p>If ‘nav’ or ‘bt’ will corrected velocities from the platform motion,
+will either correct u,v,w with navigation (‘nav’) or bottom track (‘bt’)
+data.</p>
+</dd>
+<dt>sidelobes_correction :</dt><dd><p>Use fixed depth or bottom track range to remove side lobe
+contamination. Set to either “dep” or “bt” or None.</p>
+</dd>
+<dt>bottom_depth :</dt><dd><p>If not <cite>None</cite>, this depth used for removing side lobe contamination.</p>
+</dd>
+<dt>beam_angle :</dt><dd><p>Force a beam angle configuration and overwrite the value in dataset.</p>
+</dd>
+<dt>xducer_depth :</dt><dd><p>Force a depth for the adcp and overwrite the value in dataset.</p>
+</dd>
+</dl>
+<blockquote>
+<div><p>Velocity in any direction are set to NaN if greater than 15 meter per seconds.
+Temperature has a fixed thresholds for flags [-2, 32] Celcius value outside
+have Flag == 4. Pressure has a fixed thresholds for flags [0, 180] dbar value
+outside have Flag == 4. Failing amplitude, correlation and percentgood, roll,
+pitch, horizontal velocity or vertical velocity test returns Flags == 3.
+Value below sidelobe depth returns Flags == 4.</p>
+<p>The same threshold for amplitude, correlation and percentgood are applied to
+sentinelV fifth beam data.</p>
+<p>Tests returns True when failed.</p>
+<p>SeaDataNet Quality Control Flags Value
+* 0: no_quality_control
+* 1: good_value
+* 2: probably_good_value
+* 3: probably_bad_value</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Unusual data value, inconsistent with real phenomena.</p></li>
+</ul>
+</div></blockquote>
+<ul class="simple">
+<li><dl class="simple">
+<dt>4: bad_value</dt><dd><ul>
+<li><p>Obviously erroneous data value.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p>5: changed_value</p></li>
+<li><p>6: value_below_detection</p></li>
+<li><p>7: value_in_excess</p></li>
+<li><p>8: interpolated_value</p></li>
+<li><p>9: missing_value</p></li>
+</ul>
+</div></blockquote>
+</dd></dl>
+
+<dl class="py function">
+<dt id="magtogoek.adcp.quality_control.amplitude_test">
+<code class="sig-prename descclassname">magtogoek.adcp.quality_control.</code><code class="sig-name descname">amplitude_test</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dataset</span></em>, <em class="sig-param"><span class="n">threshold</span></em><span class="sig-paren">)</span><a class="headerlink" href="#magtogoek.adcp.quality_control.amplitude_test" title="Permalink to this definition">¶</a></dt>
+<dd><p>FIXME
+NOTE JeanLucShaw used absolute but is it needed ?</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="magtogoek.adcp.quality_control.correlation_test">
+<code class="sig-prename descclassname">magtogoek.adcp.quality_control.</code><code class="sig-name descname">correlation_test</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dataset</span></em>, <em class="sig-param"><span class="n">threshold</span></em><span class="sig-paren">)</span><a class="headerlink" href="#magtogoek.adcp.quality_control.correlation_test" title="Permalink to this definition">¶</a></dt>
+<dd><p>FIXME
+NOTE JeanLucShaw used absolute but is it needed ?</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="magtogoek.adcp.quality_control.error_vel_test">
+<code class="sig-prename descclassname">magtogoek.adcp.quality_control.</code><code class="sig-name descname">error_vel_test</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dataset</span><span class="p">:</span> <span class="n">Type<span class="p">[</span>xarray.core.dataset.Dataset<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">thres</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; Type<span class="p">[</span>numpy.array<span class="p">]</span><a class="headerlink" href="#magtogoek.adcp.quality_control.error_vel_test" title="Permalink to this definition">¶</a></dt>
+<dd><p>FIXME
+None finite value value will also fail</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="magtogoek.adcp.quality_control.horizontal_vel_test">
+<code class="sig-prename descclassname">magtogoek.adcp.quality_control.</code><code class="sig-name descname">horizontal_vel_test</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dataset</span><span class="p">:</span> <span class="n">Type<span class="p">[</span>xarray.core.dataset.Dataset<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">thres</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; Type<span class="p">[</span>numpy.array<span class="p">]</span><a class="headerlink" href="#magtogoek.adcp.quality_control.horizontal_vel_test" title="Permalink to this definition">¶</a></dt>
+<dd><p>FIXME
+None finite value value will also fail</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="magtogoek.adcp.quality_control.motion_correction">
+<code class="sig-prename descclassname">magtogoek.adcp.quality_control.</code><code class="sig-name descname">motion_correction</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dataset</span><span class="p">:</span> <span class="n">Type<span class="p">[</span>xarray.core.dataset.Dataset<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">mode</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span><a class="headerlink" href="#magtogoek.adcp.quality_control.motion_correction" title="Permalink to this definition">¶</a></dt>
+<dd><p>Carry motion correction on velocities.</p>
+<p>If mode is ‘bt’ the motion correction is along x, y, z.
+If mode is ‘nav’ the motion correction is along x, y.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="magtogoek.adcp.quality_control.no_adcp_quality_control">
+<code class="sig-prename descclassname">magtogoek.adcp.quality_control.</code><code class="sig-name descname">no_adcp_quality_control</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dataset</span></em><span class="sig-paren">)</span><a class="headerlink" href="#magtogoek.adcp.quality_control.no_adcp_quality_control" title="Permalink to this definition">¶</a></dt>
+<dd><p>Adds var_QC ancillary variables to dataset with value 0.</p>
+<p>ANcillary variables:  temperature, pres, u, v, w.</p>
+<p>SeaDataNet Quality Control Flags Value
+* 0: no_quality_control</p>
+<dl class="simple">
+<dt>dataset :</dt><dd><p>ADCP dataset formatted as done by adcp_init.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="magtogoek.adcp.quality_control.percentgood_test">
+<code class="sig-prename descclassname">magtogoek.adcp.quality_control.</code><code class="sig-name descname">percentgood_test</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dataset</span></em>, <em class="sig-param"><span class="n">threshold</span></em><span class="sig-paren">)</span><a class="headerlink" href="#magtogoek.adcp.quality_control.percentgood_test" title="Permalink to this definition">¶</a></dt>
+<dd><p>FIXME
+NOTE JeanLucShaw used absolute but is it needed ?</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="magtogoek.adcp.quality_control.pitch_test">
+<code class="sig-prename descclassname">magtogoek.adcp.quality_control.</code><code class="sig-name descname">pitch_test</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dataset</span><span class="p">:</span> <span class="n">Type<span class="p">[</span>xarray.core.dataset.Dataset<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">thres</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; Type<span class="p">[</span>numpy.array<span class="p">]</span><a class="headerlink" href="#magtogoek.adcp.quality_control.pitch_test" title="Permalink to this definition">¶</a></dt>
+<dd><p>FIXME
+Pitch conditions (True fails)
+Distance from Mean</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="magtogoek.adcp.quality_control.pressure_test">
+<code class="sig-prename descclassname">magtogoek.adcp.quality_control.</code><code class="sig-name descname">pressure_test</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dataset</span></em><span class="sig-paren">)</span><a class="headerlink" href="#magtogoek.adcp.quality_control.pressure_test" title="Permalink to this definition">¶</a></dt>
+<dd><p>FIXME</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="magtogoek.adcp.quality_control.roll_test">
+<code class="sig-prename descclassname">magtogoek.adcp.quality_control.</code><code class="sig-name descname">roll_test</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dataset</span><span class="p">:</span> <span class="n">Type<span class="p">[</span>xarray.core.dataset.Dataset<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">thres</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; Type<span class="p">[</span>numpy.array<span class="p">]</span><a class="headerlink" href="#magtogoek.adcp.quality_control.roll_test" title="Permalink to this definition">¶</a></dt>
+<dd><p>FIXME
+Roll conditions (True fails)
+Distance from mean</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="magtogoek.adcp.quality_control.set_implausible_vel_to_nan">
+<code class="sig-prename descclassname">magtogoek.adcp.quality_control.</code><code class="sig-name descname">set_implausible_vel_to_nan</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dataset</span><span class="p">:</span> <span class="n">Type<span class="p">[</span>xarray.core.dataset.Dataset<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">thres</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">15</span></em><span class="sig-paren">)</span><a class="headerlink" href="#magtogoek.adcp.quality_control.set_implausible_vel_to_nan" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set bin with improbable values to Nan.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="magtogoek.adcp.quality_control.sidelobe_test">
+<code class="sig-prename descclassname">magtogoek.adcp.quality_control.</code><code class="sig-name descname">sidelobe_test</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dataset</span><span class="p">:</span> <span class="n">Type<span class="p">[</span>xarray.core.dataset.Dataset<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">bottom_depth</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#magtogoek.adcp.quality_control.sidelobe_test" title="Permalink to this definition">¶</a></dt>
+<dd><p>FIXME
+Remove side lob influence (True fails) according to a fixed depths (e.g. Moorings)</p>
+<dl class="simple">
+<dt>Equation :</dt><dd><p>Downward: max_depth = XducerDepth + (bottom_depth + XducerDepth) * cos(beam_angle)
+Unward: min_depth = XducerDepth * ( 1 - cos(beam_angle))</p>
+</dd>
+</dl>
+<dl class="simple">
+<dt>depth :</dt><dd><p>Fixed bottom depth used for sidelob correction</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="magtogoek.adcp.quality_control.temperature_test">
+<code class="sig-prename descclassname">magtogoek.adcp.quality_control.</code><code class="sig-name descname">temperature_test</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dataset</span></em><span class="sig-paren">)</span><a class="headerlink" href="#magtogoek.adcp.quality_control.temperature_test" title="Permalink to this definition">¶</a></dt>
+<dd><p>FIXME</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="magtogoek.adcp.quality_control.vertical_beam_test">
+<code class="sig-prename descclassname">magtogoek.adcp.quality_control.</code><code class="sig-name descname">vertical_beam_test</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dataset</span><span class="p">:</span> <span class="n">Type<span class="p">[</span>xarray.core.dataset.Dataset<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">amp_thres</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">corr_thres</span><span class="p">:</span> <span class="n">float</span></em>, <em class="sig-param"><span class="n">pg_thres</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; Type<span class="p">[</span>numpy.array<span class="p">]</span><a class="headerlink" href="#magtogoek.adcp.quality_control.vertical_beam_test" title="Permalink to this definition">¶</a></dt>
+<dd><p>FIXME</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="magtogoek.adcp.quality_control.vertical_vel_test">
+<code class="sig-prename descclassname">magtogoek.adcp.quality_control.</code><code class="sig-name descname">vertical_vel_test</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dataset</span><span class="p">:</span> <span class="n">Type<span class="p">[</span>xarray.core.dataset.Dataset<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">thres</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; Type<span class="p">[</span>numpy.array<span class="p">]</span><a class="headerlink" href="#magtogoek.adcp.quality_control.vertical_vel_test" title="Permalink to this definition">¶</a></dt>
+<dd><p>FIXME
+None finite value value will also fail</p>
+</dd></dl>
+
+</div>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="magtogoek.adcp.process.html"
+                        title="previous chapter">Notes</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="magtogoek.adcp.rti_reader.html"
+                        title="next chapter">&lt;no title&gt;</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/html/magtogoek.adcp.quality_control.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="magtogoek.adcp.rti_reader.html" title="&lt;no title&gt;"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="magtogoek.adcp.process.html" title="Notes"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">magtogoek 0.0.1 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="modules.html" >magtogoek</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="magtogoek.html" >magtogoek package</a> &#187;</li>
+          <li class="nav-item nav-item-3"><a href="magtogoek.adcp.html" >magtogoek.adcp package</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Notes:</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2021, jeromejguay.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 3.2.1.
+    </div>
+  </body>
+</html>
