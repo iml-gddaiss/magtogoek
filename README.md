@@ -98,7 +98,7 @@ Platform files are structured as follow:
 In future version of Magtogoek, a single platform files could be use to store all the sensors metadata. 
 That way, only the platform\_id and sensor\_id would be required to add sensors and platform metadata. 
 The `"platform_specs"` object is used by the ODF exporter to write the `BUOY_HEADER` metadata.
-
+To add platform or sensors, copy and paste sections with all the keys.
 ### Examples
 Example of platform and configuration files are available in th `test` section of the Magtogoek project. 
 Data are also included to test the `quick` and `process` command.
