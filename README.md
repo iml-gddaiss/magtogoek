@@ -24,6 +24,8 @@ $ git clone https://github.com/JeromeJGuay/magtogoek
 $ pip install magtogoek
 ```
 ### Requirements
+Python ~3.7
+
 Magtogoek requires the external python package pycurrents made by UH Currents Group at the University of Hawaii to process Teledyne data. Pycurrents is only available on unix system. Visit [pycurrents website](https://currents.soest.hawaii.edu/ocn_data_analysis/installation.html) for more details.
 Pycurrents can be clone from their [mercurial respository](https://currents.soest.hawaii.edu/hgstage/pycurrents) and install with `pip install`.
 ```shell
