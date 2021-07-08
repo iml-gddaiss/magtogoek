@@ -88,7 +88,7 @@ BASIC_CONFIG = dict(
         "chief_scientist": "",
         "start_date": "",
         "end_date": "",
-        "envent_number": "",
+        "event_number": "",
     },
     GLOBAL_ATTRIBUTES={
         "date_created": "",
