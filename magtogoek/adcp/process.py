@@ -458,9 +458,9 @@ An additionnal correction of {additional_correction} degree east was added."""
     dataset.attrs["history"] = dataset.attrs["logbook"]
     del dataset.attrs["logbook"]
 
-    for attrs in GLOBAL_ATTRS_TO_DROP:
-        if attrs in dataset.attrs:
-            del dataset.attrs[attrs]
+    for attr in GLOBAL_ATTRS_TO_DROP:
+        if attr in dataset.attr:
+            del dataset.attrs[attr]
 
     for attr in list(dataset.attrs.keys()):
         if not dataset.attrs[attr]:
