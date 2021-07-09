@@ -348,7 +348,7 @@
         "sdn_parameter_name": "String corresponding to format 'YYYY-MM-DDThh:mm:ss.sssZ' or other valid ISO8601 string",
         "sdn_uom_urn": "SDN:P06::TISO",
         "sdn_uom_name": "ISO8601",
-        "legacy_GF3_code": "SDN:GF3::time_string"
+        "legacy_GF3_code": "SDN:GF3::SYTM"
     },
     "PPSAADCP": {
         "standard_name": "depth",
