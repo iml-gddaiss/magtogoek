@@ -734,9 +734,10 @@ def _get_key_and_item(line):
 
 
 def _reshape_header(header):
-    """Convert list items to str, float or int
+    """Replace list of length one by the single element it contain.
 
-    Split value of item with keys:(Coefficients, directions, corrections) into tuple.
+    Elements of items with keys named `coefficients`, `directions` or `corrections` are
+    split into tuple of and are evaluated.
 
     """
     for key, item in header.items():
