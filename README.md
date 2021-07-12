@@ -21,8 +21,11 @@ Supported data type:
 Clone the respository from the [github repository](https://github.com/JeromeJGuay/magtogoek) and and install it with `pip install`. 
 ```shell
 $ git clone https://github.com/JeromeJGuay/magtogoek
-$ pip install magtogoek
+$ pip install -e magtogoek
 ```
+The `-e` option will not copy the project to the pip package directory. 
+Instead, the python will import the package from the `git` folder.
+Running the `git pull` command will update the package from the github main branch latest version.
 ### Requirements
 Python ~3.7
 

@@ -3,12 +3,12 @@ Set of functions and objects used for adcp processing
 """
 import typing as tp
 from datetime import datetime
+from pathlib import Path
 
 import click
 import numpy as np
 from nptyping import NDArray
 from pandas import Timestamp, to_datetime
-from path import Path
 
 
 def magnetic_to_true(
