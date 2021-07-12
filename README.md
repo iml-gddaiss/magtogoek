@@ -1,40 +1,71 @@
 # Magtogoek 
 *Name origin: Magtogoek is Algonquin for the Saint-Lawrence River which mean "the path that walks".*
 
-Magtogoek is a python package and command line application (CLI) for processing ocean data. 
+Magtogoek is a Linux python package and command line application (CLI) for processing ocean data. 
 At the moment, only Accoustisc Doopler Current Profiler (ADCP) data can be processed. 
 This package is developped by the Scientific Advice, Information and Support Branch at the Fisheries and Ocean Canada Maurice-Lamontagne Institute.
 
 Supported data type:
 
-* ADCP : Accoustisc Doopler Current Profiler **(Only available on Linux/MacOS Only)**
+* ADCP : Accoustisc Doopler Current Profiler
   - RDI Teledyne: WorkHorse, SentinelV, OceanSurveilor 
     Magtogoek uses the pycurrents package made by UH Currents Group of the University of Hawaii.
     Virtual Machine can be easly install on Windows machine see below.(TODO)
   - RTI Rowtech : 
     Magtogoek has a custom reader for RTI ENS files made using functions provided by Rowtech on
     their [repository](https://github.com/rowetechinc/RTI).
-  - The RTI reader in `magtogoek.adcp.rti_reader can be use independently to read raw data but no processing is carried out from reader.
 * More to come.
 
 ## Installation
+### Installing `Anaconda3`.
+If you don't have anaconda or if you are not using a python env install Anaconda3.
+Go to the [anaconda page](https://repo.anaconda.com/archive/Anaconda3-2021.05-Linux-x86_64.sh) and download the lastest version for linux.
+To install it run:
+```shell
+    $ ~/cd Download
+    $ bash Anaconda3-2021.05-Linux-x86_64.sh
+```
+Note that file name will change depending on the version.
+Once Anaconda is installed, the terminal command line should look something like:
+```shell
+    (base):$ 
+```
+
+This means that the installation worked and the you are in the `base` anaconda environnment.
+If `base` does not show up try this:
+```shell
+    $ cd 
+    $ source anaconda3/bin/activate
+```
+Next, we create a Anaconda environnement where we can use magtogoek without any dependency or version issues.
+To do so run:
+```shell
+    $ conda create -n mtgk python=3 matplotlib scipy numpy pandas xarray 
+    $ conda activate mtgk 
+```
+Now the terminal command line should look like
+```shell
+    (mtgk):$ 
+```
+From here, any installation must be done within the `mtgk`.
+Use the command `conda active [env-name]` to change between anaconda environment.
 ### Install via `git clone`
+First make sure you are in the desired python environment.
 Clone the respository from the [github repository](https://github.com/JeromeJGuay/magtogoek) and and install it with `pip install`. 
 ```shell
-$ git clone https://github.com/JeromeJGuay/magtogoek
-$ pip install -e magtogoek
+    $ git clone https://github.com/JeromeJGuay/magtogoek
+    $ pip install -e magtogoek
 ```
 The `-e` option will not copy the project to the pip package directory. 
 Instead, the python will import the package from the `git` folder.
 Running the `git pull` command will update the package from the github main branch latest version.
 ### Requirements
-Python ~3.7
 
 Magtogoek requires the external python package pycurrents made by UH Currents Group at the University of Hawaii to process Teledyne data. Pycurrents is only available on unix system. Visit [pycurrents website](https://currents.soest.hawaii.edu/ocn_data_analysis/installation.html) for more details.
 Pycurrents can be clone from their [mercurial respository](https://currents.soest.hawaii.edu/hgstage/pycurrents) and install with `pip install`.
 ```shell
-$ hg clone https://currents.soest.hawaii.edu/hgstage/pycurrents
-$ pip install pycurrents
+    $ hg clone https://currents.soest.hawaii.edu/hgstage/pycurrents
+    $ pip install pycurrents
 ```
 ## Quick start
 From the terminal, within the same python environnement it was installed in, type `mtgk` to run the CLI application. 
@@ -49,17 +80,17 @@ Data can be processed in two ways: Using the `quick` command or the `process` co
 Both command will produce a `.log` text files of the processing history.
 The `quick` commands allows to process instrument data directly from the command line where the default processing parameters/values can be modified with optionnal arguments.
 ```Shell
-$ mtgk quick [adcp,] [input_files] [OPTIONS]
+    $ mtgk quick [adcp,] [input_files] [OPTIONS]
 ```
 The `process` commands allows the users to add more metadata to the output netcdf files using configuration files which are `.ini` files.
 ```Shell
-$ mtgk config [adcp,] [config_name] [OPTIONS]
+    $ mtgk config [adcp,] [config_name] [OPTIONS]
 ```
 Configuration files are made with the command `config` followed by a specific sensors. 
 Optionnal arguments can also be use to set some values in the configuration file directly from the terminal.
 Once filled out, configuration files can by passed to the `process` command,
 ```Shell
-$ mtgk process [config_file]
+    $ mtgk process [config_file]
 
 ```
 
@@ -71,7 +102,7 @@ The PLATFORM\_ID for the platform should include the year or the version of the 
 When processing data, a platform\_file, platform\_id and sensor\_id have to be provided to add platform and sensor metadata.
 A plaform file is made with the command `config platform`:
 ```Shell
-$ mtgk config platform FILENAME 
+    $ mtgk config platform FILENAME 
 ```
 Platform files are structured as follow:
 
