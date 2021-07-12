@@ -39,7 +39,8 @@ setup(
         "gpxpy",
     ],
     packages=find_packages(),
-    package_data={"magtogoek": ["*.geojson"]},
+    package_data={"magtogoek": ["magtogoek/files/*", "test/files/*"]},
+    include_package_data=True,
     classifiers=["Programming Language :: Python :: 3"],
     python_requires="~=3.7",
     entry_points={
