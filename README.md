@@ -7,13 +7,14 @@ This package is developped by the Scientific Advice, Information and Support Bra
 
 Supported data type:
 
-* ADCP : Accoustisc Doopler Current Profiler 
-  - RDI Teledyne: WorkHorse, SentinelV, OceanSurveilor **(Only available on Linux/MacOS Only)**
+* ADCP : Accoustisc Doopler Current Profiler **(Only available on Linux/MacOS Only)**
+  - RDI Teledyne: WorkHorse, SentinelV, OceanSurveilor 
     Magtogoek uses the pycurrents package made by UH Currents Group of the University of Hawaii.
     Virtual Machine can be easly install on Windows machine see below.(TODO)
   - RTI Rowtech : 
     Magtogoek has a custom reader for RTI ENS files made using functions provided by Rowtech on
     their [repository](https://github.com/rowetechinc/RTI).
+  - The RTI reader in `magtogoek.adcp.rti_reader can be use independently to read raw data but no processing is carried out from reader.
 * More to come.
 
 ## Installation
