@@ -186,6 +186,7 @@ TIME_ENCODING = {
 DEPTH_ENCODING = {"_FillValue": None}
 
 DATA_FILL_VALUE = -9999
+DATE_STRING_FILL_VALUE = "17-NOV-1858 00:00:00.00"  # filled value used by ODF format
 QC_FILL_VALUE = 127
 
 DATA_DTYPE = "float32"
@@ -734,7 +735,11 @@ def _format_data_encoding(dataset: tp.Type[xr.Dataset]):
         elif "_QC" in var:
             dataset[var].values = dataset[var].values.astype("int8")
             dataset[var].encoding = {"dtype": "int8", "_FillValue": QC_FILL_VALUE}
-        elif var != "time_string":
+        if var == "time_string":
+            dataset[var].encoding = {
+                "dtype": "S1",
+            }
+        else:
             dataset[var].encoding = {"dtype": DATA_DTYPE, "_FillValue": DATA_FILL_VALUE}
 
     l.log(f"adcp Data _FillValue: {DATA_FILL_VALUE}")
