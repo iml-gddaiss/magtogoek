@@ -8,7 +8,6 @@ import click
 import numpy as np
 from nptyping import NDArray
 from pandas import Timestamp, to_datetime
-from path import Path
 
 
 def magnetic_to_true(
