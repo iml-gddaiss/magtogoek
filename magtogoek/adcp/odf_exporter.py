@@ -30,7 +30,7 @@ def _nc_to_odf_cruise_header(odf, dataset):
     # FIXME
 
 
-def _nc_odf_event_header(odf, dataset):
+def _nc_to_odf_event_header(odf, dataset):
     """
     event_number : is in .INI cruise section
     data_type : is in .INI global_attributes section
@@ -54,11 +54,28 @@ def _make_odf_header(odf):
     odf.odf["file_specification"] = "_".join(name_part)
 
 
-def make_buoy_header(odf, platform_dict):
+def _platform_file_to_odf_buoy_header(odf, platform_dict):
     """
     All in platform_specs of a platform in the platform_file
     """
+    odf.buoy["name"] = platform_dict["platform_name"]
     for key in odf.buoy:
         if key in platform_dict["platform_specs"]:
             odf.buoy[key] = platform_dict["platform_specs"][key]
+
+
+def _config_file_to_instrument_header(config_dict):
+    """
+    All missing in the config files.
+    """
+    # FIXME
+
+
+def _nc_to_odf_history_header(dataset):
+    """"""
+    # FIXME
+
+
+def _nc_to_parameter_headers():
+    """"""
     # FIXME
