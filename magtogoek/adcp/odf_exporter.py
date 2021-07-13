@@ -1,6 +1,8 @@
 """
 module to map xarray dataset to Odf
 """
+import re
+
 import pandas as pd
 import xarray as xr
 from magtogoek.odf_format import Odf
@@ -11,6 +13,7 @@ from magtogoek.odf_format import Odf
 
 TIME_TYPE = "SYTM"
 TIME_FILL_VALUE = "17-NOV-1858 00:00:00.00"
+REPOSITORY_ADDRESS = "https://github.com/JeromeJGuay/magtogoek"
 
 odf = Odf()
 
@@ -71,12 +74,22 @@ def _config_file_to_instrument_header(config_dict):
 
 def _nc_to_odf_history_header(odf, dataset):
     """
-    Add a line for magtogoek data processesing.
-    One header by datetime entry ?
+    One history header is made by log datetime entry.
     """
+    regex = "(\[.*\]\s+[0-9]{4}-[0-9]{2}-[0-9]{2}\s[0-9]{2}:[0-9]{2}:[0-9]{2})"
+    histories = re.split(regex, dataset.attrs["history"])
+
     time = pd.Timestamp.now().strftime("%d-%b-%Y %H:%M:%S.%f").upper()[:-4]
-    history = dataset.history.split("\n")
-    odf.add_history({"creation_date": time, "process": history})
+    process = []
+    for history in histories:
+
+        if re.match(regex, history):
+            process, time = re.split("(\[.*\]\)\s+", history)
+            time = pd.Timestamp(time).strftime("%d-%b-%Y %H:%M:%S.%f").upper()[:-4]
+            process = [process]
+        else:
+            process.append(history.split("\n"))
+            odf.add_history({"creation_date": time, "process": process})
 
 
 def _nc_to_parameter_headers():
@@ -86,3 +99,13 @@ def _nc_to_parameter_headers():
     print_field_value =
     print_decimal_value =
     """
+
+
+def _add_processed_by_magtogoek_to_history_header(odf):
+    """Adds a history to promote magtogoek !
+    `Data processed by Magtogoek Proccesing Software` + github adress"""
+    time = pd.Timestamp.now().strftime("%d-%b-%Y %H:%M:%S.%f").upper()[:-4]
+    process = [
+        "Data processed by Magtogoek Proccesing Software. More at " + REPOSITORY_ADDRESS
+    ]
+    odf.add_history({"creation_date": time, "process": process})
