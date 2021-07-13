@@ -583,6 +583,6 @@ def _fprint_filenames(file_type: str, filenames: tp.List) -> str:
     """
     return (
         file_type
-        + " files :"
+        + " files : \n  |-"
         + "\n  |-".join([p.name for p in list(map(Path, filenames))])
     )
