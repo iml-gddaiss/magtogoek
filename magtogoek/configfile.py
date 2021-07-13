@@ -81,7 +81,7 @@ BASIC_CONFIG = dict(
         "sea_code": "",
     },
     CRUISE={
-        "country_institue_code": "",
+        "country_institute_code": "",
         "cruise_number": "",
         "cruise_name": "",
         "organization": "",

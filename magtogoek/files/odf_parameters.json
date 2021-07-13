@@ -1,0 +1,36 @@
+{"SYTM":{
+    "name":"Time Format DD-MMM-YYYY 00:00:00.00",
+    "units":"GMT",
+    "print_field_width":23,
+    "print_decimal_width":0},
+ "DEPH":{
+     "name":"Sensor Depth below Sea Surface",
+     "units":"metres",
+     "print_field_width":10,
+     "print_decimal_width":3},
+ "EWCT":{
+     "name":"East (true) Component of Current",
+     "units":"m/s",
+     "print_field_width":10,
+     "print_decimal_width":4},
+ "NSCT":{
+     "name":"North (true) Component of Current",
+     "units":"m/s",
+     "print_field_width":10,
+     "print_decimal_width":4},
+ "VCSP":{
+     "name":"Vertical Current Speed (positive up)",
+     "units":"m/s",
+     "print_field_width":10,
+     "print_decimal_width":4},
+ "ERRV":{
+     "name":"Error Velocity (ADCP)",
+     "units":"m/s",
+     "print_field_width":10,
+     "print_decimal_width":4},
+ "QQQQ":{
+     "name":"Quality flag:",
+     "units":"none",
+     "print_field_width":1,
+     "print_decimal_width":0}
+}

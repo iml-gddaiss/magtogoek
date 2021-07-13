@@ -12,7 +12,7 @@
         "sensor_type": "adcp",
         "long_name": "eastward sea water velocity",
         "sdn_parameter_urn": "SDN:P01::LCEWAP01",
-        "sdn_parameter_name": "Eastward current velocity (Eulerian measurement) in the water body by {s4} acoustic doppler current profiler (ADCP)",
+        "sdn_parameter_name": "Eastward current velocity (Eulerian measurement) in the water body by moored acoustic doppler current profiler (ADCP)",
         "sdn_uom_urn": "SDN:P06::UVAA",
         "sdn_uom_name": "Metres per second",
         "legacy_GF3_code": "SDN:GF3::EWCT"
@@ -23,7 +23,7 @@
         "sensor_type": "adcp",
         "long_name": "northward sea water velocity",
         "sdn_parameter_urn": "SDN:P01::LCNSAP01",
-        "sdn_parameter_name": "Northward current velocity (Eulerian measurement) in the water body by {s4} acoustic doppler current profiler (ADCP)",
+        "sdn_parameter_name": "Northward current velocity (Eulerian measurement) in the water body by moored acoustic doppler current profiler (ADCP)",
         "sdn_uom_urn": "SDN:P06::UVAA",
         "sdn_uom_name": "Metres per second",
         "legacy_GF3_code": "SDN:GF3::NWCT"
@@ -34,7 +34,7 @@
         "sensor_type": "adcp",
         "long_name": "upward sea water velocity",
         "sdn_parameter_urn": "SDN:P01::LRZAAP01",
-        "sdn_parameter_name": "Upward current velocity (Eulerian measurement) in the water body by {s4} acoustic doppler current profiler (ADCP)",
+        "sdn_parameter_name": "Upward current velocity (Eulerian measurement) in the water body by moored acoustic doppler current profiler (ADCP)",
         "sdn_uom_urn": "SDN:P06::UVAA",
         "sdn_uom_name": "Metres per second",
         "legacy_GF3_code": "SDN:GF3::VCSP"
@@ -55,7 +55,7 @@
         "sensor_type": "adcp",
         "long_name": "eastward sea water velocity",
         "sdn_parameter_urn": "SDN:P01::LCEWAS01",
-        "sdn_parameter_name": "Eastward current velocity (Eulerian measurement) in the water body by {s4} acoustic doppler current profiler (ADCP)",
+        "sdn_parameter_name": "Eastward current velocity (Eulerian measurement) in the water body by shipborne acoustic doppler current profiler (ADCP)",
         "sdn_uom_urn": "SDN:P06::UVAA",
         "sdn_uom_name": "Metres per second",
         "legacy_GF3_code": "SDN:GF3::EWCT"
@@ -66,7 +66,7 @@
         "sensor_type": "adcp",
         "long_name": "northward sea water velocity",
         "sdn_parameter_urn": "SDN:P01::LCNSAS01",
-        "sdn_parameter_name": "Northward current velocity (Eulerian measurement) in the water body by {s4} acoustic doppler current profiler (ADCP)",
+        "sdn_parameter_name": "Northward current velocity (Eulerian measurement) in the water body by shipborne acoustic doppler current profiler (ADCP)",
         "sdn_uom_urn": "SDN:P06::UVAA",
         "sdn_uom_name": "Metres per second",
         "legacy_GF3_code": "SDN:GF3::NWCT"
@@ -77,7 +77,7 @@
         "sensor_type": "adcp",
         "long_name": "upward sea water velocity",
         "sdn_parameter_urn": "SDN:P01::LRZAAS01",
-        "sdn_parameter_name": "Upward current velocity (Eulerian measurement) in the water body by {s4} acoustic doppler current profiler (ADCP)",
+        "sdn_parameter_name": "Upward current velocity (Eulerian measurement) in the water body by shipborne acoustic doppler current profiler (ADCP)",
         "sdn_uom_urn": "SDN:P06::UVAA",
         "sdn_uom_name": "Metres per second",
         "legacy_GF3_code": "SDN:GF3::VCSP"
@@ -333,7 +333,7 @@
         "sdn_parameter_name": "Temperature of the water body",
         "sdn_uom_urn": "SDN:P06::UPAA",
         "sdn_uom_name": "Celsius degree",
-        "legacy_GF3_code": "SDN:GF3::te90"
+        "legacy_GF3_code": "SDN:GF3::TE90"
     },
     "DISTTRAN": {
         "units": "m",
@@ -348,7 +348,7 @@
         "sdn_parameter_name": "String corresponding to format 'YYYY-MM-DDThh:mm:ss.sssZ' or other valid ISO8601 string",
         "sdn_uom_urn": "SDN:P06::TISO",
         "sdn_uom_name": "ISO8601",
-        "legacy_GF3_code": "SDN:GF3::time_string"
+        "legacy_GF3_code": "SDN:GF3::SYTM"
     },
     "PPSAADCP": {
         "standard_name": "depth",
