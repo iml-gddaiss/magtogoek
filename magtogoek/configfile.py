@@ -81,14 +81,14 @@ BASIC_CONFIG = dict(
         "sea_code": "",
     },
     CRUISE={
-        "country_institue_code": "",
+        "country_institute_code": "",
         "cruise_number": "",
         "cruise_name": "",
         "organization": "",
         "chief_scientist": "",
         "start_date": "",
         "end_date": "",
-        "envent_number": "",
+        "event_number": "",
     },
     GLOBAL_ATTRIBUTES={
         "date_created": "",

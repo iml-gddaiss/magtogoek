@@ -333,7 +333,7 @@
         "sdn_parameter_name": "Temperature of the water body",
         "sdn_uom_urn": "SDN:P06::UPAA",
         "sdn_uom_name": "Celsius degree",
-        "legacy_GF3_code": "SDN:GF3::te90"
+        "legacy_GF3_code": "SDN:GF3::TE90"
     },
     "DISTTRAN": {
         "units": "m",
