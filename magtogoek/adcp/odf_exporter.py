@@ -1,6 +1,7 @@
 """
 module to map xarray dataset to Odf
 """
+import pandas as pd
 import xarray as xr
 from magtogoek.odf_format import Odf
 
@@ -68,12 +69,14 @@ def _config_file_to_instrument_header(config_dict):
     # FIXME
 
 
-def _nc_to_odf_history_header(dataset):
+def _nc_to_odf_history_header(odf, dataset):
     """
     Add a line for magtogoek data processesing.
     One header by datetime entry ?
     """
-    # FIXME
+    time = pd.Timestamp.now().strftime("%d-%b-%Y %H:%M:%S.%f").upper()[:-4]
+    history = dataset.history.split("\n")
+    odf.add_history({"creation_date": time, "process": history})
 
 
 def _nc_to_parameter_headers():

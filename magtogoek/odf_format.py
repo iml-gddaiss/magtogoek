@@ -520,6 +520,16 @@ class Odf:
 
         self._compute_parameter_attrs(code, null_value)
 
+    def add_history(self, items: dict):
+        """"""
+        header_name = "history_" + str(len(self.history) + 1)
+        self.history[header_name] = REPEATED_HEADERS_DEFAULT["history"].copy()
+        self.history[header_name].update(items)
+        if not self.history[header_name]["creation_date"]:
+            self.history[header_name]["creation_date"] = (
+                pd.Timestamp.now().strftime("%d-%b-%Y %H:%M:%S.%f").upper()[:-4]
+            )
+
     def from_dataframe(
         self,
         dataframe: tp.Type[pd.DataFrame],

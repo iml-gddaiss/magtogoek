@@ -116,7 +116,7 @@ class Logger:
     @staticmethod
     def _timestamp():
         """Make a time stamp"""
-        return datetime.now().strftime("%Y-%m-%d %Hh%M:%S")
+        return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
 def get_files_from_expresion(filenames: tp.Tuple[str, tp.List[str]]) -> tp.List[str]:
