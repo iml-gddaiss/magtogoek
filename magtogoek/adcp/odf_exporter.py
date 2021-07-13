@@ -19,31 +19,46 @@ odf = Odf()
 
 def _nc_to_odf_cruise_header(odf, dataset):
     """
-    All in the cruise section
+    All in the .INI cruise section
+    Except:
+        platform : Platforom file
+        cruise_description: Missing Add to ini files.
     """
     for key in odf.cruise:
-        pass
+        if key in dataset.attrs:
+            odf.cruise[key] = dataset.attrs[key]
+    # FIXME
 
 
-A = dict(
-    country_institue_code=0,
-    cruise_number=0,
-    cruise_name=0,
-    organization=0,
-    chief_scientist=0,
-    start_date=0,
-    end_date=0,
-    envent_number=0,
-)
+def _nc_odf_event_header(odf, dataset):
+    """
+    event_number : is in .INI cruise section
+    data_type : is in .INI global_attributes section
+    event_qualifier1(2) : Missing. Add to ini files.
+    """
+    odf.cruise["event_number"] = dataset.attrs["event_number"]
+    # FIXME
 
-B = dict(
-    country_institute_code="",
-    cruise_number="",
-    organization="",
-    chief_scientist="",
-    start_date="",
-    end_date="",
-    platform="",
-    cruise_name="",
-    cruise_description="",
-)
+
+def _make_odf_header(odf):
+    """
+    file_specification =
+    """
+    name_part = [
+        "data_type",
+        "cruise_number",
+        "event_number",
+        "event_qualifier1",
+        "event_qualifier2",
+    ]
+    odf.odf["file_specification"] = "_".join(name_part)
+
+
+def make_buoy_header(odf, platform_dict):
+    """
+    All in platform_specs of a platform in the platform_file
+    """
+    for key in odf.buoy:
+        if key in platform_dict["platform_specs"]:
+            odf.buoy[key] = platform_dict["platform_specs"][key]
+    # FIXME

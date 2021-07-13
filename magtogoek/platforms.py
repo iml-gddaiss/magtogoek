@@ -33,7 +33,15 @@ def _add_platform():
 
 
 def _add_platform_specs():
-    return dict()
+    return dict(
+        name="",
+        type="",
+        model="",
+        height="",
+        diameter="",
+        weight="",
+        description="",
+    )
 
 
 def _add_sensors():

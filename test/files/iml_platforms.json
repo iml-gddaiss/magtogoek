@@ -35,6 +35,7 @@
                            "model": "Viking",
                            "height": "4.5 m",
                            "diameter": "2.1 m",
+                           "weight": "1000 kg",
                            "description": "bouée noire (partie immergée) avec jaune."},
         "sensors": {
             "ADCP_01": {
