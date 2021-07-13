@@ -7,10 +7,7 @@ from magtogoek.odf_format import Odf
 # Add a int suffix (_01) to parameter codes increasing with each new parameter of the same type.
 # - dtype : sing or doub
 # Missing Metadata are in the magtogoek/files/odf_parameter.json.
-# - name
-# - units
-# - print_field_value
-# - print_decimal_value
+
 TIME_TYPE = "SYTM"
 TIME_FILL_VALUE = "17-NOV-1858 00:00:00.00"
 
@@ -72,10 +69,17 @@ def _config_file_to_instrument_header(config_dict):
 
 
 def _nc_to_odf_history_header(dataset):
-    """"""
+    """
+    Add a line for magtogoek data processesing.
+    One header by datetime entry ?
+    """
     # FIXME
 
 
 def _nc_to_parameter_headers():
-    """"""
-    # FIXME
+    """
+    name : GF3 code plus _XX increament.
+    units : from odf_
+    print_field_value =
+    print_decimal_value =
+    """

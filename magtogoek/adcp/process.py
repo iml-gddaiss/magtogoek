@@ -460,7 +460,7 @@ An additionnal correction of {additional_correction} degree east was added."""
     del dataset.attrs["logbook"]
 
     for attr in GLOBAL_ATTRS_TO_DROP:
-        if attr in dataset.attr:
+        if attr in dataset.attrs:
             del dataset.attrs[attr]
 
     for attr in list(dataset.attrs.keys()):
