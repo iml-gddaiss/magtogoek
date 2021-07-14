@@ -103,10 +103,10 @@ class Logger:
             [self.warning(m, t=t) for m in msg]
         else:
             if self.level < 2:
-                click.echo(click.style("WARNING:", fg="yellow") + msg)
+                click.echo(click.style("WARNING: ", fg="yellow") + msg)
                 self.w_count += 1
             msg = msg if t is False else self._timestamp() + " " + msg
-            self.logbook += " " + msg + "\n"
+            self.logbook += " WARNING: " + msg + "\n"
 
     def reset(self):
         """Reset w_count and logbook."""

@@ -382,6 +382,9 @@ def _process_adcp_data(params: tp.Dict, sensor_metadata: tp.Dict, global_attrs):
     # ----------------------------------- #
     # CORRECTION FOR MAGNETIC DECLINATION #
     # ----------------------------------- #
+
+    l.section("Data transformation")
+
     if params["magnetic_declination"]:
         if not dataset.attrs["magnetic_declination"]:
             _magnetnic_correction(dataset, params["magnetic_declination"])
@@ -399,7 +402,7 @@ def _process_adcp_data(params: tp.Dict, sensor_metadata: tp.Dict, global_attrs):
             )
             l.log(
                 f"""Magnetic declination found in adcp file: {dataset.attrs["magnetic_declination"]} degree east.
-An additionnal correction of {additional_correction} degree east was added."""
+An additionnal correction of {additional_correction} degree east was added to have a  {params['magnetic_declination']} degree east correction."""
             )
 
     else:
@@ -410,6 +413,9 @@ An additionnal correction of {additional_correction} degree east was added."""
     # --------------- #
     # QUALITY CONTROL #
     # --------------- #
+
+    dataset.attrs["logbook"] += l.logbook
+
     if params["quality_control"]:
         _quality_control(dataset, params)
     else:
@@ -417,7 +423,12 @@ An additionnal correction of {additional_correction} degree east was added."""
             dataset,
         )
 
-    dataset = _drop_beam_data(dataset, params)
+    l.reset()
+
+    if any(
+        params["drop_" + var] for var in ("percent_good", "correlation", "amplitude")
+    ):
+        dataset = _drop_beam_data(dataset, params)
 
     # -------------- #
     # DATA ENCONDING #
@@ -456,6 +467,7 @@ An additionnal correction of {additional_correction} degree east was added."""
     dataset.attrs["date_modified"] = pd.Timestamp.now().strftime("%Y-%m-%d")
 
     dataset.attrs["logbook"] += l.logbook
+
     dataset.attrs["history"] = dataset.attrs["logbook"]
     del dataset.attrs["logbook"]
 
@@ -498,7 +510,7 @@ An additionnal correction of {additional_correction} degree east was added."""
 
     if params["make_log"]:
         with open(log_output, "w") as log_file:
-            log_file.write(dataset.history)
+            log_file.write(dataset.attrs["history"])
             print(f"log file made -> {log_output}")
 
     # MAKE_FIG TODO
@@ -700,9 +712,11 @@ def _set_xducer_depth_as_sensor_depth(dataset: tp.Type[xr.Dataset]):
     """Set xducer_depth value to dataset attributes sensor_depth"""
     if "xducer_depth" in dataset:
         dataset.attrs["sensor_depth"] = np.median(dataset["xducer_depth"].data)
+        l.log("`sensor_depth` correspond to the `xducer_depth` median.")
 
     if "xducer_depth" in dataset.attrs:
         dataset.attrs["sensor_depth"] = dataset.attrs["xducer_depth"]
+        l.log("`sensor_depth` correspond to the `xducer_depth`.")
 
 
 def _drop_beam_data(dataset: tp.Type[xr.Dataset], params: tp.Dict):
