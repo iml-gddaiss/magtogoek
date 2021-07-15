@@ -252,10 +252,11 @@ def adcp_quality_control(
         vel_qc_test.append(f"pitch_threshold:{pitch_th} degree")
 
     if sidelobes_correction:
-        l.log(f"Sidelobe correction carried out.")
         sidelobe_flag = sidelobe_test(dataset, bottom_depth)
-        vel_flags[sidelobe_flag] = 4
-        vel_qc_test.append("sidelobes")
+        if sidelobe_flag:
+            l.log(f"Sidelobe correction carried out.")
+            vel_flags[sidelobe_flag] = 4
+            vel_qc_test.append("sidelobes")
 
     if "pres" in dataset:
         l.log(f"Good pressure range {MIN_PRESSURE} to {MAX_PRESSURE} dbar")
@@ -485,7 +486,9 @@ def vertical_beam_test(
 
 def sidelobe_test(dataset: tp.Type[xr.Dataset], bottom_depth: float = None):
     """FIXME
-    Remove side lob influence (True fails) according to a fixed depths (e.g. Moorings)
+    Test for sidelobe contamination (True fails).
+
+    Returns a boolean array or a False statement if the test cannot be carried out.
 
     Equation :
         Downward: max_depth = XducerDepth + (bottom_depth + XducerDepth) * cos(beam_angle)
@@ -493,8 +496,8 @@ def sidelobe_test(dataset: tp.Type[xr.Dataset], bottom_depth: float = None):
 
     Parameters
     ----------
-    depth :
-        Fixed bottom depth used for sidelob correction
+    depth : optional
+        Fixed bottom depth to use for sidelobe correction
     """
 
     if dataset.attrs["beam_angle"] and dataset.attrs["orientation"]:
@@ -518,7 +521,7 @@ def sidelobe_test(dataset: tp.Type[xr.Dataset], bottom_depth: float = None):
                 bottom_depth = dataset.bt_depth.data
             else:
                 l.warning(
-                    "Sidelobes correct aborded. Bottom depth not found or provided."
+                    "Sidelobes correction aborded. Bottom depth not found or provided."
                 )
                 return False
 
@@ -532,7 +535,10 @@ def sidelobe_test(dataset: tp.Type[xr.Dataset], bottom_depth: float = None):
             return depth_array.T < min_depth.T
 
         else:
-            l.warning("Can not correct for sidelobes, looking attribute not set.")
+            l.warning(
+                "Can not correct for sidelobes, `adcp_orientation` parameter not set."
+            )
+            return False
 
 
 def temperature_test(dataset):
