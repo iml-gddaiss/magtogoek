@@ -76,20 +76,23 @@ def _nc_to_odf_history_header(odf, dataset):
     """
     One history header is made by log datetime entry.
     """
-    regex = "(\[.*\]\s+[0-9]{4}-[0-9]{2}-[0-9]{2}\s[0-9]{2}:[0-9]{2}:[0-9]{2})"
-    histories = re.split(regex, dataset.attrs["history"])
+    process = [
+        "Data processed by Magtogoek Proccesing Software. More at " + REPOSITORY_ADDRESS
+    ]
+    creation_date = pd.Timestamp.now().strftime("%d-%b-%Y %H:%M:%S.%f").upper()[:-4]
 
-    time = pd.Timestamp.now().strftime("%d-%b-%Y %H:%M:%S.%f").upper()[:-4]
-    process = []
+    regex = "(\[.*\])\s+([0-9]{4}-[0-9]{2}-[0-9]{2}\s[0-9]{2}:[0-9]{2}:[0-9]{2})"
+    histories = dataset.attrs["history"].strip("\n").split("\n")
+
     for history in histories:
-
-        if re.match(regex, history):
-            process, time = re.split("(\[.*\]\)\s+", history)
-            time = pd.Timestamp(time).strftime("%d-%b-%Y %H:%M:%S.%f").upper()[:-4]
-            process = [process]
+        m = re.findall(regex, history)
+        if m:
+            odf.add_history({"creation_date": creation_date, "process": process})
+            process = [m[0][0]]
+            creation_date = m[0][1]
         else:
-            process.append(history.split("\n"))
-            odf.add_history({"creation_date": time, "process": process})
+            process.append(history)
+    odf.add_history({"creation_date": creation_date, "process": process})
 
 
 def _nc_to_parameter_headers():
@@ -99,13 +102,3 @@ def _nc_to_parameter_headers():
     print_field_value =
     print_decimal_value =
     """
-
-
-def _add_processed_by_magtogoek_to_history_header(odf):
-    """Adds a history to promote magtogoek !
-    `Data processed by Magtogoek Proccesing Software` + github adress"""
-    time = pd.Timestamp.now().strftime("%d-%b-%Y %H:%M:%S.%f").upper()[:-4]
-    process = [
-        "Data processed by Magtogoek Proccesing Software. More at " + REPOSITORY_ADDRESS
-    ]
-    odf.add_history({"creation_date": time, "process": process})

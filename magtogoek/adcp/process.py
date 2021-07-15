@@ -452,7 +452,7 @@ An additionnal correction of {additional_correction} degree east was added to ha
 
     dataset["time"].assign_attrs(TIME_ATTRS)
 
-    l.log("variables attributes added.")
+    l.log("Variables attributes added.")
 
     # ------------------------------------ #
     # FINAL FORMATING OF GLOBAL ATTRIBUTES #
