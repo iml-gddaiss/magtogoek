@@ -5,7 +5,7 @@ import re
 
 import pandas as pd
 import xarray as xr
-from magtogoek.odf_format import Odf
+from magtogoek.odf_format import Odf, odf_time_format
 
 # Add a int suffix (_01) to parameter codes increasing with each new parameter of the same type.
 # - dtype : sing or doub
@@ -15,7 +15,7 @@ TIME_TYPE = "SYTM"
 TIME_FILL_VALUE = "17-NOV-1858 00:00:00.00"
 REPOSITORY_ADDRESS = "https://github.com/JeromeJGuay/magtogoek"
 
-cruise_attrs = {
+CRUISE_ATTRS = {
     "country_institute_code": ("dataset", "country_institute_code"),
     "cruise_number": ("dataset", "cruise_number"),
     "organization": ("dataset", "organization"),
@@ -27,7 +27,7 @@ cruise_attrs = {
     "cruise_description": ("dataset", "cruise_description"),  # FIXME MISSING
     "platform": ("platform", "platform_name"),
 }
-event_attrs = {
+EVENT_ATTRS = {
     "data_type": ("dataset", "data_type"),
     "event_number": ("dataset", "event_number"),
     "orig_creation_date": ("dataset", "date_created"),
@@ -37,12 +37,12 @@ event_attrs = {
     "max_depth": ("dataset", "geospatial_vertical_max"),
     "sampling_interval": ("dataset", "sampling_interval"),
     "sounding": ("dataset", "sounding"),
-    "event_qualifier1": ("config_file", "event_qualifier1"),  # FIXME MISSING
-    "event_qualifier2": ("config_file", "event_qualifier2"),  # FIXME MISSING
-    "event_comments": ("config_file", "event_comments"),  # FIXME MISSING
+    "event_qualifier1": ("config", "event_qualifier1"),  # FIXME MISSING
+    "event_qualifier2": ("config", "event_qualifier2"),  # FIXME MISSING
+    "event_comments": ("config", "event_comments"),  # FIXME MISSING
 }
-event_attrs = {
-    "name": ("platform_specs", "name"),
+BUOY_ATTRS = {
+    "name": ("platform", "platform_name"),
     "type": ("platform_specs", "type"),
     "model": ("platform_specs", "model"),
     "height": ("platform_specs", "height"),
@@ -50,7 +50,7 @@ event_attrs = {
     "weight": ("platform_specs", "weight"),
     "description": ("platform_specs", "description"),
 }
-instrument_attrs = {
+BUOY_INSTRUMENT_ATTRS = {
     "type": ("dataset", "manufacturer"),
     "model": ("dataset", "model"),
     "serial_number": ("dataset", "serial_number"),
@@ -60,22 +60,58 @@ instrument_attrs = {
 }
 
 
-def _make_cruise_header(odf, platform: dict, global_attrs: dict):
-    """"""
+def _make_cruise_header(odf, dataset, config):
+    """Use cruise_attrs """
+    for key, value in CRUISE_ATTRS.items():
+        if value[0] == "dataset":
+            if value[1] in dataset.attrs:
+                if "date" in key:
+                    odf.cruise[key] = odf_time_format(dataset.attrs[value[1]])
+                else:
+                    odf.cruise[key] = dataset.attrs[value[1]]
+        if value[0] == "platform":
+            if value[1] in platform:
+                odf.cruise[key] = platform[value[1]]
 
 
-def _make_event_header(odf, global_attrs: dict, dataset):
+def _make_event_header(odf, dataset, config):
     """
-    "initial_latitude": ("compute"),
-    "initial_longitude": ("compute"),
-    "end_latitude": ("compute"),
-    "end_longitude": ("compute"),
-    "depth_off_bottom": ("compute"),
-    "creation_date": ("compute"),
+    Use event_attrs
+
+    To compute :
+     initial_latitude
+     initial_longitude
+     end_latitude
+     end_longitude
+     depth_off_bottom
+     creation_date
     """
+    for key, value in EVENT_ATTRS.items():
+        if value[0] == "dataset":
+            if value[1] in dataset.attrs:
+                if "date" in key:
+                    odf.event[key] = odf_time_format(dataset.attrs[value[1]])
+                else:
+                    odf.event[key] = dataset.attrs[value[1]]
+        if value[0] == "config":
+            if value[1] in config:
+                odf.event[key] = config[value[1]]
 
 
-def _make_header(odf):
+def _make_buoy_header(odf, platform):
+    """
+    Use BUOY_ATTRS
+    """
+    for key, value in BUOY_ATTRS.items():
+        if value[0] == "platform_specs":
+            if value[1] in platform["platform_specs"]:
+                odf.buoy[key] = platform["platform_specs"][value[1]]
+        if value[0] == "platform":
+            if value[1] in platform:
+                odf.buoy[key] = platform[value[1]]
+
+
+def _make_odf_header(odf):
     """
     Make field specification with:
     data_type, cruise_number, event_number, event_qualifier1, event_qualifier2
@@ -91,17 +127,28 @@ def _make_header(odf):
     odf.odf["file_specification"] = "_".join(name_part).strip("_") + ".ODF"
 
 
-def _make_buoy_header(odf, platform: dict):
-    """"""
-    odf.buoy["name"] = platform["platform_name"]
+def _make_instrument_header(odf):
+    """TODO"""
 
 
-def _make_instrument_header(odf, dataset):
-    """"""
+def _make_buoy_instrument_header(odf, dataset):
+    """Uses buoy_instrument_attrs"""
+    instrument = "ADCP_01"
+    odf.add_buoy_instrument(instrument)
+    for key, value in BUOY_INSTRUMENT_ATTRS.items():
+        if value[0] == "dataset":
+            if value[1] in dataset.attrs:
+                if "date" in key:
+                    odf.buoy_instrument[instrument][key] = odf_time_format(
+                        dataset.attrs[value[1]]
+                    )
+                else:
+                    odf.buoy_instrument[instrument][key] = dataset.attrs[value[1]]
 
 
 def _make_buoy_instrument_comment(odf, dataset):
-    """ dataset.atttrs  'CONFIGURATION_01. FIXME"""
+    """TODO
+    dataset.atttrs  'CONFIGURATION_01. FIXME"""
 
 
 def _make_buoy_instrument_sensors(odf, dataset):
@@ -154,14 +201,16 @@ if __name__ == "__main__":
     nc_file = "../../test/files/iml6_2017_wh.nc"
     platform_file = "../../test/files/iml_platforms.json"
     config_file = "../../test/files/adcp_iml6_2017.ini"
+
     ds = xr.open_dataset(nc_file)
     platform = json2dict(platform_file)["IML6_2017"]
-    _, global_attrs = _get_config(load_configfile(config_file))
+    _, config = _get_config(load_configfile(config_file))
+
     odf = Odf()
 
-    _make_cruise_header(odf, platform, global_attrs)
-    _make_event_header(odf, global_attrs, ds)
-    _make_header(odf)
+    _make_cruise_header(odf, ds, platform)
+    _make_event_header(odf, ds, config)
+    _make_odf_header(odf)
     _make_buoy_header(odf, platform)
-
+    _make_buoy_instrument_header(odf, ds)
     _make_history_header(odf, ds)
