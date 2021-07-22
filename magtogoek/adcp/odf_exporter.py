@@ -15,66 +15,67 @@ TIME_TYPE = "SYTM"
 TIME_FILL_VALUE = "17-NOV-1858 00:00:00.00"
 REPOSITORY_ADDRESS = "https://github.com/JeromeJGuay/magtogoek"
 
+cruise_attrs = {
+    "country_institute_code": ("dataset", "country_institute_code"),
+    "cruise_number": ("dataset", "cruise_number"),
+    "organization": ("dataset", "organization"),
+    "chief_scientist": ("dataset", "chief_scientist"),
+    "start_date": ("dataset", "start_date"),
+    "end_date": ("dataset", "end_date"),
+    "platform": ("dataset", "platform"),
+    "cruise_name": ("dataset", "cruise_name"),
+    "cruise_description": ("dataset", "cruise_description"),  # FIXME MISSING
+    "platform": ("platform", "platform_name"),
+}
+event_attrs = {
+    "data_type": ("dataset", "data_type"),
+    "event_number": ("dataset", "event_number"),
+    "orig_creation_date": ("dataset", "date_created"),
+    "start_date_time": ("dataset", "start_date_time"),
+    "end_date_time": ("dataset", "end_date_time"),
+    "min_depth": ("dataset", "geospatial_vertical_min"),
+    "max_depth": ("dataset", "geospatial_vertical_max"),
+    "sampling_interval": ("dataset", "sampling_interval"),
+    "sounding": ("dataset", "sounding"),
+    "event_qualifier1": ("config_file", "event_qualifier1"),  # FIXME MISSING
+    "event_qualifier2": ("config_file", "event_qualifier2"),  # FIXME MISSING
+    "event_comments": ("config_file", "event_comments"),  # FIXME MISSING
+}
+event_attrs = {
+    "name": ("platform_specs", "name"),
+    "type": ("platform_specs", "type"),
+    "model": ("platform_specs", "model"),
+    "height": ("platform_specs", "height"),
+    "diameter": ("platform_specs", "diameter"),
+    "weight": ("platform_specs", "weight"),
+    "description": ("platform_specs", "description"),
+}
+instrument_attrs = {
+    "type": ("dataset", "manufacturer"),
+    "model": ("dataset", "model"),
+    "serial_number": ("dataset", "serial_number"),
+    "description": ("dataset", "description"),
+    "inst_start_date_time": ("dataset", "time_coverage_start"),
+    "inst_end_date_time": ("dataset", "time_coverage_end"),
+}
 
-def _make_odf_cruise_header(odf, platform: dict, global_attrs: dict):
+
+def _make_cruise_header(odf, platform: dict, global_attrs: dict):
+    """"""
+
+
+def _make_event_header(odf, global_attrs: dict, dataset):
     """
-    All in the .INI cruise section
-    Except:
-        platform : Platform file
-        cruise_description: Missing Add to ini files. #FIXME
+    "initial_latitude": ("compute"),
+    "initial_longitude": ("compute"),
+    "end_latitude": ("compute"),
+    "end_longitude": ("compute"),
+    "depth_off_bottom": ("compute"),
+    "creation_date": ("compute"),
     """
-    for key in odf.cruise:
-        if key in global_attrs:
-            odf.cruise[key] = global_attrs[key]
-
-    odf.cruise["platform"] = platform["platform_name"]
 
 
-def _make_odf_event_header(odf, global_attrs: dict):
-    """
-    geospatial_lat_min
-    geospatial_lat_max
-    geospatial_lat_units
-    geospatial_lon_min
-    geospatial_lon_max
-    geospatial_lon_units
-    geospatial_vertical_min
-    geospatial_vertical_max
-    geospatial_vertical_positive
-    geospatial_vertical_units
-     TIME HAVE TO BE FORMATED TO ODF_STRING_FORMAT MAKE FUNCTION
-
-     compute
-      creation_date    :
-      depth_off_bottom   : #FIXME
-     config_file
-      event_number     : Is in .INI cruise section
-      data_type        : Is in .INI global_attributes section
-      event_qualifier1 : #FIXME
-      event_qualifier2 : #FIXME
-      event_comments   : #FIXME
-     dataset.attrs
-      orig_creation_date : date_created
-      start_date_time    : time_coverage_start
-      end_date_time      : time_coverage_end
-      initial_latitude   : #FIXME SUPPOSED TO BE THERE
-      initial_longitude  : #FIXME SUPPOSED TO BE THERE
-      end_latitude       : #FIXME SUPPOSED TO BE THERE
-      end_longitude      : #FIXME SUPPOSED TO BE THERE
-      min_depth          : geospatial_vertical_min
-      max_depth          : geospatial_vertical_max
-      sampling_interval  : sampling_interval
-    plaform_file
-      sounding           : sounding #FIXME look for any computation
-
-
-    """
-    for key in odf.event:
-        if key in global_attrs:
-            odf.event[key] = global_attrs[key]
-
-
-def _make_odf_header(odf):
+def _make_header(odf):
     """
     Make field specification with:
     data_type, cruise_number, event_number, event_qualifier1, event_qualifier2
@@ -90,40 +91,20 @@ def _make_odf_header(odf):
     odf.odf["file_specification"] = "_".join(name_part).strip("_") + ".ODF"
 
 
-def _make_to_odf_buoy_header(odf, platform: dict):
-    """
-    All in platform_specs of a platform in the platform_file
-    """
+def _make_buoy_header(odf, platform: dict):
+    """"""
     odf.buoy["name"] = platform["platform_name"]
-    for key in odf.buoy:
-        if key in platform["platform_specs"]:
-            odf.buoy[key] = platform["platform_specs"][key]
 
 
-def _nc_to_buoy_instrument_header(odf, dataset):
-    """
-    dataset.attrs
-     type                      : manufacturer
-     model                     : model
-     serial_number             : serial_number
-     description               : description
-     inst_start_date_time      : time_coverage_start
-     inst_end_date_time        : time_coverage_end
-    config_file
-     buoy_instrument_comments  : #FIXME
-     sensors                   : #FIXME
-    """
-    odf.add_buoy_instrument("ADCP_01")
-    for key in odf.instrument:
-        if key in dataset.attrs:
-            odf.instrument[key] = dataset.attrs[key]
+def _make_instrument_header(odf, dataset):
+    """"""
 
 
-def _nc_to_buoy_instrument_comment(odf, dataset):
+def _make_buoy_instrument_comment(odf, dataset):
     """ dataset.atttrs  'CONFIGURATION_01. FIXME"""
 
 
-def _nc_to_buoy_instrument_sensors(odf, dataset):
+def _make_buoy_instrument_sensors(odf, dataset):
     """FIXME
     temperature_01
     compas_01
@@ -132,7 +113,7 @@ def _nc_to_buoy_instrument_sensors(odf, dataset):
     """
 
 
-def _nc_to_odf_history_header(odf, dataset):
+def _make_history_header(odf, dataset):
     """
     One history header is made by log datetime entry.
     """
@@ -155,12 +136,13 @@ def _nc_to_odf_history_header(odf, dataset):
     odf.add_history({"creation_date": creation_date, "process": process})
 
 
-def _nc_to_parameter_headers():
+def _make_parameter_headers():
     """
+    TODO MAKE A DICTIONNARY GF3_CODE:{ITEMS}
     name : GF3 code plus _XX increament.
-    units : from odf_
-    print_field_value =
-    print_decimal_value =
+    units : from odf
+    print_field_value = from odf
+    print_decimal_value = from odf
     """
 
 
@@ -177,9 +159,9 @@ if __name__ == "__main__":
     _, global_attrs = _get_config(load_configfile(config_file))
     odf = Odf()
 
-    _make_odf_cruise_header(odf, platform, global_attrs)
-    _make_odf_event_header(odf, global_attrs)
-    _make_odf_header(odf)
-    _make_to_odf_buoy_header(odf, platform)
+    _make_cruise_header(odf, platform, global_attrs)
+    _make_event_header(odf, global_attrs, ds)
+    _make_header(odf)
+    _make_buoy_header(odf, platform)
 
-    _nc_to_odf_history_header(odf, ds)
+    _make_history_header(odf, ds)

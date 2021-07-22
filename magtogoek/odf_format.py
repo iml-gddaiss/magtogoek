@@ -224,7 +224,13 @@ class Odf:
 
     to_dataset()
 
-    add_instruments()
+    add_buoy_instruments()
+
+    add_compass_cal()
+
+    add_general_cal()
+
+    add_history()
 
     add_parameter()
 
@@ -467,6 +473,8 @@ class Odf:
         ----------
         code :
             Name(key) for the parameter code.
+        items :
+            Dictionnary containing compass cal header items.
         """
         self.compass_cal[code] = REPEATED_HEADERS_DEFAULT["compass_cal"].copy()
         self.compass_cal[code]["code"] = code
@@ -520,14 +528,23 @@ class Odf:
 
         self._compute_parameter_attrs(code, null_value)
 
-    def add_history(self, items: dict):
-        """"""
+    def add_history(self, items: dict = {}):
+        """Add a history header
+
+        Parameters
+        ----------
+        items :
+            Dictionnary containing two items; 'creation_date' and 'process'.
+            'creation_date' should be formatted like '01-JAN-2000 00:00:00.00
+            'process' should a list of string.
+
+        """
         header_name = "history_" + str(len(self.history) + 1)
         self.history[header_name] = REPEATED_HEADERS_DEFAULT["history"].copy()
         self.history[header_name].update(items)
         if not self.history[header_name]["creation_date"]:
-            self.history[header_name]["creation_date"] = (
-                pd.Timestamp.now().strftime("%d-%b-%Y %H:%M:%S.%f").upper()[:-4]
+            self.history[header_name]["creation_date"] = odf_time_format(
+                pd.Timestamp.now()
             )
 
     def from_dataframe(
@@ -667,7 +684,7 @@ class Odf:
 
             elif self.data[vd].dtypes == np.dtype("<M8[ns]"):
                 formats[vd] = lambda x, p=padding: (
-                    SPACE + (x.strftime("%d-%b-%Y %H:%M:%S.%f").upper()).rjust(p, SPACE)
+                    SPACE + (odf_time_format(x)).rjust(p, SPACE)
                 )
 
             else:
@@ -760,6 +777,21 @@ def _reshape_header(header):
                     header[key][i] = tuple(map(eval, header[key][i].split()))
             if len(item) == 1:
                 header[key] = item[0]
+
+
+def odf_time_format(time):
+    """Convert to odf time format
+
+    Parameters
+    ----------
+    time :
+        Either pandas or datetime datetime format.
+
+    Returns
+    -------
+    string formated time.
+    """
+    return pd.Timestamp(time).strftime("%d-%b-%Y %H:%M:%S.%f").upper()[:-4]
 
 
 if __name__ == "__main__":
