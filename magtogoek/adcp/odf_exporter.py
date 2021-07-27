@@ -76,15 +76,11 @@ def _make_cruise_header(odf, dataset, config):
 
 def _make_event_header(odf, dataset, config):
     """
-    Use event_attrs
+    Make the event header.
 
-    To compute :
-     initial_latitude
-     initial_longitude
-     end_latitude
-     end_longitude
-     depth_off_bottom
-     creation_date
+    Notes
+    -----
+    `depth_off_bottom` is `0` if "sounding" is missing.
     """
     for key, value in EVENT_ATTRS.items():
         if value[0] == "dataset":
@@ -96,19 +92,17 @@ def _make_event_header(odf, dataset, config):
         if value[0] == "config":
             if value[1] in config:
                 odf.event[key] = config[value[1]]
-
-
-def _make_buoy_header(odf, platform):
-    """
-    Use BUOY_ATTRS
-    """
-    for key, value in BUOY_ATTRS.items():
-        if value[0] == "platform_specs":
-            if value[1] in platform["platform_specs"]:
-                odf.buoy[key] = platform["platform_specs"][value[1]]
-        if value[0] == "platform":
-            if value[1] in platform:
-                odf.buoy[key] = platform[value[1]]
+    odf.event["initial_latitude"] = dataset.lat[0]
+    odf.event["initial_longitude"] = dataset.lon[0]
+    odf.event["end_latitude"] = dataset.lat[-1]
+    odf.event["end_longitude"] = dataset.lon[-1]
+    odf.event["creation_date"] = odf_time_format(pd.Timestamp.now())
+    if "sounding" in ds.attrs:
+        odf.event["depth_off_bottom"] = (
+            dataset.attrs["sounding"] - odf.event["max_depth"]
+        )
+    else:
+        odf.event["depth_off_bottom"] = 0
 
 
 def _make_odf_header(odf):
@@ -127,12 +121,23 @@ def _make_odf_header(odf):
     odf.odf["file_specification"] = "_".join(name_part).strip("_") + ".ODF"
 
 
-def _make_instrument_header(odf):
-    """TODO"""
+def _make_buoy_header(odf, platform):
+    """
+    Use BUOY_ATTRS
+    """
+    for key, value in BUOY_ATTRS.items():
+        if value[0] == "platform_specs":
+            if value[1] in platform["platform_specs"]:
+                odf.buoy[key] = platform["platform_specs"][value[1]]
+        if value[0] == "platform":
+            if value[1] in platform:
+                odf.buoy[key] = platform[value[1]]
 
 
 def _make_buoy_instrument_header(odf, dataset):
-    """Uses buoy_instrument_attrs"""
+    """Uses buoy_instrument_attrs
+    Missing: comments and sensors
+    """
     instrument = "ADCP_01"
     odf.add_buoy_instrument(instrument)
     for key, value in BUOY_INSTRUMENT_ATTRS.items():
@@ -145,14 +150,31 @@ def _make_buoy_instrument_header(odf, dataset):
                 else:
                     odf.buoy_instrument[instrument][key] = dataset.attrs[value[1]]
 
+    # _make_buoy_instrument_comment(odf, dataset)
+    # _make_buoy_instrument_sensors(odf, dataset)
+
 
 def _make_buoy_instrument_comment(odf, dataset):
     """TODO
-    dataset.atttrs  'CONFIGURATION_01. FIXME"""
+        dataset.atttrs  'CONFIGURATION_01. FIXME
+    Mode:                                        : orientation
+    Ping_per_Ensemble: 100.0',                        : ping_per_ensemble
+    Ping_Intervalle_pings_s: 0.6',                      : delta_t_sec
+    Duree_dun_ensemble_s: 60.0',                       : sampling_interval
+    Profondeur_de_lADCP_m: 1.0',                       : sensor_depth
+    Distance_ADCP_au_centre_du_premier_bin_m: 9.75',   : dist_1_bin
+    Taille_dun_bin_m: 8.0',                            : bin_size
+    Nombre_de_bins: 30',                               : bin_count
+    Blank_m: ',                                        : blank
+    Lag_length_m: ',                                   : FIXME MISSING FROM LOADER
+    Transmit_Pulse_Length_m: ',                        : transmit_pulse_length_cm (cm to m)
+    Declinaison_magnetique_deg: 17.36 W',              : magnetic_declination + _unist
+    Commentaire: .',                                   : comments (mettre derniere calibration ?)
+    """
 
 
 def _make_buoy_instrument_sensors(odf, dataset):
-    """FIXME
+    """SKIPPED un peux useless pour l'adcp
     temperature_01
     compas_01
     inclinometer_01

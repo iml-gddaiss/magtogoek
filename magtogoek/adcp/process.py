@@ -408,7 +408,7 @@ An additionnal correction of {additional_correction} degree east was added to ha
     else:
         dataset.attrs["magnetic_declination"] = 0
     dataset.attrs["magnetic_declination"] = params["magnetic_declination"]
-    dataset.attrs["magnetic_declination_untis"] = "degree east"
+    dataset.attrs["magnetic_declination_units"] = "degree east"
 
     # --------------- #
     # QUALITY CONTROL #
