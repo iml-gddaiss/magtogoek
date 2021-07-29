@@ -109,7 +109,7 @@ PLATFORM_FILE_DEFAULT_KEYS = [
     "model",
     "firmware_version",
     "chief_scientist",
-    "description",
+    "comments",
 ]
 P01_VEL_CODES = dict(
     mooring=dict(
