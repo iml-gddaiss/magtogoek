@@ -60,6 +60,20 @@ BUOY_INSTRUMENT_ATTRS = {
 }
 
 
+BUOY_INSTRUMENT_CONFIGURATION = {
+    "Mode": ("dataset", "orientation"),
+    "Ping_per_Ensemble": ("dataset", "ping_per_ensemble"),
+    "Ensemble_Length_s": ("dataset", "delta_t_sec"),
+    "ADCP_Depth_m": ("dataset", "sensor_depth"),
+    "Distance_ADCP_to_First_Bin_Center_m": ("dataset", "dist_1_bin"),
+    "Bin_Size_m": ("dataset", "bin_size"),
+    "Bin_Count": ("dataset", "bin_count"),
+    "Blank_m": ("dataset", "blank"),
+    "Lag_length_m": ("dataset", "lag_length"),
+    "Transmit_Pulse_Length_m": ("dataset", "transmit_pulse_length_cm"),
+}
+
+
 def _make_cruise_header(odf, dataset, config):
     """Use cruise_attrs """
     for key, value in CRUISE_ATTRS.items():
@@ -155,21 +169,30 @@ def _make_buoy_instrument_header(odf, dataset):
 
 
 def _make_buoy_instrument_comment(odf, dataset):
-    """TODO
-        dataset.atttrs  'CONFIGURATION_01. FIXME
-    Mode:                                        : orientation
-    Ping_per_Ensemble: 100.0',                        : ping_per_ensemble
-    Ping_Intervalle_pings_s: 0.6',                      : delta_t_sec
-    Duree_dun_ensemble_s: 60.0',                       : sampling_interval
-    Profondeur_de_lADCP_m: 1.0',                       : sensor_depth
-    Distance_ADCP_au_centre_du_premier_bin_m: 9.75',   : dist_1_bin
-    Taille_dun_bin_m: 8.0',                            : bin_size
-    Nombre_de_bins: 30',                               : bin_count
-    Blank_m: ',                                        : blank
-    Lag_length_m: ',                                   : FIXME MISSING FROM LOADER
-    Transmit_Pulse_Length_m: ',                        : transmit_pulse_length_cm (cm to m)
-    Declinaison_magnetique_deg: 17.36 W',              : magnetic_declination + _unist
-    Commentaire: .',                                   : comments (mettre derniere calibration ?)
+    """TODO Revoir quel parametre mettre et/ou ajouter.
+            dataset.atttrs  'CONFIGURATION_01. FIXME
+        transmit_pulse_length_cm #(cm to m)    FIXME
+        Missing:
+         Blank_m m.FL['Blank'] (cm ?)            FIXME
+         Lag_length_m m.FL['LagLength'] (cm?)    FIXME
+         Comments
+
+        To compute:FIXME
+         Ping_Intervalle_pings_s ping_per_ensemble / delta_t_sec
+         Magnetique_Declination                : ('datasret','magnetic_declination + _units'
+
+        buoy_instrument_attrs = {
+        'Mode'                                  : ('datasret','orientation'),
+        'Ping_per_Ensemble'                     : ('datasret','ping_per_ensemble'),
+        'Ensemble_Length_s'                     : ('datasret','delta_t_sec'),
+        'ADCP_Depth_m'                          : ('datasret','sensor_depth'),
+        'Distance_ADCP_to_First_Bin_Center_m'   : ('datasret','dist_1_bin'),
+        'Bin_Size_m'                            : ('datasret', 'bin_size'),
+        'Bin_Count'                             : ('datasret','bin_count'),
+        'Blank_m'                               : ('datasret','blank'),
+        'Lag_length_m'                          : ('datasret','lag_length'),
+        'Transmit_Pulse_Length_m'               : ('datasret','transmit_pulse_length_cm')}
+    }
     """
 
 

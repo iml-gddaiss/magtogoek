@@ -357,7 +357,7 @@
         "sensor_type": "adcp",
         "long_name": "bin depth below surface",
         "sdn_parameter_urn": "SDN:P01::PPSAADCP",
-        "sdn_parameter_name": "Depth below surface of the water bodyby acoustic doppler current profiler (ADCP) and computation from traveltime averaged from all operational beams and unknown sound velocity profile",
+        "sdn_parameter_name": "Depth below surface of the water body by acoustic doppler current profiler (ADCP) and computation from traveltime averaged from all operational beams and unknown sound velocity profile",
         "sdn_uom_urn": "SDN:P06::ULAA",
         "sdn_uom_name": "Metres",
         "legacy_GF3_code": "SDN:GF3::DEPH"
