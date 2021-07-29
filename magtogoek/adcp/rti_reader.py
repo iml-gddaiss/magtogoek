@@ -338,7 +338,8 @@ class RtiReader:
         ppd.NPings = ens.EnsembleData.ActualPingCount
 
         ppd.CellSize = ens.AncillaryData.BinSize
-        ppd.Bin1Dist = round(ens.AncillaryData.FirstBinRange, 3)
+        ppd.Blank = round(ens.AncillaryData.FirstBinRange, 3)
+        ppd.Bin1Dist = ppd.Blank + ppd.CellSize / 2
 
         ppd.dep = ppd.Bin1Dist + np.arange(0, ppd.nbin * ppd.CellSize, ppd.CellSize)
 
