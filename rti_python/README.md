@@ -1,7 +1,8 @@
-# COPIED FROM rowetechinc/rti_python
+# DISCLAMER: readme copied from the [rowetechinc/rti_python](https://github.com/rowetechinc/rti_python).
 
-The library didn't not have a liscence. Magtogoek only contains the required modules from rti_python. 
-Here is the original README.
+The library did not have a liscence. Magtogoek only contains the required modules from rti_python. 
+Below is the original README.
+
 
 # rti_python
 RTI Library in Python
