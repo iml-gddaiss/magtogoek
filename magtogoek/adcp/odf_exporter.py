@@ -169,29 +169,30 @@ def _make_buoy_instrument_header(odf, dataset):
 
 
 def _make_buoy_instrument_comment(odf, dataset):
-    """TODO Revoir quel parametre mettre et/ou ajouter.
-            dataset.atttrs  'CONFIGURATION_01. FIXME
-        transmit_pulse_length_cm #(cm to m)    FIXME
-        Missing:
-         Blank_m m.FL['Blank'] (cm ?)            FIXME
-         Lag_length_m m.FL['LagLength'] (cm?)    FIXME
+    """FIXME
+    Missing:
          Comments
-
-        To compute:FIXME
+    To compute:
          Ping_Intervalle_pings_s ping_per_ensemble / delta_t_sec
          Magnetique_Declination                : ('datasret','magnetic_declination + _units'
 
-        buoy_instrument_attrs = {
-        'Mode'                                  : ('datasret','orientation'),
-        'Ping_per_Ensemble'                     : ('datasret','ping_per_ensemble'),
-        'Ensemble_Length_s'                     : ('datasret','delta_t_sec'),
-        'ADCP_Depth_m'                          : ('datasret','sensor_depth'),
-        'Distance_ADCP_to_First_Bin_Center_m'   : ('datasret','dist_1_bin'),
-        'Bin_Size_m'                            : ('datasret', 'bin_size'),
-        'Bin_Count'                             : ('datasret','bin_count'),
-        'Blank_m'                               : ('datasret','blank'),
-        'Lag_length_m'                          : ('datasret','lag_length'),
-        'Transmit_Pulse_Length_m'               : ('datasret','transmit_pulse_length_cm')}
+    Note
+    ----
+    LagLength was removed from the original ODF adcp format.
+
+
+
+
+        BUOY_INSTRUMENT_ATTRS = {
+        'Mode'                                  : ('dataset','orientation'),
+        'Ping_per_Ensemble'                     : ('dataset','ping_per_ensemble'),
+        'Ensemble_Length_s'                     : ('dataset','delta_t_sec'),
+        'ADCP_Depth_m'                          : ('dataset','sensor_depth'),
+        'Distance_ADCP_to_First_Bin_Center_m'   : ('dataset','dist1bin'),
+        'Bin_Size_m'                            : ('dataset', 'bin_size'),
+        'Bin_Count'                             : ('dataset','bin_count'),
+        'Blank_m'                               : ('dataset','blank'),
+        'Transmit_Pulse_Length_m'               : ('dataset','transmit_pulse_length_m')}
     }
     """
 

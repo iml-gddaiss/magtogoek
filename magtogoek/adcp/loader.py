@@ -396,17 +396,17 @@ def load_adcp_binary(
         ds.attrs["xducer_depth"] = round(xducer_depth, 2)
     ds.attrs["coord_system"] = data.trans["coordsystem"]
     ds.attrs["beam_angle"] = data.sysconfig["angle"]
-    ds.attrs["frequency"] = data.sysconfig["kHz"] * 1000
+    ds.attrs["frequency"] = data.sysconfig["kHz"] * 1000  # kHz to hz
     ds.attrs["bin_size"] = data.CellSize
     ds.attrs["ping_per_ensemble"] = data.NPings
     ds.attrs["ping_type"] = data.pingtype
+    ds.attrs["blank"] = data.Blank / 100  # cm to m
+    ds.attrs["bin1dist"] = data.Bin1Dist
 
     ds.attrs["firmware_version"] = ".".join(
         list(str(data.FL["FWV"])) + list(str(data.FL["FWR"]))
     )
-    ds.attrs["transmit_pulse_lenght_cm"] = (
-        data.FL["Pulse"] / 100
-    )  # centimeters to meters
+    ds.attrs["transmit_pulse_lenght_m"] = data.FL["Pulse"] / 100  # cm to m
 
     ds.attrs["delta_t_sec"] = np.round(
         np.mean((np.diff(ds.time).astype("timedelta64[s]"))).astype(float), 2
