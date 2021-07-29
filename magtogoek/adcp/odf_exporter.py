@@ -59,18 +59,20 @@ BUOY_INSTRUMENT_ATTRS = {
     "inst_end_date_time": ("dataset", "time_coverage_end"),
 }
 
-
 BUOY_INSTRUMENT_CONFIGURATION = {
     "Mode": ("dataset", "orientation"),
+    "Ping_Type": ("dataset", "ping_type"),
+    "Frequency": ("dataset", "frequency"),
+    "Firmware_Version": ("dataset", "firmware_version"),
     "Ping_per_Ensemble": ("dataset", "ping_per_ensemble"),
     "Ensemble_Length_s": ("dataset", "delta_t_sec"),
     "ADCP_Depth_m": ("dataset", "sensor_depth"),
-    "Distance_ADCP_to_First_Bin_Center_m": ("dataset", "dist_1_bin"),
+    "Distance_ADCP_to_First_Bin_Center_m": ("dataset", "dist1bin"),
     "Bin_Size_m": ("dataset", "bin_size"),
     "Bin_Count": ("dataset", "bin_count"),
     "Blank_m": ("dataset", "blank"),
-    "Lag_length_m": ("dataset", "lag_length"),
-    "Transmit_Pulse_Length_m": ("dataset", "transmit_pulse_length_cm"),
+    "Transmit_Pulse_Length_m": ("dataset", "transmit_pulse_length_m"),
+    "Comments": ("plaform", "comments"),
 }
 
 
@@ -179,21 +181,6 @@ def _make_buoy_instrument_comment(odf, dataset):
     Note
     ----
     LagLength was removed from the original ODF adcp format.
-
-
-
-
-        BUOY_INSTRUMENT_ATTRS = {
-        'Mode'                                  : ('dataset','orientation'),
-        'Ping_per_Ensemble'                     : ('dataset','ping_per_ensemble'),
-        'Ensemble_Length_s'                     : ('dataset','delta_t_sec'),
-        'ADCP_Depth_m'                          : ('dataset','sensor_depth'),
-        'Distance_ADCP_to_First_Bin_Center_m'   : ('dataset','dist1bin'),
-        'Bin_Size_m'                            : ('dataset', 'bin_size'),
-        'Bin_Count'                             : ('dataset','bin_count'),
-        'Blank_m'                               : ('dataset','blank'),
-        'Transmit_Pulse_Length_m'               : ('dataset','transmit_pulse_length_m')}
-    }
     """
 
 

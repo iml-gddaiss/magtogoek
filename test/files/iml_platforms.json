@@ -20,7 +20,7 @@
                 "model": "SeaWATCH",
                 "firmware_version": "0.2.125-4",
                 "chief_scientist": "Peter Galbraith",
-                "description": "The model and serial number are the same for the temperature and pressure sensors as the ADCP."
+                "comments": "The model and serial number are the same for the temperature and pressure sensors as the ADCP."
             }
         }
     },
@@ -46,7 +46,7 @@
                 "model": "WorkHorse",
                 "firmware_version": "",
                 "chief_scientist": "Peter Galbraith",
-                "description": "The model and serial number are the same for the temperature and pressure sensors as the ADCP."
+                "comments": "The model and serial number are the same for the temperature and pressure sensors as the ADCP."
             }
         }
    } 
