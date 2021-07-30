@@ -72,7 +72,7 @@ BUOY_INSTRUMENT_CONFIGURATION = {
     "Bin_Count": ("dataset", "bin_count"),
     "Blank_m": ("dataset", "blank"),
     "Transmit_Pulse_Length_m": ("dataset", "transmit_pulse_length_m"),
-    "Comments": ("plaform", "comments"),
+    "Comments": ("platform_sensors", "comments"),
 }
 
 
@@ -108,10 +108,12 @@ def _make_event_header(odf, dataset, config):
         if value[0] == "config":
             if value[1] in config:
                 odf.event[key] = config[value[1]]
-    odf.event["initial_latitude"] = dataset.lat[0]
-    odf.event["initial_longitude"] = dataset.lon[0]
-    odf.event["end_latitude"] = dataset.lat[-1]
-    odf.event["end_longitude"] = dataset.lon[-1]
+    if "lat" in dataset:
+        odf.event["initial_latitude"] = dataset.lat[0]
+        df.event["end_latitude"] = dataset.lat[-1]
+    if "lon" in dataset:
+        odf.event["initial_longitude"] = dataset.lon[0]
+        odf.event["end_longitude"] = dataset.lon[-1]
     odf.event["creation_date"] = odf_time_format(pd.Timestamp.now())
     if "sounding" in ds.attrs:
         odf.event["depth_off_bottom"] = (
@@ -150,7 +152,7 @@ def _make_buoy_header(odf, platform):
                 odf.buoy[key] = platform[value[1]]
 
 
-def _make_buoy_instrument_header(odf, dataset):
+def _make_buoy_instrument_header(odf, dataset, platform):
     """Uses buoy_instrument_attrs
     Missing: comments and sensors
     """
@@ -166,14 +168,11 @@ def _make_buoy_instrument_header(odf, dataset):
                 else:
                     odf.buoy_instrument[instrument][key] = dataset.attrs[value[1]]
 
-    # _make_buoy_instrument_comment(odf, dataset)
-    # _make_buoy_instrument_sensors(odf, dataset)
+    _make_buoy_instrument_comment(odf, instrument, dataset, platform)
 
 
-def _make_buoy_instrument_comment(odf, dataset):
+def _make_buoy_instrument_comment(odf, instrument, dataset, platform):
     """FIXME
-    Missing:
-         Comments
     To compute:
          Ping_Intervalle_pings_s ping_per_ensemble / delta_t_sec
          Magnetique_Declination                : ('datasret','magnetic_declination + _units'
@@ -182,6 +181,18 @@ def _make_buoy_instrument_comment(odf, dataset):
     ----
     LagLength was removed from the original ODF adcp format.
     """
+    configuration = "CONFIGURATION_01"
+    for key, value in BUOY_INSTRUMENT_CONFIGURATION.items():
+        if value[0] == "dataset":
+            if value[1] in dataset:
+                v = dataset.attrs[value[1]]
+        elif value[0] == "platform":
+            v = platform[value[1]]
+        else:
+            v = "N/A"
+        odf.buoy_instrument[instrument].comments.append(
+            configuration + "." + key + ": " + str(v)
+        )
 
 
 def _make_buoy_instrument_sensors(odf, dataset):
@@ -227,7 +238,7 @@ def _make_parameter_headers():
 
 
 if __name__ == "__main__":
-    from magtogoek.adcp.process import _get_config
+    from magtogoek.adcp.process import _get_config, _load_platform
     from magtogoek.configfile import load_configfile
     from magtogoek.utils import json2dict
 
@@ -237,7 +248,10 @@ if __name__ == "__main__":
 
     ds = xr.open_dataset(nc_file)
     platform = json2dict(platform_file)["IML6_2017"]
-    _, config = _get_config(load_configfile(config_file))
+    params, config = _get_config(load_configfile(config_file))
+    params["platform_file"] = "../../test/files/iml_platforms.json"
+    sensor_metadata = _load_platform(params)
+    #    platform_metadata =
 
     odf = Odf()
 
@@ -245,5 +259,5 @@ if __name__ == "__main__":
     _make_event_header(odf, ds, config)
     _make_odf_header(odf)
     _make_buoy_header(odf, platform)
-    _make_buoy_instrument_header(odf, ds)
+    _make_buoy_instrument_header(odf, ds, platform)
     _make_history_header(odf, ds)

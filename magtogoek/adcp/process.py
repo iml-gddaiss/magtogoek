@@ -590,7 +590,7 @@ def _load_platform(params: dict) -> tp.Dict:
         else:
             l.warning("`sensors` section missing from platform file")
         for key in platform_dict.keys():
-            if not isinstance(platform_dict[key], dict):
+            if key != "sensors":
                 sensor_metadata[key] = platform_dict[key]
     else:
         l.warning(f"{params['platform_id']} not found in platform file.")
