@@ -59,19 +59,21 @@ BUOY_INSTRUMENT_ATTRS = {
     "inst_end_date_time": ("dataset", "time_coverage_end"),
 }
 
-BUOY_INSTRUMENT_GLOBAL_ATTRSURATION = {
+BUOY_INSTRUMENT_CONFIGURATION = {
     "Mode": ("dataset", "orientation"),
     "Ping_Type": ("dataset", "ping_type"),
     "Frequency": ("dataset", "frequency"),
     "Firmware_Version": ("dataset", "firmware_version"),
     "Ping_per_Ensemble": ("dataset", "ping_per_ensemble"),
     "Ensemble_Length_s": ("dataset", "delta_t_sec"),
+    "Ping_Interval_s": (),
     "ADCP_Depth_m": ("dataset", "sensor_depth"),
     "Distance_ADCP_to_First_Bin_Center_m": ("dataset", "dist1bin"),
     "Bin_Size_m": ("dataset", "bin_size"),
     "Bin_Count": ("dataset", "bin_count"),
     "Blank_m": ("dataset", "blank"),
     "Transmit_Pulse_Length_m": ("dataset", "transmit_pulse_length_m"),
+    "Magnetic_Declination": (),
     "Comments": ("sensor_metadata_sensors", "comments"),
 }
 
@@ -182,8 +184,27 @@ def _make_buoy_instrument_comment(odf, instrument, dataset, sensor_metadata):
     LagLength was removed from the original ODF adcp format.
     """
     global_attrsuration = "CONFIGURATION_01"
-    for key, value in BUOY_INSTRUMENT_GLOBAL_ATTRSURATION.items():
-        if value[0] == "dataset" and value[1] in dataset.attrs:
+    for key, value in BUOY_INSTRUMENT_CONFIGURATION.items():
+        if (
+            key == "Ping_Interval_s"
+            and "ping_per_ensemble" in dataset.attrs
+            and "delta_t_sec" in dataset.attrs
+        ):
+            v = round(
+                dataset.attrs["ping_per_ensemble"] / dataset.attrs["delta_t_sec"], 2
+            )
+        elif (
+            key == "Magnetic_Declination"
+            and "magnetic_declination" in dataset.attrs
+            and "magnetic_declination_units" in dataset.attrs
+        ):
+            v = (
+                str(dataset.attrs["magnetic_declination"])
+                + " "
+                + dataset.attrs["magnetic_declination_units"]
+            )
+
+        elif value[0] == "dataset" and value[1] in dataset.attrs:
             v = dataset.attrs[value[1]]
         elif value[0] == "sensor_metadata":
             v = sensor_metadata[value[1]]
@@ -246,6 +267,7 @@ if __name__ == "__main__":
     config_file = "../../test/files/adcp_iml6_2017.ini"
 
     ds = xr.open_dataset(nc_file)
+    ds.attrs["magnetic_declination_units"] = ds.attrs.pop("magnetic_declination_untis")
     params, global_attrs = _get_config(load_configfile(config_file))
     params["platform_file"] = platform_files
     sensor_metadata = _load_platform(params)
