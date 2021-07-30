@@ -22,10 +22,10 @@ CRUISE_ATTRS = {
     "chief_scientist": ("dataset", "chief_scientist"),
     "start_date": ("dataset", "start_date"),
     "end_date": ("dataset", "end_date"),
-    "platform": ("dataset", "platform"),
+    "sensor_metadata": ("dataset", "sensor_metadata"),
     "cruise_name": ("dataset", "cruise_name"),
     "cruise_description": ("dataset", "cruise_description"),  # FIXME MISSING
-    "platform": ("platform", "platform_name"),
+    "sensor_metadata": ("sensor_metadata", "sensor_metadata_name"),
 }
 EVENT_ATTRS = {
     "data_type": ("dataset", "data_type"),
@@ -37,12 +37,12 @@ EVENT_ATTRS = {
     "max_depth": ("dataset", "geospatial_vertical_max"),
     "sampling_interval": ("dataset", "sampling_interval"),
     "sounding": ("dataset", "sounding"),
-    "event_qualifier1": ("config", "event_qualifier1"),  # FIXME MISSING
-    "event_qualifier2": ("config", "event_qualifier2"),  # FIXME MISSING
-    "event_comments": ("config", "event_comments"),  # FIXME MISSING
+    "event_qualifier1": ("global_attrs", "event_qualifier1"),  # FIXME MISSING
+    "event_qualifier2": ("global_attrs", "event_qualifier2"),  # FIXME MISSING
+    "event_comments": ("global_attrs", "event_comments"),  # FIXME MISSING
 }
 BUOY_ATTRS = {
-    "name": ("platform", "platform_name"),
+    "name": ("sensor_metadata", "platform_name"),
     "type": ("platform_specs", "type"),
     "model": ("platform_specs", "model"),
     "height": ("platform_specs", "height"),
@@ -59,7 +59,7 @@ BUOY_INSTRUMENT_ATTRS = {
     "inst_end_date_time": ("dataset", "time_coverage_end"),
 }
 
-BUOY_INSTRUMENT_CONFIGURATION = {
+BUOY_INSTRUMENT_GLOBAL_ATTRSURATION = {
     "Mode": ("dataset", "orientation"),
     "Ping_Type": ("dataset", "ping_type"),
     "Frequency": ("dataset", "frequency"),
@@ -72,11 +72,11 @@ BUOY_INSTRUMENT_CONFIGURATION = {
     "Bin_Count": ("dataset", "bin_count"),
     "Blank_m": ("dataset", "blank"),
     "Transmit_Pulse_Length_m": ("dataset", "transmit_pulse_length_m"),
-    "Comments": ("platform_sensors", "comments"),
+    "Comments": ("sensor_metadata_sensors", "comments"),
 }
 
 
-def _make_cruise_header(odf, dataset, config):
+def _make_cruise_header(odf, dataset, global_attrs):
     """Use cruise_attrs """
     for key, value in CRUISE_ATTRS.items():
         if value[0] == "dataset":
@@ -85,12 +85,12 @@ def _make_cruise_header(odf, dataset, config):
                     odf.cruise[key] = odf_time_format(dataset.attrs[value[1]])
                 else:
                     odf.cruise[key] = dataset.attrs[value[1]]
-        if value[0] == "platform":
-            if value[1] in platform:
-                odf.cruise[key] = platform[value[1]]
+        if value[0] == "sensor_metadata":
+            if value[1] in sensor_metadata:
+                odf.cruise[key] = sensor_metadata[value[1]]
 
 
-def _make_event_header(odf, dataset, config):
+def _make_event_header(odf, dataset, global_attrs):
     """
     Make the event header.
 
@@ -105,9 +105,9 @@ def _make_event_header(odf, dataset, config):
                     odf.event[key] = odf_time_format(dataset.attrs[value[1]])
                 else:
                     odf.event[key] = dataset.attrs[value[1]]
-        if value[0] == "config":
-            if value[1] in config:
-                odf.event[key] = config[value[1]]
+        if value[0] == "global_attrs":
+            if value[1] in global_attrs:
+                odf.event[key] = global_attrs[value[1]]
     if "lat" in dataset:
         odf.event["initial_latitude"] = dataset.lat[0]
         df.event["end_latitude"] = dataset.lat[-1]
@@ -139,20 +139,20 @@ def _make_odf_header(odf):
     odf.odf["file_specification"] = "_".join(name_part).strip("_") + ".ODF"
 
 
-def _make_buoy_header(odf, platform):
+def _make_buoy_header(odf, sensor_metadata):
     """
     Use BUOY_ATTRS
     """
     for key, value in BUOY_ATTRS.items():
         if value[0] == "platform_specs":
-            if value[1] in platform["platform_specs"]:
-                odf.buoy[key] = platform["platform_specs"][value[1]]
-        if value[0] == "platform":
-            if value[1] in platform:
-                odf.buoy[key] = platform[value[1]]
+            if value[1] in sensor_metadata["platform_specs"]:
+                odf.buoy[key] = sensor_metadata["platform_specs"][value[1]]
+        if value[0] == "sensor_metadata":
+            if value[1] in sensor_metadata:
+                odf.buoy[key] = sensor_metadata[value[1]]
 
 
-def _make_buoy_instrument_header(odf, dataset, platform):
+def _make_buoy_instrument_header(odf, dataset, sensor_metadata):
     """Uses buoy_instrument_attrs
     Missing: comments and sensors
     """
@@ -168,10 +168,10 @@ def _make_buoy_instrument_header(odf, dataset, platform):
                 else:
                     odf.buoy_instrument[instrument][key] = dataset.attrs[value[1]]
 
-    _make_buoy_instrument_comment(odf, instrument, dataset, platform)
+    _make_buoy_instrument_comment(odf, instrument, dataset, sensor_metadata)
 
 
-def _make_buoy_instrument_comment(odf, instrument, dataset, platform):
+def _make_buoy_instrument_comment(odf, instrument, dataset, sensor_metadata):
     """FIXME
     To compute:
          Ping_Intervalle_pings_s ping_per_ensemble / delta_t_sec
@@ -181,17 +181,16 @@ def _make_buoy_instrument_comment(odf, instrument, dataset, platform):
     ----
     LagLength was removed from the original ODF adcp format.
     """
-    configuration = "CONFIGURATION_01"
-    for key, value in BUOY_INSTRUMENT_CONFIGURATION.items():
-        if value[0] == "dataset":
-            if value[1] in dataset:
-                v = dataset.attrs[value[1]]
-        elif value[0] == "platform":
-            v = platform[value[1]]
+    global_attrsuration = "CONFIGURATION_01"
+    for key, value in BUOY_INSTRUMENT_GLOBAL_ATTRSURATION.items():
+        if value[0] == "dataset" and value[1] in dataset.attrs:
+            v = dataset.attrs[value[1]]
+        elif value[0] == "sensor_metadata":
+            v = sensor_metadata[value[1]]
         else:
             v = "N/A"
-        odf.buoy_instrument[instrument].comments.append(
-            configuration + "." + key + ": " + str(v)
+        odf.buoy_instrument[instrument]["buoy_instrument_comments"].append(
+            global_attrsuration + "." + key + ": " + str(v)
         )
 
 
@@ -243,21 +242,19 @@ if __name__ == "__main__":
     from magtogoek.utils import json2dict
 
     nc_file = "../../test/files/iml6_2017_wh.nc"
-    platform_file = "../../test/files/iml_platforms.json"
+    platform_files = "../../test/files/iml_platforms.json"
     config_file = "../../test/files/adcp_iml6_2017.ini"
 
     ds = xr.open_dataset(nc_file)
-    platform = json2dict(platform_file)["IML6_2017"]
-    params, config = _get_config(load_configfile(config_file))
-    params["platform_file"] = "../../test/files/iml_platforms.json"
+    params, global_attrs = _get_config(load_configfile(config_file))
+    params["platform_file"] = platform_files
     sensor_metadata = _load_platform(params)
-    #    platform_metadata =
 
     odf = Odf()
 
-    _make_cruise_header(odf, ds, platform)
-    _make_event_header(odf, ds, config)
+    _make_cruise_header(odf, ds, sensor_metadata)
+    _make_event_header(odf, ds, global_attrs)
     _make_odf_header(odf)
-    _make_buoy_header(odf, platform)
-    _make_buoy_instrument_header(odf, ds, platform)
+    _make_buoy_header(odf, sensor_metadata)
+    _make_buoy_instrument_header(odf, ds, sensor_metadata)
     _make_history_header(odf, ds)

@@ -66,150 +66,154 @@ REPEATED_HEADERS = [
     "parameter",
 ]
 
-HEADERS_DEFAULT = dict(
-    odf=dict(file_specification=""),
-    cruise=dict(
-        country_institute_code="",
-        cruise_number="",
-        organization="",
-        chief_scientist="",
-        start_date="",
-        end_date="",
-        platform="",
-        cruise_name="",
-        cruise_description="",
-    ),
-    event=dict(
-        data_type="",
-        event_number="",
-        event_qualifier1="",
-        event_qualifier2="",
-        creation_date="",
-        orig_creation_date="",
-        start_date_time="",
-        end_date_time="",
-        initial_latitude=None,
-        initial_longitude=None,
-        end_latitude=None,
-        end_longitude=None,
-        min_depth=None,
-        max_depth=None,
-        sampling_interval=None,
-        sounding=None,
-        depth_off_bottom=None,
-        event_comments=[],
-    ),
-    buoy=dict(
-        name="",
-        type="",
-        model="",
-        height="",
-        diameter="",
-        weight="",
-        description="",
-    ),
-    plankton=dict(
-        water_volume="",
-        volume_method="",
-        lrg_plankton_removed="",
-        collection_method="",
-        mesh_size="",
-        phase_of_daylight="",
-        collector_dplmt_id="",
-        collector_sample_id="",
-        procedure="",
-        preservation="",
-        storage="",
-        meters_sqd_flag="",
-        plankton_comments=[],
-    ),
-    meteo=dict(
-        air_temperature=None,
-        atmospheric_pressure=None,
-        wind_speed=None,
-        wind_direction=None,
-        sea_state=None,
-        cloud_cover=None,
-        ice_thickness=None,
-        meteo_comments=[],
-    ),
-    instrument=dict(
-        inst_type="",
-        model="",
-        serial_number="",
-        description="",
-    ),
-    quality=dict(
-        quality_date="",
-        quality_tests=[],
-        quality_comments=[],
-    ),
-    record=dict(
-        num_calibration=None,
-        num_swing=None,
-        num_history=None,
-        num_cycle=None,
-        num_param=None,
-    ),
-)
 
-REPEATED_HEADERS_DEFAULT = dict(
-    buoy_instrument=dict(
-        name="",
-        type="",
-        model="",
-        serial_number="",
-        description="",
-        inst_start_date_time="",
-        inst_end_date_time="",
-        buoy_instrument_comments=[],
-        sensors=[],
-    ),
-    general_cal=(
-        dict(
+def get_headers_default():
+    return dict(
+        odf=dict(file_specification=""),
+        cruise=dict(
+            country_institute_code="",
+            cruise_number="",
+            organization="",
+            chief_scientist="",
+            start_date="",
+            end_date="",
+            platform="",
+            cruise_name="",
+            cruise_description="",
+        ),
+        event=dict(
+            data_type="",
+            event_number="",
+            event_qualifier1="",
+            event_qualifier2="",
+            creation_date="",
+            orig_creation_date="",
+            start_date_time="",
+            end_date_time="",
+            initial_latitude=None,
+            initial_longitude=None,
+            end_latitude=None,
+            end_longitude=None,
+            min_depth=None,
+            max_depth=None,
+            sampling_interval=None,
+            sounding=None,
+            depth_off_bottom=None,
+            event_comments=[],
+        ),
+        buoy=dict(
+            name="",
+            type="",
+            model="",
+            height="",
+            diameter="",
+            weight="",
+            description="",
+        ),
+        plankton=dict(
+            water_volume="",
+            volume_method="",
+            lrg_plankton_removed="",
+            collection_method="",
+            mesh_size="",
+            phase_of_daylight="",
+            collector_dplmt_id="",
+            collector_sample_id="",
+            procedure="",
+            preservation="",
+            storage="",
+            meters_sqd_flag="",
+            plankton_comments=[],
+        ),
+        meteo=dict(
+            air_temperature=None,
+            atmospheric_pressure=None,
+            wind_speed=None,
+            wind_direction=None,
+            sea_state=None,
+            cloud_cover=None,
+            ice_thickness=None,
+            meteo_comments=[],
+        ),
+        instrument=dict(
+            inst_type="",
+            model="",
+            serial_number="",
+            description="",
+        ),
+        quality=dict(
+            quality_date="",
+            quality_tests=[],
+            quality_comments=[],
+        ),
+        record=dict(
+            num_calibration=None,
+            num_swing=None,
+            num_history=None,
+            num_cycle=None,
+            num_param=None,
+        ),
+    )
+
+
+def _get_repeated_headers_default():
+    return dict(
+        buoy_instrument=dict(
+            name="",
+            type="",
+            model="",
+            serial_number="",
+            description="",
+            inst_start_date_time="",
+            inst_end_date_time="",
+            buoy_instrument_comments=[],
+            sensors=[],
+        ),
+        general_cal=(
+            dict(
+                parameter_code="",
+                calibration_type="",
+                calibration_date="",
+                application_date="",
+                number_coefficients=0,
+                coefficients=(),  # NOTE for i in number_coefficients ' %12.8e '
+                calibration_equation=[],
+                calibration_comments=[],
+            ),
+        ),
+        polynomial_cal=dict(
             parameter_code="",
-            calibration_type="",
             calibration_date="",
             application_date="",
             number_coefficients=0,
             coefficients=(),  # NOTE for i in number_coefficients ' %12.8e '
-            calibration_equation=[],
-            calibration_comments=[],
         ),
-    ),
-    polynomial_cal=dict(
-        parameter_code="",
-        calibration_date="",
-        application_date="",
-        number_coefficients=0,
-        coefficients=(),  # NOTE for i in number_coefficients ' %12.8e '
-    ),
-    compass_cal=dict(
-        parameter_code="",
-        calibration_date="",
-        application_date="",
-        # NOTE for j = 0:8 % 12.8e   % 12.8e   % 12.8e   % 12.8e, [(4*j) +1:(4*j)+4] # 8 FW.DP
-        directions=(),
-        corrections=(),
-    ),
-    history=dict(creation_date="", process=[]),
-    parameter=dict(
-        type="",
-        name="",
-        units="",
-        code="",
-        null_value=0,
-        print_field_width=10,
-        print_decimal_places=4,
-        angle_of_section=0,
-        magnetic_variation=0,
-        depth=0,
-        minimum_value=0,
-        maximum_value=0,
-        number_valid=0,
-        number_null=0,
-    ),
-)
+        compass_cal=dict(
+            parameter_code="",
+            calibration_date="",
+            application_date="",
+            # NOTE for j = 0:8 % 12.8e   % 12.8e   % 12.8e   % 12.8e, [(4*j) +1:(4*j)+4] # 8 FW.DP
+            directions=(),
+            corrections=(),
+        ),
+        history=dict(creation_date="", process=[]),
+        parameter=dict(
+            type="",
+            name="",
+            units="",
+            code="",
+            null_value=0,
+            print_field_width=10,
+            print_decimal_places=4,
+            angle_of_section=0,
+            magnetic_variation=0,
+            depth=0,
+            minimum_value=0,
+            maximum_value=0,
+            number_valid=0,
+            number_null=0,
+        ),
+    )
 
 
 class Odf:
@@ -254,15 +258,15 @@ class Odf:
     """
 
     def __init__(self):
-        self.odf = HEADERS_DEFAULT["odf"].copy()
-        self.cruise = HEADERS_DEFAULT["cruise"].copy()
-        self.event = HEADERS_DEFAULT["event"].copy()
-        self.buoy = HEADERS_DEFAULT["buoy"].copy()
-        self.plankton = HEADERS_DEFAULT["plankton"].copy()
-        self.meteo = HEADERS_DEFAULT["meteo"].copy()
-        self.instrument = HEADERS_DEFAULT["instrument"].copy()
-        self.quality = HEADERS_DEFAULT["quality"].copy()
-        self.record = HEADERS_DEFAULT["record"].copy()
+        self.odf = get_headers_default()["odf"]
+        self.cruise = get_headers_default()["cruise"]
+        self.event = get_headers_default()["event"]
+        self.buoy = get_headers_default()["buoy"]
+        self.plankton = get_headers_default()["plankton"]
+        self.meteo = get_headers_default()["meteo"]
+        self.instrument = get_headers_default()["instrument"]
+        self.quality = get_headers_default()["quality"]
+        self.record = get_headers_default()["record"]
         self.buoy_instrument = dict()
         self.general_cal = dict()
         self.polynomial_cal = dict()
@@ -275,7 +279,7 @@ class Odf:
         s = "<odf_format.ODF>" + NEWLINE
         s += "headers:" + NEWLINE
 
-        for h in list(HEADERS_DEFAULT.keys()):
+        for h in list(get_headers_default().keys()):
             if h in self.__dict__:
                 if any(self.__dict__[h].values()):
                     s += h + NEWLINE
@@ -348,9 +352,9 @@ class Odf:
                         if h.upper() + "_HEADER" in line:
                             header_key = h + "_" + str(counters[h])
                             counters[h] += 1
-                            self.__dict__[h][header_key] = REPEATED_HEADERS_DEFAULT[
-                                h
-                            ].copy()
+                            self.__dict__[h][
+                                header_key
+                            ] = _get_repeated_headers_default()[h]
                             current_header = self.__dict__[h][header_key]
 
                 else:
@@ -448,7 +452,7 @@ class Odf:
         items :
             Dictionnary containing parameter header items.
         """
-        self.polynomial_cal[code] = REPEATED_HEADERS_DEFAULT["polynomial_cal"].copy()
+        self.polynomial_cal[code] = _get_repeated_headers_default()["polynomial_cal"]
         self.polynomial_cal[code]["code"] = code
         self.polynonial_cal[code].update(items)
 
@@ -462,7 +466,7 @@ class Odf:
         items:
             Dictionnary containing parameter header items.
         """
-        self.general_cal[code] = REPEATED_HEADERS_DEFAULT["general_cal"].copy()
+        self.general_cal[code] = _get_repeated_headers_default()["general_cal"]
         self.general_cal[code]["code"] = code
         self.general_cal[code].update(items)
 
@@ -476,7 +480,7 @@ class Odf:
         items :
             Dictionnary containing compass cal header items.
         """
-        self.compass_cal[code] = REPEATED_HEADERS_DEFAULT["compass_cal"].copy()
+        self.compass_cal[code] = _get_repeated_headers_default()["compass_cal"]
         self.compass_cal[code]["code"] = code
         self.compass_cal[code].update(items)
 
@@ -490,7 +494,7 @@ class Odf:
         items :
             Dictionnary containing parameter header items.
         """
-        self.buoy_instrument[name] = REPEATED_HEADERS_DEFAULT["buoy_instrument"].copy()
+        self.buoy_instrument[name] = _get_repeated_headers_default()["buoy_instrument"]
         self.buoy_instrument[name]["name"] = name
         self.buoy_instrument[name].update(items)
 
@@ -521,7 +525,7 @@ class Odf:
 
 
         """
-        self.parameter[code] = REPEATED_HEADERS_DEFAULT["parameter"].copy()
+        self.parameter[code] = dict(_get_repeated_headers_default()["parameter"])
         self.parameter[code]["code"] = code
         self.parameter[code].update(items)
         self.data[code] = data
@@ -540,7 +544,7 @@ class Odf:
 
         """
         header_name = "history_" + str(len(self.history) + 1)
-        self.history[header_name] = REPEATED_HEADERS_DEFAULT["history"].copy()
+        self.history[header_name] = dict(_get_repeated_headers_default()["history"])
         self.history[header_name].update(items)
         if not self.history[header_name]["creation_date"]:
             self.history[header_name]["creation_date"] = odf_time_format(
@@ -576,7 +580,7 @@ class Odf:
         else:
             raise TypeError("dataframe must be a pandas.DataFrame")
         for code in dataframe.columns:
-            self.parameter[code] = REPEATED_HEADERS_DEFAULT["parameter"].copy()
+            self.parameter[code] = dict(_get_repeated_headers_default()["parameter"])
             self.parameter[code]["parameter"] = code
             if code in items:
                 self.parameter[code].update(items[code])
