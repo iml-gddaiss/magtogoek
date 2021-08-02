@@ -11,9 +11,62 @@ from magtogoek.odf_format import Odf, odf_time_format
 # - dtype : sing or doub
 # Missing Metadata are in the magtogoek/files/odf_parameter.json.
 
-TIME_TYPE = "SYTM"
-TIME_FILL_VALUE = "17-NOV-1858 00:00:00.00"
 REPOSITORY_ADDRESS = "https://github.com/JeromeJGuay/magtogoek"
+
+TYPES = {"float16": "HALF", "float32": "SING", "float64": "DOUB", "|S1": "SYTM"}
+
+PARAMETERS = {
+    "DTUT8601": {
+        "code": "STYM",
+        "name": "Time Format DD-MMM-YYYY 00:00:00.00",
+        "units": "GMT",
+        "print_field_width": 23,
+        "print_decimal_width": 0,
+        "null_value": "17-NOV-1858 00:00:00.00",
+    },
+    "PPSAADCP": {
+        "code": "DEPH",
+        "name": "Sensor Depth below Sea Surface",
+        "units": "metres",
+        "print_field_width": 10,
+        "print_decimal_width": 3,
+    },
+    "LCEWAP01": {
+        "code": "EWCT",
+        "name": "East (true) Component of Current",
+        "units": "m/s",
+        "print_field_width": 10,
+        "print_decimal_width": 4,
+    },
+    "LCNSAP01": {
+        "code": "NSCT",
+        "name": "North (true) Component of Current",
+        "units": "m/s",
+        "print_field_width": 10,
+        "print_decimal_width": 4,
+    },
+    "LRZAAP01": {
+        "code": "VCSP",
+        "name": "Vertical Current Speed (positive up)",
+        "units": "m/s",
+        "print_field_width": 10,
+        "print_decimal_width": 4,
+    },
+    "LERRAP01": {
+        "code": "ERRV",
+        "name": "Error Velocity (ADCP)",
+        "units": "m/s",
+        "print_field_width": 10,
+        "print_decimal_width": 4,
+    },
+    "_QC": {
+        "code": "QQQQ",
+        "name": "Quality flag:",
+        "units": "none",
+        "print_field_width": 1,
+        "print_decimal_width": 0,
+    },
+}
 
 CRUISE_ATTRS = {
     "country_institute_code": ("dataset", "country_institute_code"),
@@ -215,15 +268,6 @@ def _make_buoy_instrument_comment(odf, instrument, dataset, sensor_metadata):
         )
 
 
-def _make_buoy_instrument_sensors(odf, dataset):
-    """SKIPPED un peux useless pour l'adcp
-    temperature_01
-    compas_01
-    inclinometer_01
-    pressions_01
-    """
-
-
 def _make_history_header(odf, dataset):
     """
     One history header is made by log datetime entry.
@@ -247,14 +291,39 @@ def _make_history_header(odf, dataset):
     odf.add_history({"creation_date": creation_date, "process": process})
 
 
-def _make_parameter_headers():
+def _make_parameter_headers(odf, dataset):
     """
-    TODO MAKE A DICTIONNARY GF3_CODE:{ITEMS}
-    name : GF3 code plus _XX increament.
-    units : from odf
-    print_field_value = from odf
-    print_decimal_value = from odf
+     PARAMETERS:
+      name
+      code (increment + '_01')
+      units
+      print_field_value
+      print_decimal_value
+      null_value (time_string)
+      type (time_String)
+
+    Dataset
+     depth:              dataset[var].attrs['sensor_depth']
+     magnetic_variation: dataset[var].attrs['magnetic_declination']
+     null_value:         dataset[var].encoding['_FillValue']
+     type:               TYPES[str(dataset[var].encoding['dtype'])]
     """
+
+    for var in PARAMETERS:
+        if var in dataset:
+            items = {}
+            for key, value in PARAMETERS[var].items():
+                items[key] = value
+            items["code"] + "_01"
+
+            items["depth"] = dataset[var].attrs["sensor_depth"]
+            items["magnetic_variation"] = dataset[var].attrs["magnetic_declination"]
+            items["null_value"] = (dataset[var].encoding["_FillValue"],)
+
+            if "type" not in items:
+                items.update({"type": TYPES[str(dataset[var].encoding["dtype"])]})
+
+            odf.add_parameter(items["code"], dataset[var].data)
 
 
 if __name__ == "__main__":
@@ -279,4 +348,5 @@ if __name__ == "__main__":
     _make_odf_header(odf)
     _make_buoy_header(odf, sensor_metadata)
     _make_buoy_instrument_header(odf, ds, sensor_metadata)
+    _make_parameter_headers(odf, ds)
     _make_history_header(odf, ds)

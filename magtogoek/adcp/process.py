@@ -48,10 +48,7 @@ TODO add option to force platform file metadata over over those computed from th
   `force_platform` is False True:
       CONFIGFILE > COMPUTED > PLATFORM
   `force_platform` is False False:
-      CONFIGFILE > PLATFORM > COMPUTED 
-
-
-
+      CONFIGFILE > PLATFORM > COMPUTED
 """
 
 import getpass
@@ -364,17 +361,7 @@ def _process_adcp_data(params: tp.Dict, sensor_metadata: tp.Dict, global_attrs):
     _set_xducer_depth_as_sensor_depth(dataset)
 
     # setting Metadata from the platform_file
-    if params["force_platform_metadata"]:
-        for meta in sensor_metadata:
-            if sensor_metadata[meta]:
-                dataset.attrs[meta] = sensor_metadata[meta]
-    else:
-        for meta in sensor_metadata:
-            if meta in dataset.attrs:
-                if not dataset.attrs[meta]:
-                    dataset.attrs[meta] = sensor_metadata[meta]
-            elif sensor_metadata[meta]:
-                dataset.attrs[meta] = sensor_metadata[meta]
+    _set_platform_metadata(dataset, sensor_metadata, params["force_platform_metadata"])
 
     # setting Metadata from the config_files
     dataset = dataset.assign_attrs(global_attrs)
@@ -616,9 +603,45 @@ def _check_platform_type(sensor_metadata: dict):
         l.warning(f"platform_type invalid. Must be one of {PLATFORM_TYPES}")
 
 
-_check_platform_type.__doc__ = f"""Check the validity of the `plaform_type`.
+_check_platform_type.__doc__ = f"""Check if the `plaform_type` is valid.
     `platform _type` must be one of {PLATFORM_TYPES}.
-    `platform_type` defaults to {DEFAULT_PLATFORM_TYPE}"""
+    `platform_type` defaults to {DEFAULT_PLATFORM_TYPE} if the one given is invalid."""
+
+
+def _set_platform_metadata(
+    dataset: tp.Type[xr.Dataset],
+    sensor_metadata: dict,
+    force_platform_metadata: bool = False,
+):
+    """Add metadata from platform_metadata files to dataset.attrs.
+
+    Values that are dictionnary instances are not added.
+
+    Parameters
+    ----------
+    dataset :
+        Dataset to which add the navigation data.
+    sensor_metadata :
+        metadata returned by  _load_platform
+    force_platform_metadat :
+        If `True`, metadata from sensor_metadata overwrite those already present in dataset.attrs
+    """
+    metadata_key = []
+    for key, value in sensor_metadata.items():
+        if not isinstance(value, dict):
+            metadata_key.append(key)
+
+    if force_platform_metadata:
+        for key in metadata_key:
+            if sensor_metadata[key]:
+                dataset.attrs[key] = sensor_metadata[key]
+    else:
+        for key in metadata_key:
+            if key in dataset.attrs:
+                if dataset.attrs[key] is not None:
+                    dataset.attrs[key] = sensor_metadata[key]
+            elif sensor_metadata[key]:
+                dataset.attrs[key] = sensor_metadata[key]
 
 
 def _load_navigation(dataset: tp.Type[xr.Dataset], navigation_files: str):
