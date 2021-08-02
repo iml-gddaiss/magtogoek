@@ -16,55 +16,69 @@ REPOSITORY_ADDRESS = "https://github.com/JeromeJGuay/magtogoek"
 TYPES = {"float16": "HALF", "float32": "SING", "float64": "DOUB", "|S1": "SYTM"}
 
 PARAMETERS = {
-    "DTUT8601": {
-        "code": "STYM",
+    "time": {
+        "code": "STYM_01",
         "name": "Time Format DD-MMM-YYYY 00:00:00.00",
         "units": "GMT",
         "print_field_width": 23,
         "print_decimal_width": 0,
         "null_value": "17-NOV-1858 00:00:00.00",
     },
-    "PPSAADCP": {
-        "code": "DEPH",
+    "depth": {
+        "code": "DEPH_01",
         "name": "Sensor Depth below Sea Surface",
         "units": "metres",
         "print_field_width": 10,
         "print_decimal_width": 3,
     },
     "LCEWAP01": {
-        "code": "EWCT",
+        "code": "EWCT_01",
         "name": "East (true) Component of Current",
         "units": "m/s",
         "print_field_width": 10,
         "print_decimal_width": 4,
     },
+    "LCEWAP01_QC": {
+        "code": "QQQQ_01",
+        "name": "Quality flag: East (true) Component of Current",
+        "units": "none",
+        "print_field_width": 1,
+        "print_decimal_width": 0,
+    },
     "LCNSAP01": {
-        "code": "NSCT",
+        "code": "NSCT_01",
         "name": "North (true) Component of Current",
         "units": "m/s",
         "print_field_width": 10,
         "print_decimal_width": 4,
     },
+    "LCNSAP01_QC": {
+        "code": "QQQQ_02",
+        "name": "Quality flag: North (true) Component of Current",
+        "units": "none",
+        "print_field_width": 1,
+        "print_decimal_width": 0,
+    },
     "LRZAAP01": {
-        "code": "VCSP",
+        "code": "VCSP_01",
         "name": "Vertical Current Speed (positive up)",
         "units": "m/s",
         "print_field_width": 10,
         "print_decimal_width": 4,
     },
+    "LRZAAP01_QC": {
+        "code": "QQQQ_03",
+        "name": "Quality flag: Vertical Current Speed (positive up)",
+        "units": "none",
+        "print_field_width": 1,
+        "print_decimal_width": 0,
+    },
     "LERRAP01": {
-        "code": "ERRV",
+        "code": "ERRV_01",
         "name": "Error Velocity (ADCP)",
         "units": "m/s",
         "print_field_width": 10,
         "print_decimal_width": 4,
-    },
-    "_QC": {
-        "code": "QQQQ",
-        "name": "Quality flag:",
-        "units": "none",
-        "print_field_width": 1,
-        "print_decimal_width": 0,
     },
 }
 
@@ -309,13 +323,15 @@ def _make_parameter_headers(odf, dataset):
      type:               TYPES[str(dataset[var].encoding['dtype'])]
     """
 
+    data = (
+        dataset[list(PARAMETERS.keys())].to_dataframe().reset_index()
+    )  # .reindex(columns=list(PARAMETERS.keys()))
     for var in PARAMETERS:
         if var in dataset:
-            print(var)
             items = {}
             for key, value in PARAMETERS[var].items():
                 items[key] = value
-            items["code"] + "_01"
+
             items["depth"] = dataset.attrs["sensor_depth"]
             items["magnetic_variation"] = dataset.attrs["magnetic_declination"]
 
@@ -327,7 +343,11 @@ def _make_parameter_headers(odf, dataset):
             else:
                 items["null_value"] = None
 
-            odf.add_parameter(code=items["code"], data=dataset[var].data, items=items)
+            odf.add_parameter(
+                code=items["code"],
+                data=data[var].fillna(items["null_value"]),
+                items=items,
+            )
 
 
 if __name__ == "__main__":

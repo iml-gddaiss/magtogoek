@@ -555,7 +555,7 @@ class Odf:
         Paramters
         ---------
         dataframe :
-            The data to be added to the ODF. All data must be 1 dimensional.
+            The data to be added to the ODF.
 
         null_values :
             Value used for missing or null value in data. From this value `number_valid`,
