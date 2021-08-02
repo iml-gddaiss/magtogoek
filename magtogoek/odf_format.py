@@ -499,16 +499,12 @@ class Odf:
         self.buoy_instrument[name].update(items)
 
     def add_parameter(
-        self,
-        code: str,
-        data: tp.Union[list, tp.Type[np.ndarray]],
-        items: dict = {},
-        null_value=None,
+        self, code: str, data: tp.Union[list, tp.Type[np.ndarray]], items: dict = {}
     ):
         """Add a the parameter to ODF.parameters and the data to ODF.data.
 
         Computes `number_valid`, `number_null`, `minimum_value` and `maximum_value` from
-        the data and a provided null_value.
+        the data and a provided `null_value` in `items`.
 
         Parameters
         ----------
@@ -516,21 +512,17 @@ class Odf:
             Name(key) for the parameter code.
         data :
             1-D sequence of data. Each parameters must have the same length.
-
-        null_value :
-           Value used for missing or null value in data. From this value `number_valid`,
-           `number_null` will be computed.
         items :
-            Dictionnary containing parameter header items.
+            Dictionnary containing parameter header items. `items` must contain
+            the items `null_value` to compute  `number_valid` and `number_null`.
 
 
         """
-        self.parameter[code] = dict(_get_repeated_headers_default()["parameter"])
+        self.parameter[code] = _get_repeated_headers_default()["parameter"]
         self.parameter[code]["code"] = code
         self.parameter[code].update(items)
         self.data[code] = data
-
-        self._compute_parameter_attrs(code, null_value)
+        self._compute_parameter_attrs(code)
 
     def add_history(self, items: dict = {}):
         """Add a history header
@@ -616,6 +608,8 @@ class Odf:
     def _compute_parameter_attrs(self, parameter: str, null_value=None):
         """Compute `number_valid`, `number_null`, `minimum_value` and `maximum_value` from
         the data."""
+        if not null_value:
+            null_value = self.parameter[parameter]["null_value"]
         n_null = (self.data[parameter] == null_value).sum().item()
         self.parameter[parameter]["null_value"] = null_value
         self.parameter[parameter]["number_null"] = n_null

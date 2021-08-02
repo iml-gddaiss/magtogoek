@@ -311,19 +311,23 @@ def _make_parameter_headers(odf, dataset):
 
     for var in PARAMETERS:
         if var in dataset:
+            print(var)
             items = {}
             for key, value in PARAMETERS[var].items():
                 items[key] = value
             items["code"] + "_01"
+            items["depth"] = dataset.attrs["sensor_depth"]
+            items["magnetic_variation"] = dataset.attrs["magnetic_declination"]
 
-            items["depth"] = dataset[var].attrs["sensor_depth"]
-            items["magnetic_variation"] = dataset[var].attrs["magnetic_declination"]
-            items["null_value"] = (dataset[var].encoding["_FillValue"],)
+            items["type"] = TYPES[str(dataset[var].encoding["dtype"])]
+            if "_FillValue" in dataset[var].encoding:
+                items["null_value"] = dataset[var].encoding["_FillValue"]
+            elif "null_value" in value:
+                items["null_value"] = value["null_value"]
+            else:
+                items["null_value"] = None
 
-            if "type" not in items:
-                items.update({"type": TYPES[str(dataset[var].encoding["dtype"])]})
-
-            odf.add_parameter(items["code"], dataset[var].data)
+            odf.add_parameter(code=items["code"], data=dataset[var].data, items=items)
 
 
 if __name__ == "__main__":
@@ -336,7 +340,6 @@ if __name__ == "__main__":
     config_file = "../../test/files/adcp_iml6_2017.ini"
 
     ds = xr.open_dataset(nc_file)
-    ds.attrs["magnetic_declination_units"] = ds.attrs.pop("magnetic_declination_untis")
     params, global_attrs = _get_config(load_configfile(config_file))
     params["platform_file"] = platform_files
     sensor_metadata = _load_platform(params)
