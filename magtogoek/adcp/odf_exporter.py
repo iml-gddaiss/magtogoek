@@ -13,9 +13,14 @@ from magtogoek.odf_format import Odf, odf_time_format
 
 REPOSITORY_ADDRESS = "https://github.com/JeromeJGuay/magtogoek"
 
-TYPES = {"float16": "HALF", "float32": "SING", "float64": "DOUB", "|S1": "SYTM"}
+PARAMTERS_TYPES = {
+    "float16": "HALF",
+    "float32": "SING",
+    "float64": "DOUB",
+    "|S1": "SYTM",
+}
 
-PARAMETERS = {
+PARAMETERS_METADATA = {
     "time": {
         "code": "STYM_01",
         "name": "Time Format DD-MMM-YYYY 00:00:00.00",
@@ -31,49 +36,49 @@ PARAMETERS = {
         "print_field_width": 10,
         "print_decimal_width": 3,
     },
-    "LCEWAP01": {
+    "u": {
         "code": "EWCT_01",
         "name": "East (true) Component of Current",
         "units": "m/s",
         "print_field_width": 10,
         "print_decimal_width": 4,
     },
-    "LCEWAP01_QC": {
+    "u_QC": {
         "code": "QQQQ_01",
         "name": "Quality flag: East (true) Component of Current",
         "units": "none",
         "print_field_width": 1,
         "print_decimal_width": 0,
     },
-    "LCNSAP01": {
+    "v": {
         "code": "NSCT_01",
         "name": "North (true) Component of Current",
         "units": "m/s",
         "print_field_width": 10,
         "print_decimal_width": 4,
     },
-    "LCNSAP01_QC": {
+    "v_QC": {
         "code": "QQQQ_02",
         "name": "Quality flag: North (true) Component of Current",
         "units": "none",
         "print_field_width": 1,
         "print_decimal_width": 0,
     },
-    "LRZAAP01": {
+    "w": {
         "code": "VCSP_01",
         "name": "Vertical Current Speed (positive up)",
         "units": "m/s",
         "print_field_width": 10,
         "print_decimal_width": 4,
     },
-    "LRZAAP01_QC": {
+    "w_QC": {
         "code": "QQQQ_03",
         "name": "Quality flag: Vertical Current Speed (positive up)",
         "units": "none",
         "print_field_width": 1,
         "print_decimal_width": 0,
     },
-    "LERRAP01": {
+    "e": {
         "code": "ERRV_01",
         "name": "Error Velocity (ADCP)",
         "units": "m/s",
@@ -184,7 +189,7 @@ def _make_event_header(odf, dataset, global_attrs):
         odf.event["initial_longitude"] = dataset.lon[0]
         odf.event["end_longitude"] = dataset.lon[-1]
     odf.event["creation_date"] = odf_time_format(pd.Timestamp.now())
-    if "sounding" in ds.attrs:
+    if "sounding" in dataset.attrs:
         odf.event["depth_off_bottom"] = (
             dataset.attrs["sounding"] - odf.event["max_depth"]
         )
@@ -305,7 +310,7 @@ def _make_history_header(odf, dataset):
     odf.add_history({"creation_date": creation_date, "process": process})
 
 
-def _make_parameter_headers(odf, dataset):
+def _make_parameter_headers(odf, dataset, p01_to_generic_name=None):
     """
      PARAMETERS:
       name
@@ -323,19 +328,32 @@ def _make_parameter_headers(odf, dataset):
      type:               TYPES[str(dataset[var].encoding['dtype'])]
     """
 
+    parameters_metadata = PARAMETERS_METADATA.copy()
+
+    if p01_to_generic_name:
+        for param in PARAMETERS_METADATA:
+            if param in p01_to_generic_name:
+                parameters_metadata[
+                    p01_to_generic_name[param]
+                ] = parameters_metadata.pop(param)
+
     data = (
-        dataset[list(PARAMETERS.keys())].to_dataframe().reset_index()
-    )  # .reindex(columns=list(PARAMETERS.keys()))
-    for var in PARAMETERS:
+        dataset[list(parameters_metadata.keys())]
+        .to_dataframe()
+        .reset_index()
+        .sort_values("time")
+    )
+
+    for var in parameters_metadata:
         if var in dataset:
             items = {}
-            for key, value in PARAMETERS[var].items():
+            for key, value in parameters_metadata[var].items():
                 items[key] = value
 
             items["depth"] = dataset.attrs["sensor_depth"]
             items["magnetic_variation"] = dataset.attrs["magnetic_declination"]
 
-            items["type"] = TYPES[str(dataset[var].encoding["dtype"])]
+            items["type"] = PARAMTERS_TYPES[str(dataset[var].encoding["dtype"])]
             if "_FillValue" in dataset[var].encoding:
                 items["null_value"] = dataset[var].encoding["_FillValue"]
             elif "null_value" in value:
@@ -350,6 +368,21 @@ def _make_parameter_headers(odf, dataset):
             )
 
 
+def make_odf(dataset, sensor_metadata, global_attrs, p01_to_generic_name=None):
+    """"""
+    odf = Odf()
+
+    _make_cruise_header(odf, dataset, sensor_metadata)
+    _make_event_header(odf, dataset, global_attrs)
+    _make_odf_header(odf)
+    _make_buoy_header(odf, sensor_metadata)
+    _make_buoy_instrument_header(odf, dataset, sensor_metadata)
+    _make_parameter_headers(odf, dataset, p01_to_generic_name)
+    _make_history_header(odf, dataset)
+
+    return odf
+
+
 if __name__ == "__main__":
     from magtogoek.adcp.process import _get_config, _load_platform
     from magtogoek.configfile import load_configfile
@@ -359,17 +392,19 @@ if __name__ == "__main__":
     platform_files = "../../test/files/iml_platforms.json"
     config_file = "../../test/files/adcp_iml6_2017.ini"
 
-    ds = xr.open_dataset(nc_file)
+    dataset = xr.open_dataset(nc_file)
     params, global_attrs = _get_config(load_configfile(config_file))
     params["platform_file"] = platform_files
     sensor_metadata = _load_platform(params)
 
-    odf = Odf()
+    p01_to_generic_name = {
+        "u": "LCEWAP01",
+        "u_QC": "LCEWAP01_QC",
+        "v": "LCNSAP01",
+        "v_QC": "LCNSAP01_QC",
+        "w": "LRZAAP01",
+        "w_QC": "LRZAAP01_QC",
+        "e": "LERRAP01",
+    }
 
-    _make_cruise_header(odf, ds, sensor_metadata)
-    _make_event_header(odf, ds, global_attrs)
-    _make_odf_header(odf)
-    _make_buoy_header(odf, sensor_metadata)
-    _make_buoy_instrument_header(odf, ds, sensor_metadata)
-    _make_parameter_headers(odf, ds)
-    _make_history_header(odf, ds)
+    odf = make_odf(dataset, sensor_metadata, global_attrs, p01_to_generic_name)

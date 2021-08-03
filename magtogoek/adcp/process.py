@@ -60,6 +60,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from magtogoek.adcp.loader import load_adcp_binary
+from magtogoek.adcp.odf_exporter import make_odf
 from magtogoek.adcp.quality_control import (adcp_quality_control,
                                             no_adcp_quality_control)
 from magtogoek.adcp.tools import magnetic_to_true
@@ -117,7 +118,7 @@ P01_VEL_CODES = dict(
         u_QC="LCEWAP01_QC",
         v_QC="LCNSAP01_QC",
         w_QC="LRZAAP01_QC",
-        e_QC="LERRAP01_QC",
+        #        e_QC="LERRAP01_QC",
     ),
     ship=dict(
         u="LCEWAS01",
@@ -127,7 +128,7 @@ P01_VEL_CODES = dict(
         u_QC="LCEWAS01_QC",
         v_QC="LCNSAS01_QC",
         w_QC="LRZAAS01_QC",
-        e_QC="LERRAS01_QC",
+        #        e_QC="LERRAS01_QC",
     ),
 )
 P01_CODES = dict(
@@ -472,28 +473,49 @@ An additionnal correction of {additional_correction} degree east was added to ha
     # ------- #
     # OUTPUTS #
     # ------- #
-
-    # OUTPUT TODO
     l.section("Output")
     if params["odf_output"]:
-        odf_output = "TODO"
-
-    export_to_netcdf = (
-        not (params["odf_output"] and params["netcdf_output"])
-        or params["netcdf_output"]
-    )
-
-    if export_to_netcdf:
-        if params["netcdf_output"]:
-            nc_output = Path(params["netcdf_output"]).with_suffix(".nc")
+        if params["bodc_names"]:
+            p01_to_generic_name = P01_VEL_CODES[sensor_metadata["platform_type"]]
         else:
-            nc_output = Path(params["input_files"][0]).with_suffix(".nc")
+            p01_to_generic_name = None
+        odf = make_odf(dataset, sensor_metadata, global_attrs, p01_to_generic_name)
+
+        odf_output = Path(params["odf_output"])
+
+        if odf_output.is_dir():
+            odf_output.joinpath(Path(odf.odf["file_specification"]))
+        else:
+            odf.odf["file_specification"] = odf_output.name
+
+        odf.save(odf_output)
+        l.log(f"odf file made -> {odf_output}")
+        log_output = params["nc_output"].with_suffix(".log")
+
+    if not params["odf_output"] and not params["nc_output"]:
+        params["nc_output"] = Path(params["input_files"][0]).with_suffix(".nc")
+        log_output = params["nc_output"].with_suffix(".log")
+
+    if params["netcdf_output"]:
+        nc_output = Path(params["netcdf_output"]).with_suffix(".nc")
         dataset.to_netcdf(nc_output)
         l.log(f"netcdf file made -> {nc_output}")
+    #    export_to_netcdf = (
+    #        not (params["odf_output"] and params["netcdf_output"])
+    #        or params["netcdf_output"]
+    #    )
 
-        log_output = Path(nc_output).with_suffix(".log")
-    else:
-        log_output = Path(odf_output).with_suffix(".log")
+    #    if export_to_netcdf:
+    #        if params["netcdf_output"]:
+    #            nc_output = Path(params["netcdf_output"]).with_suffix(".nc")
+    #        else:
+    #            nc_output = Path(params["input_files"][0]).with_suffix(".nc")
+    #        dataset.to_netcdf(nc_output)
+    #        l.log(f"netcdf file made -> {nc_output}")
+
+    #        log_output = Path(nc_output).with_suffix(".log")
+    #    else:
+    #        log_output = Path(odf_output).with_suffix(".log")
 
     if params["make_log"]:
         with open(log_output, "w") as log_file:

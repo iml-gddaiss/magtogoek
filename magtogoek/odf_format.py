@@ -394,9 +394,19 @@ class Odf:
 
         return self
 
-    def save(self, filename: str):
-        """ """
-        filename = Path(filename).with_suffix(".ODF")
+    def save(self, filename: str = None):
+        """Save file
+
+        Paramters
+        ---------
+        filename :
+            path/to/filename. filename will overwrite the value at Odf.odf['file_specification']"""
+        filename = Path(filename)
+
+        odf.odf["file_specification"] = filename.name
+
+        filename = filename.with_suffix(".ODF")
+
         with open(filename, "w+", encoding="ISO-8859-1") as f:
             f.write(self._headers_string_format())
             f.write(SPACE + "-- DATA --" + NEWLINE)
