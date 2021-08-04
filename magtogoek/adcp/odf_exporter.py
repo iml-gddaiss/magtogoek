@@ -96,7 +96,7 @@ CRUISE_ATTRS = {
     "end_date": ("dataset", "end_date"),
     "sensor_metadata": ("dataset", "sensor_metadata"),
     "cruise_name": ("dataset", "cruise_name"),
-    "cruise_description": ("dataset", "cruise_description"),  # FIXME MISSING
+    "cruise_description": ("dataset", "cruise_description"),
     "sensor_metadata": ("sensor_metadata", "sensor_metadata_name"),
 }
 EVENT_ATTRS = {
@@ -109,9 +109,9 @@ EVENT_ATTRS = {
     "max_depth": ("dataset", "geospatial_vertical_max"),
     "sampling_interval": ("dataset", "sampling_interval"),
     "sounding": ("dataset", "sounding"),
-    "event_qualifier1": ("global_attrs", "event_qualifier1"),  # FIXME MISSING
-    "event_qualifier2": ("global_attrs", "event_qualifier2"),  # FIXME MISSING
-    "event_comments": ("global_attrs", "event_comments"),  # FIXME MISSING
+    "event_qualifier1": ("global_attrs", "event_qualifier1"),
+    "event_qualifier2": ("global_attrs", "event_qualifier2"),
+    "event_comments": ("global_attrs", "event_comments"),
 }
 BUOY_ATTRS = {
     "name": ("sensor_metadata", "platform_name"),
@@ -246,10 +246,7 @@ def _make_buoy_instrument_header(odf, dataset, sensor_metadata):
 
 
 def _make_buoy_instrument_comment(odf, instrument, dataset, sensor_metadata):
-    """FIXME
-    To compute:
-         Ping_Intervalle_pings_s ping_per_ensemble / delta_t_sec
-         Magnetique_Declination                : ('datasret','magnetic_declination + _units'
+    """
 
     Note
     ----
@@ -290,7 +287,7 @@ def _make_buoy_instrument_comment(odf, instrument, dataset, sensor_metadata):
 def _make_history_header(odf, dataset):
     """
     One history header is made by log datetime entry.
-    FIXME, some of the process are only relevent for netcdf foramting.
+    THe historie header is made with dataset.attrs['quality_comments']
     """
     process = [
         "Data processed by Magtogoek Proccesing Software. More at " + REPOSITORY_ADDRESS
@@ -313,20 +310,13 @@ def _make_history_header(odf, dataset):
 
 def _make_parameter_headers(odf, dataset, generic_to_p01_name=None):
     """
-     PARAMETERS:
-      name
-      code (increment + '_01')
-      units
-      print_field_value
-      print_decimal_value
-      null_value (time_string)
-      type (time_String)
-
-    Dataset
-     depth:              dataset[var].attrs['sensor_depth']
-     magnetic_variation: dataset[var].attrs['magnetic_declination']
-     null_value:         dataset[var].encoding['_FillValue']
-     type:               TYPES[str(dataset[var].encoding['dtype'])]
+    Parameters
+    ----------
+    odf :
+    dataset :
+        Dataset to which add the navigation data.
+    generic_to_p01_name :
+        map from the generic to the BODC p01 variables names
     """
 
     parameters_metadata = PARAMETERS_METADATA.copy()
@@ -369,14 +359,21 @@ def _make_parameter_headers(odf, dataset, generic_to_p01_name=None):
             )
 
 
-def make_odf(dataset, sensor_metadata, global_attrs, generic_to_p01_name=None):
+def make_odf(
+    dataset, sensor_metadata: dict, global_attrs: dict, generic_to_p01_name: dict = None
+):
     """
     Parameters
     ----------
     dataset :
+        Dataset to which add the navigation data.
     sensor_metadata :
-    global_attrs :
-    p01_to_gen
+        Metadata from the platform file.
+    gloabal_attrs :
+        Global attributes parameter from the configFile.
+    generic_to_p01_name :
+        map from the generic to the BODC p01 variables names
+
     """
     odf = Odf()
 
