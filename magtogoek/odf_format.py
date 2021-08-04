@@ -403,7 +403,7 @@ class Odf:
             path/to/filename. filename will overwrite the value at Odf.odf['file_specification']"""
         filename = Path(filename)
 
-        odf.odf["file_specification"] = filename.name
+        self.odf["file_specification"] = filename.name
 
         filename = filename.with_suffix(".ODF")
 
@@ -712,11 +712,13 @@ class Odf:
 def _format_headers(name: str, header: dict) -> str:
     s = name.upper() + "_HEADER," + NEWLINE
     for key, value in header.items():
+        if isinstance(value, pd.Timestamp):
+            value = odf_time_format(value)
         if isinstance(value, str):
             s += INDENT + key.upper() + " = " + f"'{value}'," + NEWLINE
-        elif isinstance(value, int):
+        elif isinstance(value, (int, np.integer)):
             s += INDENT + key.upper() + " = " + f"{value}," + NEWLINE
-        elif isinstance(value, float):
+        elif isinstance(value, (float, np.floating)):
             s += INDENT + key.upper() + " = " + f"{value:.{PRECISION}f}," + NEWLINE
         elif isinstance(value, list):
             parent = INDENT + f"{key.upper()} = "
@@ -734,7 +736,7 @@ def _format_headers(name: str, header: dict) -> str:
         elif not value:
             s += INDENT + key.upper() + " = " + "," + NEWLINE
         else:
-            print("Could not format", name, key, value)
+            print("Could not format", name, key, value, type(value))
 
     return s
 

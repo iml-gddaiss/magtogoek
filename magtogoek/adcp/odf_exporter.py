@@ -150,7 +150,7 @@ BUOY_INSTRUMENT_CONFIGURATION = {
 }
 
 
-def _make_cruise_header(odf, dataset, global_attrs):
+def _make_cruise_header(odf, dataset, sensor_metadata):
     """Use cruise_attrs """
     for key, value in CRUISE_ATTRS.items():
         if value[0] == "dataset":

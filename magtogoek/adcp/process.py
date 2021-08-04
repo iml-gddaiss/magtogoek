@@ -475,13 +475,16 @@ An additionnal correction of {additional_correction} degree east was added to ha
     # ------- #
     l.section("Output")
     if params["odf_output"]:
-        if params["bodc_names"]:
+        if params["bodc_name"]:
             p01_to_generic_name = P01_VEL_CODES[sensor_metadata["platform_type"]]
         else:
             p01_to_generic_name = None
         odf = make_odf(dataset, sensor_metadata, global_attrs, p01_to_generic_name)
 
-        odf_output = Path(params["odf_output"])
+        if isinstance(params["odf_output"], bool):
+            odf_output = Path(params["input_files"][0])
+        else:
+            odf_output = Path(params["odf_output"])
 
         if odf_output.is_dir():
             odf_output.joinpath(Path(odf.odf["file_specification"]))
@@ -490,35 +493,22 @@ An additionnal correction of {additional_correction} degree east was added to ha
 
         odf.save(odf_output)
         l.log(f"odf file made -> {odf_output}")
-        log_output = params["nc_output"].with_suffix(".log")
+        log_output = odf_output
 
-    if not params["odf_output"] and not params["nc_output"]:
-        params["nc_output"] = Path(params["input_files"][0]).with_suffix(".nc")
-        log_output = params["nc_output"].with_suffix(".log")
+    if not params["odf_output"] and not params["netcdf_output"]:
+        params["netcdf_output"] = True
 
     if params["netcdf_output"]:
-        nc_output = Path(params["netcdf_output"]).with_suffix(".nc")
-        dataset.to_netcdf(nc_output)
+        if isinstance(params["netcdf_output"], bool):
+            nc_output = params["input_files"][0]
+        else:
+            nc_output = params["netcdf_output"]
+        dataset.to_netcdf(Path(nc_output).with_suffix(".nc"))
         l.log(f"netcdf file made -> {nc_output}")
-    #    export_to_netcdf = (
-    #        not (params["odf_output"] and params["netcdf_output"])
-    #        or params["netcdf_output"]
-    #    )
-
-    #    if export_to_netcdf:
-    #        if params["netcdf_output"]:
-    #            nc_output = Path(params["netcdf_output"]).with_suffix(".nc")
-    #        else:
-    #            nc_output = Path(params["input_files"][0]).with_suffix(".nc")
-    #        dataset.to_netcdf(nc_output)
-    #        l.log(f"netcdf file made -> {nc_output}")
-
-    #        log_output = Path(nc_output).with_suffix(".log")
-    #    else:
-    #        log_output = Path(odf_output).with_suffix(".log")
+        log_output = nc_output
 
     if params["make_log"]:
-        with open(log_output, "w") as log_file:
+        with open(Path(log_output).with_suffix(".log"), "w") as log_file:
             log_file.write(dataset.attrs["history"])
             print(f"log file made -> {log_output}")
 
