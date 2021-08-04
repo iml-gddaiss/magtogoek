@@ -295,10 +295,13 @@ def _convert_options_type(parser: tp.Dict):
         for option in options.keys():
             if parser[section][option] == "":
                 parser[section][option] = None
-            if option == "input_files":
+            elif option == "input_files":
                 parser[section][option] = _format_string_sequence_to_list(
                     parser[section][option]
                 )
+            elif option in ["odf_output", "netcdf_output"]:
+                if parser[section][option] in ["true", "True"]:
+                    parser[section][option] = True
 
     if sensor_type == "adcp":
         config_types = ADCP_CONFIG_TYPES

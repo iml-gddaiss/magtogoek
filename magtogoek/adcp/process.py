@@ -476,16 +476,23 @@ An additionnal correction of {additional_correction} degree east was added to ha
     l.section("Output")
     if params["odf_output"]:
         if params["bodc_name"]:
-            p01_to_generic_name = P01_VEL_CODES[sensor_metadata["platform_type"]]
+            generic_to_p01_name = P01_VEL_CODES[sensor_metadata["platform_type"]]
         else:
-            p01_to_generic_name = None
-        odf = make_odf(dataset, sensor_metadata, global_attrs, p01_to_generic_name)
+            generic_to_p01_name = None
+
+        odf = make_odf(dataset, sensor_metadata, global_attrs, generic_to_p01_name)
 
         if isinstance(params["odf_output"], bool):
-            odf_output = Path(params["input_files"][0])
-        else:
-            odf_output = Path(params["odf_output"])
+            odf_output = (
+                odf.odf["file_specification"]
+                if odf.odf["file_specification"]
+                else params["input_files"][0]
+            )
 
+        else:
+            odf_output = params["odf_output"]
+
+        odf_output = Path(odf_output)
         if odf_output.is_dir():
             odf_output.joinpath(Path(odf.odf["file_specification"]))
         else:

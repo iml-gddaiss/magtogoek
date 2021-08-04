@@ -290,6 +290,7 @@ def _make_buoy_instrument_comment(odf, instrument, dataset, sensor_metadata):
 def _make_history_header(odf, dataset):
     """
     One history header is made by log datetime entry.
+    FIXME, some of the process are only relevent for netcdf foramting.
     """
     process = [
         "Data processed by Magtogoek Proccesing Software. More at " + REPOSITORY_ADDRESS
@@ -297,7 +298,7 @@ def _make_history_header(odf, dataset):
     creation_date = pd.Timestamp.now().strftime("%d-%b-%Y %H:%M:%S.%f").upper()[:-4]
 
     regex = "(\[.*\])\s+([0-9]{4}-[0-9]{2}-[0-9]{2}\s[0-9]{2}:[0-9]{2}:[0-9]{2})"
-    histories = dataset.attrs["history"].strip("\n").split("\n")
+    histories = dataset.attrs["quality_comments"].strip("\n").split("\n")
 
     for history in histories:
         m = re.findall(regex, history)
@@ -310,7 +311,7 @@ def _make_history_header(odf, dataset):
     odf.add_history({"creation_date": creation_date, "process": process})
 
 
-def _make_parameter_headers(odf, dataset, p01_to_generic_name=None):
+def _make_parameter_headers(odf, dataset, generic_to_p01_name=None):
     """
      PARAMETERS:
       name
@@ -330,11 +331,11 @@ def _make_parameter_headers(odf, dataset, p01_to_generic_name=None):
 
     parameters_metadata = PARAMETERS_METADATA.copy()
 
-    if p01_to_generic_name:
+    if generic_to_p01_name:
         for param in PARAMETERS_METADATA:
-            if param in p01_to_generic_name:
+            if param in generic_to_p01_name:
                 parameters_metadata[
-                    p01_to_generic_name[param]
+                    generic_to_p01_name[param]
                 ] = parameters_metadata.pop(param)
 
     data = (
@@ -368,8 +369,15 @@ def _make_parameter_headers(odf, dataset, p01_to_generic_name=None):
             )
 
 
-def make_odf(dataset, sensor_metadata, global_attrs, p01_to_generic_name=None):
-    """"""
+def make_odf(dataset, sensor_metadata, global_attrs, generic_to_p01_name=None):
+    """
+    Parameters
+    ----------
+    dataset :
+    sensor_metadata :
+    global_attrs :
+    p01_to_gen
+    """
     odf = Odf()
 
     _make_cruise_header(odf, dataset, sensor_metadata)
@@ -377,7 +385,7 @@ def make_odf(dataset, sensor_metadata, global_attrs, p01_to_generic_name=None):
     _make_odf_header(odf)
     _make_buoy_header(odf, sensor_metadata)
     _make_buoy_instrument_header(odf, dataset, sensor_metadata)
-    _make_parameter_headers(odf, dataset, p01_to_generic_name)
+    _make_parameter_headers(odf, dataset, generic_to_p01_name)
     _make_history_header(odf, dataset)
 
     return odf
