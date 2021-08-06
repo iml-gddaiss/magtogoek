@@ -181,13 +181,20 @@ TIME_ENCODING = {
     "calendar": "gregorian",
     "_FillValue": None,
 }
-DEPTH_ENCODING = {"_FillValue": None}
+TIME_STRING_ENCODING = {"dtype": "S1"}
+DEPTH_ENCODING = {
+    "_FillValue": -9999.0,
+    "dtype": "float32",
+}
 
-DATA_FILL_VALUE = -9999
+
 DATE_STRING_FILL_VALUE = "17-NOV-1858 00:00:00.00"  # filled value used by ODF format
 QC_FILL_VALUE = 127
+QC_ENCODING = {"dtype": "int8", "_FillValue": QC_FILL_VALUE}
 
-DATA_DTYPE = "float32"
+DATA_FILL_VALUE = -9999.0
+DATA_ENCODING = {"dtype": "float32", "_FillValue": DATA_FILL_VALUE}
+
 
 _drop_none_attrs = False
 
@@ -421,6 +428,7 @@ An additionnal correction of {additional_correction} degree east was added to ha
     # -------------- #
     # DATA ENCONDING #
     # -------------- #
+
     _format_data_encoding(dataset)
 
     # -------------------- #
@@ -515,7 +523,8 @@ An additionnal correction of {additional_correction} degree east was added to ha
         log_output = nc_output
 
     if params["make_log"]:
-        with open(Path(log_output).with_suffix(".log"), "w") as log_file:
+        log_output = Path(log_output).with_suffix(".log")
+        with open(log_output, "w") as log_file:
             log_file.write(dataset.attrs["history"])
             print(f"log file made -> {log_output}")
 
@@ -781,7 +790,7 @@ def _drop_beam_data(dataset: tp.Type[xr.Dataset], params: tp.Dict):
 
 
 def _format_data_encoding(dataset: tp.Type[xr.Dataset]):
-    """FIXME"""
+    """Format data encoding with default value in module."""
     l.section("Data Encoding")
     for var in dataset.variables:
         if var == "time":
@@ -790,13 +799,11 @@ def _format_data_encoding(dataset: tp.Type[xr.Dataset]):
             dataset.depth.encoding = DEPTH_ENCODING
         elif "_QC" in var:
             dataset[var].values = dataset[var].values.astype("int8")
-            dataset[var].encoding = {"dtype": "int8", "_FillValue": QC_FILL_VALUE}
-        if var == "time_string":
-            dataset[var].encoding = {
-                "dtype": "S1",
-            }
+            dataset[var].encoding = QC_ENCODING
+        elif var == "time_string":
+            dataset[var].encoding = TIME_STRING_ENCODING
         else:
-            dataset[var].encoding = {"dtype": DATA_DTYPE, "_FillValue": DATA_FILL_VALUE}
+            dataset[var].encoding = DATA_ENCODING
 
-    l.log(f"adcp Data _FillValue: {DATA_FILL_VALUE}")
-    l.log(f"Ancillary Data _FillValue: {DATA_FILL_VALUE}")
+    l.log(f"Data _FillValue: {DATA_FILL_VALUE}")
+    l.log(f"Ancillary Data _FillValue: {QC_FILL_VALUE}")

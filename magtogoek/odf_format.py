@@ -41,6 +41,10 @@ Writing ODF files.
       - list elements are printed with the same headers key.
       - coefficients, directions and corrections items need to be stored as tuple for the correct formatting
         field width of 12 and 8 decimals precision.
+
+TODO FIXME:
+time are printed with singles quotes
+move odf specidif config in .ini to separate header
 """
 
 
@@ -685,17 +689,16 @@ class Odf:
             if self.data[vd].dtype == int:
                 formats[vd] = lambda x, p=padding: SPACE + str(x).rjust(p, SPACE)
 
-            elif any(self.data[vd].dtypes == t for t in [int, object]):
-                formats[vd] = lambda x, p=padding: (
-                    SPACE + ("'" + str(x) + "'").rjust(p, SPACE)
-                )
-
+            #            elif any(self.data[vd].dtypes == t for t in [int, object]):
+            #                formats[vd] = lambda x, p=padding: (
+            #                    SPACE + ("'" + str(x) + "'").rjust(p, SPACE)
+            #                )
             elif self.data[vd].dtypes == np.dtype("<M8[ns]"):
                 formats[vd] = lambda x, p=padding: (
-                    SPACE + (odf_time_format(x)).rjust(p, SPACE)
+                    SPACE + ("'" + odf_time_format(x) + "'").rjust(p, SPACE)
                 )
 
-            else:
+            elif self.data[vd].dtypes == np.floating:
                 formats[vd] = lambda x, p=padding, d=decimal_places: (
                     SPACE + (f"{x:.{d}f}").rjust(p, SPACE)
                 )

@@ -13,20 +13,25 @@ from magtogoek.odf_format import Odf, odf_time_format
 
 REPOSITORY_ADDRESS = "https://github.com/JeromeJGuay/magtogoek"
 
-PARAMTERS_TYPES = {
+PARAMETERS_TYPES = {
+    "int8": "BYTE",
+    "int16": "SHORT",
+    "int32": "INT",
+    "int64": "LONG",
     "float16": "HALF",
     "float32": "SING",
     "float64": "DOUB",
     "|S1": "SYTM",
+    "datetime64[ns]": "SYTM",
 }
 
 PARAMETERS_METADATA = {
     "time": {
         "code": "STYM_01",
-        "name": "Time Format DD-MMM-YYYY 00:00:00.00",
+        "name": "Time Format DD-MMM-YYYY HH:MM:SS.ss",
         "units": "GMT",
         "print_field_width": 23,
-        "print_decimal_width": 0,
+        "print_decimal_places": 0,
         "null_value": "17-NOV-1858 00:00:00.00",
     },
     "depth": {
@@ -34,56 +39,56 @@ PARAMETERS_METADATA = {
         "name": "Sensor Depth below Sea Surface",
         "units": "metres",
         "print_field_width": 10,
-        "print_decimal_width": 3,
+        "print_decimal_places": 3,
     },
     "u": {
         "code": "EWCT_01",
         "name": "East (true) Component of Current",
         "units": "m/s",
         "print_field_width": 10,
-        "print_decimal_width": 4,
+        "print_decimal_places": 4,
     },
     "u_QC": {
         "code": "QQQQ_01",
         "name": "Quality flag: East (true) Component of Current",
         "units": "none",
         "print_field_width": 1,
-        "print_decimal_width": 0,
+        "print_decimal_places": 0,
     },
     "v": {
         "code": "NSCT_01",
         "name": "North (true) Component of Current",
         "units": "m/s",
         "print_field_width": 10,
-        "print_decimal_width": 4,
+        "print_decimal_places": 4,
     },
     "v_QC": {
         "code": "QQQQ_02",
         "name": "Quality flag: North (true) Component of Current",
         "units": "none",
         "print_field_width": 1,
-        "print_decimal_width": 0,
+        "print_decimal_places": 0,
     },
     "w": {
         "code": "VCSP_01",
         "name": "Vertical Current Speed (positive up)",
         "units": "m/s",
         "print_field_width": 10,
-        "print_decimal_width": 4,
+        "print_decimal_places": 4,
     },
     "w_QC": {
         "code": "QQQQ_03",
         "name": "Quality flag: Vertical Current Speed (positive up)",
         "units": "none",
         "print_field_width": 1,
-        "print_decimal_width": 0,
+        "print_decimal_places": 0,
     },
     "e": {
         "code": "ERRV_01",
         "name": "Error Velocity (ADCP)",
         "units": "m/s",
         "print_field_width": 10,
-        "print_decimal_width": 4,
+        "print_decimal_places": 4,
     },
 }
 
@@ -103,11 +108,11 @@ EVENT_ATTRS = {
     "data_type": ("dataset", "data_type"),
     "event_number": ("dataset", "event_number"),
     "orig_creation_date": ("dataset", "date_created"),
-    "start_date_time": ("dataset", "start_date_time"),
-    "end_date_time": ("dataset", "end_date_time"),
+    "start_date_time": ("dataset", "start_date"),
+    "end_date_time": ("dataset", "end_date"),
     "min_depth": ("dataset", "geospatial_vertical_min"),
     "max_depth": ("dataset", "geospatial_vertical_max"),
-    "sampling_interval": ("dataset", "sampling_interval"),
+    "sampling_interval": ("dataset", "delta_t_sec"),
     "sounding": ("dataset", "sounding"),
     "event_qualifier1": ("global_attrs", "event_qualifier1"),
     "event_qualifier2": ("global_attrs", "event_qualifier2"),
@@ -184,10 +189,17 @@ def _make_event_header(odf, dataset, global_attrs):
                 odf.event[key] = global_attrs[value[1]]
     if "lat" in dataset:
         odf.event["initial_latitude"] = dataset.lat[0]
-        df.event["end_latitude"] = dataset.lat[-1]
+        odf.event["end_latitude"] = dataset.lat[-1]
+    elif "latitude" in dataset.attrs:
+        odf.event["initial_latitude"] = dataset.attrs["latitude"]
+        odf.event["end_latitude"] = dataset.attrs["latitude"]
     if "lon" in dataset:
         odf.event["initial_longitude"] = dataset.lon[0]
         odf.event["end_longitude"] = dataset.lon[-1]
+    elif "longitude" in dataset.attrs:
+        odf.event["initial_longitude"] = dataset.attrs["longitude"]
+        odf.event["end_longitude"] = dataset.attrs["longitude"]
+
     odf.event["creation_date"] = odf_time_format(pd.Timestamp.now())
     if "sounding" in dataset.attrs:
         odf.event["depth_off_bottom"] = (
@@ -344,13 +356,13 @@ def _make_parameter_headers(odf, dataset, generic_to_p01_name=None):
             items["depth"] = dataset.attrs["sensor_depth"]
             items["magnetic_variation"] = dataset.attrs["magnetic_declination"]
 
-            items["type"] = PARAMTERS_TYPES[str(dataset[var].encoding["dtype"])]
-            if "_FillValue" in dataset[var].encoding:
-                items["null_value"] = dataset[var].encoding["_FillValue"]
-            elif "null_value" in value:
-                items["null_value"] = value["null_value"]
-            else:
-                items["null_value"] = None
+            items["type"] = PARAMETERS_TYPES[str(dataset[var].data.dtype)]  # FIXME
+
+            if not "null_value" in items:
+                if "_FillValue" in dataset[var].encoding:
+                    items["null_value"] = dataset[var].encoding["_FillValue"]
+                else:
+                    items["null_value"] = None
 
             odf.add_parameter(
                 code=items["code"],
