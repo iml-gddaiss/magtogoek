@@ -22,11 +22,13 @@ Unspecified attributes fill value "N/A".
     declination of the magnetic north in `degree east`.
 
 `sensor_depth`:
-    `sensor_depth` in the platform file is used for the variables attributes. If no
-    value is given, it is computed from the XducerDepth. However, the `sensor_depth`
-    value in the ConfigFile is used to compute the bin depth coordinates. If no
-    `sensor_depth` value is given in both the ConfigFile and platform file, the
-    `sensor_depth` attributes is computed from the adcp `Xducer_depth`.
+    The `sensor_depth` value in the platform file is used to set the netcdf
+    global attributes of the same name. However, the `sensor_depth` value in
+    the ConfigFile is used to compute the bin depth coordinates.
+    If no `sensor_depth` value is set in the Configfile, a value is computed from
+    the XducerDepth.
+    If no `sensor_depth` value is given in both the ConfigFile and platform file,
+    the `sensor_depth` attributes is computed from the adcp `Xducer_depth`.
 
 `chief_scientist`:
      The value in the ConfigFile is used over the one in the platform file.
@@ -41,9 +43,10 @@ Unspecified attributes fill value "N/A".
 
 TODO TEST NAVIGATIN FILES !
 FIXME DATA_TYPES: Missing for ship adcp
+FIXME SOURCE : moored adcp ?
 
 NOTE
-TODO add option to force platform file metadata over over those computed from the adcp file.
+Add option to force platform file metadata over over those computed from the adcp file.
 - Global Attributes Priorities:
   `force_platform` is False True:
       CONFIGFILE > COMPUTED > PLATFORM
@@ -93,7 +96,7 @@ GLOBAL_ATTRS_TO_DROP = [
 
 CONFIG_GLOBAL_ATTRS_SECTIONS = ["NETCDF_CF", "PROJECT", "CRUISE", "GLOBAL_ATTRIBUTES"]
 PLATFORM_TYPES = ["mooring", "ship"]
-DATA_TYPES = {"mooring": "MADCP", "ship": None}
+DATA_TYPES = {"mooring": "MADCP", "ship": "MADCP"}
 DEFAULT_PLATFORM_TYPE = "mooring"
 PLATFORM_FILE_DEFAULT_KEYS = [
     "platform_type",
@@ -374,6 +377,9 @@ def _process_adcp_data(params: tp.Dict, sensor_metadata: tp.Dict, global_attrs):
     # setting Metadata from the config_files
     dataset = dataset.assign_attrs(global_attrs)
 
+    if not dataset.attrs["source"]:
+        dataset.attrs["source"] = sensor_metadata["platform_type"]
+
     # ----------------------------------- #
     # CORRECTION FOR MAGNETIC DECLINATION #
     # ----------------------------------- #
@@ -518,7 +524,8 @@ An additionnal correction of {additional_correction} degree east was added to ha
             nc_output = params["input_files"][0]
         else:
             nc_output = params["netcdf_output"]
-        dataset.to_netcdf(Path(nc_output).with_suffix(".nc"))
+        nc_output = Path(nc_output).with_suffix(".nc")
+        dataset.to_netcdf(nc_output)
         l.log(f"netcdf file made -> {nc_output}")
         log_output = nc_output
 
@@ -558,7 +565,7 @@ def _load_adcp_data(params: tp.Dict) -> tp.Type[xr.Dataset]:
         f"Bins count : {len(dataset.depth.data)}, Min depth : {dataset.depth.min().data} m, Max depth : {dataset.depth.max().data} m"
     )
     l.log(
-        f"Ensembles count : {len(dataset.time.data)}, Start time : {np.datetime_as_string(dataset.time.min().data, unit='s')}, End time : {np.datetime_as_string(dataset.time.min().data, unit='s')}"
+        f"Ensembles count : {len(dataset.time.data)}, Start time : {np.datetime_as_string(dataset.time.min().data, unit='s')}, End time : {np.datetime_as_string(dataset.time.max().data, unit='s')}"
     )
 
     if not params["keep_bt"]:
@@ -760,14 +767,20 @@ def _get_datetime_and_count(trim_arg: str):
 
 
 def _set_xducer_depth_as_sensor_depth(dataset: tp.Type[xr.Dataset]):
-    """Set xducer_depth value to dataset attributes sensor_depth"""
+    """Set xducer_depth value to dataset attributes sensor_depth
+    TODO THIS IS TO COMPLICATED"""
     if "xducer_depth" in dataset:
-        dataset.attrs["sensor_depth"] = np.median(dataset["xducer_depth"].data)
-        l.log("`sensor_depth` correspond to the `xducer_depth` median.")
+        sensor_depth = np.median(dataset["xducer_depth"].data)
+        dataset.attrs["sensor_depth"] = sensor_depth
+        l.log(
+            f"`sensor_depth` = {round(sensor_depth,2)}. Correspond to the instrument `xducer_depth` median."
+        )
 
     if "xducer_depth" in dataset.attrs:
         dataset.attrs["sensor_depth"] = dataset.attrs["xducer_depth"]
-        l.log("`sensor_depth` correspond to the `xducer_depth`.")
+        l.log(
+            f"`sensor_depth` = {dataset.attrs['xducer_depth']}. Correspond to the instrument`xducer_depth`."
+        )
 
 
 def _drop_beam_data(dataset: tp.Type[xr.Dataset], params: tp.Dict):

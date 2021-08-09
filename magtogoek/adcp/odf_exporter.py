@@ -168,6 +168,11 @@ def _make_cruise_header(odf, dataset, sensor_metadata):
             if value[1] in sensor_metadata:
                 odf.cruise[key] = sensor_metadata[value[1]]
 
+        if sensor_metadata["platform_type"] == "mooring":
+            odf.cruise["platform"] = "Oceanographic Buoy"
+        if sensor_metadata["platform_type"] == "ship":
+            odf.cruise["platform"] = "ship"
+
 
 def _make_event_header(odf, dataset, global_attrs):
     """

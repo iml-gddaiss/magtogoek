@@ -201,13 +201,16 @@ def load_adcp_binary(
     # ----------------------------------------------------------- #
     # Convert depth relative to the ADCP to depth below surface   #
     # ----------------------------------------------------------- #
+
     if sonar == "os":
         xducer_depth = data.XducerDepth[0]
         if sensor_depth:
             l.log(
-                f"The difference between `sensor_depth` and `XducerDepth` is {abs(sensor_depth - xducer_depth)} m"
+                [
+                    f"The difference between the provided `sensor_depth` ({sensor_depth}) and the instrument `XducerDepth` ({xducer_depth}) is {round(abs(sensor_depth - xducer_depth, 2))} m",
+                ]
             )
-            # data.dep was computed from the fixed xducer_depth therefore it  needs to be corrected.
+            # data.dep was computed from the fixed xducer_depth therefore it needs to be corrected.
             depth = data.dep + (sensor_depth - xducer_depth)
             xducer_depth = sensor_depth
         else:
@@ -215,13 +218,12 @@ def load_adcp_binary(
     else:
         xducer_depth = np.median(data.XducerDepth)
         if sensor_depth:
+            xducer_depth = sensor_depth
             l.log(
                 [
-                    "The difference between the provided `sensor_depth` and `XducerDepth`",
-                    f"is {round(abs(sensor_depth - xducer_depth),3)} m.",
+                    f"The difference between the provided `sensor_depth` ({sensor_depth}) and the instrument `XducerDepth` ({xducer_depth}) is {round(abs(sensor_depth - xducer_depth), 2)} m",
                 ]
             )
-            xducer_depth = sensor_depth
 
         if orientation == "down":
             depth = xducer_depth + data.dep
