@@ -47,6 +47,7 @@ class ConfigFileError(Exception):
     pass
 
 
+TRUE_VALUES = ["true", "True", "1"]
 SENSOR_TYPES = ["adcp"]
 
 BASIC_CONFIG = dict(
@@ -134,6 +135,7 @@ ADCP_CONFIG = dict(
         "roll_threshold": 20,
         "leading_trim": "",
         "trailing_trim": "",
+        "depth_range": "",
         "motion_correction_mode": "bt",
     },
     ADCP_OUTPUT={
@@ -171,6 +173,7 @@ ADCP_CONFIG_TYPES = dict(
         "roll_threshold": float,
         "leading_trim": str,
         "trailing_trim": str,
+        "sensor_depth": list,
         "motion_correction_mode": str,
     },
     ADCP_OUTPUT={
@@ -304,7 +307,7 @@ def _convert_options_type(parser: tp.Dict):
                     parser[section][option]
                 )
             elif option in ["odf_output", "netcdf_output"]:
-                if parser[section][option] in ["true", "True"]:
+                if parser[section][option] in TRUE_VALUES:
                     parser[section][option] = True
 
     if sensor_type == "adcp":
@@ -319,9 +322,7 @@ def _convert_options_type(parser: tp.Dict):
             if parser[section][option]:
                 if config_types[section][option] == bool:
                     parser[section][option] = (
-                        True
-                        if parser[section][option] in ["True", "true", "1"]
-                        else False
+                        True if parser[section][option] in TRUE_VALUES else False
                     )
                 if config_types[section][option] == int:
                     try:
@@ -330,7 +331,6 @@ def _convert_options_type(parser: tp.Dict):
                         raise ConfigFileError(
                             f"{section}/{option} value, {parser[section][option]}, is invalid. The expected value is an integer."
                         )
-
                 if config_types[section][option] == float:
                     try:
                         parser[section][option] = float(parser[section][option])
@@ -338,6 +338,9 @@ def _convert_options_type(parser: tp.Dict):
                         raise ConfigFileError(
                             f"{section}/{option} value, {parser[section][option]}, is invalid. The expected value is an float."
                         )
+                if config_types[section][option] == list:
+                    if not isinstance(parser[section][option], (list, tuple)):
+                        parser[section][option] = [parser[section][option]]
 
 
 def _get_config_default(sensor_type: str):

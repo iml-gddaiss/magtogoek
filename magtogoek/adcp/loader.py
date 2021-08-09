@@ -72,6 +72,7 @@ def load_adcp_binary(
     orientation: str = None,
     leading_index: int = None,
     trailing_index: int = None,
+    depth_range: tp.Tuple(int, float, list) = None,
     sensor_depth: float = None,
 ):
     """Load RDI and RTI adcp data.
@@ -85,19 +86,21 @@ def load_adcp_binary(
 
     Parameters
     ----------
-    filenames:
+    filenames :
         Path/to/files
-    sonar:
+    sonar :
         Type of sonar (`os`, `wh`, `sv`, `sw`, `sw_pd0`)
-    yearbase:
+    yearbase :
         year that the sampling begun.
-    orientation:
+    orientation :
         Adcp orientation. Either `up` or `down`. Will overwrite the value
         of the binary file.
-    leading_index:
+    leading_index :
         FIXME
-    trailing_index:
+    trailing_index :
         FIXME
+    depth_range :
+        Depth min or (min max)
     sensor_depth:
         If provided, will be used as a static sensor depth.
     Returns
@@ -106,6 +109,7 @@ def load_adcp_binary(
 
     """
     l.reset()
+
     l.section("Loading adcp data", t=True)
 
     filenames = get_files_from_expresion(filenames)
@@ -376,13 +380,32 @@ def load_adcp_binary(
     # ------------------------------- #
     if bad_dday:
         ds["dday"] = (["time"], np.asarray(data.dday))
-
     else:
         ds["time_string"] = (["time"], time_string)
 
     if orientation == "up":
         ds.sortby("depth")
 
+    # -------------- #
+    #  Cutting bins  #
+    # -------------- #
+    if depth_range:
+        if not isinstance(depth_range, (list, tuple)):
+            depth_range = [depth_range]
+        if len(depth_range) == 1:
+            ds = ds.sel(depth=slice(depth_range[0], None))
+            l.log(f"Bin of depth inferio to {depth_range[0]} m were cut.")
+        elif len(depth_range) == 2:
+            ds = ds.sel(depth=slice(depth_range))
+            l.log(
+                f"Bin of depth inferior to {depth_range[0]} m and superior to {depth_range[1]} m were cut."
+            )
+        else:
+            l.log(
+                f"depth_range expects 2 value or less but {len(depth_range)} were givien. Depth slicing aborded."
+            )
+
+    # ajust Bin1Dist
     # -------------- #
     # Add attributes #
     # -------------- #
