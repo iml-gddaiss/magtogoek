@@ -202,33 +202,34 @@ def load_adcp_binary(
     # Convert depth relative to the ADCP to depth below surface   #
     # ----------------------------------------------------------- #
 
-    if sonar == "os":
-        xducer_depth = data.XducerDepth[0]
-        if sensor_depth:
+    average_xducer_depth = round(np.median(data.XducerDepth), 3)
+    xducer_depth = data.XducerDepth
+    if sensor_depth:
+        depth_difference = round(average_xducer_depth - sensor_depth, 3)
+        if abs(depth_difference) > 0:
             l.log(
                 [
-                    f"The difference between the provided `sensor_depth` ({sensor_depth}) and the instrument `XducerDepth` ({xducer_depth}) is {round(abs(sensor_depth - xducer_depth, 2))} m",
-                ]
-            )
-            # data.dep was computed from the fixed xducer_depth therefore it needs to be corrected.
-            depth = data.dep + (sensor_depth - xducer_depth)
-            xducer_depth = sensor_depth
-        else:
-            depth = data.dep
-    else:
-        xducer_depth = np.median(data.XducerDepth)
-        if sensor_depth:
-            xducer_depth = sensor_depth
-            l.log(
-                [
-                    f"The difference between the provided `sensor_depth` ({sensor_depth}) and the instrument `XducerDepth` ({xducer_depth}) is {round(abs(sensor_depth - xducer_depth), 2)} m",
+                    f"The difference between the instrument averaged `XducerDepth` ({average_xducer_depth} m) and the given `sensor_depth` ({sensor_depth} m) is {depth_difference} m",
                 ]
             )
 
-        if orientation == "down":
-            depth = xducer_depth + data.dep
+            l.log(
+                f"{-depth_difference} m was added to the depths mesured by the instruement."
+            )
+        average_xducer_depth = sensor_depth
+        xducer_depth = xducer_depth - depth_difference
+
+    if sonar == "os":
+        if sensor_depth:
+            # data.dep was computed from the adcp XducerDepth value thus it needs to be corrected.
+            depth = data.dep - depth_difference
         else:
-            depth = xducer_depth - data.dep
+            depth = data.dep
+    else:
+        if orientation == "down":
+            depth = average_xducer_depth + data.dep
+        else:
+            depth = average_xducer_depth - data.dep
 
     if (depth < 0).all():
         l.warning("Bin depths are all negative, ADCP orientation is probably wrong.")
@@ -329,7 +330,7 @@ def load_adcp_binary(
 
     # For `wh`, `sv` and `sw` XducerDepth varies over times but is constant for `os`.
     if sonar != "os":
-        ds["xducer_depth"] = (["time"], np.asarray(data.XducerDepth))
+        ds["xducer_depth"] = (["time"], np.asarray(xducer_depth))
 
     # --------------------------- #
     # Loading the naviagtion data #
@@ -395,7 +396,7 @@ def load_adcp_binary(
         else "Rowe Technologie Inc. (RTI)"
     )
     if "xducer_depth" not in ds:
-        ds.attrs["xducer_depth"] = round(xducer_depth, 2)
+        ds.attrs["xducer_depth"] = round(average_xducer_depth, 2)
     ds.attrs["coord_system"] = data.trans["coordsystem"]
     ds.attrs["beam_angle"] = data.sysconfig["angle"]
     ds.attrs["frequency"] = data.sysconfig["kHz"] * 1000  # kHz to hz

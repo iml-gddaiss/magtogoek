@@ -369,7 +369,8 @@ def _process_adcp_data(params: tp.Dict, sensor_metadata: tp.Dict, global_attrs):
         if "bt_depth" in dataset:
             dataset.attrs["sounding"] = round(np.median(dataset.bt_depth.data), 2)
 
-    _set_xducer_depth_as_sensor_depth(dataset)
+    if not params["force_platform_metadata"] and sensor_metadata["sensor_depth"]:
+        _set_xducer_depth_as_sensor_depth(dataset)
 
     # setting Metadata from the platform_file
     _set_platform_metadata(dataset, sensor_metadata, params["force_platform_metadata"])
@@ -487,6 +488,7 @@ An additionnal correction of {additional_correction} degree east was added to ha
     # ------- #
     # OUTPUTS #
     # ------- #
+    print(dataset.attrs["sensor_depth"])  # FIXME
     l.section("Output")
     if params["odf_output"]:
         if params["bodc_name"]:
@@ -559,10 +561,10 @@ def _load_adcp_data(params: tp.Dict) -> tp.Type[xr.Dataset]:
     dataset = dataset.sel(time=slice(start_time, end_time))
 
     if len(dataset.time) == 0:
-        l.warning(f"{params['input_files']} time dims is of lenght 0 after slicing.")
+        l.warning(f"{params['input_files']} time dims is of lenght 0 after eslicing.")
 
     l.log(
-        f"Bins count : {len(dataset.depth.data)}, Min depth : {dataset.depth.min().data} m, Max depth : {dataset.depth.max().data} m"
+        f"Bins count : {len(dataset.depth.data)}, Min depth : {np.round(dataset.depth.min().data,3)} m, Max depth : {np.round(dataset.depth.max().data,3)} m"
     )
     l.log(
         f"Ensembles count : {len(dataset.time.data)}, Start time : {np.datetime_as_string(dataset.time.min().data, unit='s')}, End time : {np.datetime_as_string(dataset.time.max().data, unit='s')}"
@@ -663,19 +665,23 @@ def _set_platform_metadata(
     """
     metadata_key = []
     for key, value in sensor_metadata.items():
-        if not isinstance(value, dict):
+        if value and not isinstance(value, dict):
             metadata_key.append(key)
 
     if force_platform_metadata:
         for key in metadata_key:
-            if sensor_metadata[key]:
-                dataset.attrs[key] = sensor_metadata[key]
+            dataset.attrs[key] = sensor_metadata[key]
+        if "sensor_depth" in key:
+            l.log(
+                f"`sensor_depth` value ({sensor_metadata['sensor_depth']} was set by the user."
+            )
+
     else:
         for key in metadata_key:
             if key in dataset.attrs:
-                if dataset.attrs[key] is not None:
+                if not dataset.attrs[key]:
                     dataset.attrs[key] = sensor_metadata[key]
-            elif sensor_metadata[key]:
+            else:
                 dataset.attrs[key] = sensor_metadata[key]
 
 
@@ -767,20 +773,13 @@ def _get_datetime_and_count(trim_arg: str):
 
 
 def _set_xducer_depth_as_sensor_depth(dataset: tp.Type[xr.Dataset]):
-    """Set xducer_depth value to dataset attributes sensor_depth
-    TODO THIS IS TO COMPLICATED"""
-    if "xducer_depth" in dataset:
-        sensor_depth = np.median(dataset["xducer_depth"].data)
-        dataset.attrs["sensor_depth"] = sensor_depth
-        l.log(
-            f"`sensor_depth` = {round(sensor_depth,2)}. Correspond to the instrument `xducer_depth` median."
-        )
-
-    if "xducer_depth" in dataset.attrs:
+    """Set xducer_depth value to dataset attributes sensor_depth"""
+    if "xducer_depth" in dataset.attrs:  # OCEAN SURVEYOR
         dataset.attrs["sensor_depth"] = dataset.attrs["xducer_depth"]
-        l.log(
-            f"`sensor_depth` = {dataset.attrs['xducer_depth']}. Correspond to the instrument`xducer_depth`."
-        )
+
+    if "xducer_depth" in dataset:
+        sensor_depth = round(np.median(dataset["xducer_depth"].data), 2)
+        dataset.attrs["sensor_depth"] = sensor_depth
 
 
 def _drop_beam_data(dataset: tp.Type[xr.Dataset], params: tp.Dict):

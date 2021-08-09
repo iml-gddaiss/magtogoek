@@ -40,7 +40,7 @@
         "sensors": {
             "ADCP_01": {
                 "sensor_type": "adcp",
-                "sensor_depth": 1.5,
+                "sensor_depth": 5,
                 "serial_number": null,
                 "manufacturer": "Teledyne RD Instruments Inc.",
                 "model": "WorkHorse",
