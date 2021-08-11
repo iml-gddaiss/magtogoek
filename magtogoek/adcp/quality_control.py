@@ -253,7 +253,7 @@ def adcp_quality_control(
 
     if sidelobes_correction:
         sidelobe_flag = sidelobe_test(dataset, bottom_depth)
-        if sidelobe_flag:
+        if isinstance(sidelobe_flag, np.ndarray):
             l.log(f"Sidelobe correction carried out.")
             vel_flags[sidelobe_flag] = 4
             vel_qc_test.append("sidelobes")

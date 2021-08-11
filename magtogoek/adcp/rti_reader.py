@@ -21,7 +21,7 @@ from typing import Dict, List, Tuple, Type
 
 import numpy as np
 from magtogoek.adcp.tools import datetime_to_dday
-from magtogoek.utils import get_files_from_expresion
+from magtogoek.utils import Logger, get_files_from_expresion
 from rti_python.Codecs.BinaryCodec import BinaryCodec
 from rti_python.Ensemble.EnsembleData import *
 from scipy.constants import convert_temperature
@@ -33,6 +33,8 @@ DELIMITER = b"\x80" * 16  # RTB ensemble delimiter
 BLOCK_SIZE = 4096  # Number of bytes read at a time
 RTI_FILL_VALUE = 88.88800048828125
 RDI_FILL_VALUE = -32768.0
+
+l = Logger(level=0)
 
 
 class FilesFormatError(Exception):
@@ -126,6 +128,8 @@ class RtiReader:
         self.files_start_stop_index = None
         self.ens_chunks = None
         self.current_file = None
+
+        l.reset()
 
     def check_files(self):
         """Check files for ensemble count and bin depths."""
@@ -589,21 +593,18 @@ class RtiReader:
             In that case, files need the be processed individually.
 
         """
-        mismatch = None
         filenames = [b.filename for b in bunches]
         deps = [len(b.dep) for b in bunches]
         if np.diff(deps).any() != 0:
             msg = "\n".join([f"{f} has {len(d)} bin" for f, d in zip(filenames, deps)])
             raise BinDepMismatch("\n" + msg)
 
-        bin1dist0 = bunches[0].Bin1Dist
-        bin1dists = np.array([b.Bin1Dist - bin1dist0 for b in bunches])
-        if bin1dists.any() != 0:
-            print(f"Bin depth computed from {filenames[0]}. The differences are")
-            for d, f in zip(bin1dists, filenames):
-                print(f"{f} : {np.round(d,3)} meters")
-
-        return mismatch
+        bin1dists = [b.Bin1Dist for b in bunches]
+        l.log(
+            f"First bin distance was taken from {filenames[0]}. For each files, first bin distances were : "
+        )
+        for d, f in zip(bin1dists, filenames):
+            l.log(f"  {f} : {np.round(d,3)} meters")
 
 
 if __name__ == "__main__":

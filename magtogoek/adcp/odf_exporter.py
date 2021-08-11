@@ -143,14 +143,14 @@ BUOY_INSTRUMENT_CONFIGURATION = {
     "Firmware_Version": ("dataset", "firmware_version"),
     "Ping_per_Ensemble": ("dataset", "ping_per_ensemble"),
     "Ensemble_Length_s": ("dataset", "delta_t_sec"),
-    "Ping_Interval_s": (),
+    "Ping_Interval_s": (),  # Computed
     "ADCP_Depth_m": ("dataset", "sensor_depth"),
-    "Distance_ADCP_to_First_Bin_Center_m": ("dataset", "dist1bin"),
+    "Distance_ADCP_to_First_Bin_Center_m": ("dataset", "bin1dist"),
     "Bin_Size_m": ("dataset", "bin_size"),
-    "Bin_Count": ("dataset", "bin_count"),
+    "Bin_Count": ("dataset", "bin_count"),  # Computed
     "Blank_m": ("dataset", "blank"),
     "Transmit_Pulse_Length_m": ("dataset", "transmit_pulse_length_m"),
-    "Magnetic_Declination": (),
+    "Magnetic_Declination": (),  # Computed
     "Comments": ("sensor_metadata_sensors", "comments"),
 }
 
@@ -227,6 +227,7 @@ def _make_odf_header(odf):
         odf.event["event_qualifier1"],
         odf.event["event_qualifier2"],
     ]
+
     odf.odf["file_specification"] = "_".join(name_part).strip("_") + ".ODF"
 
 
@@ -269,7 +270,7 @@ def _make_buoy_instrument_comment(odf, instrument, dataset, sensor_metadata):
     ----
     LagLength was removed from the original ODF adcp format.
     """
-    global_attrsuration = "CONFIGURATION_01"
+    configuration = "CONFIGURATION_01"
     for key, value in BUOY_INSTRUMENT_CONFIGURATION.items():
         if (
             key == "Ping_Interval_s"
@@ -289,7 +290,8 @@ def _make_buoy_instrument_comment(odf, instrument, dataset, sensor_metadata):
                 + " "
                 + dataset.attrs["magnetic_declination_units"]
             )
-
+        elif key == "Bin_Count":
+            v = len(dataset.depth)
         elif value[0] == "dataset" and value[1] in dataset.attrs:
             v = dataset.attrs[value[1]]
         elif value[0] == "sensor_metadata":
@@ -297,7 +299,7 @@ def _make_buoy_instrument_comment(odf, instrument, dataset, sensor_metadata):
         else:
             v = "N/A"
         odf.buoy_instrument[instrument]["buoy_instrument_comments"].append(
-            global_attrsuration + "." + key + ": " + str(v)
+            configuration + "." + key + ": " + str(v)
         )
 
 
@@ -361,7 +363,7 @@ def _make_parameter_headers(odf, dataset, generic_to_p01_name=None):
             items["depth"] = dataset.attrs["sensor_depth"]
             items["magnetic_variation"] = dataset.attrs["magnetic_declination"]
 
-            items["type"] = PARAMETERS_TYPES[str(dataset[var].data.dtype)]  # FIXME
+            items["type"] = PARAMETERS_TYPES[str(dataset[var].data.dtype)]
 
             if not "null_value" in items:
                 if "_FillValue" in dataset[var].encoding:

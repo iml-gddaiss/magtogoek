@@ -173,7 +173,7 @@ ADCP_CONFIG_TYPES = dict(
         "roll_threshold": float,
         "leading_trim": str,
         "trailing_trim": str,
-        "sensor_depth": list,
+        "depth_range": (float, [1, 2]),
         "motion_correction_mode": str,
     },
     ADCP_OUTPUT={
@@ -319,28 +319,50 @@ def _convert_options_type(parser: tp.Dict):
 
     for section, options in config_types.items():
         for option in options:
-            if parser[section][option]:
-                if config_types[section][option] == bool:
-                    parser[section][option] = (
-                        True if parser[section][option] in TRUE_VALUES else False
-                    )
-                if config_types[section][option] == int:
+            option_value = parser[section][option]
+            if option_value:
+                option_type = config_types[section][option]
+                if option_type == bool:
+                    option_value = True if option_value in TRUE_VALUES else False
+                elif option_type in (int, float):
                     try:
-                        parser[section][option] = int(parser[section][option])
+                        option_value = option_type(option_value)
                     except ValueError:
+                        expected_type = str(option_type).split("'")[1]
                         raise ConfigFileError(
-                            f"{section}/{option} value, {parser[section][option]}, is invalid. The expected value is an integer."
+                            f"{section}/{option} value, {option_value}, is invalid. The expected value type : {expected_type}."
                         )
-                if config_types[section][option] == float:
+                elif isinstance(option_type, tuple):
+                    option_value = eval(option_value)
+                    if not isinstance(option_value, (list, tuple)):
+                        option_value = [option_value]
                     try:
-                        parser[section][option] = float(parser[section][option])
-                    except ValueError:
-                        raise ConfigFileError(
-                            f"{section}/{option} value, {parser[section][option]}, is invalid. The expected value is an float."
+                        option_value = list(
+                            map(
+                                option_type[0],
+                                option_value,
+                            )
                         )
-                if config_types[section][option] == list:
-                    if not isinstance(parser[section][option], (list, tuple)):
-                        parser[section][option] = [parser[section][option]]
+                    except ValueError:
+                        expected_type = str(option_type[0]).split("'")[1]
+                        raise ConfigFileError(
+                            f"{section}/{option} value, {option_value}, is invalid. The expected values are of types : {expected_type}."
+                        )
+                    if len(option_type[1]) == 2:
+                        if (
+                            len(option_value) < option_type[1][0]
+                            or len(option_value) > option_type[1][1]
+                        ):
+                            raise ConfigFileError(
+                                f"{section}/{option} value, {option_value} received {len(option_value)} values. Expected from {option_type[1][0]} to {option_type[1][1]} values"
+                            )
+                    else:
+                        if len(option_value) != option_type[1][0]:
+                            raise ConfigFileError(
+                                f"{section}/{option} value, {option_value} received {len(option_value)} values. Expected {option_type[1][0]} values"
+                            )
+
+                parser[section][option] = option_value
 
 
 def _get_config_default(sensor_type: str):

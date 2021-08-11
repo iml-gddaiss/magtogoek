@@ -64,8 +64,9 @@ import pandas as pd
 import xarray as xr
 from magtogoek.adcp.loader import load_adcp_binary
 from magtogoek.adcp.odf_exporter import make_odf
-from magtogoek.adcp.quality_control import (adcp_quality_control,
-                                            no_adcp_quality_control)
+from magtogoek.adcp.quality_control import adcp_quality_control
+from magtogoek.adcp.quality_control import l as qc_log
+from magtogoek.adcp.quality_control import no_adcp_quality_control
 from magtogoek.adcp.tools import magnetic_to_true
 from magtogoek.attributes_formatter import (
     compute_global_attrs, format_variables_names_and_attributes)
@@ -339,6 +340,7 @@ def _process_adcp_data(params: tp.Dict, sensor_metadata: tp.Dict, global_attrs):
     # ----------------- #
     # LOADING ADCP DATA #
     # ----------------- #
+
     dataset = _load_adcp_data(params)
 
     # ----------------------------------------- #
@@ -352,7 +354,7 @@ def _process_adcp_data(params: tp.Dict, sensor_metadata: tp.Dict, global_attrs):
     # ADDING SOME GLOBAL ATTRIBUTES #
     # ----------------------------- #
 
-    l.section("Adding Global Attributes")
+    # l.section("Adding Global Attributes")
 
     dataset = dataset.assign_attrs(STANDARD_ADCP_GLOBAL_ATTRIBUTES)
 
@@ -488,7 +490,6 @@ An additionnal correction of {additional_correction} degree east was added to ha
     # ------- #
     # OUTPUTS #
     # ------- #
-    print(dataset.attrs["sensor_depth"])  # FIXME
     l.section("Output")
     if params["odf_output"]:
         if params["bodc_name"]:
@@ -498,7 +499,7 @@ An additionnal correction of {additional_correction} degree east was added to ha
 
         odf = make_odf(dataset, sensor_metadata, global_attrs, generic_to_p01_name)
 
-        if isinstance(params["odf_output"], bool):
+        if params["odf_output"] is True:
             odf_output = (
                 odf.odf["file_specification"]
                 if odf.odf["file_specification"]
@@ -556,6 +557,7 @@ def _load_adcp_data(params: tp.Dict) -> tp.Type[xr.Dataset]:
         trailing_index=trailing_index,
         orientation=params["adcp_orientation"],
         sensor_depth=params["sensor_depth"],
+        depth_range=params["depth_range"],
     )
 
     dataset = dataset.sel(time=slice(start_time, end_time))
@@ -739,7 +741,7 @@ def _magnetnic_correction(dataset: tp.Type[xr.Dataset], magnetic_declination: fl
     dataset.u.values, dataset.v.values = magnetic_to_true(
         dataset.u, dataset.v, magnetic_declination
     )
-    l.log(f"Velocities transformed to true north and True east.")
+    l.log(f"Velocities transformed to true north and true east.")
     # heading goes from -180 to 180
     if "heading" in dataset:
         dataset.heading.values = (

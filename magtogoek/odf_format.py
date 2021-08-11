@@ -747,7 +747,7 @@ def _format_headers(name: str, header: dict) -> str:
 def _format_list(_list: list, parents: str) -> str:
     s = ""
     if len(_list) == 0:
-        s += parents + "'" + f"," + NEWLINE
+        s += parents + "''," + NEWLINE
         return s
     else:
         for value in _list:

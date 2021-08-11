@@ -40,6 +40,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from magtogoek.adcp.rti_reader import RtiReader
+from magtogoek.adcp.rti_reader import l as rti_log
 from magtogoek.adcp.tools import dday_to_datetime64
 from magtogoek.utils import Logger, get_files_from_expresion
 from nptyping import NDArray
@@ -72,7 +73,7 @@ def load_adcp_binary(
     orientation: str = None,
     leading_index: int = None,
     trailing_index: int = None,
-    depth_range: tp.Tuple(int, float, list) = None,
+    depth_range: tp.Tuple[int, float, list] = None,
     sensor_depth: float = None,
 ):
     """Load RDI and RTI adcp data.
@@ -130,6 +131,7 @@ def load_adcp_binary(
         data = RtiReader(filenames=filenames).read(
             start_index=leading_index, stop_index=trailing_index
         )
+        l.logbook += rti_log.logbook
     elif sonar in RDI_SONAR:
         if sonar == "sw_pd0":
             sonar = "wh"
@@ -208,6 +210,7 @@ def load_adcp_binary(
 
     average_xducer_depth = round(np.median(data.XducerDepth), 3)
     xducer_depth = data.XducerDepth
+
     if sensor_depth:
         depth_difference = round(average_xducer_depth - sensor_depth, 3)
         if abs(depth_difference) > 0:
@@ -218,14 +221,18 @@ def load_adcp_binary(
             )
 
             l.log(
-                f"{-depth_difference} m was added to the depths mesured by the instruement."
+                f"{-depth_difference} m was added to the depths mesured by the instrument."
             )
+
         average_xducer_depth = sensor_depth
-        xducer_depth = xducer_depth - depth_difference
+        xducer_depth -= depth_difference
 
     if sonar == "os":
         if sensor_depth:
-            # data.dep was computed from the adcp XducerDepth value thus it needs to be corrected.
+            # For Ocean surveyor, data.dep correspond to depth below surface.
+            # These values was computed with the instrument XducerDepth value.
+            # Thus it needs to be corrected if a different sensro_depth was given.
+            # Ocean Surveyor are considere to be always down looking.
             depth = data.dep - depth_difference
         else:
             depth = data.dep
@@ -262,6 +269,7 @@ def load_adcp_binary(
 
     data.vel[data.vel.data == VEL_FILL_VALUE] = np.nan  # fill
 
+    # WATER VELOCITIES
     ds["u"] = (["depth", "time"], np.asarray(data.vel[:, :, 0].T))
     ds["v"] = (["depth", "time"], np.asarray(data.vel[:, :, 1].T))
     ds["w"] = (["depth", "time"], np.asarray(data.vel[:, :, 2].T))
@@ -276,6 +284,7 @@ def load_adcp_binary(
             ds["vb_pg"] = (["depth", "time"], np.asarray(data.VBPercentGood.T))
         l.log("Data from the Sentinel V fifth beam loaded.")
 
+    # BOTTOM VELOCITIES
     if "bt_vel" in data:
         if not (data.bt_vel == 0).all():
             data.bt_vel[data.bt_vel.data == VEL_FILL_VALUE] = np.nan
@@ -289,6 +298,7 @@ def load_adcp_binary(
                 "Bottom track values were all `0`, therefore they were dropped from the ouput."
             )
 
+    # BOTTOM DEPTH
     if "bt_depth" in data:
         if (data.bt_depth == 0).all():
             l.log(
@@ -299,17 +309,22 @@ def load_adcp_binary(
                 "Bottom depth values were all `nan`, therefore they were dropped from the ouput."
             )
         else:
-            if sonar == "os" or orientation == "up":
-                bt_depth = data.bt_depth
+            ds["bt_depth"] = (["time"], np.asarray(np.nanmean(data.bt_depth, axis=-1)))
+            if orientation == "up":
+                l.log(
+                    "In a `up` orientation, bottom_depth corresponds to the water height above adcp, thus should correspond to the xducer_depth mesurements and bottom velocities correspond to the water surface velocity."
+                )
+                l.log(
+                    f"The averaged xducer_depth computed from the bottom tracking is {np.median(data.bt_depth)}."
+                )
+            elif abs(depth_difference) > 0 and sonar == "os":
+                ds["bt_depth"] -= depth_difference
             else:
-                bt_depth = data.bt_depth + xducer_depth
+                ds["bt_depth"] += xducer_depth
 
-            ds["bt_depth"] = (
-                ["time"],
-                np.asarray(np.nanmean(bt_depth, axis=-1)),
-            )
             l.log("Bottom depth  data loaded")
 
+    # QUALITY
     if "pg" in data:
         if original_coordsystem == "beam":
             ds["pg"] = (["depth", "time"], np.asarray(np.mean(data.pg, axis=2).T))
@@ -393,19 +408,23 @@ def load_adcp_binary(
         if not isinstance(depth_range, (list, tuple)):
             depth_range = [depth_range]
         if len(depth_range) == 1:
-            ds = ds.sel(depth=slice(depth_range[0], None))
-            l.log(f"Bin of depth inferio to {depth_range[0]} m were cut.")
+            if depth_range[0] > ds.depth.max():
+                l.log(
+                    f"depth_range value is greater than the maximum bin depth. Depth slicing aborded."
+                )
+            else:
+                ds = ds.sel(depth=slice(depth_range[0], None))
+                l.log(f"Bin of depth inferior to {depth_range[0]} m were cut.")
         elif len(depth_range) == 2:
-            ds = ds.sel(depth=slice(depth_range))
+            ds = ds.sel(depth=slice(*depth_range))
             l.log(
                 f"Bin of depth inferior to {depth_range[0]} m and superior to {depth_range[1]} m were cut."
             )
         else:
             l.log(
-                f"depth_range expects 2 value or less but {len(depth_range)} were givien. Depth slicing aborded."
+                f"depth_range expects a maximum of 2 values but {len(depth_range)} were givien. Depth slicing aborded."
             )
 
-    # ajust Bin1Dist
     # -------------- #
     # Add attributes #
     # -------------- #
@@ -496,7 +515,7 @@ def coordsystem2earth(data: tp.Type[Bunch], orientation: str):
     """
 
     if data.trans.coordsystem not in ["beam", "xyz"]:
-        print(
+        l.log(
             f"Coordsystem value of {data.sysconfig.coordsystem} not recognized. Conversion to enu not available."
         )
 
@@ -512,7 +531,7 @@ def coordsystem2earth(data: tp.Type[Bunch], orientation: str):
             xyze = trans.beam_to_xyz(data.vel.data)
             bt_xyze = trans.beam_to_xyz(data.bt_vel.data)
         else:
-            print("Beam angle missing. Could not convert from beam coordinate.")
+            l.log("Beam angle missing. Could not convert from beam coordinate.")
 
     if (data.heading == 0).all() or (data.roll == 0).all() or (data.pitch == 0).all():
         data.trans["coordsystem"] = "xyz"
