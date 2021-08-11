@@ -552,10 +552,11 @@ def _print_description(group):
         click.echo("""FIXME""")
     if group == "config":
         click.echo(
-            """  The config command creates a `.ini`  configuration file.
-  The configuration `.ini` files is used to write the desired processing configuration
-  for different type of sensor (adcp, ctd, etc). Once created the configuration file
-  can be filled in any text editor or via the command optional arguments.""",
+            """  The config command is used to create `.ini` configuration files or `.json` 
+  platform files. Configuration `.ini` files are used to write the desired 
+  processing configuration for different types of sensor (adcp, ctd, etc). Once
+  created the configuration file   can be filled in any text editor or via
+  optional arguments. Platform files are used to store platform metedata.""",
         )
     if group == "quick":
         click.echo("""Quick way to process files.""")

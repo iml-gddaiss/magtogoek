@@ -395,6 +395,6 @@ def _format_string_sequence_to_list(sequence: str) -> tp.List:
     stripped = sequence.split("(")[-1].split("[")[-1].split("]")[0].split(")")[0]
 
     for sep in (":", ";", " ", "\n"):
-        comma_formated = stripped.replace(sep, ",")
+        stripped = stripped.replace(sep, ",")
 
-    return [s for s in comma_formated.split(",") if s != ""]
+    return [s for s in stripped.split(",") if s != ""]

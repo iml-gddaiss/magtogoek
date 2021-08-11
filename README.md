@@ -116,7 +116,15 @@ Platform files are structured as follow:
         "sounding": null,
         "longitude": null,
         "latitude": null,
-        "platform_specs": {},
+        "platform_specs": {
+            "name": null,
+            "type": null,
+            "model": null,
+            "height": null,
+            "diameter": null,
+            "weight": null,
+            "description": null
+            },
         "sensors": {
             "__SENSOR_ID__": {
                 "sensor_type": null,

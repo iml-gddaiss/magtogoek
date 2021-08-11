@@ -34,13 +34,13 @@ def _add_platform():
 
 def _add_platform_specs():
     return dict(
-        name="",
-        type="",
-        model="",
-        height="",
-        diameter="",
-        weight="",
-        description="",
+        name=None,
+        type=None,
+        model=None,
+        height=None,
+        diameter=None,
+        weight=None,
+        description=None,
     )
 
 
