@@ -87,12 +87,13 @@ The `process` commands allows the users to add more metadata to the output netcd
     $ mtgk config [adcp,] [config_name] [OPTIONS]
 ```
 Configuration files are made with the command `config` followed by a specific sensors. 
-Optionnal arguments can also be use to set some values in the configuration file directly from the terminal.
-Once filled out, configuration files can by passed to the `process` command,
+Optionnal arguments can also be use with the `config` command to preset some values in the configuration file.
+Once filled out, configuration files have to be pass to the `process` command,
 ```Shell
     $ mtgk process [config_file]
-
 ```
+
+A guide for the configurations files entry is available [here](config_user_guide.md)
 
 #### Metadata storage: platform files
 Magtogoek uses `json` files to store sensors (instruments) and platforms metadata which refered to as platform files.
