@@ -75,7 +75,7 @@ Magtogoek main purpose is to process raw instrument data and export them to netc
 Magtogoek can also read, modify and export to ODF format (Ocean Data Format).
 ODF is a text format used by Fisheries an Oceans Canada.
 
-#### Processing data
+### Processing data
 Data can be processed in two ways: Using the `quick` command or the `process` command. 
 Both command will produce a `.log` text files of the processing history.
 The `quick` commands allows to process instrument data directly from the command line where the default processing parameters/values can be modified with optionnal arguments.
@@ -92,10 +92,10 @@ Once filled out, configuration files have to be pass to the `process` command,
 ```Shell
     $ mtgk process [config_file]
 ```
-
+### Configuration guide
 A guide for the configurations files entry is available [here](config_user_guide.md)
 
-#### Metadata storage: platform files
+### Metadata storage: platform files
 Magtogoek uses `json` files to store sensors (instruments) and platforms metadata which refered to as platform files.
 A platform can be anything that has some instruments/sensors e.g. ship, mooring, buoy, drifter, rossete, etc.
 Platforms are json object containing a json object for each sensors. 

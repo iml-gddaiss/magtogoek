@@ -6,7 +6,7 @@ sensor_type                   = Auto generated. Field use by the `process` comma
 made_by                       = Auto generated.
 last_updated                  = Auto generated. 
 ```
-
+# Input and output path.
 In the `input` and `output` sections, empty fileds are considered False.
 If both `netcdf_output` and `odf_output` are false, `netcdf_output` will automatically be set to true.
 ```dosini
@@ -21,6 +21,7 @@ netcdf_output                 = `path/to/filenames` or (True, 1). If True or 1, 
 odf_output                    = `path/to/filenames` or (True, 1). If True or 1, odf_output is made from the `odf[files_specifications]`.
 ```
 
+# Metadata
 The `NETCDF_CF` section contains the metadata fields required by the CF conventions. Not necessary for ODF ouput.
 ```dosini
 [NETCDF_CF]
@@ -36,8 +37,9 @@ source                        = Orginal method that produced the data. Ex: Numer
 
 The `PROJECT`, `CRUISE` and `GLOBAL_ATTRIBUTES` sections contains metadata. 
 The netcdf global attributes will contains all the keys present in these sections, even if the field are left empty. 
-Removing them will remove them from the netcdf global attributes.
+Removing them will remove them from the netcdf global attributes. 
 For ODF output, only the `CRUISE` sections is required.
+For netcdf outpout, additionas global attributes can be added anywhere in these sections.
 ```dosini
 [PROJECT]
 project                       = 
@@ -73,7 +75,9 @@ standard_name_vocabulary      = Auto generated.
 aknowledgment                 = 
 ```
 
-In the `ADCP_PROCESSING`, `ADCP_QUALITY_CONTROL` and `ADCP_OUTPUT` sections, empty fileds are considered False. 
+# Specific processing commands
+In these section, empty fileds are considered False. 
+## ADCP
 ```dosini
 [ADCP_PROCESSING]
 yearbase                      = REQUIRED: YYYY, Year during which the sampling started.
