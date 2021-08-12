@@ -39,7 +39,6 @@ The `PROJECT`, `CRUISE` and `GLOBAL_ATTRIBUTES` sections contains metadata.
 The netcdf global attributes will contains all the keys present in these sections, even if the field are left empty. 
 Removing them will remove them from the netcdf global attributes. 
 For ODF output, only the `CRUISE` sections is required.
-For netcdf outpout, additionas global attributes can be added anywhere in these sections.
 ```dosini
 [PROJECT]
 project                       = 
