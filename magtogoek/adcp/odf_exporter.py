@@ -94,15 +94,13 @@ PARAMETERS_METADATA = {
 
 CRUISE_ATTRS = {
     "country_institute_code": ("dataset", "country_institute_code"),
-    "cruise_number": ("dataset", "cruise_number"),
     "organization": ("dataset", "organization"),
     "chief_scientist": ("dataset", "chief_scientist"),
     "start_date": ("dataset", "start_date"),
     "end_date": ("dataset", "end_date"),
-    "sensor_metadata": ("dataset", "sensor_metadata"),
+    "cruise_number": ("dataset", "cruise_number"),
     "cruise_name": ("dataset", "cruise_name"),
     "cruise_description": ("dataset", "cruise_description"),
-    "sensor_metadata": ("sensor_metadata", "sensor_metadata_name"),
 }
 EVENT_ATTRS = {
     "data_type": ("dataset", "data_type"),
@@ -168,10 +166,10 @@ def _make_cruise_header(odf, dataset, sensor_metadata):
             if value[1] in sensor_metadata:
                 odf.cruise[key] = sensor_metadata[value[1]]
 
-        if sensor_metadata["platform_type"] == "mooring":
-            odf.cruise["platform"] = "Oceanographic Buoy"
-        if sensor_metadata["platform_type"] == "ship":
-            odf.cruise["platform"] = "ship"
+    if sensor_metadata["platform_type"] == "mooring":
+        odf.cruise["platform"] = "Oceanographic Buoy"
+    elif sensor_metadata["platform_type"] == "ship":
+        odf.cruise["platform"] = "ship"
 
 
 def _make_event_header(odf, dataset, global_attrs):
