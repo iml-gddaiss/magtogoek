@@ -50,6 +50,15 @@ Now the terminal command line should look like
 From here, any installation must be done within the `mtgk` environment.
 Use the command `conda active [env-name]` to change between anaconda environment.
 
+### Install via `pip`
+First make sure you are in the desired python environment.
+```shell
+pip install git+https://github.com/JeromeJGuay/magtogoek
+```
+To update the package, run
+```shell
+pip install -U git+https://github.com/JeromeJGuay/magtogoek
+```
 ### Install via `git clone`
 First make sure you are in the desired python environment.
 Clone the respository from the [github repository](https://github.com/JeromeJGuay/magtogoek) and and install it with `pip install`. 
