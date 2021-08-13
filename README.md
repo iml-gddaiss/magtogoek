@@ -9,8 +9,10 @@ Supported data type:
 
 * ADCP : Accoustisc Doopler Current Profiler
   - RDI Teledyne: WorkHorse, SentinelV, OceanSurveilor 
-    Magtogoek uses the pycurrents package made by UH Currents Group of the University of Hawaii.
-    Virtual Machine can be easly install on Windows machine see below.(TODO)
+    Magtogoek uses the Pycurrents package made by UH Currents Group of the University of Hawaii.
+    Since Pycurrents only avaiable on unix system, a Linux/MacOS virtual machine is needed on Windows machine to use this package.
+    Pycurrents is automaticaly installed during Magtogoek installation.
+    Visit [pycurrents website](https://currents.soest.hawaii.edu/ocn_data_analysis/installation.html) for more details.
   - RTI Rowtech : 
     Magtogoek has a custom reader for RTI ENS files made using functions provided by Rowtech on
     their [repository](https://github.com/rowetechinc/RTI).
@@ -48,6 +50,7 @@ Now the terminal command line should look like
 From here, any installation must be done within the `mtgk` environment.
 Use the command `conda active [env-name]` to change between anaconda environment.
 
+### Install via `git clone`
 First make sure you are in the desired python environment.
 Clone the respository from the [github repository](https://github.com/JeromeJGuay/magtogoek) and and install it with `pip install`. 
 ```shell
@@ -57,11 +60,10 @@ Clone the respository from the [github repository](https://github.com/JeromeJGua
 The `-e` option will not copy the project to the pip package directory. 
 Instead, the python will import the package from the `git` folder.
 Running the `git pull` command within the project folder, command will update the package from the github main branch latest version.
+<!---
 ### Requirements
 Magtogoek uses the external python package pycurrents made by UH Currents Group at the University of Hawaii to process Teledyne ADCP data. 
 Pycurrents is only available on unix system.
-Visit [pycurrents website](https://currents.soest.hawaii.edu/ocn_data_analysis/installation.html) for more details.
-<!---
 Pycurrents can be clone from their [mercurial respository](https://currents.soest.hawaii.edu/hgstage/pycurrents) and install with `pip install`.
 ```shell
     $ hg clone https://currents.soest.hawaii.edu/hgstage/pycurrents
