@@ -58,13 +58,16 @@ The `-e` option will not copy the project to the pip package directory.
 Instead, the python will import the package from the `git` folder.
 Running the `git pull` command within the project folder, command will update the package from the github main branch latest version.
 ### Requirements
-
-Magtogoek requires the external python package pycurrents made by UH Currents Group at the University of Hawaii to process Teledyne data. Pycurrents is only available on unix system. Visit [pycurrents website](https://currents.soest.hawaii.edu/ocn_data_analysis/installation.html) for more details.
+Magtogoek uses the external python package pycurrents made by UH Currents Group at the University of Hawaii to process Teledyne ADCP data. 
+Pycurrents is only available on unix system.
+Visit [pycurrents website](https://currents.soest.hawaii.edu/ocn_data_analysis/installation.html) for more details.
+<!---
 Pycurrents can be clone from their [mercurial respository](https://currents.soest.hawaii.edu/hgstage/pycurrents) and install with `pip install`.
 ```shell
     $ hg clone https://currents.soest.hawaii.edu/hgstage/pycurrents
     $ pip install pycurrents
 ```
+-->
 ## Quick start
 From the terminal, within the same python environment it was installed in, type `mtgk` to run the CLI application. 
 Using the command -h/--help and --info will give you informations on the different commands.
