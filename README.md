@@ -29,15 +29,13 @@ Note that file name will change depending on the version.
 Once Anaconda is installed, the terminal command line should look something like:
 ```shell
     (base):$ 
-```
-
-This means that the installation worked and the you are in the `base` anaconda environnment.
+This means that the installation worked and you are in the `base` anaconda environment.
 If `base` does not show up try this:
 ```shell
     $ cd 
     $ source anaconda3/bin/activate
 ```
-Next, we create a Anaconda environnement where we can use magtogoek without any dependency or version issues.
+Next, we create a Anaconda environment where we can use magtogoek without any dependency or version issues.
 To do so run:
 ```shell
     $ conda create -n mtgk python=3 matplotlib scipy numpy pandas xarray 
@@ -45,10 +43,8 @@ To do so run:
 ```
 Now the terminal command line should look like
 ```shell
-    (mtgk):$ 
 ```
-From here, any installation must be done within the `mtgk`.
-Use the command `conda active [env-name]` to change between anaconda environment.
+From here, any installation must be done within the `mtgk` environment.
 ### Install via `git clone`
 First make sure you are in the desired python environment.
 Clone the respository from the [github repository](https://github.com/JeromeJGuay/magtogoek) and and install it with `pip install`. 
@@ -58,7 +54,7 @@ Clone the respository from the [github repository](https://github.com/JeromeJGua
 ```
 The `-e` option will not copy the project to the pip package directory. 
 Instead, the python will import the package from the `git` folder.
-Running the `git pull` command will update the package from the github main branch latest version.
+Running the `git pull` command within the project folder, command will update the package from the github main branch latest version.
 ### Requirements
 
 Magtogoek requires the external python package pycurrents made by UH Currents Group at the University of Hawaii to process Teledyne data. Pycurrents is only available on unix system. Visit [pycurrents website](https://currents.soest.hawaii.edu/ocn_data_analysis/installation.html) for more details.
@@ -68,10 +64,10 @@ Pycurrents can be clone from their [mercurial respository](https://currents.soes
     $ pip install pycurrents
 ```
 ## Quick start
-From the terminal, within the same python environnement it was installed in, type `mtgk` to run the CLI application. 
+From the terminal, within the same python environment it was installed in, type `mtgk` to run the CLI application. 
 Using the command -h/--help and --info will give you informations on the different commands.
 
-Magtogoek main purpose is to process raw instrument data and export them to netcdf format following the CF metadata convention. 
+Magtogoek main purpose is to process raw instrument data and export them in the netcdf format following the CF metadata convention. 
 Magtogoek can also read, modify and export to ODF format (Ocean Data Format).
 ODF is a text format used by Fisheries an Oceans Canada.
 
@@ -96,11 +92,11 @@ Once filled out, configuration files have to be pass to the `process` command,
 A guide for the configurations files entry is available [here](config_user_guide.md)
 
 ### Metadata storage: platform files
-Magtogoek uses `json` files to store sensors (instruments) and platforms metadata which refered to as platform files.
+Magtogoek uses `json` files to store sensors (instruments) and platforms metadata which are refered to as `platform_files`.
 A platform can be anything that has some instruments/sensors e.g. ship, mooring, buoy, drifter, rossete, etc.
 Platforms are json object containing a json object for each sensors. 
 The PLATFORM\_ID for the platform should include the year or the version of the platform and a new platform should be added if modifications are made to a sensor or to the platform.
-When processing data, a platform\_file, platform\_id and sensor\_id have to be provided to add platform and sensor metadata.
+When processing data, a `platform_file`, `platform_id` and `sensor_id` have to be provided to add platform and sensor metadata.
 A plaform file is made with the command `config platform`:
 ```Shell
     $ mtgk config platform FILENAME 
@@ -176,5 +172,5 @@ from magtogoek.navigation import compute_navigation
 from magtogoek.odf_format import Odf
 ```
 ## Acknowledgement
-A special thanks goes to UH Currents Group for their work on Pycurrents.
+A special thank goes to UH Currents Group for their work on Pycurrents.
 
