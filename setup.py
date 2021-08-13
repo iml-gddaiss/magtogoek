@@ -19,6 +19,7 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/JeromeJGuay/magtogoek",
     install_requires=[
+        "pycurrents @ hg+https://currents.soest.hawaii.edu/hgstage/pycurrents",
         "numpy",
         "xarray",
         "pandas",
