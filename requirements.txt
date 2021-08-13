@@ -1,1 +1,1 @@
-pycurrents
+hg+https://currents.soest.hawaii.edu/hgstage/pycurrents
