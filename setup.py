@@ -19,7 +19,6 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/JeromeJGuay/magtogoek",
     install_requires=[
-        "pycurrents @ hg+https://currents.soest.hawaii.edu/hgstage/pycurrents",
         "numpy",
         "xarray",
         "pandas",
@@ -38,6 +37,7 @@ setup(
         "pygeodesy",
         "crc16",
         "gpxpy",
+        "pycurrents @ hg+https://currents.soest.hawaii.edu/hgstage/pycurrents",
     ],
     packages=find_packages(),
     package_data={"magtogoek": ["magtogoek/files/*", "test/files/*"]},
