@@ -31,6 +31,7 @@ Note that file name will change depending on the version.
 Once Anaconda is installed, the terminal command line should look something like:
 ```shell
     (base):$ 
+```   
 This means that the installation worked and you are in the `base` anaconda environment.
 If `base` does not show up try this:
 ```shell
