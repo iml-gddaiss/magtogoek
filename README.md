@@ -43,9 +43,11 @@ To do so run:
 ```
 Now the terminal command line should look like
 ```shell
+    (mtgk):$ 
 ```
 From here, any installation must be done within the `mtgk` environment.
-### Install via `git clone`
+Use the command `conda active [env-name]` to change between anaconda environment.
+
 First make sure you are in the desired python environment.
 Clone the respository from the [github repository](https://github.com/JeromeJGuay/magtogoek) and and install it with `pip install`. 
 ```shell
@@ -95,7 +97,7 @@ A guide for the configurations files entry is available [here](config_user_guide
 Magtogoek uses `json` files to store sensors (instruments) and platforms metadata which are refered to as `platform_files`.
 A platform can be anything that has some instruments/sensors e.g. ship, mooring, buoy, drifter, rossete, etc.
 Platforms are json object containing a json object for each sensors. 
-The PLATFORM\_ID for the platform should include the year or the version of the platform and a new platform should be added if modifications are made to a sensor or to the platform.
+The `PLATFORM_ID` for the platform should include the year or the version of the platform and a new platform should be added if modifications are made to a sensor or to the platform.
 When processing data, a `platform_file`, `platform_id` and `sensor_id` have to be provided to add platform and sensor metadata.
 A plaform file is made with the command `config platform`:
 ```Shell
