@@ -50,9 +50,11 @@ Now the terminal command line should look like
 ```
 From here, any installation must be done within the `mtgk` environment.
 Use the command `conda active [env-name]` to change between anaconda environment.
+### Installing `mercurial` and `git`.
+Both `mercurial` and `git` must be install to install `Magtogoek`. 
 
 ### Install via `pip`
-First make sure you are in the desired python environment.
+`First make sure you are in the desired python environment.
 ```shell
 pip install git+https://github.com/JeromeJGuay/magtogoek
 ```
