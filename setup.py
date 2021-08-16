@@ -11,10 +11,7 @@ setup(
     version=VERSION,
     author="JeromeJGuay,",
     author_email="jerome.guay@dfo-mpo.gc.ca",
-    description="""
-    This package aim to process ocean data from the different instruments.
-    Magtogoek is the Algonquin name for the Saint-Lawrence River which mean
-    'the path that walks.'""",
+    description="""Magtogoek is a Linux python package and command line application (CLI) for processing ocean data. At the moment, only Accoustisc Doopler Current Profiler (ADCP) data can be processed. This package is developped by the Scientific Advice, Information and Support Branch at the Fisheries and Ocean Canada Maurice-Lamontagne Institute.""",
     long_description="",
     long_description_content_type="text/markdown",
     url="https://github.com/JeromeJGuay/magtogoek",
@@ -44,9 +41,5 @@ setup(
     include_package_data=True,
     classifiers=["Programming Language :: Python :: 3"],
     python_requires="~=3.7",
-    entry_points={
-        "console_scripts": [
-            "mtgk=magtogoek.app:magtogoek",
-        ]
-    },
+    entry_points={"console_scripts": ["mtgk=magtogoek.app:magtogoek",]},
 )
