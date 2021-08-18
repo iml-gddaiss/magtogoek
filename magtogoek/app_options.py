@@ -76,8 +76,7 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
                 "-s",
                 "--sonar",
                 type=click.Choice(["wh", "sv", "os", "sw", "sw_pd0"]),
-                help="""String designating type of adcp. This
-    is fed to CODAS Multiread or switches to the magtogoek RtiReader.""",
+                help="""String designating the type of adcp. Use --info option for more information.""",
             )
         ]
     if yearbase:
@@ -86,7 +85,7 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
                 "-y",
                 "--yearbase",
                 type=click.INT,
-                help="""year when the adcp sampling started. ex: `1970`""",
+                help="""Year when the adcp sampling started. ex: `1970`""",
             )
         ]
     options += [
@@ -126,10 +125,7 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
             default=None,
         ),
         click.option(
-            "--qc/--no-qc",
-            help="Do quality control.",
-            default=True,
-            show_default=True,
+            "--qc/--no-qc", help="Do quality control.", default=True, show_default=True,
         ),
         click.option(
             "-a",
@@ -207,6 +203,16 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
             used for the adcp depth (XducerDepth).""",
             default=None,
             show_default=True,
+        ),
+        click.option(
+            "-r",
+            "--depth_range",
+            type=click.FLOAT,
+            nargs=1,
+            help="""Specify, 1 or 2 value. Either `-r min`, or `-r min -r max` in meter.
+            All bin outside this range will be cut.""",
+            default=None,
+            multiple=True,
         ),
         click.option(
             "-M",

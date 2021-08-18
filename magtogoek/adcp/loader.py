@@ -32,6 +32,7 @@ See Also
 
 """
 import logging
+import sys
 import typing as tp
 from pathlib import Path
 
@@ -151,7 +152,11 @@ def load_adcp_binary(
                     "The sum of the trim values is greater than the number of ensemble."
                 )
         except RuntimeError:
-            raise FilesFormatError(f"Not RDI pd0 file format. RDI sonar : {RDI_SONAR}")
+            #                        raise FilesFormatError(
+            print(
+                f"ERROR: The input_files are not in a RDI pd0 format. RDI sonar : {RDI_SONAR}"
+            )
+            exit()
 
         # Reading the files FixedLeaders to check for invalid config.
         invalid_config_count = check_PD0_invalid_config(
@@ -317,8 +322,9 @@ def load_adcp_binary(
                 l.log(
                     f"The averaged xducer_depth computed from the bottom tracking is {np.median(data.bt_depth)}."
                 )
-            elif abs(depth_difference) > 0 and sonar == "os":
-                ds["bt_depth"] -= depth_difference
+            elif sensor_depth:
+                if abs(depth_difference) > 0 and sonar == "os":
+                    ds["bt_depth"] -= depth_difference
             else:
                 ds["bt_depth"] += xducer_depth
 
@@ -541,18 +547,10 @@ def coordsystem2earth(data: tp.Type[Bunch], orientation: str):
             data.bt_vel.data[:, i] = np.round(bt_xyze[:, i], decimals=3)
     else:
         enu = transform.rdi_xyz_enu(
-            xyze,
-            data.heading,
-            data.pitch,
-            data.roll,
-            orientation=orientation,
+            xyze, data.heading, data.pitch, data.roll, orientation=orientation,
         )
         bt_enu = transform.rdi_xyz_enu(
-            bt_xyze,
-            data.heading,
-            data.pitch,
-            data.roll,
-            orientation=orientation,
+            bt_xyze, data.heading, data.pitch, data.roll, orientation=orientation,
         )
         data.trans["coordsystem"] = "earth"
 

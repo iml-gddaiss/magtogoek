@@ -268,6 +268,7 @@ def quick_process_adcp(params: tp.Dict):
     global_attrs = {
         "date_created": pd.Timestamp.now().strftime("%Y-%m-%d"),
         "publisher_name": getpass.getuser(),
+        "source": "adcp",
     }
 
     sensor_metadata = _default_platform()
@@ -371,7 +372,7 @@ def _process_adcp_data(params: tp.Dict, sensor_metadata: tp.Dict, global_attrs):
         if "bt_depth" in dataset:
             dataset.attrs["sounding"] = round(np.median(dataset.bt_depth.data), 2)
 
-    if not params["force_platform_metadata"] and sensor_metadata["sensor_depth"]:
+    if not params["force_platform_metadata"]:
         _set_xducer_depth_as_sensor_depth(dataset)
 
     # setting Metadata from the platform_file
@@ -401,8 +402,7 @@ def _process_adcp_data(params: tp.Dict, sensor_metadata: tp.Dict, global_attrs):
                 4,
             )
             _magnetnic_correction(
-                dataset,
-                additional_correction,
+                dataset, additional_correction,
             )
             l.log(
                 f"""Magnetic declination found in adcp file: {dataset.attrs["magnetic_declination"]} degree east.
@@ -423,9 +423,7 @@ An additionnal correction of {additional_correction} degree east was added to ha
     if params["quality_control"]:
         _quality_control(dataset, params)
     else:
-        no_adcp_quality_control(
-            dataset,
-        )
+        no_adcp_quality_control(dataset,)
 
     l.reset()
 

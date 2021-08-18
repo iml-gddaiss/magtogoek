@@ -77,6 +77,7 @@ ADCP_CONFIG_STRUCT = {
     "error_velocity_threshold": "ADCP_QUALITY_CONTROL",
     "sidelobes_correction": "ADCP_QUALITY_CONTROL",
     "bottom_depth": "ADCP_QUALITY_CONTROL",
+    "depth_range": "ADCP_QUALITY_CONTROL",
     "pitch_threshold": "ADCP_QUALITY_CONTROL",
     "roll_threshold": "ADCP_QUALITY_CONTROL",
     "leading_trim": "ADCP_QUALITY_CONTROL",
