@@ -87,7 +87,7 @@ def _load_gps(filename: str, file_type: str) -> tp.Type[xr.Dataset]:
     dataset = xr.Dataset(
         {"lon": (["time"], gps_data["lon"]), "lat": (["time"], gps_data["lat"])},
         coords={"time": gps_data["time"]},
-        attrs={"filename": Path(filename).absolute()},
+        attrs={"filename": str(Path(filename).resolve())},
     )
     return dataset.sortby("time")
 
@@ -127,9 +127,7 @@ def _read_nmea(filename: str) -> tp.Dict:
 
 
 def compute_navigation(
-    filenames: str,
-    output_name: str = None,
-    window: int = 1,
+    filenames: str, output_name: str = None, window: int = 1,
 ):
     """Compute the `bearing`, `speed`, `u_ship` and `v_ship` from gps data in nmea text format or gpx xml format.
 
@@ -147,8 +145,9 @@ def compute_navigation(
 
     """
 
-    dataset = load_navigation(filenames)
+    filenames = get_files_from_expresion(filenames)
 
+    dataset = load_navigation(filenames)
     dataset = _compute_navigation(dataset, window=window)
 
     dataset.attrs["input_files"] = filenames
@@ -162,6 +161,8 @@ def compute_navigation(
     _plot_navigation(dataset)
 
     dataset.to_netcdf(Path(output_name).with_suffix(".nc"))
+
+    return dataset
 
 
 def _compute_navigation(

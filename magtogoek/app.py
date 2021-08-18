@@ -157,9 +157,15 @@ def process(config_file, info):
     # Doing so would allow the user to pass config options. The load_configfile
     # command is already able to take uptaded_params options and update de configile.
     # The same options (or nearly all the same )as for adcp_config could be use.
+    from configparser import ParsingError
+
     from magtogoek.configfile import load_configfile
 
-    config = load_configfile(config_file)
+    try:
+        config = load_configfile(config_file)
+    except ParsingError:
+        print("Failed to open the given configfile.\n mtgk process aborded.")
+        exit()
 
     if config["HEADER"]["sensor_type"] == "adcp":
         from magtogoek.adcp.process import process_adcp
@@ -239,9 +245,7 @@ def config_platform(ctx, filename, info):
 @add_options(adcp_options())
 @click.pass_context
 def config_adcp(
-    ctx,
-    config_name,
-    **options,
+    ctx, config_name, **options,
 ):
     """Command to make an adcp config files. The [OPTIONS] can be added
     before or after the [config_name]."""
@@ -303,11 +307,7 @@ def config_adcp(
 )
 @click.pass_context
 def quick_adcp(
-    ctx,
-    input_files,
-    sonar,
-    yearbase,
-    **options,
+    ctx, input_files, sonar, yearbase, **options,
 ):
     """Command to make an quickly process adcp files. The [OPTIONS] can be added
     before or after the [inputs_files]."""
@@ -365,11 +365,7 @@ def check_rti(ctx, input_files, **options):
     help="Name for the output file.",
 )
 @click.option(
-    "-w",
-    "--window",
-    type=click.INT,
-    default=1,
-    help="Length of the averaging window.",
+    "-w", "--window", type=click.INT, default=1, help="Length of the averaging window.",
 )
 @click.pass_context
 def navigation(ctx, input_files, **options):
@@ -439,9 +435,7 @@ def _print_passed_options(ctx_params: tp.Dict):
 
 
 def _print_logo(
-    logo_path: str = "files/logo.json",
-    group: str = "",
-    version: str = "unavailable",
+    logo_path: str = "files/logo.json", group: str = "", version: str = "unavailable",
 ):
     """open and print logo from logo.json
     If a process is given, prints the process logo.
@@ -461,9 +455,7 @@ def _print_logo(
 
     click.echo(
         click.style(
-            f"version: {VERSION}" + f" {group} ".rjust(67, " "),
-            fg="green",
-            bold=True,
+            f"version: {VERSION}" + f" {group} ".rjust(67, " "), fg="green", bold=True,
         )
     )
     click.echo(click.style("=" * TERMINAL_WIDTH, fg="white", bold=True))
