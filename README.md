@@ -13,8 +13,8 @@ Supported data type:
     Since Pycurrents only avaiable on unix system, a Linux/MacOS virtual machine is needed on Windows machine to use this package.
     Pycurrents is automaticaly installed during Magtogoek installation.
     Visit [pycurrents website](https://currents.soest.hawaii.edu/ocn_data_analysis/installation.html) for more details.
-  - RTI Rowtech : 
-    Magtogoek has a custom reader for RTI ENS files made using functions provided by Rowtech on
+  - RTI (Rowe Technology Inc) : 
+    Magtogoek has a custom reader for RTI ENS files made using functions provided by RTI on
     their [repository](https://github.com/rowetechinc/RTI).
 * More to come.
 
@@ -163,7 +163,7 @@ To add platform or sensors, copy and paste sections with all the keys.
 ### Examples
 Example of platform and configuration files are available in th `test` section of the Magtogoek project. 
 Data are also included to test the `quick` and `process` command.
-Supposing you are in the test/files directory of the project, the `iml4_2017_sw_01.ENS` and `iml4_2017_sw_02.ENS` Rowtech files can be process using the `adcp_iml4_2017.ini` config file and the `process` command,
+Supposing you are in the test/files directory of the project, the `iml4_2017_sw_01.ENS` and `iml4_2017_sw_02.ENS` RTI files can be process using the `adcp_iml4_2017.ini` config file and the `process` command,
 ```shell
 ../magtogoek/test/files$ mtgk process adcp_iml4_2017.ini
 ```
