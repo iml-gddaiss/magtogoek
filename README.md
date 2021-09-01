@@ -161,13 +161,13 @@ That way, only the platform\_id and sensor\_id would be required to add sensors 
 The `"platform_specs"` object is used by the ODF exporter to write the `BUOY_HEADER` metadata.
 To add platform or sensors, copy and paste sections with all the keys.
 ### Examples
-Example of platform and configuration files are available in th `test` section of the Magtogoek project. 
+Example of platform and configuration files are available in the `test` section of the Magtogoek project. 
 Data are also included to test the `quick` and `process` command.
-Supposing you are in the test/files directory of the project, the `iml4_2017_sw_01.ENS` and `iml4_2017_sw_02.ENS` RTI files can be process using the `adcp_iml4_2017.ini` config file and the `process` command,
+Supposing you are in the test/files directory of the project, the `iml4_2017_sw_01.ENS` and `iml4_2017_sw_02.ENS` RTI files can be processed using the `adcp_iml4_2017.ini` config file and the `process` command,
 ```shell
 ../magtogoek/test/files$ mtgk process adcp_iml4_2017.ini
 ```
-or with th `quick` command:
+or with the `quick` command:
 ```shell
 ../magtogoek/test/files$ mtgk quick adcp iml4_2017_sw_0*.ENS -s sw -y 2017 -n iml4_2017_sw_quick
 ```
@@ -181,7 +181,7 @@ You can get info and help on these commands using the --info or -h options.
 
 ## More tools
 Information on the following functions and object usage is accessible with the `help()` function.
-#### Navgiation 
+#### Navigation 
 ```python
 from magtogoek.navigation import load_navigation
 from magtogoek.navigation import compute_navigation
