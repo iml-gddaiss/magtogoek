@@ -32,19 +32,19 @@ See Also
 
 """
 import logging
-import sys
+# import sys
 import typing as tp
 from pathlib import Path
 
-import click
+# import click
 import numpy as np
-import pandas as pd
+# import pandas as pd
 import xarray as xr
 from magtogoek.adcp.rti_reader import RtiReader
 from magtogoek.adcp.rti_reader import l as rti_log
 from magtogoek.adcp.tools import dday_to_datetime64
 from magtogoek.utils import Logger, get_files_from_expresion
-from nptyping import NDArray
+# from nptyping import NDArray
 from pycurrents.adcp import rdiraw, transform
 from pycurrents.adcp.rdiraw import Bunch, Multiread, rawfile
 
@@ -98,9 +98,9 @@ def load_adcp_binary(
         Adcp orientation. Either `up` or `down`. Will overwrite the value
         of the binary file.
     leading_index :
-        FIXME
+        Number of ensemble to cut from the start.
     trailing_index :
-        FIXME
+        Number of ensemble to cut from the end.
     depth_range :
         Depth min or (min max)
     sensor_depth:
@@ -141,7 +141,7 @@ def load_adcp_binary(
             l.log(_fprint_filenames("RDI pd0", filenames))
 
         if trailing_index:
-            trailing_index = -trailing_index
+            trailing_index *= -1
 
         try:
             data = Multiread(fnames=filenames, sonar=sonar, yearbase=yearbase).read(

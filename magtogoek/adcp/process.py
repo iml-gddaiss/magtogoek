@@ -64,14 +64,14 @@ import pandas as pd
 import xarray as xr
 from magtogoek.adcp.loader import load_adcp_binary
 from magtogoek.adcp.odf_exporter import make_odf
-from magtogoek.adcp.quality_control import adcp_quality_control
-from magtogoek.adcp.quality_control import l as qc_log
-from magtogoek.adcp.quality_control import no_adcp_quality_control
+# from magtogoek.adcp.quality_control import l as qc_log
+from magtogoek.adcp.quality_control import (adcp_quality_control,
+                                            no_adcp_quality_control)
 from magtogoek.adcp.tools import magnetic_to_true
 from magtogoek.attributes_formatter import (
     compute_global_attrs, format_variables_names_and_attributes)
 from magtogoek.navigation import load_navigation
-from magtogoek.tools import get_gps_bearing, vincenty
+# from magtogoek.tools import get_gps_bearing, vincenty
 from magtogoek.utils import Logger, json2dict
 
 l = Logger(level=0)
@@ -276,6 +276,8 @@ def quick_process_adcp(params: tp.Dict):
     sensor_metadata["platform_type"] = params["platform_type"]
 
     params["force_platform_metadata"] = False
+    if params["odf_output"] in [1, "true", "True"]:
+        params["odf_output"] = True
 
     _pipe_to_process_adcp_data(params, sensor_metadata, global_attrs)
 
@@ -286,19 +288,23 @@ def _pipe_to_process_adcp_data(params, sensor_metadata, global_attrs):
         Looks for `merge_output_files` in the ConfigFile and if False,
     each file in `input_files` is process individually and then call _porcess_adcp_data.
     """
+
     if not params["merge_output_files"]:
-        params["merge"] = True
-        for fn, count in zip(params["input_files"], range(len(params["input_files"]))):
-            if params["netcdf_output"]:
-                params["netcdf_output"] = (
-                    str(Path(params["netcdf_output"]).name) + f"_{count}"
-                )
-            params["input_files"] = fn
+        netcdf_output = params["netcdf_output"]
+        input_files = params["input_files"]
+        for filename, count in zip(input_files, range(len(input_files))):
+            if netcdf_output:
+                if isinstance(netcdf_output, bool):
+                    params["netcdf_output"] = filename
+                else:
+                    params["netcdf_output"] = (
+                        str(Path(netcdf_output).name) + f"_{count}"
+                    )
+            params["input_files"] = [filename]
+
             _process_adcp_data(params, sensor_metadata, global_attrs)
-            click.echo(click.style("=" * TERMINAL_WIDTH, fg="white", bold=True))
     else:
         _process_adcp_data(params, sensor_metadata, global_attrs)
-        click.echo(click.style("=" * TERMINAL_WIDTH, fg="white", bold=True))
 
 
 def _process_adcp_data(params: tp.Dict, sensor_metadata: tp.Dict, global_attrs):
@@ -408,10 +414,11 @@ def _process_adcp_data(params: tp.Dict, sensor_metadata: tp.Dict, global_attrs):
                 f"""Magnetic declination found in adcp file: {dataset.attrs["magnetic_declination"]} degree east.
 An additionnal correction of {additional_correction} degree east was added to have a  {params['magnetic_declination']} degree east correction."""
             )
+        dataset.attrs["magnetic_declination"] = params["magnetic_declination"]
 
     else:
         dataset.attrs["magnetic_declination"] = 0
-    dataset.attrs["magnetic_declination"] = params["magnetic_declination"]
+
     dataset.attrs["magnetic_declination_units"] = "degree east"
 
     # --------------- #
@@ -479,7 +486,7 @@ An additionnal correction of {additional_correction} degree east was added to ha
             del dataset.attrs[attr]
 
     for attr in list(dataset.attrs.keys()):
-        if not dataset.attrs[attr]:
+        if dataset.attrs[attr] is None:
             if _drop_none_attrs:
                 del dataset.attrs[attr]
             else:
@@ -517,7 +524,7 @@ An additionnal correction of {additional_correction} degree east was added to ha
         l.log(f"odf file made -> {odf_output}")
         log_output = odf_output
 
-    if not params["odf_output"] and not params["netcdf_output"]:
+    elif not params["netcdf_output"]:
         params["netcdf_output"] = True
 
     if params["netcdf_output"]:
@@ -537,6 +544,8 @@ An additionnal correction of {additional_correction} degree east was added to ha
             print(f"log file made -> {log_output}")
 
     # MAKE_FIG TODO
+
+    click.echo(click.style("=" * TERMINAL_WIDTH, fg="white", bold=True))
 
 
 def _load_adcp_data(params: tp.Dict) -> tp.Type[xr.Dataset]:
@@ -627,6 +636,7 @@ def _default_platform() -> dict:
     sensor_metadata = dict()
     for key in PLATFORM_FILE_DEFAULT_KEYS:
         sensor_metadata[key] = None
+    sensor_metadata["platform_specs"] = dict()
     return sensor_metadata
 
 
@@ -752,7 +762,7 @@ def _get_datetime_and_count(trim_arg: str):
     """Get datime and count from trim_arg.
 
     If `trim_arg` is None, returns (None, None)
-    If 'T' is a datetimeor a count returns (Timstamp(trim_arg), None)
+    If 'T' is a datetime or a count returns (Timstamp(trim_arg), None)
     Else returns (None, int(trim_arg))
 
     Returns:
@@ -764,8 +774,13 @@ def _get_datetime_and_count(trim_arg: str):
 
     """
     if trim_arg:
-        if "T" in trim_arg:
-            return (pd.Timestamp(trim_arg), None)
+        if not trim_arg.isdecimal():
+            try:
+                return (pd.Timestamp(trim_arg), None)
+            except:
+                print("Bad datetime format for trim. Use YYYY-MM-DDTHH:MM:SS.ssss")
+                print("Process aborded")
+                exit()
         else:
             return (None, int(trim_arg))
     else:

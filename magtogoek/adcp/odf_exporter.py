@@ -270,24 +270,21 @@ def _make_buoy_instrument_comment(odf, instrument, dataset, sensor_metadata):
     """
     configuration = "CONFIGURATION_01"
     for key, value in BUOY_INSTRUMENT_CONFIGURATION.items():
-        if (
-            key == "Ping_Interval_s"
-            and "ping_per_ensemble" in dataset.attrs
-            and "delta_t_sec" in dataset.attrs
-        ):
-            v = round(
-                dataset.attrs["ping_per_ensemble"] / dataset.attrs["delta_t_sec"], 2
-            )
-        elif (
-            key == "Magnetic_Declination"
-            and "magnetic_declination" in dataset.attrs
-            and "magnetic_declination_units" in dataset.attrs
-        ):
-            v = (
-                str(dataset.attrs["magnetic_declination"])
-                + " "
-                + dataset.attrs["magnetic_declination_units"]
-            )
+        if key == "Ping_Interval_s":
+            if "ping_per_ensemble" in dataset.attrs and "delta_t_sec" in dataset.attrs:
+                v = round(
+                    dataset.attrs["ping_per_ensemble"] / dataset.attrs["delta_t_sec"], 2
+                )
+        elif key == "Magnetic_Declination":
+            if (
+                "magnetic_declination" in dataset.attrs
+                and "magnetic_declination_units" in dataset.attrs
+            ):
+                v = (
+                    str(dataset.attrs["magnetic_declination"])
+                    + " "
+                    + dataset.attrs["magnetic_declination_units"]
+                )
         elif key == "Bin_Count":
             v = len(dataset.depth)
         elif value[0] == "dataset" and value[1] in dataset.attrs:
@@ -360,7 +357,6 @@ def _make_parameter_headers(odf, dataset, generic_to_p01_name=None):
 
             items["depth"] = dataset.attrs["sensor_depth"]
             items["magnetic_variation"] = dataset.attrs["magnetic_declination"]
-
             items["type"] = PARAMETERS_TYPES[str(dataset[var].data.dtype)]
 
             if not "null_value" in items:

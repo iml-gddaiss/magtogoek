@@ -111,7 +111,7 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
             "--leading-trim",
             type=click.STRING,
             help="""Removes a count of leading data or data before a given date or datetime.
-    Formats: Date "YYYYMMDDT" or "YYYYMMDDThhmmss.ssss",  Count (int): """,
+    Formats: Date "YYYY-MM-DD" or "YYYY-MM-DDThh:mm:ss.ssss",  Count (int): """,
             nargs=1,
             default=None,
         ),
@@ -120,7 +120,7 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
             "--trailing-trim",
             type=click.STRING,
             help="""Removes a count of trailing data or data after a given date or datetime.
-    Formats: Date "YYYYMMDDT" or "YYYYMMDDThhmmss.ssss",  Count (int): """,
+    Formats: Date "YYYY-MM-DD" or "YYYY-MM-DDThh:mm:ss.ssss",  Count (int): """,
             nargs=1,
             default=None,
         ),

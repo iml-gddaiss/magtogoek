@@ -75,15 +75,17 @@ aknowledgment                 =
 ```
 
 # Specific processing commands
-In these section, empty fileds are considered False. 
+In these section, empty fileds are considered False.
 ## ADCP
 ```dosini
 [ADCP_PROCESSING]
 yearbase                      = REQUIRED: YYYY, Year during which the sampling started.
 adcp_orientation              = Adcp orientation: Either looking `up` or `down`.
 sonar                         = REQUIRED: One of [`os`, `wh`, `sv`, `sw`, `sw_pd0`].
-navigation_file               = `path/to/netcdf_file` with navigation data. See the `compute nav` command for more info.
-magnetic_declination          = Declination of the magnetic north in degree east. If True, this value overwrite the one in the adcp raw file.
+navigation_file               = `path/to/netcdf_file` with navigation data. See the `compute nav` 
+                                command for more info.
+magnetic_declination          = Declination of the magnetic north in degree east. The value given 
+                                should be absolute, not relative to the one configured in the adcp. 
 sensor_depth                  = Sensor depth in meter. Will overwrite the one found in the adcp file.
 keep_bt                       = If True, bottom track data are kept and can be used for motion correction.
 
@@ -100,18 +102,20 @@ bottom_depth                  = A bottom depth value can be set for sidelobe cor
 pitch_threshold               = Value Between 0-180: Upper limit.
 roll_threshold                = Value Between 0-180: Upper limit.
 leading_trim                  = Removes a count of leading data or data before a given date or datetime.
-                                Formats: Date (`YYYYMMDDT` or `YYYYMMDDThhmmss.ssss`) or Count (integer).
-                                Date ex: 2000-01-01T00:00:00.0000 -> 20000101T0000000000 or 20000101T.
+                                Formats: Date (`YYYY-MM-DD` or `YYYY-MM-DDThh:mm:ss.ssss`) or Count (integer).
+                                Date ex: 2000-01-01T00:00:00.0000 -> 2000-01-01T00:00:00.0000 or 2000-01-01.
 trailing_trim                 = Removes a count of trailing data or data after a given date or datetime.
-                                Formats: Date (`YYYYMMDDT` or `YYYYMMDDThhmmss.ssss`) or Count (integer) 
-                                Date ex: 2000-01-01T00:00:00.0000 -> 20000101T0000000000 or 20000101T.
+                                Formats: Date (`YYYY-MM-DD` or `YYYY-MM-DDThh:mm:ss.ssss`) or Count (integer).
+                                Date ex: 2000-01-01T00:00:00.0000 -> 2000-01-01T00:00:00.0000 or 2000-01-01.
 depth_range                   = Value in meter. Cut the bin outside this range. Either `min` or `min, max`.
-motion_correction_mode        = Either `bt` or `nav`. `bt` uses bottom velocity and `nav` velocities computed form gps tracking. See the `compute nav` command for more info.
+motion_correction_mode        = Either `bt` or `nav`. `bt` uses bottom velocity and `nav` velocities computed 
+                                form gps tracking. See the `compute nav` command for more info.
 
 [ADCP_OUTPUT]
 merge_output_files            = If True, merge the input_files into a single output.
 bodc_name                     = If True, Netcdf variables will have bodc parameter code name.
-force_platform_metadata       = If True, Metadata from the platform file will overwrite those found in the raw file.
+force_platform_metadata       = If True, Metadata from the platform file will overwrite those found in the 
+                                raw file.
 drop_percent_good             = If True, percent good data are drop from the netcdf output.
 drop_correlation              = If True, correlation data are drop from the netcdf output.
 drop_amplitude                = If True, amplitude data are drop from the netcdf output.
