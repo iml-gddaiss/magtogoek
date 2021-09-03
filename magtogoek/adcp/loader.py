@@ -416,16 +416,21 @@ def load_adcp_binary(
         if len(depth_range) == 1:
             if depth_range[0] > ds.depth.max():
                 l.log(
-                    f"depth_range value is greater than the maximum bin depth. Depth slicing aborded."
+                    "depth_range value is greater than the maximum bin depth. Depth slicing aborded."
                 )
             else:
                 ds = ds.sel(depth=slice(depth_range[0], None))
                 l.log(f"Bin of depth inferior to {depth_range[0]} m were cut.")
         elif len(depth_range) == 2:
-            ds = ds.sel(depth=slice(*depth_range))
-            l.log(
-                f"Bin of depth inferior to {depth_range[0]} m and superior to {depth_range[1]} m were cut."
-            )
+            if depth_range[0] > ds.depth.max() or depth_range[1] < ds.depth.min():
+                l.log(
+                    "depth_range values are outside the actual depth range. Depth slicing aborded."
+                )
+            else:
+                ds = ds.sel(depth=slice(*depth_range))
+                l.log(
+                    f"Bin of depth inferior to {depth_range[0]} m and superior to {depth_range[1]} m were cut."
+                )
         else:
             l.log(
                 f"depth_range expects a maximum of 2 values but {len(depth_range)} were givien. Depth slicing aborded."

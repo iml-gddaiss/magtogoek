@@ -521,7 +521,7 @@ An additionnal correction of {additional_correction} degree east was added to ha
             odf.odf["file_specification"] = odf_output.name
 
         odf.save(odf_output)
-        l.log(f"odf file made -> {odf_output}")
+        l.log(f"odf file made -> {odf_output}.ODF")
         log_output = odf_output
 
     elif not params["netcdf_output"]:
