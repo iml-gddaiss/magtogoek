@@ -405,7 +405,7 @@ def load_adcp_binary(
         ds["time_string"] = (["time"], time_string)
 
     if orientation == "up":
-        ds.sortby("depth")
+        ds = ds.sortby("depth")
 
     # -------------- #
     #  Cutting bins  #
