@@ -193,7 +193,7 @@ def load_adcp_binary(
     if (data.dday < 0).any():
         bad_dday = True
         l.warning(
-            f"The `dday` vector contains negative values. The time coords was replaced by a default datetime vector: len(dday) with a 1 second time step since {yearbase}-1-1 00:00:00"
+            f"The `dday` vector contains negative values. The provided yearbase might be wrong. The time coords was replaced by a default datetime vector: len(dday) with a 1 second time step since {yearbase}-1-1 00:00:00"
         )
         time, time_string = dday_to_datetime64(
             np.arange(len(data.dday)) / (3600 * 24), yearbase
@@ -291,17 +291,25 @@ def load_adcp_binary(
 
     # BOTTOM VELOCITIES
     if "bt_vel" in data:
-        if not (data.bt_vel == 0).all():
+        if (data.bt_vel == 0).all():
+            l.log(
+                "Bottom track values were all `0`, therefore they were dropped from the ouput."
+            )
+        elif not np.isfinite(data.bt_vel).all():
+            l.log(
+                "Bottom track values were all `nan`, therefore they were dropped from the ouput."
+            )
+
+        else:
+            l.log(
+                "Bottom track values were all `0`, therefore they were dropped from the ouput."
+            )
             data.bt_vel[data.bt_vel.data == VEL_FILL_VALUE] = np.nan
             ds["bt_u"] = (["time"], np.asarray(data.bt_vel[:, 0]))
             ds["bt_v"] = (["time"], np.asarray(data.bt_vel[:, 1]))
             ds["bt_w"] = (["time"], np.asarray(data.bt_vel[:, 2]))
             ds["bt_e"] = (["time"], np.asarray(data.bt_vel[:, 3]))
             l.log("Bottom track data loaded")
-        else:
-            l.log(
-                "Bottom track values were all `0`, therefore they were dropped from the ouput."
-            )
 
     # BOTTOM DEPTH
     if "bt_depth" in data:
