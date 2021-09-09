@@ -573,6 +573,16 @@ def _print_description(group):
            sv : SentinelV (RDI)
            sw : SeaWatch (RTI)
            sw_pd0 : SeaWatch (RTI in RDI pd0 file format)
+
+        quality_control
+        ---------------
+           Velocities in any direction are set to NaN if greater than 15 meter
+           per seconds.
+           Failing amplitude, correlation and percentgood, roll, pitch,
+           horizontal/vertical velocities test returns a flag_value of 3.
+           Temperatures outside [-2, 32] Celcius value outside and pressures
+           outide [0, 180] dbar value or depths below sidelobe depth limite
+           have a flag_value of 4.
         """
         )
     if group == "nav":

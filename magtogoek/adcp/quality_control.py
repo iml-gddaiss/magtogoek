@@ -164,13 +164,11 @@ def adcp_quality_control(
 
     Notes:
     ------
-       Velocity in any direction are set to NaN if greater than 15 meter per seconds.
-       Temperature has a fixed thresholds for flags [-2, 32] Celcius value outside
-       have Flag == 4. Pressure has a fixed thresholds for flags [0, 180] dbar value
-       outside have Flag == 4. Failing amplitude, correlation and percentgood, roll,
-       pitch, horizontal velocity or vertical velocity test returns Flags == 3.
-       Value below sidelobe depth returns Flags == 4.
-
+       Velocities in any direction are set to NaN if greater than 15 meter per seconds.
+       Failing amplitude, correlation and percentgood, roll,
+       pitch, horizontal velocity or vertical velocity test returns a flag_value of 3.
+       Temperatures outside [-2, 32] Celcius value outside and pressures outide
+       [0, 180] dbar value or depths below sidelobe depth limite have a flag_value of 4.
 
        The same threshold for amplitude, correlation and percentgood are applied to
        sentinelV fifth beam data.
@@ -443,9 +441,7 @@ def horizontal_vel_test(
     horizontal_velocity = np.sqrt(dataset.u ** 2 + dataset.v ** 2)
 
     return np.greater(
-        horizontal_velocity.values,
-        thres,
-        where=np.isfinite(horizontal_velocity),
+        horizontal_velocity.values, thres, where=np.isfinite(horizontal_velocity),
     )
 
 
@@ -453,9 +449,7 @@ def vertical_vel_test(dataset: tp.Type[xr.Dataset], thres: float) -> tp.Type[np.
     """FIXME
     None finite value value will also fail"""
     return np.greater(
-        abs(dataset.w.values),
-        thres,
-        where=np.isfinite(dataset.w.values),
+        abs(dataset.w.values), thres, where=np.isfinite(dataset.w.values),
     )
 
 
@@ -463,9 +457,7 @@ def error_vel_test(dataset: tp.Type[xr.Dataset], thres: float) -> tp.Type[np.arr
     """FIXME
     None finite value value will also fail"""
     return np.greater(
-        abs(dataset.e.values),
-        thres,
-        where=np.isfinite(dataset.w.values),
+        abs(dataset.e.values), thres, where=np.isfinite(dataset.w.values),
     )
 
 
@@ -499,7 +491,6 @@ def sidelobe_test(dataset: tp.Type[xr.Dataset], bottom_depth: float = None):
     depth : optional
         Fixed bottom depth to use for sidelobe correction
     """
-
     if dataset.attrs["beam_angle"] and dataset.attrs["orientation"]:
         cos_angle = np.cos(np.radians(dataset.attrs["beam_angle"]))
         depth_array = np.tile(dataset.depth.data, dataset.time.shape + (1,))
@@ -515,11 +506,9 @@ def sidelobe_test(dataset: tp.Type[xr.Dataset], bottom_depth: float = None):
             return False
 
         if dataset.attrs["orientation"] == "down":
-            if bottom_depth:
-                bottom_depth = bottom_depth
-            elif "bt_depth" in dataset:
+            if "bt_depth" in dataset:
                 bottom_depth = dataset.bt_depth.data
-            else:
+            if not bottom_depth:
                 l.warning(
                     "Sidelobes correction aborded. Bottom depth not found or provided."
                 )
@@ -529,14 +518,12 @@ def sidelobe_test(dataset: tp.Type[xr.Dataset], bottom_depth: float = None):
             return depth_array.T > max_depth
 
         elif dataset.attrs["orientation"] == "up":
-
             min_depth = xducer_depth * (1 - cos_angle)
-
             return depth_array.T < min_depth.T
 
         else:
             l.warning(
-                "Can not correct for sidelobes, `adcp_orientation` parameter not set."
+                "Can not correct for sidelobes, `adcp_orientation` parameter not set. Must be `up` or `down`."
             )
             return False
 
@@ -573,12 +560,7 @@ if __name__ == "__main__":
     test = "SW_PD0"
 
     if test == "SV":
-        ds = load_adcp_binary(
-            v50_files,
-            sonar="sv",
-            yearbase=2020,
-            orientation="down",
-        )
+        ds = load_adcp_binary(v50_files, sonar="sv", yearbase=2020, orientation="down",)
 
     if test == "ENX":
         ds = load_adcp_binary(

@@ -179,13 +179,17 @@ def load_adcp_binary(
     # -------------------- #
     # Compares orientation #
     # -------------------- #
+    sysconfig_orientation = "up" if data.sysconfig["up"] else "down"
     if not orientation:
-        orientation = "up" if data.sysconfig["up"] else "down"
+        orientation = sysconfig_orientation
     else:
-        if orientation != ("up" if data.sysconfig["up"] else "down"):
+        if orientation != sysconfig_orientation:
             l.warning(
-                "The given adcp orientation does not match the one found in the binary files."
+                f"The user input adcp orientation is {orientation} but the one found in the file was {sysconfig_orientation}."
             )
+
+    l.log(f"Adcp orientation is set to {orientation}.")
+
     # ---------------------------- #
     # Convert `dday` to datetime64 #
     # ---------------------------- #
