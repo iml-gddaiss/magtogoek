@@ -199,8 +199,15 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
             "-D",
             "--sensor-depth",
             type=click.FLOAT,
-            help="""If provided, this fixed depth will be
-            used for the adcp depth (XducerDepth).""",
+            help="""If provided, the adcp depth (XducerDepth) will be adjusted so that its median equal `sensor_depth`.""",
+            default=None,
+            show_default=True,
+        ),
+        click.option(
+            "-f",
+            "--fixed-sensor-depth",
+            type=click.FLOAT,
+            help="""Set all (XducerDepth) value to the one provided.""",
             default=None,
             show_default=True,
         ),

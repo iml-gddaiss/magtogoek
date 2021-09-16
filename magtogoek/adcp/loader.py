@@ -76,6 +76,7 @@ def load_adcp_binary(
     trailing_index: int = None,
     depth_range: tp.Tuple[int, float, list] = None,
     sensor_depth: float = None,
+    fixed_sensor_depth: float = None,
 ):
     """Load RDI and RTI adcp data.
 
@@ -104,7 +105,9 @@ def load_adcp_binary(
     depth_range :
         Depth min or (min max)
     sensor_depth:
-        If provided, will be used as a static sensor depth.
+        If provided, the adcp depth will be adjusted so that its median equal `sensor_depth`.
+    fixed_sensor_depth:
+        If provided, the adcp depth will be adjusted so that its median equal `sensor_depth`.
     Returns
     -------
         Dataset with the loaded adcp data
@@ -197,7 +200,7 @@ def load_adcp_binary(
     if (data.dday < 0).any():
         bad_dday = True
         l.warning(
-            f"The `dday` vector contains negative values. The provided yearbase might be wrong. The time coords was replaced by a default datetime vector: len(dday) with a 1 second time step since {yearbase}-1-1 00:00:00"
+            f"The `dday` vector contains negative values. The provided yearbase might be wrong. The time coords was replaced by a default datetime vector: len(dday) with a 1 second time step since {yearbase}-1-1 00:00:00."
         )
         time, time_string = dday_to_datetime64(
             np.arange(len(data.dday)) / (3600 * 24), yearbase
@@ -205,7 +208,7 @@ def load_adcp_binary(
     elif (np.diff(data.dday) < 0).any():
         bad_dday = True
         l.warning(
-            f"The `dday` vector is not monotonically increasing. The time coords was replaced by a default datetime vector: len(dday) with a 1 second time step since {yearbase}-1-1 00:00:00"
+            f"The `dday` vector is not monotonically increasing. The time coords was replaced by a default datetime vector: len(dday) with a 1 second time step since {yearbase}-1-1 00:00:00."
         )
         time, time_string = dday_to_datetime64(
             np.arange(len(data.dday)) / (3600 * 24), yearbase
@@ -216,6 +219,9 @@ def load_adcp_binary(
     # ----------------------------------------------------------- #
     # Convert depth relative to the ADCP to depth below surface   #
     # ----------------------------------------------------------- #
+    if fixed_sensor_depth:  # FIXME
+        sensor_depth = None
+        data.XducerDepth[:] = fixed_sensor_depth
 
     average_xducer_depth = round(np.median(data.XducerDepth), 3)
     xducer_depth = data.XducerDepth

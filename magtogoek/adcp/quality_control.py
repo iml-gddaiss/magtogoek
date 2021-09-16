@@ -165,11 +165,11 @@ def adcp_quality_control(
     Notes:
     ------
        Velocities in any direction are set to NaN if greater than 15 meter per seconds.
-       Failing amplitude, correlation and percentgood, roll,
-       pitch, horizontal velocity or vertical velocity test returns a flag_value of 3.
-       Temperatures outside [-2, 32] Celcius value outside and pressures outide
-       [0, 180] dbar value or depths below sidelobe depth limite have a flag_value of 4.
-
+       Failing amplitude, correlation, percentgood, roll, pitch, side_lobe, horizontal velocity
+       or vertical velocity test returns a flag_value of 3.
+       Temperatures outside [-2, 32] Celcius have a flag_value of 4.
+       Pressures outside [0, 180] dbar value have a flag_value of 3 and the the velocity fields have
+       flag flag_value of 4.
        The same threshold for amplitude, correlation and percentgood are applied to
        sentinelV fifth beam data.
 
@@ -253,14 +253,14 @@ def adcp_quality_control(
         sidelobe_flag = sidelobe_test(dataset, bottom_depth)
         if isinstance(sidelobe_flag, np.ndarray):
             l.log(f"Sidelobe correction carried out.")
-            vel_flags[sidelobe_flag] = 4
+            vel_flags[sidelobe_flag] = 3
             vel_qc_test.append("sidelobes")
 
     if "pres" in dataset:
         l.log(f"Good pressure range {MIN_PRESSURE} to {MAX_PRESSURE} dbar")
         pressure_QC = np.ones(dataset.pres.shape)
         pressure_flags = pressure_test(dataset)
-        pressure_QC[pressure_flags] = 4
+        pressure_QC[pressure_flags] = 3
         dataset["pres_QC"] = (["time"], pressure_QC)
         vel_flags[np.tile(pressure_flags, dataset.depth.shape + (1,))] = 4
         dataset["pres_QC"].attrs[
@@ -271,7 +271,7 @@ def adcp_quality_control(
     if "temperature" in dataset:
         l.log(f"Good temperature range {MIN_TEMPERATURE} to {MAX_TEMPERATURE} celsius")
         temperature_QC = np.ones(dataset.temperature.shape)
-        temperature_QC[temperature_test(dataset)] = 4
+        temperature_QC[temperature_test(dataset)] = 3
         dataset["temperature_QC"] = (["time"], temperature_QC)
         dataset["temperature_QC"].attrs[
             "quality_test"
@@ -526,6 +526,9 @@ def sidelobe_test(dataset: tp.Type[xr.Dataset], bottom_depth: float = None):
                 "Can not correct for sidelobes, `adcp_orientation` parameter not set. Must be `up` or `down`."
             )
             return False
+    else:
+        l.warning("Can not correct for sidelobes, beam_angle not found in raw file.")
+        return False
 
 
 def temperature_test(dataset):

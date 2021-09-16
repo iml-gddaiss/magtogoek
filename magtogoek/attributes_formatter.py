@@ -25,7 +25,7 @@ static variables attributes :
 dynamic variables attributes :
  -'data_min'
  -'data_max'
- FIXME
+
 
 Sea Also
 --------

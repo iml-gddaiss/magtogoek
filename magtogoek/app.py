@@ -67,6 +67,7 @@ ADCP_CONFIG_STRUCT = {
     "navigation_file": "ADCP_PROCESSING",
     "magnetic_declination": "ADCP_PROCESSING",
     "sensor_depth": "ADCP_PROCESSING",
+    "fixed_sensor_depth": "ADCP_PROCESSING",
     "keep_bt": "ADCP_PROCESSING",
     "quality_control": "ADCP_QUALITY_CONTROL",
     "amplitude_threshold": "ADCP_QUALITY_CONTROL",
@@ -92,7 +93,7 @@ ADCP_CONFIG_STRUCT = {
     "make_log": "ADCP_OUTPUT",
 }
 
-CONFIG_NAME_TRANSLATOR = dict(
+OPTIONS_NAME_TRANSLATOR = dict(
     adcp=dict(
         quality_control="qc",
         sidelobes_correction="sidelobes",
@@ -412,7 +413,7 @@ def _convert_options_names(sensor_type, options):
     Translate options anmes from the commad names to
     the parameters name used by magtogoek."""
 
-    for key, item in CONFIG_NAME_TRANSLATOR[sensor_type].items():
+    for key, item in OPTIONS_NAME_TRANSLATOR[sensor_type].items():
         options[key] = options.pop(item)
 
     return options

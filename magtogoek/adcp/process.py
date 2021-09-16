@@ -249,9 +249,6 @@ def quick_process_adcp(params: tp.Dict):
     Pipes the params to _to_process_adcp_data which in turn pipes
     it to _process_adcp_data.
 
-    Using `platform_id`, `sensor_id`, the sensor metadata are loaded
-    into a dictionnary and pass to _process_adcp_data.
-
     Notes
     -----
     missing `platform_type` :
@@ -334,6 +331,8 @@ def _process_adcp_data(params: tp.Dict, sensor_metadata: tp.Dict, global_attrs):
         value in the ConfigFile is used to compute the bin depth coordinates. If no
         `sensor_depth` value is given in both the ConfigFile and platform file, the
         `sensor_depth` attributes is computed from the adcp `Xducer_depth`.
+    `fixed_sensor_depth`:
+        Set all XducerDepth value to `fixed_sensor_depth`.
     Raises
     ------
     ValueError :
@@ -564,6 +563,7 @@ def _load_adcp_data(params: tp.Dict) -> tp.Type[xr.Dataset]:
         trailing_index=trailing_index,
         orientation=params["adcp_orientation"],
         sensor_depth=params["sensor_depth"],
+        fixed_sensor_depth=params["fixed_sensor_depth"],
         depth_range=params["depth_range"],
     )
 

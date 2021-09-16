@@ -56,16 +56,8 @@ BASIC_CONFIG = dict(
         "made_by": getpass.getuser(),
         "last_updated": Timestamp.now().strftime("%Y-%m-%d"),
     },
-    INPUT={
-        "input_files": "",
-        "platform_file": "",
-        "platform_id": "",
-        "sensor_id": "",
-    },
-    OUTPUT={
-        "netcdf_output": "",
-        "odf_output": "",
-    },
+    INPUT={"input_files": "", "platform_file": "", "platform_id": "", "sensor_id": "",},
+    OUTPUT={"netcdf_output": "", "odf_output": "",},
     NETCDF_CF={
         "Conventions": "CF 1.8",
         "title": "",
@@ -76,11 +68,7 @@ BASIC_CONFIG = dict(
         "naming_authority": "BODC, SDC, CF, MEDS",
         "source": "",
     },
-    PROJECT={
-        "project": "",
-        "sea_name": "",
-        "sea_code": "",
-    },
+    PROJECT={"project": "", "sea_name": "", "sea_code": "",},
     CRUISE={
         "country_institute_code": "",
         "cruise_number": "",
@@ -119,6 +107,7 @@ ADCP_CONFIG = dict(
         "navigation_file": "",
         "magnetic_declination": "",
         "sensor_depth": "",
+        "fixed_sensor_depth": "",
         "keep_bt": True,
     },
     ADCP_QUALITY_CONTROL={
@@ -337,12 +326,7 @@ def _convert_options_type(parser: tp.Dict):
                     if not isinstance(option_value, (list, tuple)):
                         option_value = [option_value]
                     try:
-                        option_value = list(
-                            map(
-                                option_type[0],
-                                option_value,
-                            )
-                        )
+                        option_value = list(map(option_type[0], option_value,))
                     except ValueError:
                         expected_type = str(option_type[0]).split("'")[1]
                         raise ConfigFileError(

@@ -139,17 +139,8 @@ def get_headers_default():
             ice_thickness=None,
             meteo_comments=[],
         ),
-        instrument=dict(
-            inst_type="",
-            model="",
-            serial_number="",
-            description="",
-        ),
-        quality=dict(
-            quality_date="",
-            quality_tests=[],
-            quality_comments=[],
-        ),
+        instrument=dict(inst_type="", model="", serial_number="", description="",),
+        quality=dict(quality_date="", quality_tests=[], quality_comments=[],),
         record=dict(
             num_calibration=None,
             num_swing=None,
@@ -421,12 +412,16 @@ class Odf:
         Parameters
         ----------
         dims :
-           Dimensions names.
+           Dimensions names. If one of the dimensions is named `STYM_01`, it will be
+           converted to datetime64.
         time :
-            Specify wich dimensions is time.
+            Specify wich dimensions is to be converted into datetime64.
         """
         if time:
             self.data[time] = pd.to_datetime(self.data[time])
+
+        if "STYM_01" in self.data:
+            self.data["STYM_01"] = pd.to_datetime(self.data["STYM_01"])
 
         if dims:
             data = self.data.set_index(dims)
@@ -434,6 +429,8 @@ class Odf:
             data = self.data
 
         dataset = xr.Dataset.from_dataframe(data)
+
+        dataset.STYM_01.value = pd.to_datetime(dataset.time.value)
 
         for p in self.parameter:
             dataset[p].assign_attrs(self.parameter[p])
@@ -704,11 +701,7 @@ class Odf:
                 )
 
         self.data.to_string(
-            buf=buf,
-            formatters=formats,
-            header=False,
-            index=False,
-            na_rep=NA_REP,
+            buf=buf, formatters=formats, header=False, index=False, na_rep=NA_REP,
         )
 
 
