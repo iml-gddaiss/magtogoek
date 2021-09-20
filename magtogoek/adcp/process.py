@@ -508,14 +508,14 @@ An additionnal correction of {additional_correction} degree east was added to ha
         else:
             odf_output = params["odf_output"]
 
-        odf_output = Path(odf_output)
+        odf_output = Path(odf_output).with_suffix(".ODF")
         if odf_output.is_dir():
             odf_output.joinpath(Path(odf.odf["file_specification"]))
         else:
             odf.odf["file_specification"] = odf_output.name
 
         odf.save(odf_output)
-        l.log(f"odf file made -> {odf_output}.ODF")
+        l.log(f"odf file made -> {odf_output}")
         log_output = odf_output
 
     elif not params["netcdf_output"]:

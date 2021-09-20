@@ -282,17 +282,20 @@ def load_adcp_binary(
     # Loading the transducer data #
     # --------------------------- #
 
-    data.vel[data.vel.data == VEL_FILL_VALUE] = np.nan  # fill
+    data.vel = np.asarray(data.vel)
+    data.vel[data.vel.data == VEL_FILL_VALUE] = np.nan
 
     # WATER VELOCITIES
-    ds["u"] = (["depth", "time"], np.asarray(data.vel[:, :, 0].T))
-    ds["v"] = (["depth", "time"], np.asarray(data.vel[:, :, 1].T))
-    ds["w"] = (["depth", "time"], np.asarray(data.vel[:, :, 2].T))
-    ds["e"] = (["depth", "time"], np.asarray(data.vel[:, :, 3].T))
+    ds["u"] = (["depth", "time"], data.vel[:, :, 0].T)
+    ds["v"] = (["depth", "time"], data.vel[:, :, 1].T)
+    ds["w"] = (["depth", "time"], data.vel[:, :, 2].T)
+    ds["e"] = (["depth", "time"], data.vel[:, :, 3].T)
+    l.log("Velocity data loaded")
 
     if sonar == "sv":
-        data.vbvel[data.vbvel.data == VEL_FILL_VALUE] = np.nan
-        ds["vb_vel"] = (["depth", "time"], np.asarray(data.vbvel.T))
+        data.vbvel = np.asarray(data.vbvel)
+        data.vbvel[data.vbvel == VEL_FILL_VALUE] = np.nan
+        ds["vb_vel"] = (["depth", "time"], data.vbvel.T)
         ds["vb_corr"] = (["depth", "time"], np.asarray(data.VBCorrelation.T))
         ds["vb_amp"] = (["depth", "time"], np.asarray(data.VBIntensity.T))
         if "VBPercentGood" in data:
@@ -314,11 +317,12 @@ def load_adcp_binary(
             l.log(
                 "Bottom track values were all `0`, therefore they were dropped from the ouput."
             )
-            data.bt_vel[data.bt_vel.data == VEL_FILL_VALUE] = np.nan
-            ds["bt_u"] = (["time"], np.asarray(data.bt_vel[:, 0]))
-            ds["bt_v"] = (["time"], np.asarray(data.bt_vel[:, 1]))
-            ds["bt_w"] = (["time"], np.asarray(data.bt_vel[:, 2]))
-            ds["bt_e"] = (["time"], np.asarray(data.bt_vel[:, 3]))
+            data.bt_vel = np.asarray(data.bt_vel)
+            data.bt_vel[data.bt_vel == VEL_FILL_VALUE] = np.nan
+            ds["bt_u"] = (["time"], data.bt_vel[:, 0])
+            ds["bt_v"] = (["time"], data.bt_vel[:, 1])
+            ds["bt_w"] = (["time"], data.bt_vel[:, 2])
+            ds["bt_e"] = (["time"], data.bt_vel[:, 3])
             l.log("Bottom track data loaded")
 
     # BOTTOM DEPTH
