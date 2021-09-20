@@ -32,7 +32,7 @@ See Also
 
 """
 import logging
-# import sys
+import sys
 import typing as tp
 from pathlib import Path
 
@@ -154,12 +154,16 @@ def load_adcp_binary(
                 raise ValueError(
                     "The sum of the trim values is greater than the number of ensemble."
                 )
+            data.vel = np.asarray(data.vel)
+            if "vbvel" in data:
+                data.vbvel = np.asarray(data.vbvel)
+            if "bt_vel" in data:
+                data.bt_vel = np.asarray(data.bt_vel)
         except RuntimeError:
-            #                        raise FilesFormatError(
             print(
                 f"ERROR: The input_files are not in a RDI pd0 format. RDI sonar : {RDI_SONAR}"
             )
-            exit()
+            sys.exit()
 
         # Reading the files FixedLeaders to check for invalid config.
         invalid_config_count = check_PD0_invalid_config(
@@ -200,7 +204,9 @@ def load_adcp_binary(
     if (data.dday < 0).any():
         bad_dday = True
         l.warning(
-            f"The `dday` vector contains negative values. The provided yearbase might be wrong. The time coords was replaced by a default datetime vector: len(dday) with a 1 second time step since {yearbase}-1-1 00:00:00."
+            f"""The `dday` vector contains negative values. The provided yearbase might be wrong.
+            The time coords was replaced by a default datetime vector: {len(data.dday)} with a 1 x
+            second time step since {yearbase}-1-1 00:00:00."""
         )
         time, time_string = dday_to_datetime64(
             np.arange(len(data.dday)) / (3600 * 24), yearbase
@@ -208,7 +214,9 @@ def load_adcp_binary(
     elif (np.diff(data.dday) < 0).any():
         bad_dday = True
         l.warning(
-            f"The `dday` vector is not monotonically increasing. The time coords was replaced by a default datetime vector: len(dday) with a 1 second time step since {yearbase}-1-1 00:00:00."
+            f"""The `dday` vector is not monotonically increasing.
+            The time coords was replaced by a default datetime vector: len(dday) with a 1 second time
+            step since {yearbase}-1-1 00:00:00."""
         )
         time, time_string = dday_to_datetime64(
             np.arange(len(data.dday)) / (3600 * 24), yearbase
@@ -281,10 +289,7 @@ def load_adcp_binary(
     # --------------------------- #
     # Loading the transducer data #
     # --------------------------- #
-
-    data.vel = np.asarray(data.vel)
-    data.vel[data.vel.data == VEL_FILL_VALUE] = np.nan
-
+    data.vel[data.vel == VEL_FILL_VALUE] = np.nan
     # WATER VELOCITIES
     ds["u"] = (["depth", "time"], data.vel[:, :, 0].T)
     ds["v"] = (["depth", "time"], data.vel[:, :, 1].T)
@@ -293,7 +298,6 @@ def load_adcp_binary(
     l.log("Velocity data loaded")
 
     if sonar == "sv":
-        data.vbvel = np.asarray(data.vbvel)
         data.vbvel[data.vbvel == VEL_FILL_VALUE] = np.nan
         ds["vb_vel"] = (["depth", "time"], data.vbvel.T)
         ds["vb_corr"] = (["depth", "time"], np.asarray(data.VBCorrelation.T))
@@ -317,7 +321,6 @@ def load_adcp_binary(
             l.log(
                 "Bottom track values were all `0`, therefore they were dropped from the ouput."
             )
-            data.bt_vel = np.asarray(data.bt_vel)
             data.bt_vel[data.bt_vel == VEL_FILL_VALUE] = np.nan
             ds["bt_u"] = (["time"], data.bt_vel[:, 0])
             ds["bt_v"] = (["time"], data.bt_vel[:, 1])
@@ -561,8 +564,8 @@ def coordsystem2earth(data: tp.Type[Bunch], orientation: str):
             trans = transform.Transform(
                 angle=data.sysconfig.angle, geometry=beam_pattern
             )
-            xyze = trans.beam_to_xyz(data.vel.data)
-            bt_xyze = trans.beam_to_xyz(data.bt_vel.data)
+            xyze = trans.beam_to_xyz(data.vel)
+            bt_xyze = trans.beam_to_xyz(data.bt_vel)
         else:
             l.log("Beam angle missing. Could not convert from beam coordinate.")
 
@@ -570,8 +573,8 @@ def coordsystem2earth(data: tp.Type[Bunch], orientation: str):
         data.trans["coordsystem"] = "xyz"
 
         for i in range(4):
-            data.vel.data[:, :, i] = np.round(xyze[:, :, i], decimals=3)
-            data.bt_vel.data[:, i] = np.round(bt_xyze[:, i], decimals=3)
+            data.vel[:, :, i] = np.round(xyze[:, :, i], decimals=3)
+            data.bt_vel[:, i] = np.round(bt_xyze[:, i], decimals=3)
     else:
         enu = transform.rdi_xyz_enu(
             xyze, data.heading, data.pitch, data.roll, orientation=orientation,
@@ -582,8 +585,8 @@ def coordsystem2earth(data: tp.Type[Bunch], orientation: str):
         data.trans["coordsystem"] = "earth"
 
         for i in range(4):
-            data.vel.data[:, :, i] = np.round(enu[:, :, i], decimals=3)
-            data.bt_vel.data[:, i] = np.round(bt_enu[:, i], decimals=3)
+            data.vel[:, :, i] = np.round(enu[:, :, i], decimals=3)
+            data.bt_vel[:, i] = np.round(bt_enu[:, i], decimals=3)
 
 
 def check_PD0_invalid_config(

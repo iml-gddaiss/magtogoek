@@ -55,6 +55,7 @@ Add option to force platform file metadata over over those computed from the adc
 """
 
 import getpass
+import sys
 import typing as tp
 from configparser import ConfigParser
 
@@ -784,7 +785,7 @@ def _get_datetime_and_count(trim_arg: str):
             except ValueError:
                 print("Bad datetime format for trim. Use YYYY-MM-DDTHH:MM:SS.ssss")
                 print("Process aborded")
-                exit()
+                sys.exit()
         else:
             return (None, int(trim_arg))
     else:
