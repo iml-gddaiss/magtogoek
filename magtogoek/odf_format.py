@@ -310,9 +310,8 @@ class Odf:
         """
         self.__init__()
         is_data = False
-        current_header = None
+        current_header = {}  # used to be None, should work
         header_key = ""
-        header_type = ""
         parameters_code = []
         counters = dict(
             parameter=0,
@@ -420,8 +419,8 @@ class Odf:
         if time:
             self.data[time] = pd.to_datetime(self.data[time])
 
-        if "STYM_01" in self.data:
-            self.data["STYM_01"] = pd.to_datetime(self.data["STYM_01"])
+        if "SYTM_01" in self.data:
+            self.data["SYTM_01"] = pd.to_datetime(self.data["SYTM_01"])
 
         if dims:
             data = self.data.set_index(dims)
@@ -429,8 +428,6 @@ class Odf:
             data = self.data
 
         dataset = xr.Dataset.from_dataframe(data)
-
-        dataset.STYM_01.value = pd.to_datetime(dataset.time.value)
 
         for p in self.parameter:
             dataset[p].assign_attrs(self.parameter[p])
@@ -453,7 +450,7 @@ class Odf:
 
         return dataset
 
-    def add_polynomial_cal(self, code: str, items: dict):
+    def add_polynomial_cal(self, code: str, items: dict = None):
         """Add a polynomial cal headers to ODF.polynomial_cal
 
         Parameters
@@ -463,11 +460,13 @@ class Odf:
         items :
             Dictionnary containing parameter header items.
         """
+        if items is None:
+            items = {}
         self.polynomial_cal[code] = _get_repeated_headers_default()["polynomial_cal"]
         self.polynomial_cal[code]["code"] = code
-        self.polynonial_cal[code].update(items)
+        self.polynomial_cal[code].update(items)
 
-    def add_general_cal(self, code: str, items: dict = {}):
+    def add_general_cal(self, code: str, items: dict = None):
         """Add a general cal headers to ODF.general_cal
 
         Parameters
@@ -477,11 +476,13 @@ class Odf:
         items:
             Dictionnary containing parameter header items.
         """
+        if items is None:
+            items = {}
         self.general_cal[code] = _get_repeated_headers_default()["general_cal"]
         self.general_cal[code]["code"] = code
         self.general_cal[code].update(items)
 
-    def add_compass_cal(self, code: str, items: dict = {}):
+    def add_compass_cal(self, code: str, items: dict = None):
         """Add a compass cal headers to ODF.compass_cal
 
         Parameters
@@ -491,11 +492,13 @@ class Odf:
         items :
             Dictionnary containing compass cal header items.
         """
+        if items is None:
+            items = {}
         self.compass_cal[code] = _get_repeated_headers_default()["compass_cal"]
         self.compass_cal[code]["code"] = code
         self.compass_cal[code].update(items)
 
-    def add_buoy_instrument(self, name: str, items: dict = {}):
+    def add_buoy_instrument(self, name: str, items: dict = None):
         """Add a buoy instrument headers to ODF.instruments.
 
         Parameters
@@ -505,12 +508,14 @@ class Odf:
         items :
             Dictionnary containing parameter header items.
         """
+        if items is None:
+            items = {}
         self.buoy_instrument[name] = _get_repeated_headers_default()["buoy_instrument"]
         self.buoy_instrument[name]["name"] = name
         self.buoy_instrument[name].update(items)
 
     def add_parameter(
-        self, code: str, data: tp.Union[list, tp.Type[np.ndarray]], items: dict = {}
+        self, code: str, data: tp.Union[list, tp.Type[np.ndarray]], items: dict = None
     ):
         """Add a the parameter to ODF.parameters and the data to ODF.data.
 
@@ -529,13 +534,15 @@ class Odf:
 
 
         """
+        if items is None:
+            items = {}
         self.parameter[code] = _get_repeated_headers_default()["parameter"]
         self.parameter[code]["code"] = code
         self.parameter[code].update(items)
         self.data[code] = data
         self._compute_parameter_attrs(code)
 
-    def add_history(self, items: dict = {}):
+    def add_history(self, items: dict = None):
         """Add a history header
 
         Parameters
@@ -546,6 +553,8 @@ class Odf:
             'process' should a list of string.
 
         """
+        if items is None:
+            items = {}
         header_name = "history_" + str(len(self.history) + 1)
         self.history[header_name] = dict(_get_repeated_headers_default()["history"])
         self.history[header_name].update(items)
@@ -557,7 +566,7 @@ class Odf:
     def from_dataframe(
         self,
         dataframe: tp.Type[pd.DataFrame],
-        items: dict = {},
+        items: None,
         null_values: tp.Union[int, float, list, tuple, dict] = None,
     ):
         """Add data and parameters from a pandas.dataframe. Collumns names are used for
@@ -578,10 +587,14 @@ class Odf:
             Dictionnary containing parameter header items. Keys must be the parameters code.
 
         """
+        if items is None:
+            items = {}
+
         if isinstance(dataframe, pd.DataFrame):
             dataframe = dataframe.reset_index(drop=True)
         else:
             raise TypeError("dataframe must be a pandas.DataFrame")
+
         for code in dataframe.columns:
             self.parameter[code] = dict(_get_repeated_headers_default()["parameter"])
             self.parameter[code]["parameter"] = code
@@ -639,17 +652,17 @@ class Odf:
                 if any(self.__dict__[h].values()):
                     s += _format_headers(h, self.__dict__[h])
 
-        for name, header in self.buoy_instrument.items():
+        for _, header in self.buoy_instrument.items():
             s += _format_headers("buoy_instrument", header)
 
         if any(self.__dict__["quality"].values()):
             s += _format_headers("quality", self.__dict__["quality"])
 
         for h in ["general_cal", "polynomial_cal", "compass_cal", "history"]:
-            for name, header in self.__dict__[h].items():
+            for _, header in self.__dict__[h].items():
                 s += _format_headers(h, header)
 
-        for name, header in self.parameter.items():
+        for _, header in self.parameter.items():
             s += _format_headers("parameter", header)
 
         s += _format_headers("record", self._make_record())
@@ -671,14 +684,12 @@ class Odf:
         See pandas.DataFrame.to_string
 
         """
-        index_names = list(self.data.index.names)
         self.data.reset_index(inplace=True, drop=True)
         valid_data = []
         for key in self.parameter:
             if key in self.data.keys():
                 valid_data.append(key)
 
-        data = self.data[valid_data]
         formats = {}
         for vd in valid_data:
             padding = self.parameter[vd]["print_field_width"]
@@ -804,62 +815,18 @@ def odf_time_format(time):
 
 
 if __name__ == "__main__":
-
     import matplotlib.pyplot as plt
 
     path = [
-        # "/home/jeromejguay/ImlSpace/Docs/ODF/Format_ODF/Exemples/CTD_BOUEE2019_RIKI_04130218_DN",
+        "/home/jeromejguay/ImlSpace/Docs/ODF/Format_ODF/Exemples/CTD_BOUEE2019_RIKI_04130218_DN",
         "/home/jeromejguay/ImlSpace/Docs/ODF/Format_ODF/Exemples/MADCP_BOUEE2019_RIMOUSKI_553_VEL",
-        #        "/home/jeromejguay/ImlSpace/Docs/ODF/Format_ODF/Exemples/MMOB_BOUEE2019_RIMOUSKI_IML4_METOCE",
-        #        "/home/jeromejguay/ImlSpace/Docs/ODF/Format_ODF/Exemples/MADCP_BOUEE2019_RIMOUSKI_553_ANC",
+        "/home/jeromejguay/ImlSpace/Docs/ODF/Format_ODF/Exemples/MMOB_BOUEE2019_RIMOUSKI_IML4_METOCE",
+        "/home/jeromejguay/ImlSpace/Docs/ODF/Format_ODF/Exemples/MADCP_BOUEE2019_RIMOUSKI_553_ANC",
     ]
 
-    P = 0
-    test_count = 5
-    odf = Odf()
-    print("Running odf test ...")
-    print(f"Test file = {path[0]}.ODF")
-
-    print("Reading from ODF", end=" ... ")
-    try:
-        odf.read(path[0] + ".ODF")
-        print("Passed")
-        P += 1
-        print("Saving to ODF", end=" ... ")
-        try:
-            odf.save("odf_to_odf_test.ODF")
-            print("Passed")
-            P += 1
-        except Exception:
-            print("Failed")
-
-        print("From Dataframe", end=" ... ")
-        dataframe = odf.data
-        items = {key: item for key, item in odf.parameter.items()}
-        try:
-            from_df = Odf().from_dataframe(dataframe, items)
-            print("Passed")
-            P += 1
-        except Exception:
-            print("Failed")
-
-        print("ODF to dataset", end=" ... ")
-        try:
-            dataset = odf.to_dataset(dims=["SYTM_01", "DEPH_01"], time="SYTM_01")
-            print("Passed")
-            P += 1
-
-            print("Dataset to netcdf", end=" ... ")
-            try:
-                dataset.to_netcdf("odf_to_nc_test.nc")
-                print("Passed")
-                P += 1
-            except Exception:
-                print("Failed")
-
-        except Exception:
-            print("Failed")
-    except Exception:
-        print("Failed")
-
-    print(f"Test Finished. Passed:{P}/{test_count}")
+    odf = Odf().read(path[1] + ".ODF")
+    dataset = odf.to_dataset()
+    dataset = odf.to_dataset(dims=["SYTM_01", "DEPH_01"], time="SYTM_01").isel(
+        SYTM_01=slice(0, 100)
+    )
+    data = dataset.to_dataframe().reset_index()

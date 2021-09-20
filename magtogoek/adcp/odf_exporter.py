@@ -153,6 +153,35 @@ BUOY_INSTRUMENT_CONFIGURATION = {
 }
 
 
+def make_odf(
+    dataset, sensor_metadata: dict, global_attrs: dict, generic_to_p01_name: dict = None
+):
+    """
+    Parameters
+    ----------
+    dataset :
+        Dataset to which add the navigation data.
+    sensor_metadata :
+        Metadata from the platform file.
+    gloabal_attrs :
+        Global attributes parameter from the configFile.
+    generic_to_p01_name :
+        map from the generic to the BODC p01 variables names
+
+    """
+    odf = Odf()
+
+    _make_cruise_header(odf, dataset, sensor_metadata)
+    _make_event_header(odf, dataset, global_attrs)
+    _make_odf_header(odf)
+    _make_buoy_header(odf, sensor_metadata)
+    _make_buoy_instrument_header(odf, dataset, sensor_metadata)
+    _make_parameter_headers(odf, dataset, generic_to_p01_name)
+    _make_history_header(odf, dataset)
+
+    return odf
+
+
 def _make_cruise_header(odf, dataset, sensor_metadata):
     """Use cruise_attrs """
     for key, value in CRUISE_ATTRS.items():
@@ -342,12 +371,7 @@ def _make_parameter_headers(odf, dataset, generic_to_p01_name=None):
                     generic_to_p01_name[param]
                 ] = parameters_metadata.pop(param)
 
-    data = (
-        dataset[list(parameters_metadata.keys())]
-        .to_dataframe()
-        .reset_index()
-        .sort_values("time")
-    )
+    data = dataset[list(parameters_metadata.keys())].to_dataframe().reset_index()
 
     for var in parameters_metadata:
         if var in dataset:
@@ -359,7 +383,7 @@ def _make_parameter_headers(odf, dataset, generic_to_p01_name=None):
             items["magnetic_variation"] = dataset.attrs["magnetic_declination"]
             items["type"] = PARAMETERS_TYPES[str(dataset[var].data.dtype)]
 
-            if not "null_value" in items:
+            if "null_value" not in items:
                 if "_FillValue" in dataset[var].encoding:
                     items["null_value"] = dataset[var].encoding["_FillValue"]
                 else:
@@ -370,35 +394,6 @@ def _make_parameter_headers(odf, dataset, generic_to_p01_name=None):
                 data=data[var].fillna(items["null_value"]),
                 items=items,
             )
-
-
-def make_odf(
-    dataset, sensor_metadata: dict, global_attrs: dict, generic_to_p01_name: dict = None
-):
-    """
-    Parameters
-    ----------
-    dataset :
-        Dataset to which add the navigation data.
-    sensor_metadata :
-        Metadata from the platform file.
-    gloabal_attrs :
-        Global attributes parameter from the configFile.
-    generic_to_p01_name :
-        map from the generic to the BODC p01 variables names
-
-    """
-    odf = Odf()
-
-    _make_cruise_header(odf, dataset, sensor_metadata)
-    _make_event_header(odf, dataset, global_attrs)
-    _make_odf_header(odf)
-    _make_buoy_header(odf, sensor_metadata)
-    _make_buoy_instrument_header(odf, dataset, sensor_metadata)
-    _make_parameter_headers(odf, dataset, generic_to_p01_name)
-    _make_history_header(odf, dataset)
-
-    return odf
 
 
 if __name__ == "__main__":

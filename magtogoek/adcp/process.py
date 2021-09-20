@@ -262,12 +262,7 @@ def quick_process_adcp(params: tp.Dict):
 
     global _drop_none_attrs
     _drop_none_attrs = True
-    global_attrs = {
-        "date_created": pd.Timestamp.now().strftime("%Y-%m-%d"),
-        "publisher_name": getpass.getuser(),
-        "source": "adcp",
-    }
-
+    global_attrs = _default_global_attrs()
     sensor_metadata = _default_platform()
 
     sensor_metadata["platform_type"] = params["platform_type"]
@@ -640,6 +635,15 @@ def _default_platform() -> dict:
     return sensor_metadata
 
 
+def _default_global_attrs():
+    """Return default global_attrs()"""
+    return {
+        "date_created": pd.Timestamp.now().strftime("%Y-%m-%d"),
+        "publisher_name": getpass.getuser(),
+        "source": "adcp",
+    }
+
+
 def _check_platform_type(sensor_metadata: dict):
     """DEFINED BELOW"""
     if sensor_metadata["platform_type"] not in PLATFORM_TYPES:
@@ -777,7 +781,7 @@ def _get_datetime_and_count(trim_arg: str):
         if not trim_arg.isdecimal():
             try:
                 return (pd.Timestamp(trim_arg), None)
-            except:
+            except ValueError:
                 print("Bad datetime format for trim. Use YYYY-MM-DDTHH:MM:SS.ssss")
                 print("Process aborded")
                 exit()

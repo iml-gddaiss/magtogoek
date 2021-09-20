@@ -116,7 +116,7 @@ def format_variables_names_and_attributes(
 
 def _convert_variables_names(
     dataset: tp.Type[xr.Dataset], convert_back_to_generic: bool = False
-):
+) -> tp.Type[xr.Dataset]:
     """Convert variable and coords names.
 
     From generic to BODC P01 names or from BODC P01 to generic names if
@@ -149,9 +149,7 @@ def _convert_variables_names(
     return dataset
 
 
-def _add_sdn_and_cf_var_attrs(
-    dataset: tp.Type[xr.Dataset], sdn: tp.Dict
-) -> tp.Type[xr.Dataset]:
+def _add_sdn_and_cf_var_attrs(dataset: tp.Type[xr.Dataset], sdn: tp.Dict):
     """add sdn (sea data net) attributes.
 
     Parameters
