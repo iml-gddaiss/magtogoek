@@ -508,7 +508,7 @@ def sidelobe_test(dataset: tp.Type[xr.Dataset], bottom_depth: float = None):
         if dataset.attrs["orientation"] == "down":
             if "bt_depth" in dataset:
                 bottom_depth = dataset.bt_depth.data
-            if not bottom_depth:
+            elif not bottom_depth:
                 l.warning(
                     "Sidelobes correction aborded. Bottom depth not found or provided."
                 )
