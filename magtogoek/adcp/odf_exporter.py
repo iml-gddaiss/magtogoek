@@ -234,9 +234,12 @@ def _make_event_header(odf, dataset, global_attrs):
 
     odf.event["creation_date"] = odf_time_format(pd.Timestamp.now())
     if "sounding" in dataset.attrs:
-        odf.event["depth_off_bottom"] = (
-            dataset.attrs["sounding"] - odf.event["max_depth"]
-        )
+        if dataset.attrs["sounding"] and odf.event["max_depth"]:
+            odf.event["depth_off_bottom"] = (
+                dataset.attrs["sounding"] - odf.event["max_depth"]
+            )
+        else:
+            odf.event["depth_off_bottom"] = 0
     else:
         odf.event["depth_off_bottom"] = 0
 
@@ -280,7 +283,7 @@ def _make_buoy_instrument_header(odf, dataset, sensor_metadata):
     for key, value in BUOY_INSTRUMENT_ATTRS.items():
         if value[0] == "dataset":
             if value[1] in dataset.attrs:
-                if "date" in key:
+                if "date" in key and dataset.attrs[value[1]]:
                     odf.buoy_instrument[instrument][key] = odf_time_format(
                         dataset.attrs[value[1]]
                     )
@@ -301,9 +304,12 @@ def _make_buoy_instrument_comment(odf, instrument, dataset, sensor_metadata):
     for key, value in BUOY_INSTRUMENT_CONFIGURATION.items():
         if key == "Ping_Interval_s":
             if "ping_per_ensemble" in dataset.attrs and "delta_t_sec" in dataset.attrs:
-                v = round(
-                    dataset.attrs["ping_per_ensemble"] / dataset.attrs["delta_t_sec"], 2
-                )
+                if dataset.attrs["ping_per_ensemble"] and dataset.attrs["delta_t_sec"]:
+                    v = round(
+                        dataset.attrs["ping_per_ensemble"]
+                        / dataset.attrs["delta_t_sec"],
+                        2,
+                    )
         elif key == "Magnetic_Declination":
             if (
                 "magnetic_declination" in dataset.attrs
@@ -321,7 +327,7 @@ def _make_buoy_instrument_comment(odf, instrument, dataset, sensor_metadata):
         elif value[0] == "sensor_metadata":
             v = sensor_metadata[value[1]]
         else:
-            v = "N/A"
+            v = ""
         odf.buoy_instrument[instrument]["buoy_instrument_comments"].append(
             configuration + "." + key + ": " + str(v)
         )

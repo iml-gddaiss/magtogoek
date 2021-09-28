@@ -811,7 +811,11 @@ def odf_time_format(time):
     -------
     string formated time.
     """
-    return pd.Timestamp(time).strftime("%d-%b-%Y %H:%M:%S.%f").upper()[:-4]
+    try:
+        odf_time = pd.Timestamp(time).strftime("%d-%b-%Y %H:%M:%S.%f").upper()[:-4]
+    except ValueError:
+        odf_time = "17-NOV-1858 00:00:00.00"
+    return odf_time
 
 
 if __name__ == "__main__":

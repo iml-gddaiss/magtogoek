@@ -17,7 +17,7 @@ Script to process adcp data. FIXME
 
 Notes
 -----
-Unspecified attributes fill value "N/A".
+Unspecified attributes fill value "".
 `magnetic_declination`:
     declination of the magnetic north in `degree east`.
 
@@ -123,7 +123,6 @@ P01_VEL_CODES = dict(
         u_QC="LCEWAP01_QC",
         v_QC="LCNSAP01_QC",
         w_QC="LRZAAP01_QC",
-        #        e_QC="LERRAP01_QC",
     ),
     ship=dict(
         u="LCEWAS01",
@@ -133,7 +132,6 @@ P01_VEL_CODES = dict(
         u_QC="LCEWAS01_QC",
         v_QC="LCNSAS01_QC",
         w_QC="LRZAAS01_QC",
-        #        e_QC="LERRAS01_QC",
     ),
 )
 P01_CODES = dict(
@@ -201,9 +199,6 @@ DATA_FILL_VALUE = -9999.0
 DATA_ENCODING = {"dtype": "float32", "_FillValue": DATA_FILL_VALUE}
 
 
-_drop_none_attrs = False
-
-
 def process_adcp(config: tp.Type[ConfigParser]):
     """Process adcp data with parameters from a ConfigFile.
 
@@ -233,13 +228,12 @@ def process_adcp(config: tp.Type[ConfigParser]):
     if len(params["input_files"]) == 0:
         raise ValueError("No adcp file was provided in the configfile.")
 
-    if Path(params["platform_file"]).is_file():
-        sensor_metadata = _load_platform(params)
-    else:
-        l.warning(f"platform_file, {params['platform_file']}, not found")
-        sensor_metadata = None
-    if not sensor_metadata:
-        sensor_metadata = _default_platform()
+    sensor_metadata = _default_platform()
+    if params["platform_file"]:
+        if Path(params["platform_file"]).is_file():
+            sensor_metadata = _load_platform(params)
+        else:
+            l.warning(f"platform_file, {params['platform_file']}, not found")
 
     _pipe_to_process_adcp_data(params, sensor_metadata, global_attrs)
 
@@ -261,8 +255,6 @@ def quick_process_adcp(params: tp.Dict):
     _process_adcp_data :
         For the processing workflow."""
 
-    global _drop_none_attrs
-    _drop_none_attrs = True
     global_attrs = _default_global_attrs()
     sensor_metadata = _default_platform()
 
@@ -272,10 +264,14 @@ def quick_process_adcp(params: tp.Dict):
     if params["odf_output"] in [1, "true", "True"]:
         params["odf_output"] = True
 
-    _pipe_to_process_adcp_data(params, sensor_metadata, global_attrs)
+    _pipe_to_process_adcp_data(
+        params, sensor_metadata, global_attrs, drop_empty_attrs=True
+    )
 
 
-def _pipe_to_process_adcp_data(params, sensor_metadata, global_attrs):
+def _pipe_to_process_adcp_data(
+    params, sensor_metadata, global_attrs, drop_empty_attrs=False
+):
     """Check if the input_file must be split in mutiple output.
 
         Looks for `merge_output_files` in the ConfigFile and if False,
@@ -300,7 +296,9 @@ def _pipe_to_process_adcp_data(params, sensor_metadata, global_attrs):
         _process_adcp_data(params, sensor_metadata, global_attrs)
 
 
-def _process_adcp_data(params: tp.Dict, sensor_metadata: tp.Dict, global_attrs):
+def _process_adcp_data(
+    params: tp.Dict, sensor_metadata: tp.Dict, global_attrs, drop_empty_attrs=False
+):
     """Process adcp data
 
     FIXME EXPLAIN THE PROCESSING WORKFLOW FIXME
@@ -355,8 +353,6 @@ def _process_adcp_data(params: tp.Dict, sensor_metadata: tp.Dict, global_attrs):
     # ----------------------------- #
     # ADDING SOME GLOBAL ATTRIBUTES #
     # ----------------------------- #
-
-    # l.section("Adding Global Attributes")
 
     dataset = dataset.assign_attrs(STANDARD_ADCP_GLOBAL_ATTRIBUTES)
 
@@ -481,11 +477,11 @@ An additionnal correction of {additional_correction} degree east was added to ha
             del dataset.attrs[attr]
 
     for attr in list(dataset.attrs.keys()):
-        if dataset.attrs[attr] is None:
-            if _drop_none_attrs:
+        if not dataset.attrs[attr]:
+            if drop_empty_attrs:
                 del dataset.attrs[attr]
             else:
-                dataset.attrs[attr] = "N/A"
+                dataset.attrs[attr] = ""
 
     # ------- #
     # OUTPUTS #
@@ -559,8 +555,8 @@ def _load_adcp_data(params: tp.Dict) -> tp.Type[xr.Dataset]:
         trailing_index=trailing_index,
         orientation=params["adcp_orientation"],
         sensor_depth=params["sensor_depth"],
-        fixed_sensor_depth=params["fixed_sensor_depth"],
         depth_range=params["depth_range"],
+        bad_pressure=params["bad_pressure"],
     )
 
     dataset = dataset.sel(time=slice(start_time, end_time))
@@ -633,6 +629,7 @@ def _default_platform() -> dict:
     for key in PLATFORM_FILE_DEFAULT_KEYS:
         sensor_metadata[key] = None
     sensor_metadata["platform_specs"] = dict()
+    sensor_metadata["platform_type"] = DEFAULT_PLATFORM_TYPE
     return sensor_metadata
 
 

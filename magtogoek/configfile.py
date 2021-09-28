@@ -36,8 +36,10 @@ If bodc_name False, generic variable names are used.
 FIXME
 """
 
+import ast
 import getpass
 import typing as tp
+from collections import namedtuple
 from configparser import ConfigParser
 
 from pandas import Timestamp
@@ -49,6 +51,13 @@ class ConfigFileError(Exception):
 
 TRUE_VALUES = ["true", "True", "1"]
 SENSOR_TYPES = ["adcp"]
+
+option_infos = namedtuple(
+    "option_infos",
+    ("dtype", "defaults", "nargs", "nargs_min", "nargs_max"),
+    defaults=[None] * 5,
+)
+
 
 BASIC_CONFIG = dict(
     HEADER={
@@ -105,9 +114,12 @@ ADCP_CONFIG = dict(
         "adcp_orientation": "down",
         "sonar": "",
         "navigation_file": "",
-        "magnetic_declination": "",
+        "leading_trim": "",
+        "trailing_trim": "",
         "sensor_depth": "",
-        "fixed_sensor_depth": "",
+        "depth_range": "",
+        "bad_pressure": "",
+        "magnetic_declination": "",
         "keep_bt": True,
     },
     ADCP_QUALITY_CONTROL={
@@ -122,9 +134,6 @@ ADCP_CONFIG = dict(
         "bottom_depth": "",
         "pitch_threshold": 20,
         "roll_threshold": 20,
-        "leading_trim": "",
-        "trailing_trim": "",
-        "depth_range": "",
         "motion_correction_mode": "bt",
     },
     ADCP_OUTPUT={
@@ -144,8 +153,12 @@ ADCP_CONFIG_TYPES = dict(
         "adcp_orientation": str,
         "sonar": str,
         "navigation_file": str,
-        "magnetic_declination": float,
+        "leading_trim": str,
+        "trailing_trim": str,
         "sensor_depth": float,
+        "depth_range": {"type": float, "exacly": None, "min": 0, "max": 2},
+        "bad_pressure": bool,
+        "magnetic_declination": float,
         "keep_bt": bool,
     },
     ADCP_QUALITY_CONTROL={
@@ -160,9 +173,6 @@ ADCP_CONFIG_TYPES = dict(
         "bottom_depth": float,
         "pitch_threshold": float,
         "roll_threshold": float,
-        "leading_trim": str,
-        "trailing_trim": str,
-        "depth_range": (float, [1, 2]),
         "motion_correction_mode": str,
     },
     ADCP_OUTPUT={
@@ -201,7 +211,7 @@ def make_configfile(filename: str, sensor_type: str, config_params: tp.Dict = No
         parser.write(f)
 
 
-def load_configfile(filename: str, updated_params: tp.Dict = None):
+def load_configfile(filename: str, updated_params: tp.Dict = None) -> dict:
     """load a configfile.
 
     Returns parser as a dictionnary with the appropriate types.
@@ -217,8 +227,7 @@ def load_configfile(filename: str, updated_params: tp.Dict = None):
     parser = ConfigParser()
     parser.optionxform = str
     parser.read(filename)
-
-    # Check integrity of the configfile
+    # Add any missing options in the configfile and adds them
     _check_config_missing(parser)
 
     # Overwrite the config values with `updated_params`.
@@ -228,11 +237,14 @@ def load_configfile(filename: str, updated_params: tp.Dict = None):
         with open(filename, "w") as f:
             parser.write(f)
 
-    parser = parser._sections
+    configuration = {}
+    configuration.update(parser._sections)
 
-    _convert_options_type(parser)
+    _format_input_output_section(configuration)
+    _set_empty_field_to_none(configuration)
+    _format_sensor_section_types(configuration)
 
-    return parser
+    return configuration
 
 
 def _check_config_missing(parser: tp.Type[ConfigParser]):
@@ -263,14 +275,12 @@ def _check_config_missing(parser: tp.Type[ConfigParser]):
                 parser[section][option] = ""
 
 
-def _convert_options_type(parser: tp.Dict):
-    """Convert some config options to the right type for processing.
+def _format_sensor_section_types(configuration: tp.Dict):
+    """Format sensor options to the right type for processing.
 
-    - Replace empty string  by `None`.
     - Convert the sensor specific configuration parameters values to the right
     data type, skipping `None` value set previously.
-    - Anything that should be a boolean and not a string in ['True','true','1'] is set to
-    `False`.
+    - Boolean `True` entry have to be in ['True','true','1'] else, it considere `False`.
 
     Raises
     ------
@@ -285,19 +295,7 @@ def _convert_options_type(parser: tp.Dict):
 
     There should be additinal sensor_type options for each different sensor processing
     """
-    sensor_type = parser["HEADER"]["sensor_type"]
-
-    for section, options in parser.items():
-        for option in options.keys():
-            if parser[section][option] == "":
-                parser[section][option] = None
-            elif option == "input_files":
-                parser[section][option] = _format_string_sequence_to_list(
-                    parser[section][option]
-                )
-            elif option in ["odf_output", "netcdf_output"]:
-                if parser[section][option] in TRUE_VALUES:
-                    parser[section][option] = True
+    sensor_type = configuration["HEADER"]["sensor_type"]
 
     if sensor_type == "adcp":
         config_types = ADCP_CONFIG_TYPES
@@ -308,45 +306,27 @@ def _convert_options_type(parser: tp.Dict):
 
     for section, options in config_types.items():
         for option in options:
-            option_value = parser[section][option]
-            if option_value:
-                option_type = config_types[section][option]
-                if option_type == bool:
-                    option_value = True if option_value in TRUE_VALUES else False
-                elif option_type in (int, float):
-                    try:
-                        option_value = option_type(option_value)
-                    except ValueError:
-                        expected_type = str(option_type).split("'")[1]
-                        raise ConfigFileError(
-                            f"{section}/{option} value, {option_value}, is invalid. The expected value type : {expected_type}."
-                        )
-                elif isinstance(option_type, tuple):
-                    option_value = eval(option_value)
-                    if not isinstance(option_value, (list, tuple)):
-                        option_value = [option_value]
-                    try:
-                        option_value = list(map(option_type[0], option_value,))
-                    except ValueError:
-                        expected_type = str(option_type[0]).split("'")[1]
-                        raise ConfigFileError(
-                            f"{section}/{option} value, {option_value}, is invalid. The expected values are of types : {expected_type}."
-                        )
-                    if len(option_type[1]) == 2:
-                        if (
-                            len(option_value) < option_type[1][0]
-                            or len(option_value) > option_type[1][1]
-                        ):
-                            raise ConfigFileError(
-                                f"{section}/{option} value, {option_value} received {len(option_value)} values. Expected from {option_type[1][0]} to {option_type[1][1]} values"
-                            )
-                    else:
-                        if len(option_value) != option_type[1][0]:
-                            raise ConfigFileError(
-                                f"{section}/{option} value, {option_value} received {len(option_value)} values. Expected {option_type[1][0]} values"
-                            )
+            if configuration[section][option]:
+                if config_types[section][option] == bool:
+                    configuration[section][option] = (
+                        configuration[section][option] in TRUE_VALUES
+                    )
 
-                parser[section][option] = option_value
+                elif config_types[section][option] in (int, float):
+                    configuration[section][option] = _convert_to_numerical(
+                        option_value=configuration[section][option],
+                        option_type=config_types[section][option],
+                        section=section,
+                        option=option,
+                    )
+
+                elif isinstance(config_types[section][option], dict):
+                    configuration[section][option] = _convert_multiples_valued_options(
+                        option_value=configuration[section][option],
+                        option_type=config_types[section][option],
+                        section=section,
+                        option=option,
+                    )
 
 
 def _get_config_default(sensor_type: str):
@@ -382,3 +362,68 @@ def _format_string_sequence_to_list(sequence: str) -> tp.List:
         stripped = stripped.replace(sep, ",")
 
     return [s for s in stripped.split(",") if s != ""]
+
+
+def _set_empty_field_to_none(configuration):
+    for section, options in configuration.items():
+        for option in options.keys():
+            if not configuration[section][option]:
+                configuration[section][option] = None
+
+
+def _format_input_output_section(configuration):
+    configuration["INPUT"]["input_files"] = _format_string_sequence_to_list(
+        configuration["INPUT"]["input_files"]
+    )
+    for option in ["odf_output", "netcdf_output"]:
+        if configuration["OUTPUT"][option] in TRUE_VALUES:
+            configuration["OUTPUT"][option] = True
+
+
+def _convert_to_numerical(option_value, option_type, section, option):
+    try:
+        option_value = option_type(option_value)
+    except ValueError as catched_value_error:
+        expected_type = str(option_type).split("'")[1]
+        raise ConfigFileError(
+            f"""{section}/{option} value, {option_value}, is invalid.
+            The expected value type : {expected_type}."""
+        ) from catched_value_error
+
+    return option_value
+
+
+def _convert_multiples_valued_options(option_value, option_type, section, option):
+    option_value = ast.literal_eval(option_value)
+
+    if isinstance(option_value, tuple):
+        option_value = list(option_value)
+
+    if not isinstance(option_value, list):
+        option_value = [option_value]
+
+    for indx in range(len(option_value)):
+        option_value[indx] = _convert_to_numerical(
+            option_value[indx], option_type["type"], section, option
+        )
+
+    if option_type["min"]:
+        if len(option_value) < option_type["min"]:
+            raise ConfigFileError(
+                f"""{section}/{option} value, {option_value} received {len(option_value)} values.
+                Expected from {option_type['min']} to {option_type['max']} values."""
+            )
+    if option_type["max"]:
+        if len(option_value) > option_type["max"]:
+
+            raise ConfigFileError(
+                f"""{section}/{option} value, {option_value} received {len(option_value)} values.
+                Expected from {option_type['min']} to {option_type['max']} values."""
+            )
+    if option_type["exacly"]:
+        if len(option_value) != option_type["exacly"]:
+            raise ConfigFileError(
+                f"""{section}/{option} value, {option_value} received {len(option_value)} values.
+                Expected {option_type[1][0]} values"""
+            )
+    return option_value

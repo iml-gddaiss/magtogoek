@@ -187,7 +187,7 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
             show_default=True,
         ),
         click.option(
-            "-d",
+            "-b",
             "--bottom-depth",
             type=click.FLOAT,
             help="""If provided, this fixed depth will be
@@ -196,19 +196,19 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
             show_default=True,
         ),
         click.option(
-            "-D",
+            "-d",
             "--sensor-depth",
             type=click.FLOAT,
-            help="""If provided, the adcp depth (XducerDepth) will be adjusted so that its median equal `sensor_depth`.""",
+            help="""If provided, the adcp depth (XducerDepth) will be adjusted so that its median value equal the given `sensor_depth` value.""",
             default=None,
             show_default=True,
         ),
         click.option(
-            "-f",
-            "--fixed-sensor-depth",
-            type=click.FLOAT,
-            help="""Set all (XducerDepth) value to the one provided.""",
-            default=None,
+            "--bad-pressure/-",
+            help="""Use the `--bad-pressure` flag to discard pressure data from the processing.
+            This will inturn discard the adcp depth (XducerDepth) mesured by the ADCP.
+            Use the option `--sensor-depth` to enter a fixed depth.""",
+            default=False,
             show_default=True,
         ),
         click.option(
@@ -224,11 +224,12 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
         click.option(
             "-M",
             "--motion_correction_mode",
-            help="""Corrects motion with bottomTrack `bt` or navigation `nav`.
+            help="""Corrects motion with bottomTrack `bt` or navigation `nav`. Use
+            `off` turn off motion correction mode.
             For `nav`, a netcdf file made with `magtogoek.navigation` needs to be
-            with options `-N` for the `nav` option""",
+            with options `-N` for the `nav` option.""",
             default="bt",
-            type=click.Choice(["bt", "nav"]),
+            type=click.Choice(["bt", "nav", "off"]),
         ),
         click.option(
             "-P",

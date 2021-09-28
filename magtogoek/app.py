@@ -29,6 +29,7 @@ NOTE
 
 
 """
+import sys
 import typing as tp
 from pathlib import Path
 from subprocess import run as subp_run
@@ -36,6 +37,7 @@ from subprocess import run as subp_run
 import click
 
 from magtogoek.app_options import adcp_options, add_options
+from magtogoek.configfile import ADCP_CONFIG  # HELP
 from magtogoek.utils import is_valid_filename, json2dict
 from magtogoek.version import VERSION
 
@@ -60,38 +62,13 @@ BASE_CONFIG_STRUCT = {
     "netcdf_output": "OUTPUT",
     "odf_output": "OUTPUT",
 }
-ADCP_CONFIG_STRUCT = {
-    "yearbase": "ADCP_PROCESSING",
-    "adcp_orientation": "ADCP_PROCESSING",
-    "sonar": "ADCP_PROCESSING",
-    "navigation_file": "ADCP_PROCESSING",
-    "magnetic_declination": "ADCP_PROCESSING",
-    "sensor_depth": "ADCP_PROCESSING",
-    "fixed_sensor_depth": "ADCP_PROCESSING",
-    "keep_bt": "ADCP_PROCESSING",
-    "quality_control": "ADCP_QUALITY_CONTROL",
-    "amplitude_threshold": "ADCP_QUALITY_CONTROL",
-    "percentgood_threshold": "ADCP_QUALITY_CONTROL",
-    "correlation_threshold": "ADCP_QUALITY_CONTROL",
-    "horizontal_velocity_threshold": "ADCP_QUALITY_CONTROL",
-    "vertical_velocity_threshold": "ADCP_QUALITY_CONTROL",
-    "error_velocity_threshold": "ADCP_QUALITY_CONTROL",
-    "sidelobes_correction": "ADCP_QUALITY_CONTROL",
-    "bottom_depth": "ADCP_QUALITY_CONTROL",
-    "depth_range": "ADCP_QUALITY_CONTROL",
-    "pitch_threshold": "ADCP_QUALITY_CONTROL",
-    "roll_threshold": "ADCP_QUALITY_CONTROL",
-    "leading_trim": "ADCP_QUALITY_CONTROL",
-    "trailing_trim": "ADCP_QUALITY_CONTROL",
-    "motion_correction_mode": "ADCP_QUALITY_CONTROL",
-    "merge_output_files": "ADCP_OUTPUT",
-    "bodc_name": "ADCP_OUTPUT",
-    "drop_percent_good": "ADCP_OUTPUT",
-    "drop_correlation": "ADCP_OUTPUT",
-    "drop_amplitude": "ADCP_OUTPUT",
-    "make_figures": "ADCP_OUTPUT",
-    "make_log": "ADCP_OUTPUT",
-}
+
+
+ADCP_CONFIG_STRUCT = dict()
+for section, items in ADCP_CONFIG.items():
+    for item in items:
+        ADCP_CONFIG_STRUCT[item] = section
+
 
 OPTIONS_NAME_TRANSLATOR = dict(
     adcp=dict(
@@ -116,9 +93,9 @@ TERMINAL_WIDTH = 80
 def _print_info(ctx, callback):
     """Show command information"""
     if callback:
-        subp_run(["printf", "\e[8;40;" + str(TERMINAL_WIDTH + 1) + "t"])
+        subp_run(["printf", r"\e[8;40;" + str(TERMINAL_WIDTH + 1) + "t"], check=True)
         click.clear()
-        _print_logo(logo_path=LOGO_PATH, group=ctx.info_name, version=VERSION)
+        _print_logo(logo_path=LOGO_PATH, group=ctx.info_name)
         click.secho("\nDescriptions:", fg="red")
         _print_description(ctx.info_name)
         click.secho("\nUsage:", fg="red")
@@ -127,11 +104,11 @@ def _print_info(ctx, callback):
             click.secho("\nCommands:", fg="red")
         else:
             click.secho("\nArguments:", fg="red")
-        _print_arguments(ctx.info_name, ctx.parent)
+        _print_arguments(ctx.info_name)
         click.secho("\nOptions", fg="red")
         click.echo("  Use  -h/--help to show the options")
         click.echo("\n")
-        exit()
+        sys.exit()
 
 
 # --------------------------- #
@@ -153,7 +130,7 @@ def magtogoek(info):
     "--info", is_flag=True, callback=_print_info, help="Show command information"
 )
 @click.argument("config_file", metavar="[config_file]", type=click.Path(exists=True))
-def process(config_file, info):
+def process(info, config_file):
     """Process data by reading configfile"""
     # NOTE This could be update as a group with sensor specific command.
     # Doing so would allow the user to pass config options. The load_configfile
@@ -164,15 +141,15 @@ def process(config_file, info):
     from magtogoek.configfile import load_configfile
 
     try:
-        config = load_configfile(config_file)
+        configuration = load_configfile(config_file)
     except ParsingError:
         print("Failed to open the given configfile.\n mtgk process aborded.")
-        exit()
+        sys.exit()
 
-    if config["HEADER"]["sensor_type"] == "adcp":
+    if configuration["HEADER"]["sensor_type"] == "adcp":
         from magtogoek.adcp.process import process_adcp
 
-        process_adcp(config)
+        process_adcp(configuration)
 
 
 # --------------------------- #
@@ -184,7 +161,6 @@ def process(config_file, info):
 )
 def config(info):
     """Make configuration files or platform files"""
-    pass
 
 
 @magtogoek.group("quick", context_settings=CONTEXT_SETTINGS)
@@ -193,7 +169,6 @@ def config(info):
 )
 def quick(info):
     """Quick data process without configfile"""
-    pass
 
 
 @magtogoek.group("check", context_settings=CONTEXT_SETTINGS)
@@ -202,7 +177,6 @@ def quick(info):
 )
 def check(info):
     """Get info on raw data files"""
-    pass
 
 
 @magtogoek.group("compute", context_settings=CONTEXT_SETTINGS)
@@ -211,7 +185,6 @@ def check(info):
 )
 def compute(info):
     """Command to compute certain quantities."""
-    pass
 
 
 # --------------------------- #
@@ -223,7 +196,7 @@ def compute(info):
 )
 @click.argument("filename", metavar="[filename]", type=str)
 @click.pass_context
-def config_platform(ctx, filename, info):
+def config_platform(ctx, info, filename):
     from magtogoek.platforms import make_platform_template
 
     filename = is_valid_filename(filename, ext=".json")
@@ -247,7 +220,7 @@ def config_platform(ctx, filename, info):
 @add_options(adcp_options())
 @click.pass_context
 def config_adcp(
-    ctx, config_name, **options,
+    ctx, info, config_name, **options,
 ):
     """Command to make an adcp config files. The [OPTIONS] can be added
     before or after the [config_name]."""
@@ -309,7 +282,7 @@ def config_adcp(
 )
 @click.pass_context
 def quick_adcp(
-    ctx, input_files, sonar, yearbase, **options,
+    ctx, info, input_files, sonar, yearbase, **options,
 ):
     """Command to make an quickly process adcp files. The [OPTIONS] can be added
     before or after the [inputs_files]."""
@@ -341,7 +314,7 @@ def quick_adcp(
     required=True,
 )
 @click.pass_context
-def check_rti(ctx, input_files, **options):
+def check_rti(info, input_files, **options):
     """Prints info about RTI .ENS files."""
     from magtogoek.adcp.rti_reader import RtiReader
 
@@ -370,7 +343,7 @@ def check_rti(ctx, input_files, **options):
     "-w", "--window", type=click.INT, default=1, help="Length of the averaging window.",
 )
 @click.pass_context
-def navigation(ctx, input_files, **options):
+def navigation(ctx, info, input_files, **options):
     """Command to compute u_ship, v_ship, bearing from gsp data."""
     from magtogoek.navigation import compute_navigation
 
@@ -392,10 +365,10 @@ def _format_options_for_configfile(sensor_type, options):
         configfile_struct = {**BASE_CONFIG_STRUCT, **ADCP_CONFIG_STRUCT}
         if not options["bottom_depth"]:
             options["bottom_depth"] = ""
-        options["platform_file"] = options["platform"][0]
-        options["platform_id"] = options["platform"][1]
-        options["sensor_id"] = options["platform"][2]
-        del options["platform"]
+    options["platform_file"] = options["platform"][0]
+    options["platform_id"] = options["platform"][1]
+    options["sensor_id"] = options["platform"][2]
+    del options["platform"]
 
     updated_params = dict()
     for section in set(configfile_struct.values()):
@@ -436,9 +409,7 @@ def _print_passed_options(ctx_params: tp.Dict):
     click.echo(click.style("=" * TERMINAL_WIDTH, fg="white", bold=True))
 
 
-def _print_logo(
-    logo_path: str = "files/logo.json", group: str = "", version: str = "unavailable",
-):
+def _print_logo(logo_path: str = "files/logo.json", group: str = ""):
     """open and print logo from logo.json
     If a process is given, prints the process logo.
     """
@@ -463,9 +434,9 @@ def _print_logo(
     click.echo(click.style("=" * TERMINAL_WIDTH, fg="white", bold=True))
 
 
-def _print_arguments(group, parent):
+def _print_arguments(group):
     """print group(command) command(arguments)"""
-    _parent = parent.info_name if parent else ""
+    #    _parent = parent.info_name if parent else ""
     if group == "mtgk":
         click.secho(
             "  config".ljust(20, " ") + "Command to make configuration files",
@@ -546,8 +517,8 @@ def _print_description(group):
         click.echo("""FIXME""")
     if group == "config":
         click.echo(
-            """  The config command is used to create `.ini` configuration files or `.json` 
-  platform files. Configuration `.ini` files are used to write the desired 
+            """  The config command is used to create `.ini` configuration files or `.json`
+  platform files. Configuration `.ini` files are used to write the desired
   processing configuration for different types of sensor (adcp, ctd, etc). Once
   created the configuration file   can be filled in any text editor or via
   optional arguments. Platform files are used to store platform metedata.""",
@@ -590,11 +561,13 @@ def _print_description(group):
         click.echo(
             """ Compute u_ship (eastward velocity), v_ship (northward velocity) and the bearing
 of the input gps data. The GPS input files can be nmea text file, gpx XML files or
-a netcdf files with `lon`, `lat` variables and `time` coordinates. Using the command `-w`, an averaging window can be use to smooth the computed navigation data. A matplotlib plot is made after each computation."""
+a netcdf files with `lon`, `lat` variables and `time` coordinates. Using the command
+`-w`, an averaging window can be use to smooth the computed navigation data.
+A matplotlib plot is made after each computation."""
         )
 
     if group == "platform":
-        click.echo("""Creates an empty platform.json file""")  # FIXME
+        click.echo("""Creates an empty platform.json file""")
 
 
 def _print_usage(group, parent):
@@ -606,19 +579,19 @@ def _print_usage(group, parent):
     if group == "config":
         click.echo("  mtgk config [adcp, platform,] [CONFIG_NAME] [OPTIONS]")
     if group == "platform":
-        click.echo(f"  mtgk config platform [FILENAME] [OPTIONS]")
+        click.echo("  mtgk config platform [FILENAME] [OPTIONS]")
     if group == "process":
         click.echo("  mtgk process [CONFIG_FILE] [OPTIONS]")
     if group == "quick":
         click.echo("  mtgk quick [adcp, ] [FILENAME,...] [OPTIONS]")
     if group == "adcp":
         if _parent == "config":
-            click.echo(f"  mtgk config adcp [CONFIG_NAME] [OPTIONS]")
+            click.echo("  mtgk config adcp [CONFIG_NAME] [OPTIONS]")
         if _parent == "quick":
-            click.echo(f"  mtgk quick adcp [INPUT_FILES] [SONAR] [YEARBASE] [OPTIONS]")
+            click.echo("  mtgk quick adcp [INPUT_FILES] [SONAR] [YEARBASE] [OPTIONS]")
     if group == "check":
-        click.echo(f"  mtgk check [rti,] [INPUT_FILES] ")
+        click.echo("  mtgk check [rti,] [INPUT_FILES] ")
     if group == "rti":
-        click.echo(f"  mtgk check rti [INPUT_FILES] ")
+        click.echo("  mtgk check rti [INPUT_FILES] ")
     if group == "nav":
-        click.echo(f"  mtgk compute nav [INPUT_FILES] ")
+        click.echo("  mtgk compute nav [INPUT_FILES] ")

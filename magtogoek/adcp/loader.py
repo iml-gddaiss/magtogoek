@@ -76,7 +76,7 @@ def load_adcp_binary(
     trailing_index: int = None,
     depth_range: tp.Tuple[int, float, list] = None,
     sensor_depth: float = None,
-    fixed_sensor_depth: float = None,
+    bad_pressure: bool = False,
 ):
     """Load RDI and RTI adcp data.
 
@@ -105,9 +105,9 @@ def load_adcp_binary(
     depth_range :
         Depth min or (min max)
     sensor_depth:
-        If provided, the adcp depth will be adjusted so that its median equal `sensor_depth`.
-    fixed_sensor_depth:
-        If provided, the adcp depth will be adjusted so that its median equal `sensor_depth`.
+        If provided, the adcp depth (meter) will be adjusted so that its median equal `sensor_depth`.
+    bad_pressure:
+        If True, XducerDepth is set to 0 or to `sensor_depth` if provided.
     Returns
     -------
         Dataset with the loaded adcp data
@@ -227,9 +227,14 @@ def load_adcp_binary(
     # ----------------------------------------------------------- #
     # Convert depth relative to the ADCP to depth below surface   #
     # ----------------------------------------------------------- #
-    if fixed_sensor_depth:  # FIXME
-        sensor_depth = None
-        data.XducerDepth[:] = fixed_sensor_depth
+    if bad_pressure:
+        l.log("XducerDepth were discarted by the user.")
+        if sensor_depth:
+            data.XducerDepth[:] = sensor_depth
+            l.log(f"XducerDepth set to {sensor_depth} m.")
+        else:
+            data.XducerDepth[:] = 0
+            l.log("XducerDepth set to 0 m.")
 
     average_xducer_depth = round(np.median(data.XducerDepth), 3)
     xducer_depth = data.XducerDepth
@@ -318,9 +323,6 @@ def load_adcp_binary(
             )
 
         else:
-            l.log(
-                "Bottom track values were all `0`, therefore they were dropped from the ouput."
-            )
             data.bt_vel[data.bt_vel == VEL_FILL_VALUE] = np.nan
             ds["bt_u"] = (["time"], data.bt_vel[:, 0])
             ds["bt_v"] = (["time"], data.bt_vel[:, 1])
@@ -557,7 +559,7 @@ def coordsystem2earth(data: tp.Type[Bunch], orientation: str):
 
     beam_pattern = "convex" if data.sysconfig["convex"] else "concave"
 
-    xyze, xyze_bt = data.vel.data, data.bt_vel.data
+    xyze, xyze_bt = data.vel, data.bt_vel
 
     if data.trans.coordsystem == "beam":
         if data.sysconfig.angle:

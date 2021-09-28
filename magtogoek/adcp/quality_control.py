@@ -151,7 +151,7 @@ def adcp_quality_control(
     motion_correction
         If 'nav' or 'bt' will corrected velocities from the platform motion,
         will either correct u,v,w with navigation ('nav') or bottom track ('bt')
-        data.
+        data. No motion correction si carried out if motion_correction == 'off'.
     sidelobes_correction :
         Use fixed depth or bottom track range to remove side lobe
         contamination. Set to either "dep" or "bt" or None.
@@ -192,7 +192,7 @@ def adcp_quality_control(
     l.reset()
     l.section("Quality Control")
 
-    if motion_correction_mode:
+    if motion_correction_mode in ["bt", "nav"]:
         motion_correction(dataset, motion_correction_mode)
 
     set_implausible_vel_to_nan(dataset, thres=IMPLAUSIBLE_VEL_TRESHOLD)
@@ -252,7 +252,7 @@ def adcp_quality_control(
     if sidelobes_correction:
         sidelobe_flag = sidelobe_test(dataset, bottom_depth)
         if isinstance(sidelobe_flag, np.ndarray):
-            l.log(f"Sidelobe correction carried out.")
+            l.log("Sidelobe correction carried out.")
             vel_flags[sidelobe_flag] = 3
             vel_qc_test.append("sidelobes")
 
@@ -358,11 +358,11 @@ def set_implausible_vel_to_nan(dataset: tp.Type[xr.Dataset], thres: float = 15):
         dataset["u"] = dataset["u"].where(plausible)
         dataset["v"] = dataset["v"].where(plausible)
         dataset["w"] = dataset["w"].where(plausible)
-        # flag 4: bad values ? now missing ?
 
 
 def correlation_test(dataset, threshold):
     """FIXME
+    Value must be greater than the threshold to be good. (True fails)
     NOTE JeanLucShaw used absolute but is it needed ?"""
 
     if all(f"corr{i}" in dataset for i in range(1, 5)):
@@ -373,12 +373,13 @@ def correlation_test(dataset, threshold):
             & (dataset.corr4 < threshold)
         ).data
     else:
-        l.warnings("Correlation test aborted. Missing one or more corr data")
+        l.warning("Correlation test aborted. Missing one or more corr data")
         return np.full(dataset.depth.shape + dataset.time.shape, False)
 
 
 def amplitude_test(dataset, threshold):
     """FIXME
+    Value must be greater than the threshold to be good. (True fails)
     NOTE JeanLucShaw used absolute but is it needed ?"""
     if all(f"amp{i}" in dataset for i in range(1, 5)):
         return (
@@ -388,17 +389,18 @@ def amplitude_test(dataset, threshold):
             & (dataset.amp4 < threshold)
         ).data
     else:
-        l.warnings("Amplitude test aborted. Missing one or more corr data")
+        l.warning("Amplitude test aborted. Missing one or more corr data")
         return np.full(dataset.depth.shape + dataset.time.shape, False)
 
 
 def percentgood_test(dataset, threshold):
     """FIXME
+    Value must be greater than the threshold to be good. (True fails)
     NOTE JeanLucShaw used absolute but is it needed ?"""
     if "pg" in dataset:
         return (dataset.pg < threshold).data
     else:
-        l.warnings("Percent Good test aborted. Missing one or more corr data")
+        l.warning("Percent Good test aborted. Missing one or more corr data")
         return np.full(dataset.depth.shape + dataset.time.shape, False)
 
 
@@ -411,7 +413,7 @@ def roll_test(dataset: tp.Type[xr.Dataset], thres: float) -> tp.Type[np.array]:
         roll_from_mean = circular_distance(dataset.roll_.values, roll_mean, units="deg")
         return roll_from_mean > thres
     else:
-        l.warnings("Roll test aborted. Missing one or more corr data")
+        l.warning("Roll test aborted. Missing one or more corr data")
         return np.full(dataset.depth.shape + dataset.time.shape, False)
 
 
@@ -428,7 +430,7 @@ def pitch_test(dataset: tp.Type[xr.Dataset], thres: float) -> tp.Type[np.array]:
         return pitch_from_mean > thres
 
     else:
-        l.warnings("Pitch test aborted. Missing one or more corr data")
+        l.warning("Pitch test aborted. Missing one or more corr data")
         return np.full(dataset.depth.shape + dataset.time.shape, False)
 
 
@@ -482,23 +484,27 @@ def sidelobe_test(dataset: tp.Type[xr.Dataset], bottom_depth: float = None):
 
     Returns a boolean array or a False statement if the test cannot be carried out.
 
-    Equation :
-        Downward: max_depth = XducerDepth + (bottom_depth + XducerDepth) * cos(beam_angle)
-        Unward: min_depth = XducerDepth * ( 1 - cos(beam_angle))
+    Downward equation:
+        bin_depth + 0.5*bin_size > XducerDepth + (bottom_depth - XducerDepth)*cos(beam_angle)
+    Upward equation:
+        bin_depth + 0.5*bin_size < XducerDepth*( 1 - cos(beam_angle))
 
     Parameters
     ----------
-    depth : optional
+    bottom_depth : optional
         Fixed bottom depth to use for sidelobe correction
     """
     if dataset.attrs["beam_angle"] and dataset.attrs["orientation"]:
-        cos_angle = np.cos(np.radians(dataset.attrs["beam_angle"]))
-        depth_array = np.tile(dataset.depth.data, dataset.time.shape + (1,))
+        angle_cos = np.cos(np.radians(dataset.attrs["beam_angle"]))
+        depth_array = (
+            np.tile(dataset.depth.data, dataset.time.shape + (1,))
+            + dataset.attrs["bin_size"] / 2
+        )
 
-        if "xducer_depth" in dataset and "xducer_depth" not in dataset.attrs:
-            xducer_depth = dataset["xducer_depth"].data
-        elif "xducer_depth" in dataset.attrs:
+        if "xducer_depth" in dataset.attrs:
             xducer_depth = np.tile(dataset.attrs["xducer_depth"], dataset.time.shape)
+        elif "xducer_depth" in dataset:
+            xducer_depth = dataset["xducer_depth"].data
         else:
             l.warning(
                 "Sidelobes correction aborded. Adcp depth `xducer_depth` not provided."
@@ -514,11 +520,11 @@ def sidelobe_test(dataset: tp.Type[xr.Dataset], bottom_depth: float = None):
                 )
                 return False
 
-            max_depth = xducer_depth + (bottom_depth - xducer_depth) * cos_angle
+            max_depth = xducer_depth + (bottom_depth - xducer_depth) * angle_cos
             return depth_array.T > max_depth
 
         elif dataset.attrs["orientation"] == "up":
-            min_depth = xducer_depth * (1 - cos_angle)
+            min_depth = xducer_depth * (1 - angle_cos)
             return depth_array.T < min_depth.T
 
         else:

@@ -11,14 +11,16 @@ In the `input` and `output` sections, empty fileds are considered False.
 If both `netcdf_output` and `odf_output` are false, `netcdf_output` will automatically be set to true.
 ```dosini
 [INPUT]
-input_files                   = REQUIRED. `path/to/filenames`: Multiple files can be put on the same line or on multiple lines.
+input_files                   = REQUIRED. `path/to/filenames`: Multiple files can be put on the same line or 
+                              on multiple lines as long as they are intented by a least a single space.
 platform_file                 = `path/to/platform` file.
 platform_id                   = platform id (key) in the platform file.
 sensor_id                     = sensor id (key) in the platform file.
 
 [OUTPUT]
 netcdf_output                 = `path/to/filenames` or (True, 1). If True or 1, netcdf_output = input_files.nc.
-odf_output                    = `path/to/filenames` or (True, 1). If True or 1, odf_output is made from the `odf[files_specifications]`.
+odf_output                    = `path/to/filenames` or (True, 1). If True or 1, odf_output is made from 
+                                the `odf[files_specifications]`.
 ```
 
 # Metadata
@@ -32,7 +34,8 @@ summary                       = -
 references                    = Auto generated.
 comments                      = -
 naming_authority              = Auto generated.
-source                        = Orginal method that produced the data. Ex: Numerical model (name), or instrument sampling (type).
+source                        = Orginal method that produced the data. Ex: Numerical model (name), 
+                                or instrument sampling (type).
 ```
 
 The `PROJECT`, `CRUISE` and `GLOBAL_ATTRIBUTES` sections contains metadata. 
