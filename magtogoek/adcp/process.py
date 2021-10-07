@@ -291,7 +291,7 @@ def _pipe_to_process_adcp_data(
                     )
             params["input_files"] = [filename]
 
-            _process_adcp_data(params, sensor_metadata, global_attrs)
+            _process_adcp_data(params, sensor_metadata, global_attrs, drop_empty_attrs)
     else:
         _process_adcp_data(params, sensor_metadata, global_attrs)
 

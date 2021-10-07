@@ -7,7 +7,6 @@ This make_configparser is called by magtogoek_command.py
 
 This modules also contains the sections and default parameters values for the configparsers.
 
-
 NOTE: More comments should be added in the configparser files.
 NOTE: Missing,fonctions to open the config files.
 NOTE: Make a class ? Config(config_name, sensor_type=None).{update(options), .load(), .save()}
@@ -35,178 +34,239 @@ Set True or False.
 If bodc_name False, generic variable names are used.
 FIXME
 """
-
-import ast
 import getpass
+import sys
 import typing as tp
 from collections import namedtuple
-from configparser import ConfigParser
+from configparser import RawConfigParser
+from pathlib import Path
 
+import click
 from pandas import Timestamp
 
-
-class ConfigFileError(Exception):
-    pass
-
-
-TRUE_VALUES = ["true", "True", "1"]
+REFERENCE = "https://github.com/JeromeJGuay/magtogoek"
+TRUE_VALUES = ["True", "true", "1", "On", "on"]
+FALSE_VALUES = ["False", "False", "0", "Off", "off"]
 SENSOR_TYPES = ["adcp"]
+
 
 option_infos = namedtuple(
     "option_infos",
-    ("dtype", "defaults", "nargs", "nargs_min", "nargs_max"),
-    defaults=[None] * 5,
+    (
+        "dtypes",
+        "default",
+        "nargs",
+        "nargs_min",
+        "nargs_max",
+        "choice",
+        "value_min",
+        "value_max",
+    ),
+    defaults=[[]] + [None] * 7,
 )
+
+
+class ConfigFileError(SystemExit):
+    def __init__(
+        self, error, section=None, option=None, option_info=option_infos(), value=None
+    ):
+        self.error = error
+        self.section = section
+        self.option = option
+        self.option_info = option_info
+        self.value = value
+        self.msg = ""
+
+        self._get_error_message()
+        click.secho("ConfigFileError", fg="red", bold=True)
+        print(self.msg)
+        print("Exiting magtogoek")
+
+    def _get_error_message(self):
+        if self.error == "header_missing":
+            self.msg = "Config is missing a `HEADER` section."
+        if self.error == "sensor_type":
+            self.msg = f"`sensor_type` value is either missing or invalid. `sensor_type` must be one of `{SENSOR_TYPES}`."
+        if self.error == "dtype":
+            self.msg = f"`{self.section}/{self.option}` expected a `{' or '.join(self.option_info.dtypes)}` but received `{self.value}`."
+        if self.error == "nargs":
+            self.msg = f"`{self.section}/{self.option}` expected "
+            if self.option_info.nargs:
+                self.msg = f"`{self.option_info.nargs}` "
+            else:
+                if self.option_info.nargs_min is not None:
+                    self.msg += f"a minimum of `{self.option_info.nargs_min}` "
+                    if self.option_info.nargs_max:
+                        self.msg += "and "
+                if self.option_info.nargs_max:
+                    self.msg += f"a maximum of `{self.option_info.nargs_max}` "
+            self.msg += f"values, but received `{len(self.value)}`."
+        if self.error == "range":
+            self.msg = f"`{self.section}/{self.option}` expected a value "
+            if self.option_info.value_min is not None:
+                self.msg += f">= than `{self.option_info.value_min}` "
+                if self.option_info.value_max:
+                    self.msg += "and "
+            if self.option_info.value_max:
+                self.msg += f"<= than `{self.option_info.value_max}` "
+            self.msg += f", but received a value of `{self.value}`."
+        if self.error == "choice":
+            self.msg = f"`{self.section}/{self.option}` expected a value in `{self.option_info.choice}` but received `{self.value}`."
+        if "bool" in self.option_info.dtypes:
+            self.msg += (
+                f"\nBoolean have to be express with {TRUE_VALUES} or {FALSE_VALUES}."
+            )
 
 
 BASIC_CONFIG = dict(
     HEADER={
-        "sensor_type": "",
-        "made_by": getpass.getuser(),
-        "last_updated": Timestamp.now().strftime("%Y-%m-%d"),
+        "sensor_type": option_infos(dtypes=["str"], default=""),
+        "made_by": option_infos(dtypes=["str"], default=getpass.getuser()),
+        "last_updated": option_infos(
+            dtypes=["str"], default=Timestamp.now().strftime("%Y-%m-%d")
+        ),
     },
-    INPUT={"input_files": "", "platform_file": "", "platform_id": "", "sensor_id": "",},
-    OUTPUT={"netcdf_output": "", "odf_output": "",},
+    INPUT={
+        "input_files": option_infos(dtypes=["str"], default="", nargs_min=1),
+        "platform_file": option_infos(dtypes=["str"], default=""),
+        "platform_id": option_infos(dtypes=["str"], default=""),
+        "sensor_id": option_infos(dtypes=["str"], default=""),
+    },
+    OUTPUT={
+        "netcdf_output": option_infos(dtypes=["str", "bool"], default=""),
+        "odf_output": option_infos(dtypes=["str", "bool"], default=""),
+    },
     NETCDF_CF={
-        "Conventions": "CF 1.8",
-        "title": "",
-        "institution": "",
-        "summary": "",
-        "references": "https://github.com/JeromeJGuay/magtogoek",
-        "comments": "",
-        "naming_authority": "BODC, SDC, CF, MEDS",
-        "source": "",
+        "Conventions": option_infos(dtypes=["str"], default="CF 1.8"),
+        "title": option_infos(dtypes=["str"], default=""),
+        "institution": option_infos(dtypes=["str"], default=""),
+        "summary": option_infos(dtypes=["str"], default=""),
+        "references": option_infos(dtypes=["str"], default=REFERENCE),
+        "comments": option_infos(dtypes=["str"], default=""),
+        "naming_authority": option_infos(dtypes=["str"], default="BODC, SDC, CF, MEDS"),
+        "source": option_infos(dtypes=["str"], default=""),
     },
-    PROJECT={"project": "", "sea_name": "", "sea_code": "",},
+    PROJECT={
+        "project": option_infos(dtypes=["str"], default=""),
+        "sea_name": option_infos(dtypes=["str"], default=""),
+        "sea_code": option_infos(dtypes=["str"], default=""),
+    },
     CRUISE={
-        "country_institute_code": "",
-        "cruise_number": "",
-        "cruise_name": "",
-        "cruise_description": "",
-        "organization": "",
-        "chief_scientist": "",
-        "start_date": "",
-        "end_date": "",
-        "event_number": "",
-        "event_qualifier1": "",
-        "event_qualifier2": "",
-        "event_comments": "",
+        "country_institute_code": option_infos(dtypes=["str"], default=""),
+        "cruise_number": option_infos(dtypes=["str"], default=""),
+        "cruise_name": option_infos(dtypes=["str"], default=""),
+        "cruise_description": option_infos(dtypes=["str"], default=""),
+        "organization": option_infos(dtypes=["str"], default=""),
+        "chief_scientist": option_infos(dtypes=["str"], default=""),
+        "start_date": option_infos(dtypes=["str"], default=""),
+        "end_date": option_infos(dtypes=["str"], default=""),
+        "event_number": option_infos(dtypes=["str"], default=""),
+        "event_qualifier1": option_infos(dtypes=["str"], default=""),
+        "event_qualifier2": option_infos(dtypes=["str"], default=""),
+        "event_comments": option_infos(dtypes=["str"], default=""),
     },
     GLOBAL_ATTRIBUTES={
-        "date_created": "",
-        "data_type": "",
-        "data_subtype": "",
-        "cdm_data_type": "",
-        "country_code": "",
-        "publisher_email": "",
-        "creator_type": "",
-        "publisher_name": "",
-        "keywords": "",
-        "keywords_vocabulary": "",
-        "standard_name_vocabulary": "CF v.52",
-        "aknowledgment": "",
+        "date_created": option_infos(dtypes=["str"], default=""),
+        "data_type": option_infos(dtypes=["str"], default=""),
+        "data_subtype": option_infos(dtypes=["str"], default=""),
+        "cdm_data_type": option_infos(dtypes=["str"], default=""),
+        "country_code": option_infos(dtypes=["str"], default=""),
+        "publisher_email": option_infos(dtypes=["str"], default=""),
+        "creator_type": option_infos(dtypes=["str"], default=""),
+        "publisher_name": option_infos(dtypes=["str"], default=""),
+        "keywords": option_infos(dtypes=["str"], default=""),
+        "keywords_vocabulary": option_infos(dtypes=["str"], default=""),
+        "standard_name_vocabulary": option_infos(dtypes=["str"], default="CF v.52"),
+        "aknowledgment": option_infos(dtypes=["str"], default=""),
     },
 )
 
 ADCP_CONFIG = dict(
     ADCP_PROCESSING={
-        "yearbase": "",
-        "adcp_orientation": "down",
-        "sonar": "",
-        "navigation_file": "",
-        "leading_trim": "",
-        "trailing_trim": "",
-        "sensor_depth": "",
-        "depth_range": "",
-        "bad_pressure": "",
-        "magnetic_declination": "",
-        "keep_bt": True,
+        "yearbase": option_infos(dtypes=["int"], default=""),
+        "adcp_orientation": option_infos(dtypes=["str"], choice=["up", "down"]),
+        "sonar": option_infos(
+            dtypes=["str"], choice=["wh", "sv", "os", "sw", "sw_pd0"]
+        ),
+        "navigation_file": option_infos(dtypes=["str"], default=""),
+        "leading_trim": option_infos(dtypes=["str"], default=""),
+        "trailing_trim": option_infos(dtypes=["str"], default=""),
+        "sensor_depth": option_infos(dtypes=["float"], default=""),
+        "depth_range": option_infos(
+            dtypes=["float"], default="()", nargs_min=1, nargs_max=2
+        ),
+        "bad_pressure": option_infos(dtypes=["bool"], default=False),
+        "magnetic_declination": option_infos(dtypes=["float"], default=""),
+        "keep_bt": option_infos(dtypes=["bool"], default=True),
     },
     ADCP_QUALITY_CONTROL={
-        "quality_control": True,
-        "amplitude_threshold": 0,
-        "percentgood_threshold": 64,
-        "correlation_threshold": 90,
-        "horizontal_velocity_threshold": 5,
-        "vertical_velocity_threshold": 5,
-        "error_velocity_threshold": 5,
-        "sidelobes_correction": True,
-        "bottom_depth": "",
-        "pitch_threshold": 20,
-        "roll_threshold": 20,
-        "motion_correction_mode": "bt",
+        "quality_control": option_infos(dtypes=["bool"], default=True),
+        "amplitude_threshold": option_infos(
+            dtypes=["int"], default=0, value_min=0, value_max=255
+        ),
+        "percentgood_threshold": option_infos(
+            dtypes=["int"], default=64, value_min=0, value_max=100
+        ),
+        "correlation_threshold": option_infos(
+            dtypes=["int"], default=90, value_min=0, value_max=255
+        ),
+        "horizontal_velocity_threshold": option_infos(dtypes=["float"], default=5),
+        "vertical_velocity_threshold": option_infos(dtypes=["float"], default=5),
+        "error_velocity_threshold": option_infos(dtypes=["float"], default=5),
+        "sidelobes_correction": option_infos(dtypes=["bool"], default=True),
+        "bottom_depth": option_infos(dtypes=["float"]),
+        "pitch_threshold": option_infos(
+            dtypes=["int"], default=20, value_min=0, value_max=180
+        ),
+        "roll_threshold": option_infos(
+            dtypes=["int"], default=20, value_min=0, value_max=180
+        ),
+        "motion_correction_mode": option_infos(
+            dtypes=["str"], default="bt", choice=["bt", "nav", "off"]
+        ),
     },
     ADCP_OUTPUT={
-        "merge_output_files": True,
-        "bodc_name": True,
-        "force_platform_metadata": False,
-        "drop_percent_good": True,
-        "drop_correlation": True,
-        "drop_amplitude": True,
-        "make_figures": True,
-        "make_log": True,
-    },
-)
-ADCP_CONFIG_TYPES = dict(
-    ADCP_PROCESSING={
-        "yearbase": int,
-        "adcp_orientation": str,
-        "sonar": str,
-        "navigation_file": str,
-        "leading_trim": str,
-        "trailing_trim": str,
-        "sensor_depth": float,
-        "depth_range": {"type": float, "exacly": None, "min": 0, "max": 2},
-        "bad_pressure": bool,
-        "magnetic_declination": float,
-        "keep_bt": bool,
-    },
-    ADCP_QUALITY_CONTROL={
-        "quality_control": bool,
-        "amplitude_threshold": float,
-        "percentgood_threshold": float,
-        "correlation_threshold": float,
-        "horizontal_velocity_threshold": float,
-        "vertical_velocity_threshold": float,
-        "error_velocity_threshold": float,
-        "sidelobes_correction": bool,
-        "bottom_depth": float,
-        "pitch_threshold": float,
-        "roll_threshold": float,
-        "motion_correction_mode": str,
-    },
-    ADCP_OUTPUT={
-        "merge_output_files": bool,
-        "bodc_name": bool,
-        "force_platform_metadata": bool,
-        "drop_percent_good": bool,
-        "drop_correlation": bool,
-        "drop_amplitude": bool,
-        "make_figures": bool,
-        "make_log": bool,
+        "merge_output_files": option_infos(dtypes=["bool"], default=True),
+        "bodc_name": option_infos(dtypes=["bool"], default=True),
+        "force_platform_metadata": option_infos(dtypes=["bool"], default=False),
+        "drop_percent_good": option_infos(dtypes=["bool"], default=True),
+        "drop_correlation": option_infos(dtypes=["bool"], default=True),
+        "drop_amplitude": option_infos(dtypes=["bool"], default=True),
+        "make_figures": option_infos(dtypes=["bool"], default=True),
+        "make_log": option_infos(dtypes=["bool"], default=True),
     },
 )
 
 
-def make_configfile(filename: str, sensor_type: str, config_params: tp.Dict = None):
-    """make a configfile with default and update it if `updated_params` are passed"""
+def make_configfile(filename: str, sensor_type: str, values: tp.Dict = None):
+    """make a configfile with default and update it if `options` are passed"""
 
     # geting the default config as dict
-    config_dict = _get_config_default(sensor_type)
+    default_config = _get_default_config(sensor_type)
 
     # Building the parser
-    parser = ConfigParser()
+    parser = RawConfigParser()
     parser.optionxform = str
-    for section, params in config_dict.items():
+    for section, options in default_config.items():
         parser.add_section(section)
-        for param, value in params.items():
-            parser[section][param] = str(value)
+        for option, value in options.items():
+            parser[section][option] = str(value)
 
     # Overwrite the default values with the `updated_params`.
-    if config_params:
-        _update_config(parser, config_params)
+    if values:
+        _update_parser_values(parser, values)
 
-    # Writing
+    _write_configfile(parser, filename)
+
+
+def _update_parser_values(parser: tp.Type[RawConfigParser], values: tp.Dict):
+    """Overwrite the default values with those from `values`."""
+    for section, options in values.items():
+        for option, value in options.items():
+            parser[section][option] = "" if value is None else str(value)
+
+
+def _write_configfile(parser, filename):
     with open(filename, "w") as f:
         parser.write(f)
 
@@ -222,32 +282,29 @@ def load_configfile(filename: str, updated_params: tp.Dict = None) -> dict:
     - convert the options from string to the correct type for processing.
 
     """
+    if not Path(filename).exists():
+        print(f"Error: {filename} not found")
+        sys.exit()
 
-    # Opening the configfile
-    parser = ConfigParser()
+    parser = RawConfigParser()
     parser.optionxform = str
     parser.read(filename)
-    # Add any missing options in the configfile and adds them
-    _check_config_missing(parser)
 
-    # Overwrite the config values with `updated_params`.
+    _add_config_missing(parser)
+
     if updated_params:
-        _update_config(parser, updated_params)
-        # Overwriting the configfile with the new values
-        with open(filename, "w") as f:
-            parser.write(f)
+        _update_parser_values(parser, updated_params)
+        _write_configfile(parser, filename)
 
-    configuration = {}
-    configuration.update(parser._sections)
+    config = {}
+    config.update(parser._sections)
 
-    _format_input_output_section(configuration)
-    _set_empty_field_to_none(configuration)
-    _format_sensor_section_types(configuration)
+    _format_config_options(config)
 
-    return configuration
+    return config
 
 
-def _check_config_missing(parser: tp.Type[ConfigParser]):
+def _add_config_missing(parser: tp.Type[RawConfigParser]):
     """Check for missing sections or options compared to the expected parser
 
     - Adds the options or section if needed with empty string as value.
@@ -261,13 +318,12 @@ def _check_config_missing(parser: tp.Type[ConfigParser]):
     if parser.has_option("HEADER", "sensor_type"):
         sensor_type = parser["HEADER"]["sensor_type"]
         if not sensor_type:
-            raise ConfigFileError("`sensor_type` value missing")
+            raise ConfigFileError(error="sensor_type")
     else:
-        raise ConfigFileError("`HEADER/sensor_type` Missing from configfile.")
+        raise ConfigFileError(error="sensor_type")
 
-    expected_parser = _get_config_default(sensor_type)
-
-    for section, options in expected_parser.items():
+    default_config = _get_default_config(sensor_type)
+    for section, options in default_config.items():
         if not parser.has_section(section):
             parser.add_section(section)
         for option in options.keys():
@@ -275,8 +331,8 @@ def _check_config_missing(parser: tp.Type[ConfigParser]):
                 parser[section][option] = ""
 
 
-def _format_sensor_section_types(configuration: tp.Dict):
-    """Format sensor options to the right type for processing.
+def _format_config_options(config: tp.Dict):
+    """Format config options for processing.
 
     - Convert the sensor specific configuration parameters values to the right
     data type, skipping `None` value set previously.
@@ -285,145 +341,141 @@ def _format_sensor_section_types(configuration: tp.Dict):
     Raises
     ------
     ConfigFileError :
-        Error are rised if the options value cannot be converted to the right type.
-        (str to int or float)
+        Error are rised if the options value cannot be converted to the right dtypes,
+        length, value, choice,  etc.
 
     Notes
     -----
     Setting options to `None` is equivalent to `False` for later processing but does not
     imply that the expected value is a boolean.
 
-    There should be additinal sensor_type options for each different sensor processing
+    There should be additional `sensor_type` options for each different sensor processing
     """
-    sensor_type = configuration["HEADER"]["sensor_type"]
+    config_info = _get_config_info(config["HEADER"]["sensor_type"])
 
-    if sensor_type == "adcp":
-        config_types = ADCP_CONFIG_TYPES
-    else:
-        raise ConfigFileError(
-            f"sensor_type {sensor_type} is invalid. Must be one of {SENSOR_TYPES}"
-        )
-
-    for section, options in config_types.items():
+    for section, options in config_info.items():
         for option in options:
-            if configuration[section][option]:
-                if config_types[section][option] == bool:
-                    configuration[section][option] = (
-                        configuration[section][option] in TRUE_VALUES
-                    )
+            option_info = config_info[section][option]
+            value = config[section][option]
+            if option_info.dtypes != "bool":
+                if not value and value != 0:
+                    value = None
+            if value is not None:
+                value = _format_option(
+                    config[section][option], option_info, section, option
+                )
 
-                elif config_types[section][option] in (int, float):
-                    configuration[section][option] = _convert_to_numerical(
-                        option_value=configuration[section][option],
-                        option_type=config_types[section][option],
-                        section=section,
-                        option=option,
-                    )
-
-                elif isinstance(config_types[section][option], dict):
-                    configuration[section][option] = _convert_multiples_valued_options(
-                        option_value=configuration[section][option],
-                        option_type=config_types[section][option],
-                        section=section,
-                        option=option,
-                    )
+            config[section][option] = value
 
 
-def _get_config_default(sensor_type: str):
-    """FIXME"""
-    if sensor_type == "adcp":
-        config_dict = {**BASIC_CONFIG, **ADCP_CONFIG}
-    config_dict["HEADER"]["sensor_type"] = sensor_type
+def _format_option(value, option_info, section, option):
+    if option_info.nargs or option_info.nargs_min or option_info.nargs_max:
+        value = _get_sequence_from_string(value)
+        _check_options_length(value, option_info, section, option)
+        for i, _value in enumerate(value):
+            value[i] = _format_option_type(_value, option_info, section, option)
+    else:
+        value = _format_option_type(value, option_info, section, option)
 
-    return config_dict
-
-
-def _update_config(parser: tp.Type[ConfigParser], updated_params: tp.Dict):
-    """Overwrite the default values with `updated_params`"""
-    for section, params in updated_params.items():
-        for param, value in params.items():
-            parser[section][param] = str(value)
+    return value
 
 
-def _format_string_sequence_to_list(sequence: str) -> tp.List:
+def _format_option_type(value, option_info, section, option):
+    """Format option to the right dtypes.
+    - Checks if value is outside option_info.min_value and option_info.max_value.
+    - Check if values is within the option_info.choice."""
+
+    try:
+        value = _format_value_dtypes(value, option_info.dtypes)
+    except ValueError:
+        raise ConfigFileError("dtype", section, option, option_info, value)
+
+    if option_info.value_min or option_info.value_max:
+        _check_option_min_max(value, option_info, section, option)
+
+    if option_info.choice:
+        if value not in option_info.choice:
+            raise ConfigFileError("choice", section, option, option_info, value)
+
+    return value
+
+
+def _format_value_dtypes(value, dtypes):
+    if "bool" in dtypes:
+        if value in TRUE_VALUES + FALSE_VALUES:
+            return value in TRUE_VALUES
+        else:
+            raise ValueError
+    if "int" in dtypes:
+        return int(float(value))
+    if "float" in dtypes:
+        return float(value)
+    return value
+
+
+def _get_sequence_from_string(sequence: str) -> tp.List:
     """Decode string containing a sequence of value.
 
     The sequence can be between brakets, parenthesis or nothing
-    and have comma, colon, semi-colon or spaces as separators.
+    and have comma, colon, semi-colon, newlines or spaces as separators.
 
     Example
     -------
-     _format_string_list'(arg1, arg2, arg3)' -> [arg1 arg2 arg3]
-
+    _format_string_list'(arg1, arg2, arg3)' -> [arg1 arg2 arg3]
     """
-    stripped = sequence.split("(")[-1].split("[")[-1].split("]")[0].split(")")[0]
+    for sep in (":", ";", " ", "\n", "(", ")", "[", "]"):
+        sequence = sequence.replace(sep, ",")
 
-    for sep in (":", ";", " ", "\n"):
-        stripped = stripped.replace(sep, ",")
-
-    return [s for s in stripped.split(",") if s != ""]
+    return list(filter(None, sequence.split(",")))
 
 
-def _set_empty_field_to_none(configuration):
-    for section, options in configuration.items():
-        for option in options.keys():
-            if not configuration[section][option]:
-                configuration[section][option] = None
+def _check_options_length(value, option_info, section, option):
+    if option_info.nargs:
+        if len(value) != option_info.nargs:
+            raise ConfigFileError("nargs", section, option, option_info, value)
+    if option_info.nargs_max:
+        if len(value) > option_info.nargs_max:
+            raise ConfigFileError("nargs", section, option, option_info, value)
+    if option_info.nargs_min:
+        if len(value) < option_info.nargs_min:
+            raise ConfigFileError("nargs", section, option, option_info, value)
 
 
-def _format_input_output_section(configuration):
-    configuration["INPUT"]["input_files"] = _format_string_sequence_to_list(
-        configuration["INPUT"]["input_files"]
-    )
-    for option in ["odf_output", "netcdf_output"]:
-        if configuration["OUTPUT"][option] in TRUE_VALUES:
-            configuration["OUTPUT"][option] = True
+def _check_option_min_max(value, option_info, section, option):
+    if option_info.value_max is not None:
+        if value > option_info.value_max:
+            raise ConfigFileError("range", section, option, option_info, value)
+    if option_info.value_min is not None:
+        if value < option_info.value_min:
+            raise ConfigFileError("range", section, option, option_info, value)
 
 
-def _convert_to_numerical(option_value, option_type, section, option):
-    try:
-        option_value = option_type(option_value)
-    except ValueError as catched_value_error:
-        expected_type = str(option_type).split("'")[1]
-        raise ConfigFileError(
-            f"""{section}/{option} value, {option_value}, is invalid.
-            The expected value type : {expected_type}."""
-        ) from catched_value_error
+def _get_config_info(sensor_type: str):
+    if sensor_type == "adcp":
+        config_info = {**BASIC_CONFIG, **ADCP_CONFIG}
+    else:
+        raise ConfigFileError(error="sensor_type")
 
-    return option_value
+    return config_info
 
 
-def _convert_multiples_valued_options(option_value, option_type, section, option):
-    option_value = ast.literal_eval(option_value)
+def _get_default_config(sensor_type: str):
+    config_info = _get_config_info(sensor_type)
+    config_defaults = {}
 
-    if isinstance(option_value, tuple):
-        option_value = list(option_value)
+    for section, options in config_info.items():
+        config_defaults[section] = dict()
+        for option_name, option_info in options.items():
+            config_defaults[section][option_name] = option_info.default
 
-    if not isinstance(option_value, list):
-        option_value = [option_value]
+    config_defaults["HEADER"]["sensor_type"] = sensor_type
 
-    for indx in range(len(option_value)):
-        option_value[indx] = _convert_to_numerical(
-            option_value[indx], option_type["type"], section, option
-        )
+    return config_defaults
 
-    if option_type["min"]:
-        if len(option_value) < option_type["min"]:
-            raise ConfigFileError(
-                f"""{section}/{option} value, {option_value} received {len(option_value)} values.
-                Expected from {option_type['min']} to {option_type['max']} values."""
-            )
-    if option_type["max"]:
-        if len(option_value) > option_type["max"]:
 
-            raise ConfigFileError(
-                f"""{section}/{option} value, {option_value} received {len(option_value)} values.
-                Expected from {option_type['min']} to {option_type['max']} values."""
-            )
-    if option_type["exacly"]:
-        if len(option_value) != option_type["exacly"]:
-            raise ConfigFileError(
-                f"""{section}/{option} value, {option_value} received {len(option_value)} values.
-                Expected {option_type[1][0]} values"""
-            )
-    return option_value
+if __name__ == "__main__":
+    FILENAME = "../test/data/adcp_iml6_2017.ini"
+
+    configuration = load_configfile(FILENAME)
+
+    make_configfile("test", "adcp", configuration)

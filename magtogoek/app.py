@@ -134,7 +134,7 @@ def process(info, config_file):
     """Process data by reading configfile"""
     # NOTE This could be update as a group with sensor specific command.
     # Doing so would allow the user to pass config options. The load_configfile
-    # command is already able to take uptaded_params options and update de configile.
+    # command is already able to take uptated_params options and update de configile.
     # The same options (or nearly all the same )as for adcp_config could be use.
     from configparser import ParsingError
 
@@ -231,11 +231,9 @@ def config_adcp(
     # check if a file already exists and format the `.ini` extension.
     config_name = is_valid_filename(config_name, ext=".ini")
 
-    config_params = _format_options_for_configfile("adcp", options)
+    config_values = _format_options_for_configfile("adcp", options)
 
-    make_configfile(
-        filename=config_name, sensor_type="adcp", config_params=config_params
-    )
+    make_configfile(filename=config_name, sensor_type="adcp", values=config_values)
 
     click.echo(
         click.style(
