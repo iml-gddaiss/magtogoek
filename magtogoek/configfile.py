@@ -290,7 +290,9 @@ def load_configfile(filename: str, updated_params: tp.Dict = None) -> dict:
     parser.optionxform = str
     parser.read(filename)
 
-    _add_config_missing(parser)
+    sensor_type = _get_sensor_type(parser)
+
+    _add_config_missing(parser, sensor_type)
 
     if updated_params:
         _update_parser_values(parser, updated_params)
@@ -304,7 +306,17 @@ def load_configfile(filename: str, updated_params: tp.Dict = None) -> dict:
     return config
 
 
-def _add_config_missing(parser: tp.Type[RawConfigParser]):
+def _get_sensor_type(parser: tp.Type[RawConfigParser]):
+    if parser.has_option("HEADER", "sensor_type"):
+        sensor_type = parser["HEADER"]["sensor_type"]
+        if not sensor_type:
+            raise ConfigFileError(error="sensor_type")
+        return sensor_type
+    else:
+        raise ConfigFileError(error="sensor_type")
+
+
+def _add_config_missing(parser: tp.Type[RawConfigParser], sensor_type):
     """Check for missing sections or options compared to the expected parser
 
     - Adds the options or section if needed with empty string as value.
@@ -315,12 +327,6 @@ def _add_config_missing(parser: tp.Type[RawConfigParser]):
     to add tons of conditionnal statements.
 
     """
-    if parser.has_option("HEADER", "sensor_type"):
-        sensor_type = parser["HEADER"]["sensor_type"]
-        if not sensor_type:
-            raise ConfigFileError(error="sensor_type")
-    else:
-        raise ConfigFileError(error="sensor_type")
 
     default_config = _get_default_config(sensor_type)
     for section, options in default_config.items():
