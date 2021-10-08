@@ -3,20 +3,21 @@ Module that contains fonction for adcp data quality control.
 
 Based on the adcp2nc package by jeanlucshaw: https://github.com/jeanlucshaw/adcp2nc/
 
-Notes:
-------
-   Velocity in any direction are set to NaN if greater than 15 meter per seconds.
-   Temperature has a fixed thresholds for flags [-2, 32] Celcius value outside
-   have Flag == 4. Pressure has a fixed thresholds for flags [0, 180] dbar value
-   outside have Flag == 4. Failing amplitude, correlation and percentgood, roll,
-   pitch, horizontal velocity or vertical velocity test returns Flags == 3.
-   Value below sidelobe depth returns Flags == 4.
+Notes
+-----
+   Tests return `True` where cells fail a test.
 
-
-   The same threshold for amplitude, correlation and percentgood are applied to
+   - Cells that haven't fail any test are given a flag value of `2` (probably_good_value).
+   - Velocities in any direction are set to NaN if greater than 15 meters per second gets a 4.
+   - Failing amplitude, correlation, percentgood, roll, pitch, side_lobe, horizontal
+   velocity or vertical velocity test returns a flag_value of `3` (probably_bad_value)
+   for the corresponding veoclity cells.
+   - Temperatures outside [-2, 32] Celcius have a flag_value of `4` (bad_value).
+   - Pressures outside [0, 180] dbar value have a flag_value of `4` (bad_value).
+   and the corresponding velocity cells have a flag_value of `3` (probably_bad_value)
+   - The amplitude, correlation and percentgood thresholds are also applied to
    sentinelV fifth beam data.
 
-   Tests returns True when failed.
 
    SeaDataNet Quality Control Flags Value
    * 0: no_quality_control
@@ -162,18 +163,21 @@ def adcp_quality_control(
     xducer_depth :
         Force a depth for the adcp and overwrite the value in dataset.
 
-    Notes:
-    ------
-       Velocities in any direction are set to NaN if greater than 15 meter per seconds.
-       Failing amplitude, correlation, percentgood, roll, pitch, side_lobe, horizontal velocity
-       or vertical velocity test returns a flag_value of 3.
-       Temperatures outside [-2, 32] Celcius have a flag_value of 4.
-       Pressures outside [0, 180] dbar value have a flag_value of 3 and the the velocity fields have
-       flag flag_value of 4.
-       The same threshold for amplitude, correlation and percentgood are applied to
+    Notes
+    -----
+       Tests return `True` where cells fail a test.
+
+       - Cells that haven't fail any test are given a flag value of `2` (probably_good_value).
+       - Velocities in any direction are set to NaN if greater than 15 meters per second gets a 4.
+       - Failing amplitude, correlation, percentgood, roll, pitch, side_lobe, horizontal
+       velocity or vertical velocity test returns a flag_value of `3` (probably_bad_value)
+       for the corresponding veoclity cells.
+       - Temperatures outside [-2, 32] Celcius have a flag_value of `4` (bad_value).
+       - Pressures outside [0, 180] dbar value have a flag_value of `4` (bad_value).
+       and the corresponding velocity cells have a flag_value of `3` (probably_bad_value)
+       - The amplitude, correlation and percentgood thresholds are also applied to
        sentinelV fifth beam data.
 
-       Tests returns True when failed.
 
        SeaDataNet Quality Control Flags Value
        * 0: no_quality_control
@@ -195,9 +199,9 @@ def adcp_quality_control(
     if motion_correction_mode in ["bt", "nav"]:
         motion_correction(dataset, motion_correction_mode)
 
-    set_implausible_vel_to_nan(dataset, thres=IMPLAUSIBLE_VEL_TRESHOLD)
+    # vel_flags = set_implausible_vel_to_nan(dataset, thres=IMPLAUSIBLE_VEL_TRESHOLD)
 
-    vel_flags = np.ones(dataset.depth.shape + dataset.time.shape).astype(int)
+    vel_flags = 2 * np.ones(dataset.depth.shape + dataset.time.shape).astype(int)
 
     vel_qc_test = []
 
@@ -260,9 +264,9 @@ def adcp_quality_control(
         l.log(f"Good pressure range {MIN_PRESSURE} to {MAX_PRESSURE} dbar")
         pressure_QC = np.ones(dataset.pres.shape)
         pressure_flags = pressure_test(dataset)
-        pressure_QC[pressure_flags] = 3
+        pressure_QC[pressure_flags] = 4
         dataset["pres_QC"] = (["time"], pressure_QC)
-        vel_flags[np.tile(pressure_flags, dataset.depth.shape + (1,))] = 4
+        vel_flags[np.tile(pressure_flags, dataset.depth.shape + (1,))] = 3
         dataset["pres_QC"].attrs[
             "quality_test"
         ] = f"presssure_threshold: less than {MIN_PRESSURE} dbar and greater than {MAX_PRESSURE} dbar"
@@ -271,7 +275,7 @@ def adcp_quality_control(
     if "temperature" in dataset:
         l.log(f"Good temperature range {MIN_TEMPERATURE} to {MAX_TEMPERATURE} celsius")
         temperature_QC = np.ones(dataset.temperature.shape)
-        temperature_QC[temperature_test(dataset)] = 3
+        temperature_QC[temperature_test(dataset)] = 4
         dataset["temperature_QC"] = (["time"], temperature_QC)
         dataset["temperature_QC"].attrs[
             "quality_test"
@@ -292,8 +296,10 @@ def adcp_quality_control(
             + f"percentgood_threshold: {pg_th}\n" * ("vb_pg" in dataset)
         )
 
+    vel_flags[flag_implausible_vel(dataset, threshold=IMPLAUSIBLE_VEL_TRESHOLD)] = 4
+
     missing_vel = np.bitwise_or(
-        *(~np.isfinite(dataset[v]).data for v in ("u", "v", "w"))
+        *(~np.isfinite(dataset[v].values) for v in ("u", "v", "w"))
     )
     vel_flags[missing_vel] = 9
 
@@ -351,16 +357,25 @@ def motion_correction(dataset: tp.Type[xr.Dataset], mode: str):
         )
 
 
-def set_implausible_vel_to_nan(dataset: tp.Type[xr.Dataset], thres: float = 15):
+def flag_implausible_vel(
+    dataset: tp.Type[xr.Dataset], threshold: float = 15
+) -> tp.Type[np.array]:
+    """Values greater than `thres` return True"""
+    return (
+        (dataset.v > threshold) & (dataset.u > threshold) & (dataset.w > threshold)
+    ).data
+
+
+def set_implausible_vel_to_nan(dataset: tp.Type[xr.Dataset], threshold: float = 15):
     """Set bin with improbable values to Nan."""
     for v in ["u", "v", "w"]:
-        plausible = (dataset[v] > -thres) & (dataset[v] < thres)
+        plausible = (dataset[v] > -threshold) & (dataset[v] < threshold)
         dataset["u"] = dataset["u"].where(plausible)
         dataset["v"] = dataset["v"].where(plausible)
         dataset["w"] = dataset["w"].where(plausible)
 
 
-def correlation_test(dataset, threshold):
+def correlation_test(dataset: tp.Type[xr.Dataset], threshold: int):
     """FIXME
     Value must be greater than the threshold to be good. (True fails)
     NOTE JeanLucShaw used absolute but is it needed ?"""
@@ -377,7 +392,7 @@ def correlation_test(dataset, threshold):
         return np.full(dataset.depth.shape + dataset.time.shape, False)
 
 
-def amplitude_test(dataset, threshold):
+def amplitude_test(dataset: tp.Type[xr.Dataset], threshold: int):
     """FIXME
     Value must be greater than the threshold to be good. (True fails)
     NOTE JeanLucShaw used absolute but is it needed ?"""
@@ -393,7 +408,7 @@ def amplitude_test(dataset, threshold):
         return np.full(dataset.depth.shape + dataset.time.shape, False)
 
 
-def percentgood_test(dataset, threshold):
+def percentgood_test(dataset: tp.Type[xr.Dataset], threshold: int):
     """FIXME
     Value must be greater than the threshold to be good. (True fails)
     NOTE JeanLucShaw used absolute but is it needed ?"""
