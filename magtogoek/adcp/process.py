@@ -97,9 +97,9 @@ GLOBAL_ATTRS_TO_DROP = [
 
 
 CONFIG_GLOBAL_ATTRS_SECTIONS = ["NETCDF_CF", "PROJECT", "CRUISE", "GLOBAL_ATTRIBUTES"]
-PLATFORM_TYPES = ["mooring", "ship"]
-DATA_TYPES = {"mooring": "MADCP", "ship": "MADCP"}
-DEFAULT_PLATFORM_TYPE = "mooring"
+PLATFORM_TYPES = ["buoy", "mooring", "ship"]
+DEFAULT_PLATFORM_TYPE = "buoy"
+DATA_TYPES = {"buoy": "MADCP", "mooring": "MADCP", "ship": "MADCP"}
 PLATFORM_FILE_DEFAULT_KEYS = [
     "platform_type",
     "platform_subtype",
@@ -115,7 +115,7 @@ PLATFORM_FILE_DEFAULT_KEYS = [
     "comments",
 ]
 P01_VEL_CODES = dict(
-    mooring=dict(
+    buoy=dict(
         u="LCEWAP01",
         v="LCNSAP01",
         w="LRZAAP01",
@@ -134,6 +134,7 @@ P01_VEL_CODES = dict(
         w_QC="LRZAAS01_QC",
     ),
 )
+P01_VEL_CODES["mooring"] = P01_VEL_CODES["buoy"]
 P01_CODES = dict(
     time="ELTMEP01",
     depth="PPSAADCP",
@@ -365,12 +366,12 @@ def _process_adcp_data(
 
     compute_global_attrs(dataset)
 
-    if sensor_metadata["platform_type"] == "mooring":
+    if sensor_metadata["platform_type"] in ["mooring", "buoy"]:
         if "bt_depth" in dataset:
             dataset.attrs["sounding"] = round(np.median(dataset.bt_depth.data), 2)
 
-    if not params["force_platform_metadata"]:
-        _set_xducer_depth_as_sensor_depth(dataset)
+    # if not params["force_platform_metadata"]: # Note Probably useless.
+    _set_xducer_depth_as_sensor_depth(dataset)
 
     # setting Metadata from the platform_file
     _set_platform_metadata(dataset, sensor_metadata, params["force_platform_metadata"])
@@ -440,7 +441,6 @@ An additionnal correction of {additional_correction} degree east was added to ha
     # VARIABLES ATTRIBUTES #
     # -------------------- #
     dataset.attrs["VAR_TO_ADD_SENSOR_TYPE"] = VAR_TO_ADD_SENSOR_TYPE
-
     dataset.attrs["P01_CODES"] = {
         **P01_VEL_CODES[sensor_metadata["platform_type"]],
         **P01_CODES,
@@ -565,10 +565,18 @@ def _load_adcp_data(params: tp.Dict) -> tp.Type[xr.Dataset]:
         l.warning(f"{params['input_files']} time dims is of lenght 0 after eslicing.")
 
     l.log(
-        f"Bins count : {len(dataset.depth.data)}, Min depth : {np.round(dataset.depth.min().data,3)} m, Max depth : {np.round(dataset.depth.max().data,3)} m"
+        (
+            f"Bins count : {len(dataset.depth.data)}, "
+            + f"Min depth : {np.round(dataset.depth.min().data,3)} m, "
+            + f"Max depth : {np.round(dataset.depth.max().data,3)} m"
+        )
     )
     l.log(
-        f"Ensembles count : {len(dataset.time.data)}, Start time : {np.datetime_as_string(dataset.time.min().data, unit='s')}, End time : {np.datetime_as_string(dataset.time.max().data, unit='s')}"
+        (
+            f"Ensembles count : {len(dataset.time.data)}, "
+            + f"Start time : {np.datetime_as_string(dataset.time.min().data, unit='s')}, "
+            + f"End time : {np.datetime_as_string(dataset.time.max().data, unit='s')}"
+        )
     )
 
     if not params["keep_bt"]:
@@ -580,7 +588,7 @@ def _load_adcp_data(params: tp.Dict) -> tp.Type[xr.Dataset]:
 
 
 def _get_config(config: tp.Type[ConfigParser]):
-    """Flattens the config to a unested_dict""" ""
+    """Split and flattens the config in two unested dictionnary"""
     params = dict()
     global_attrs = dict()
     for section, options in config.items():
@@ -613,7 +621,7 @@ def _load_platform(params: dict) -> tp.Dict:
                     f"{params['sensor_id']} not found in {params['platform_id']}['sensor'] of the platform file."
                 )
         else:
-            l.warning("`sensors` section missing from platform file")
+            l.warning("`sensors` section missing from the platform file")
         for key in platform_dict.keys():
             if key != "sensors":
                 sensor_metadata[key] = platform_dict[key]
@@ -626,7 +634,7 @@ def _load_platform(params: dict) -> tp.Dict:
 def _default_platform() -> dict:
     """Return an empty platform data dictionnary"""
     sensor_metadata = dict()
-    for key in PLATFORM_FILE_DEFAULT_KEYS:
+    for key in PLATFORM_FILE_DEFAULT_KEYS:  # FIXME make in form paltform.py
         sensor_metadata[key] = None
     sensor_metadata["platform_specs"] = dict()
     sensor_metadata["platform_type"] = DEFAULT_PLATFORM_TYPE
@@ -655,6 +663,17 @@ def _check_platform_type(sensor_metadata: dict):
 _check_platform_type.__doc__ = f"""Check if the `plaform_type` is valid.
     `platform _type` must be one of {PLATFORM_TYPES}.
     `platform_type` defaults to {DEFAULT_PLATFORM_TYPE} if the one given is invalid."""
+
+
+def _set_xducer_depth_as_sensor_depth(dataset: tp.Type[xr.Dataset]):
+    """Set xducer_depth value to dataset attributes sensor_depth"""
+    if "xducer_depth" in dataset.attrs:  # OCEAN SURVEYOR
+        dataset.attrs["sensor_depth"] = dataset.attrs["xducer_depth"]
+
+    if "xducer_depth" in dataset:
+        dataset.attrs["sensor_depth"] = round(
+            np.median(dataset["xducer_depth"].data), 2
+        )
 
 
 def _set_platform_metadata(
@@ -787,16 +806,6 @@ def _get_datetime_and_count(trim_arg: str):
             return (None, int(trim_arg))
     else:
         return (None, None)
-
-
-def _set_xducer_depth_as_sensor_depth(dataset: tp.Type[xr.Dataset]):
-    """Set xducer_depth value to dataset attributes sensor_depth"""
-    if "xducer_depth" in dataset.attrs:  # OCEAN SURVEYOR
-        dataset.attrs["sensor_depth"] = dataset.attrs["xducer_depth"]
-
-    if "xducer_depth" in dataset:
-        sensor_depth = round(np.median(dataset["xducer_depth"].data), 2)
-        dataset.attrs["sensor_depth"] = sensor_depth
 
 
 def _drop_beam_data(dataset: tp.Type[xr.Dataset], params: tp.Dict):

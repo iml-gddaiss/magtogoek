@@ -1,16 +1,16 @@
 {
     "IML4_2017": {
         "platform_name": "IML-4",
-        "platform_type": "mooring",
-        "mooring_number": "",
+        "platform_type": "buoy",
         "sounding": 335,
         "longitude": -60,
         "latitude":50,
-        "platform_specs": {"type": "MTE",
-                           "model": "Viking",
-                           "height": "4.5 m",
-                           "diameter": "2.1 m",
-                           "description": "bouée noire (partie immergée) avec jaune."},
+        "description":"",
+        "buoy_specs": {"type": "MTE",
+                       "model": "Viking",
+                       "height": "4.5 m",
+                       "diameter": "2.1 m",
+                       "description": "bouée noire (partie immergée) avec jaune."},
         "sensors": {
             "ADCP_01": {
                 "sensor_type": "adcp",
@@ -26,29 +26,29 @@
     },
     "IML6_2017": {
         "platform_name": "IML-6",
-        "platform_type": "mooring",
-        "mooring_number": "",
+        "platform_type": "buoy",
         "sounding": 100,
         "longitude":-60,
         "latitude": 50,
-        "platform_specs": {"type": "MTE",
-                           "model": "Viking",
-                           "height": "4.5 m",
-                           "diameter": "2.1 m",
-                           "weight": "1000 kg",
-                           "description": "bouée noire (partie immergée) avec jaune."},
+        "description":"This is a description of the platform.",
+        "buoy_specs": {"type": "MTE",
+                       "model": "Viking",
+                       "height": "4.5 m",
+                       "diameter": "2.1 m",
+                       "weight": "1000 kg",
+                       "description": "bouée noire (partie immergée) avec jaune."},
         "sensors": {
             "ADCP_01": {
                 "sensor_type": "adcp",
                 "sensor_depth": 5,
-                "serial_number": null,
+                "serial_number": "000000000serial_test",
                 "manufacturer": "Teledyne RD Instruments Inc.",
                 "model": "WorkHorse",
-                "firmware_version": "",
+                "firmware_version": "sensor_firmware_test",
                 "chief_scientist": "Peter Galbraith",
                 "comments": "The model and serial number are the same for the temperature and pressure sensors as the ADCP."
             }
         }
-   } 
+   }
 }
 

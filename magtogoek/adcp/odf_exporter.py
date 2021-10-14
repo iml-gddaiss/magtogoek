@@ -91,7 +91,6 @@ PARAMETERS_METADATA = {
         "print_decimal_places": 4,
     },
 }
-
 CRUISE_ATTRS = {
     "country_institute_code": ("dataset", "country_institute_code"),
     "organization": ("dataset", "organization"),
@@ -101,6 +100,7 @@ CRUISE_ATTRS = {
     "cruise_number": ("dataset", "cruise_number"),
     "cruise_name": ("dataset", "cruise_name"),
     "cruise_description": ("dataset", "cruise_description"),
+    "platform": ("sensor_metadata", "platform_name"),  # NOTE SHOULD BE GOOD
 }
 EVENT_ATTRS = {
     "data_type": ("dataset", "data_type"),
@@ -116,20 +116,26 @@ EVENT_ATTRS = {
     "event_qualifier2": ("global_attrs", "event_qualifier2"),
     "event_comments": ("global_attrs", "event_comments"),
 }
+INSTRUMENT_ATTRS = {  # NOTE SHOULD BE GOOD
+    "inst_type": ("dataset", "manufacturer"),
+    "model": ("dataset", "model"),
+    "serial_number": ("dataset", "serial_number"),
+    "description": ("dataset", "comments"),
+}
 BUOY_ATTRS = {
     "name": ("sensor_metadata", "platform_name"),
-    "type": ("platform_specs", "type"),
-    "model": ("platform_specs", "model"),
-    "height": ("platform_specs", "height"),
-    "diameter": ("platform_specs", "diameter"),
-    "weight": ("platform_specs", "weight"),
-    "description": ("platform_specs", "description"),
+    "type": ("buoy_specs", "type"),
+    "model": ("buoy_specs", "model"),
+    "height": ("buoy_specs", "height"),
+    "diameter": ("buoy_specs", "diameter"),
+    "weight": ("buoy_specs", "weight"),
+    "description": ("buoy_specs", "description"),
 }
 BUOY_INSTRUMENT_ATTRS = {
     "type": ("dataset", "manufacturer"),
     "model": ("dataset", "model"),
     "serial_number": ("dataset", "serial_number"),
-    "description": ("dataset", "description"),
+    "description": ("dataset", "comments"),  # FIXME BUOY DESCRIPTION buoy_specs ?
     "inst_start_date_time": ("dataset", "time_coverage_start"),
     "inst_end_date_time": ("dataset", "time_coverage_end"),
 }
@@ -149,7 +155,7 @@ BUOY_INSTRUMENT_CONFIGURATION = {
     "Blank_m": ("dataset", "blank"),
     "Transmit_Pulse_Length_m": ("dataset", "transmit_pulse_length_m"),
     "Magnetic_Declination": (),  # Computed
-    "Comments": ("sensor_metadata_sensors", "comments"),
+    "Comments": ("sensor_metadata_sensors", "comments"),  # FIXME Description ?
 }
 
 
@@ -174,8 +180,11 @@ def make_odf(
     _make_cruise_header(odf, dataset, sensor_metadata)
     _make_event_header(odf, dataset, global_attrs)
     _make_odf_header(odf)
-    _make_buoy_header(odf, sensor_metadata)
-    _make_buoy_instrument_header(odf, dataset, sensor_metadata)
+    if sensor_metadata["platform_type"] == "buoy":
+        _make_buoy_header(odf, sensor_metadata)
+        _make_buoy_instrument_header(odf, dataset, sensor_metadata)
+    else:
+        _make_instrument_header(odf, dataset)
     _make_parameter_headers(odf, dataset, generic_to_p01_name)
     _make_history_header(odf, dataset)
 
@@ -195,10 +204,10 @@ def _make_cruise_header(odf, dataset, sensor_metadata):
             if value[1] in sensor_metadata:
                 odf.cruise[key] = sensor_metadata[value[1]]
 
-    if sensor_metadata["platform_type"] == "mooring":
+    if sensor_metadata["platform_type"] == "buoy":
         odf.cruise["platform"] = "Oceanographic Buoy"
-    elif sensor_metadata["platform_type"] == "ship":
-        odf.cruise["platform"] = "ship"
+    else:
+        odf.cruise["platform"] = sensor_metadata["platform_name"]
 
 
 def _make_event_header(odf, dataset, global_attrs):
@@ -261,14 +270,36 @@ def _make_odf_header(odf):
     odf.odf["file_specification"] = "_".join(name_part).strip("_") + ".ODF"
 
 
+def _make_instrument_header(odf, dataset):  # FIXME
+    """
+    Add Swtich for platform_types.
+    ( same as for buoy_instrument)
+    inst_type
+    model
+    serial_number
+    description
+    """
+    for key, value in INSTRUMENT_ATTRS.items():
+        if value[0] == "dataset":
+            if value[1] in dataset.attrs:
+                if "date" in key and dataset.attrs[value[1]]:
+                    odf.instrument[key] = odf_time_format(dataset.attrs[value[1]])
+                else:
+                    odf.instrument[key] = dataset.attrs[value[1]]
+
+
+def _make_quality_header():
+    """TODO Multiple"""
+
+
 def _make_buoy_header(odf, sensor_metadata):
     """
     Use BUOY_ATTRS
     """
     for key, value in BUOY_ATTRS.items():
-        if value[0] == "platform_specs":
-            if value[1] in sensor_metadata["platform_specs"]:
-                odf.buoy[key] = sensor_metadata["platform_specs"][value[1]]
+        if value[0] == "buoy_specs":
+            if value[1] in sensor_metadata["buoy_specs"]:
+                odf.buoy[key] = sensor_metadata["buoy_specs"][value[1]]
         if value[0] == "sensor_metadata":
             if value[1] in sensor_metadata:
                 odf.buoy[key] = sensor_metadata[value[1]]
@@ -405,18 +436,17 @@ def _make_parameter_headers(odf, dataset, generic_to_p01_name=None):
 if __name__ == "__main__":
     from magtogoek.adcp.process import _get_config, _load_platform
     from magtogoek.configfile import load_configfile
-    from magtogoek.utils import json2dict
 
-    nc_file = "../../test/files/iml6_2017_wh.nc"
-    platform_files = "../../test/files/iml_platforms.json"
-    config_file = "../../test/files/adcp_iml6_2017.ini"
+    _nc_file = "../../test/files/iml6_2017_wh.nc"
+    _platform_files = "../../test/files/iml_platforms.json"
+    _config_file = "../../test/files/adcp_iml6_2017.ini"
 
-    dataset = xr.open_dataset(nc_file)
-    params, global_attrs = _get_config(load_configfile(config_file))
-    params["platform_file"] = platform_files
-    sensor_metadata = _load_platform(params)
+    _dataset = xr.open_dataset(_nc_file)
+    _params, _global_attrs = _get_config(load_configfile(_config_file))
+    _params["platform_file"] = _platform_files
+    _sensor_metadata = _load_platform(_params)
 
-    p01_to_generic_name = {
+    _p01_to_generic_name = {
         "u": "LCEWAP01",
         "u_QC": "LCEWAP01_QC",
         "v": "LCNSAP01",
@@ -426,4 +456,4 @@ if __name__ == "__main__":
         "e": "LERRAP01",
     }
 
-    odf = make_odf(dataset, sensor_metadata, global_attrs, p01_to_generic_name)
+    _odf = make_odf(_dataset, _sensor_metadata, _global_attrs, _p01_to_generic_name)

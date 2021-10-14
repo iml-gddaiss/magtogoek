@@ -274,9 +274,9 @@ def config_adcp(
 @click.option(
     "-T",
     "--platform_type",
-    type=click.Choice(["ship", "mooring"]),
+    type=click.Choice(["buoy", "mooring", "ship"]),
     help="Used for Proper BODC variables names",
-    default="mooring",
+    default="buoy",
 )
 @click.pass_context
 def quick_adcp(

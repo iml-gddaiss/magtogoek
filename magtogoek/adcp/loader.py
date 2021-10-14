@@ -506,10 +506,8 @@ def load_adcp_binary(
             if data.FL["EV"] != 0:
                 ds.attrs["magnetic_declination"] = data.FL["EV"] / 100
 
-    ds.attrs["serial_number"] = None
     ds.attrs["orientation"] = orientation
-    if "SerialNumber" in data:
-        ds.attrs["serial_number"] = data.SerialNumber
+    ds.attrs["serial_number"] = data.SerialNumber if "SerialNumber" in data else None
 
     l.log(f"File(s) loaded with {l.w_count} warnings")
     ds.attrs["logbook"] = l.logbook

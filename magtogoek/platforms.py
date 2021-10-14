@@ -23,16 +23,16 @@ def _add_platform():
         platform_name=None,
         platform_type=None,
         paltform_model=None,
-        mooring_number=None,
         sounding=None,
         longitude=None,
         latitude=None,
-        platform_specs=_add_platform_specs(),
+        description=None,
+        buoy_specs=_add_buoy_specs(),
         sensors=dict(__enter_a_sensor_ID_here=_add_sensors()),
     )
 
 
-def _add_platform_specs():
+def _add_buoy_specs():
     return dict(
         name=None,
         type=None,
