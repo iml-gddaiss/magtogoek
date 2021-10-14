@@ -410,13 +410,13 @@ def _format_value_dtypes(value, dtypes):
     if "bool" in dtypes:
         if value in TRUE_VALUES + FALSE_VALUES:
             return value in TRUE_VALUES
-        else:
-            raise ValueError
     if "int" in dtypes:
         return int(float(value))
     if "float" in dtypes:
         return float(value)
-    return value
+    if "str" in dtypes:
+        return value
+    raise ValueError
 
 
 def _get_sequence_from_string(sequence: str) -> tp.List:
