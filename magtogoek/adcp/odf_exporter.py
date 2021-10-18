@@ -242,6 +242,7 @@ def _make_event_header(odf, dataset, global_attrs):
         odf.event["end_longitude"] = dataset.attrs["longitude"]
 
     odf.event["creation_date"] = odf_time_format(pd.Timestamp.now())
+
     if "sounding" in dataset.attrs:
         if dataset.attrs["sounding"] and odf.event["max_depth"]:
             odf.event["depth_off_bottom"] = (
@@ -270,10 +271,8 @@ def _make_odf_header(odf):
     odf.odf["file_specification"] = "_".join(name_part).strip("_") + ".ODF"
 
 
-def _make_instrument_header(odf, dataset):  # FIXME
+def _make_instrument_header(odf, dataset):
     """
-    Add Swtich for platform_types.
-    ( same as for buoy_instrument)
     inst_type
     model
     serial_number

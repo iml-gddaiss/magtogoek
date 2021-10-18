@@ -636,7 +636,7 @@ def _default_platform() -> dict:
     sensor_metadata = dict()
     for key in PLATFORM_FILE_DEFAULT_KEYS:  # FIXME make in form paltform.py
         sensor_metadata[key] = None
-    sensor_metadata["platform_specs"] = dict()
+    sensor_metadata["buoy_specs"] = dict()
     sensor_metadata["platform_type"] = DEFAULT_PLATFORM_TYPE
     return sensor_metadata
 
