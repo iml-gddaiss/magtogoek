@@ -1,6 +1,7 @@
 """
 module to map xarray dataset to Odf
 """
+import os
 import re
 
 import pandas as pd
@@ -26,7 +27,9 @@ PARAMETERS_TYPES = {
     "datetime64[ns]": "SYTM",
 }
 PARAMETER = ["time", "depth", "u", "u_QC", "v", "v_QC", "w", "w_QC", "e"]
-PARAMETERS_METADATA_PATH = "../files/odf_parameter_metadata.json"
+PARAMETERS_METADATA_PATH = os.path.join(
+    os.path.dirname(__file__), "../files/odf_parameter_metadata.json"
+)
 CRUISE_ATTRS = {
     "country_institute_code": ("dataset", "country_institute_code"),
     "organization": ("dataset", "organization"),
@@ -353,7 +356,8 @@ def _make_parameter_headers(odf, dataset, generic_to_p01_name=None):
                 items[key] = value
 
             items["depth"] = dataset.attrs["sensor_depth"]
-            items["magnetic_variation"] = dataset.attrs["magnetic_declination"]
+            if "_QC" not in var:
+                items["magnetic_variation"] = dataset.attrs["magnetic_declination"]
             items["type"] = PARAMETERS_TYPES[str(dataset[var].data.dtype)]
 
             if "null_value" not in items:
