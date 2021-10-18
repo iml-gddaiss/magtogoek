@@ -6,6 +6,7 @@ import re
 import pandas as pd
 import xarray as xr
 from magtogoek.odf_format import Odf, odf_time_format
+from magtogoek.utils import json2dict
 
 # Add a int suffix (_01) to parameter codes increasing with each new parameter of the same type.
 # - dtype : sing or doub
@@ -24,73 +25,8 @@ PARAMETERS_TYPES = {
     "|S1": "SYTM",
     "datetime64[ns]": "SYTM",
 }
-
-PARAMETERS_METADATA = {
-    "time": {
-        "code": "STYM_01",
-        "name": "Time Format DD-MMM-YYYY HH:MM:SS.ss",
-        "units": "GMT",
-        "print_field_width": 23,
-        "print_decimal_places": 0,
-        "null_value": "17-NOV-1858 00:00:00.00",
-    },
-    "depth": {
-        "code": "DEPH_01",
-        "name": "Sensor Depth below Sea Surface",
-        "units": "metres",
-        "print_field_width": 10,
-        "print_decimal_places": 3,
-    },
-    "u": {
-        "code": "EWCT_01",
-        "name": "East (true) Component of Current",
-        "units": "m/s",
-        "print_field_width": 10,
-        "print_decimal_places": 4,
-    },
-    "u_QC": {
-        "code": "QQQQ_01",
-        "name": "Quality flag: East (true) Component of Current",
-        "units": "none",
-        "print_field_width": 1,
-        "print_decimal_places": 0,
-    },
-    "v": {
-        "code": "NSCT_01",
-        "name": "North (true) Component of Current",
-        "units": "m/s",
-        "print_field_width": 10,
-        "print_decimal_places": 4,
-    },
-    "v_QC": {
-        "code": "QQQQ_02",
-        "name": "Quality flag: North (true) Component of Current",
-        "units": "none",
-        "print_field_width": 1,
-        "print_decimal_places": 0,
-    },
-    "w": {
-        "code": "VCSP_01",
-        "name": "Vertical Current Speed (positive up)",
-        "units": "m/s",
-        "print_field_width": 10,
-        "print_decimal_places": 4,
-    },
-    "w_QC": {
-        "code": "QQQQ_03",
-        "name": "Quality flag: Vertical Current Speed (positive up)",
-        "units": "none",
-        "print_field_width": 1,
-        "print_decimal_places": 0,
-    },
-    "e": {
-        "code": "ERRV_01",
-        "name": "Error Velocity (ADCP)",
-        "units": "m/s",
-        "print_field_width": 10,
-        "print_decimal_places": 4,
-    },
-}
+PARAMETER = ["time", "depth", "u", "u_QC", "v", "v_QC", "w", "w_QC", "e"]
+PARAMETERS_METADATA_PATH = "../files/odf_parameter_metadata.json"
 CRUISE_ATTRS = {
     "country_institute_code": ("dataset", "country_institute_code"),
     "organization": ("dataset", "organization"),
@@ -297,6 +233,7 @@ def _make_buoy_header(odf, sensor_metadata):
     """
     for key, value in BUOY_ATTRS.items():
         if value[0] == "buoy_specs":
+
             if value[1] in sensor_metadata["buoy_specs"]:
                 odf.buoy[key] = sensor_metadata["buoy_specs"][value[1]]
         if value[0] == "sensor_metadata":
@@ -398,10 +335,10 @@ def _make_parameter_headers(odf, dataset, generic_to_p01_name=None):
         map from the generic to the BODC p01 variables names
     """
 
-    parameters_metadata = PARAMETERS_METADATA.copy()
+    parameters_metadata = json2dict(PARAMETERS_METADATA_PATH)  # FIXME
 
     if generic_to_p01_name:
-        for param in PARAMETERS_METADATA:
+        for param in PARAMETER:
             if param in generic_to_p01_name:
                 parameters_metadata[
                     generic_to_p01_name[param]
