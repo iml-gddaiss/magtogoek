@@ -1,18 +1,14 @@
 """
 module to map xarray dataset to Odf
 """
-import os
 import re
 from pathlib import Path
 
 import pandas as pd
-import xarray as xr
 from magtogoek.odf_format import Odf, odf_time_format
 from magtogoek.utils import json2dict
 
-# Add a int suffix (_01) to parameter codes increasing with each new parameter of the same type.
 # - dtype : sing or doub
-# Missing Metadata are in the magtogoek/files/odf_parameter.json.
 
 REPOSITORY_ADDRESS = "https://github.com/JeromeJGuay/magtogoek"
 
@@ -27,11 +23,13 @@ PARAMETERS_TYPES = {
     "|S1": "SYTM",
     "datetime64[ns]": "SYTM",
 }
-PARAMETER = ["time", "depth", "u", "u_QC", "v", "v_QC", "w", "w_QC", "e"]
 print(__file__)
-print(os.path.dirname(__file__))
-PARAMETERS_METADATA_PATH = os.path.join(
-    os.path.dirname(__file__), "../files/odf_parameters_metadata.json"
+PARAMETER = ["time", "depth", "u", "u_QC", "v", "v_QC", "w", "w_QC", "e"]
+PARAMETERS_METADATA_PATH = (
+    Path(__file__)
+    .resolve()
+    .parent.joinpath("../files/odf_parameters_metadata.json")
+    .resolve()
 )
 CRUISE_ATTRS = {
     "country_institute_code": ("dataset", "country_institute_code"),
@@ -377,17 +375,17 @@ def _make_parameter_headers(odf, dataset, generic_to_p01_name=None):
 
 
 if __name__ == "__main__":
-    from magtogoek.adcp.process import _get_config, _load_platform
-    from magtogoek.configfile import load_configfile
+    #    from magtogoek.adcp.process import _get_config, _load_platform
+    #    from magtogoek.configfile import load_configfile
 
     _nc_file = "../../test/files/iml6_2017_wh.nc"
     _platform_files = "../../test/files/iml_platforms.json"
     _config_file = "../../test/files/adcp_iml6_2017.ini"
 
-    _dataset = xr.open_dataset(_nc_file)
-    _params, _global_attrs = _get_config(load_configfile(_config_file))
-    _params["platform_file"] = _platform_files
-    _sensor_metadata = _load_platform(_params)
+    #    _dataset = xr.open_dataset(_nc_file)
+    #    _params, _global_attrs = _get_config(load_configfile(_config_file))
+    #    _params["platform_file"] = _platform_files
+    #    _sensor_metadata = _load_platform(_params)
 
     _p01_to_generic_name = {
         "u": "LCEWAP01",
@@ -399,4 +397,4 @@ if __name__ == "__main__":
         "e": "LERRAP01",
     }
 
-    _odf = make_odf(_dataset, _sensor_metadata, _global_attrs, _p01_to_generic_name)
+#    _odf = make_odf(_dataset, _sensor_metadata, _global_attrs, _p01_to_generic_name)

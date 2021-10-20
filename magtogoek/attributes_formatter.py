@@ -33,16 +33,16 @@ Read the functions and the docs below. They are pretty explicit.
 
 """
 import json
-import os
 import typing as tp
+from pathlib import Path
 
 import numpy as np
 import xarray as xr
 
 from magtogoek.utils import json2dict
 
-STATIC_ATTRIBUTES_FILE_PATH = os.path.join(
-    os.path.dirname(__file__), "files/CF_P01_GF3_formats.json"
+STATIC_ATTRIBUTES_FILE_PATH = (
+    Path(__file__).resolve().parent.joinpath("files/CF_P01_GF3_formats.json").resolve()
 )
 
 
