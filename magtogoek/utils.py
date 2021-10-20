@@ -194,7 +194,7 @@ def dict2json(filename: str, dictionary: tp.Dict, indent: int = 4) -> None:
         json.dump(dictionary, f, indent=indent)
 
 
-def json2dict(json_file: str):
+def json2dict(json_file: tp.Union[str,Path]):
     """Open json file as a dictionary."""
     with open(json_file) as f:
         dictionary = json.load(f)

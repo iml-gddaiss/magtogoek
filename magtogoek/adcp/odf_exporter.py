@@ -25,10 +25,11 @@ PARAMETERS_TYPES = {
 }
 print(__file__)
 PARAMETER = ["time", "depth", "u", "u_QC", "v", "v_QC", "w", "w_QC", "e"]
-PARAMETERS_METADATA_PATH = (
+PARAMETERS_METADATA_RELATIVE_PATH = "../files/odf_parameters_metadata.json"
+PARAMETERS_METADATA_ABSOLUTE_PATH = (
     Path(__file__)
     .resolve()
-    .parent.joinpath("../files/odf_parameters_metadata.json")
+    .parent.joinpath(PARAMETERS_METADATA_RELATIVE_PATH)
     .resolve()
 )
 CRUISE_ATTRS = {
@@ -109,7 +110,7 @@ def make_odf(
         Dataset to which add the navigation data.
     sensor_metadata :
         Metadata from the platform file.
-    gloabal_attrs :
+    global_attrs :
         Global attributes parameter from the configFile.
     generic_to_p01_name :
         map from the generic to the BODC p01 variables names
@@ -273,6 +274,7 @@ def _make_buoy_instrument_comment(odf, instrument, dataset, sensor_metadata):
     """
     configuration = "CONFIGURATION_01"
     for key, value in BUOY_INSTRUMENT_CONFIGURATION.items():
+        v=""
         if key == "Ping_Interval_s":
             if "ping_per_ensemble" in dataset.attrs and "delta_t_sec" in dataset.attrs:
                 if dataset.attrs["ping_per_ensemble"] and dataset.attrs["delta_t_sec"]:
@@ -297,8 +299,7 @@ def _make_buoy_instrument_comment(odf, instrument, dataset, sensor_metadata):
             v = dataset.attrs[value[1]]
         elif value[0] == "sensor_metadata":
             v = sensor_metadata[value[1]]
-        else:
-            v = ""
+
         odf.buoy_instrument[instrument]["buoy_instrument_comments"].append(
             configuration + "." + key + ": " + str(v)
         )
@@ -339,7 +340,7 @@ def _make_parameter_headers(odf, dataset, generic_to_p01_name=None):
         map from the generic to the BODC p01 variables names
     """
 
-    parameters_metadata = json2dict(PARAMETERS_METADATA_PATH)  # FIXME
+    parameters_metadata = json2dict(PARAMETERS_METADATA_ABSOLUTE_PATH)
 
     if generic_to_p01_name:
         for param in PARAMETER:

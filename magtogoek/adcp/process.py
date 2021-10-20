@@ -312,7 +312,7 @@ def _process_adcp_data(
     params :
         Processing parameters from the ConfigFile.
 
-    gloabal_attrs :
+    global_attrs :
         Global attributes parameter from the configFile.
 
     sensor_metadata :
