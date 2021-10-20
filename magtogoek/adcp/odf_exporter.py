@@ -3,6 +3,7 @@ module to map xarray dataset to Odf
 """
 import os
 import re
+from pathlib import Path
 
 import pandas as pd
 import xarray as xr
@@ -27,6 +28,8 @@ PARAMETERS_TYPES = {
     "datetime64[ns]": "SYTM",
 }
 PARAMETER = ["time", "depth", "u", "u_QC", "v", "v_QC", "w", "w_QC", "e"]
+print(__file__)
+print(os.path.dirname(__file__))
 PARAMETERS_METADATA_PATH = os.path.join(
     os.path.dirname(__file__), "../files/odf_parameters_metadata.json"
 )
