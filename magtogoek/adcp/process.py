@@ -746,20 +746,13 @@ def _quality_control(dataset: tp.Type[xr.Dataset], params: tp.Dict):
 
     Wrapper for adcp_quality_control"""
 
-    adcp_quality_control(
-        dataset,
-        amp_th=params["amplitude_threshold"],
-        corr_th=params["correlation_threshold"],
-        pg_th=params["percentgood_threshold"],
-        roll_th=params["roll_threshold"],
-        pitch_th=params["pitch_threshold"],
-        horizontal_vel_th=params["horizontal_velocity_threshold"],
-        vertical_vel_th=params["vertical_velocity_threshold"],
-        error_vel_th=params["error_velocity_threshold"],
-        motion_correction_mode=params["motion_correction_mode"],
-        sidelobes_correction=params["sidelobes_correction"],
-        bottom_depth=params["bottom_depth"],
-    )
+    adcp_quality_control(dataset, amp_th=params["amplitude_threshold"], corr_th=params["correlation_threshold"],
+                         pg_th=params["percentgood_threshold"], roll_th=params["roll_threshold"],
+                         pitch_th=params["pitch_threshold"], horizontal_vel_th=params["horizontal_velocity_threshold"],
+                         vertical_vel_th=params["vertical_velocity_threshold"],
+                         error_vel_th=params["error_velocity_threshold"],
+                         motion_correction_mode=params["motion_correction_mode"],
+                         sidelobes_correction=params["sidelobes_correction"], bottom_depth=params["bottom_depth"])
 
 
 def _magnetnic_correction(dataset: tp.Type[xr.Dataset], magnetic_declination: float):

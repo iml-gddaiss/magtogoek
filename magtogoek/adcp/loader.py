@@ -36,15 +36,12 @@ import sys
 import typing as tp
 from pathlib import Path
 
-# import click
 import numpy as np
-# import pandas as pd
 import xarray as xr
 from magtogoek.adcp.rti_reader import RtiReader
 from magtogoek.adcp.rti_reader import l as rti_log
 from magtogoek.adcp.tools import dday_to_datetime64
 from magtogoek.utils import Logger, get_files_from_expresion
-# from nptyping import NDArray
 from pycurrents.adcp import rdiraw, transform
 from pycurrents.adcp.rdiraw import Bunch, Multiread, rawfile
 
@@ -68,16 +65,16 @@ class InvalidSonarError(Exception):
 
 
 def load_adcp_binary(
-    filenames: tp.Tuple[str, tp.List[str]],
+    filenames: tp.Union[str, tp.List[str]],
     sonar: str,
     yearbase: int,
     orientation: str = None,
     leading_index: int = None,
     trailing_index: int = None,
-    depth_range: tp.Tuple[int, float, list] = None,
+    depth_range: tp.Union[int, float, list] = None,
     sensor_depth: float = None,
     bad_pressure: bool = False,
-):
+) -> xr.Dataset:
     """Load RDI and RTI adcp data.
 
     Return a dataset with the ADCP data loaded. For RDI FIXME pycurcurents...
@@ -166,7 +163,7 @@ def load_adcp_binary(
             sys.exit()
 
         # Reading the files FixedLeaders to check for invalid config.
-        invalid_config_count = check_PD0_invalid_config(
+        invalid_config_count = check_pd0_invalid_config(
             filenames=filenames,
             sonar=sonar,
             yearbase=yearbase,
@@ -236,15 +233,18 @@ def load_adcp_binary(
             data.XducerDepth[:] = 0
             l.log("XducerDepth set to 0 m.")
 
-    average_xducer_depth = round(np.median(data.XducerDepth), 3)
+
+    average_xducer_depth = np.round(np.median(data.XducerDepth), 3)
     xducer_depth = data.XducerDepth
 
+    depth_difference = 0
     if sensor_depth:
         depth_difference = round(average_xducer_depth - sensor_depth, 3)
         if abs(depth_difference) > 0:
             l.log(
                 [
-                    f"The difference between the instrument averaged `XducerDepth` ({average_xducer_depth} m) and the given `sensor_depth` ({sensor_depth} m) is {depth_difference} m",
+                    f"The difference between the instrument averaged `XducerDepth` ({average_xducer_depth} m) and the "
+                    f"given `sensor_depth` ({sensor_depth} m) is {depth_difference} m",
                 ]
             )
 
@@ -256,14 +256,7 @@ def load_adcp_binary(
         xducer_depth -= depth_difference
 
     if sonar == "os":
-        if sensor_depth:
-            # For Ocean surveyor, data.dep correspond to depth below surface.
-            # These values was computed with the instrument XducerDepth value.
-            # Thus it needs to be corrected if a different sensro_depth was given.
-            # Ocean Surveyor are considere to be always down looking.
-            depth = data.dep - depth_difference
-        else:
-            depth = data.dep
+        depth = data.dep
     else:
         if orientation == "down":
             depth = average_xducer_depth + data.dep
@@ -344,7 +337,9 @@ def load_adcp_binary(
             ds["bt_depth"] = (["time"], np.asarray(np.nanmean(data.bt_depth, axis=-1)))
             if orientation == "up":
                 l.log(
-                    "In a `up` orientation, bottom_depth corresponds to the water height above adcp, thus should correspond to the xducer_depth mesurements and bottom velocities correspond to the water surface velocity."
+                    "In a `up` orientation, bottom_depth corresponds to the water height above adcp, thus should "
+                    "correspond to the xducer_depth mesurements and bottom velocities correspond to the water surface "
+                    "velocity. "
                 )
                 l.log(
                     f"The averaged xducer_depth computed from the bottom tracking is {np.median(data.bt_depth)}."
@@ -515,7 +510,7 @@ def load_adcp_binary(
     return ds
 
 
-def coordsystem2earth(data: tp.Type[Bunch], orientation: str):
+def coordsystem2earth(data: Bunch, orientation: str):
     """Transforms beam and xyz coordinates to enu coordinates
 
     NOTE: not properly tested. But it should work.
@@ -539,14 +534,8 @@ def coordsystem2earth(data: tp.Type[Bunch], orientation: str):
 
     orientation:
         adcp orientation. Either `up` or `down`.
-
-    Errors:
-    -------
-    ValueError :
-        coordinates system no recognized.
-
-    Notes:
-    ------
+    Notes
+    -----
     Move the prints outside
     """
 
@@ -557,7 +546,7 @@ def coordsystem2earth(data: tp.Type[Bunch], orientation: str):
 
     beam_pattern = "convex" if data.sysconfig["convex"] else "concave"
 
-    xyze, xyze_bt = data.vel, data.bt_vel
+    xyze, bt_xyze = data.vel, data.bt_vel
 
     if data.trans.coordsystem == "beam":
         if data.sysconfig.angle:
@@ -589,13 +578,13 @@ def coordsystem2earth(data: tp.Type[Bunch], orientation: str):
             data.bt_vel[:, i] = np.round(bt_enu[:, i], decimals=3)
 
 
-def check_PD0_invalid_config(
-    filenames: tp.Tuple[str, tp.List[str]],
+def check_pd0_invalid_config(
+    filenames: tp.Union[str, tp.List[str]],
     sonar: str,
     yearbase: int,
     leading_index: int = None,
     trailing_index: int = None,
-) -> tp.Tuple[int, None]:
+) -> tp.Optional[np.ndarray]:
     """Read Teledyne RDI binary FixedLeader and check for invalid config.
 
     Invalid config -> msb=`11111111` and lsb=`11111111`
@@ -603,13 +592,15 @@ def check_PD0_invalid_config(
 
     Parameters
     ----------
-    fnames :
+    filenames :
         File(s) to read.
     sonar :
         sonar type passed to pycurrents.Multiread.
         ('nb', 'bb', 'wh', 'sv', or 'os')
     yearbase :
         start year of the sampling.
+    leading_index :
+    trailing_index :
 
     Returns
     -------

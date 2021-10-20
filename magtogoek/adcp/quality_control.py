@@ -11,7 +11,7 @@ Notes
    - Velocities in any direction are set to NaN if greater than 15 meters per second gets a 4.
    - Failing amplitude, correlation, percentgood, roll, pitch, side_lobe, horizontal
    velocity or vertical velocity test returns a flag_value of `3` (probably_bad_value)
-   for the corresponding veoclity cells.
+   for the corresponding velocity cells.
    - Temperatures outside [-2, 32] Celcius have a flag_value of `4` (bad_value).
    - Pressures outside [0, 180] dbar value have a flag_value of `4` (bad_value).
    and the corresponding velocity cells have a flag_value of `3` (probably_bad_value)
@@ -34,18 +34,17 @@ Notes
    * 9: missing_value
 
 NOTE
-IML flags meaning : (Basicaly the same)
+IML flags meaning : (Basically the same)
    * 0: no_quality_control
    * 1: value_seems_correct
    * 2: value_appears_inconsistent_with_other_values
-   * 3: values_seems_doubtfull
-   * 4: value_seems_erroneuous
+   * 3: values_seems_doubtful
+   * 4: value_seems_erroneous
    * 5: value_was_modified
    * 9: value_missing
 
 """
 import typing as tp
-from pathlib import Path
 
 import numpy as np
 import xarray as xr
@@ -82,7 +81,7 @@ FLAG_MEANINGS = (
 )
 
 
-def no_adcp_quality_control(dataset):
+def no_adcp_quality_control(dataset: xr.Dataset):
     """Adds var_QC ancillary variables to dataset with value 0.
 
     ANcillary variables:  temperature, pres, u, v, w.
@@ -111,19 +110,19 @@ def no_adcp_quality_control(dataset):
 
 
 def adcp_quality_control(
-    dataset: tp.Type[xr.Dataset],
-    amp_th: float = 30,
-    corr_th: float = 64,
-    pg_th: float = 90,
+    dataset: xr.Dataset,
+    amp_th: int = 30,
+    corr_th: int = 64,
+    pg_th: int = 90,
     roll_th: float = 20,
     pitch_th: float = 20,
     horizontal_vel_th: float = 5,
     vertical_vel_th: float = 5,
     error_vel_th: float = 5,
-    motion_correction_mode: float = None,
+    motion_correction_mode: str = "",
     sidelobes_correction: bool = False,
     bottom_depth: float = None,
-) -> tp.Type[xr.Dataset]:
+):
     """
     Perform ADCP quality control.
 
@@ -145,11 +144,11 @@ def adcp_quality_control(
         Require pitch values be smaller than this value (degrees).
     horizontal_vel_th:
         Require u, v  values be smaller than this value (meter per seconds).
-    veritcal_vel_th:
+    vertical_vel_th :
         Require w values be smaller than this value (meter per seconds).
-    error_vel_th:
+    error_vel_th :
         Require e values be smaller than this value (meter per seconds).
-    motion_correction
+    motion_correction_mode :
         If 'nav' or 'bt' will corrected velocities from the platform motion,
         will either correct u,v,w with navigation ('nav') or bottom track ('bt')
         data. No motion correction si carried out if motion_correction == 'off'.
@@ -158,11 +157,6 @@ def adcp_quality_control(
         contamination. Set to either "dep" or "bt" or None.
     bottom_depth :
         If not `None`, this depth used for removing side lobe contamination.
-    beam_angle :
-        Force a beam angle configuration and overwrite the value in dataset.
-    xducer_depth :
-        Force a depth for the adcp and overwrite the value in dataset.
-
     Notes
     -----
        Tests return `True` where cells fail a test.
@@ -323,7 +317,7 @@ def adcp_quality_control(
     dataset.attrs["flags_meanings"] = FLAG_MEANINGS
 
 
-def motion_correction(dataset: tp.Type[xr.Dataset], mode: str):
+def motion_correction(dataset: xr.Dataset, mode: str):
     """Carry motion correction on velocities.
 
     If mode is 'bt' the motion correction is along x, y, z.
@@ -358,7 +352,7 @@ def motion_correction(dataset: tp.Type[xr.Dataset], mode: str):
 
 
 def flag_implausible_vel(
-    dataset: tp.Type[xr.Dataset], threshold: float = 15
+    dataset: xr.Dataset, threshold: float = 15
 ) -> tp.Type[np.array]:
     """Values greater than `thres` return True"""
     return (
@@ -366,7 +360,7 @@ def flag_implausible_vel(
     ).data
 
 
-def set_implausible_vel_to_nan(dataset: tp.Type[xr.Dataset], threshold: float = 15):
+def set_implausible_vel_to_nan(dataset: xr.Dataset, threshold: float = 15):
     """Set bin with improbable values to Nan."""
     for v in ["u", "v", "w"]:
         plausible = (dataset[v] > -threshold) & (dataset[v] < threshold)
@@ -375,7 +369,7 @@ def set_implausible_vel_to_nan(dataset: tp.Type[xr.Dataset], threshold: float = 
         dataset["w"] = dataset["w"].where(plausible)
 
 
-def correlation_test(dataset: tp.Type[xr.Dataset], threshold: int):
+def correlation_test(dataset: xr.Dataset, threshold: int):
     """FIXME
     Value must be greater than the threshold to be good. (True fails)
     NOTE JeanLucShaw used absolute but is it needed ?"""
@@ -392,7 +386,7 @@ def correlation_test(dataset: tp.Type[xr.Dataset], threshold: int):
         return np.full(dataset.depth.shape + dataset.time.shape, False)
 
 
-def amplitude_test(dataset: tp.Type[xr.Dataset], threshold: int):
+def amplitude_test(dataset: xr.Dataset, threshold: int):
     """FIXME
     Value must be greater than the threshold to be good. (True fails)
     NOTE JeanLucShaw used absolute but is it needed ?"""
@@ -408,7 +402,7 @@ def amplitude_test(dataset: tp.Type[xr.Dataset], threshold: int):
         return np.full(dataset.depth.shape + dataset.time.shape, False)
 
 
-def percentgood_test(dataset: tp.Type[xr.Dataset], threshold: int):
+def percentgood_test(dataset: xr.Dataset, threshold: int):
     """FIXME
     Value must be greater than the threshold to be good. (True fails)
     NOTE JeanLucShaw used absolute but is it needed ?"""
@@ -419,20 +413,20 @@ def percentgood_test(dataset: tp.Type[xr.Dataset], threshold: int):
         return np.full(dataset.depth.shape + dataset.time.shape, False)
 
 
-def roll_test(dataset: tp.Type[xr.Dataset], thres: float) -> tp.Type[np.array]:
+def roll_test(dataset: xr.Dataset, threshold: float) -> tp.Type[np.array]:
     """FIXME
     Roll conditions (True fails)
     Distance from mean"""
     if "roll_" in dataset:
         roll_mean = circmean(dataset.roll_.values, low=-180, high=180)
         roll_from_mean = circular_distance(dataset.roll_.values, roll_mean, units="deg")
-        return roll_from_mean > thres
+        return roll_from_mean > threshold
     else:
         l.warning("Roll test aborted. Missing one or more corr data")
         return np.full(dataset.depth.shape + dataset.time.shape, False)
 
 
-def pitch_test(dataset: tp.Type[xr.Dataset], thres: float) -> tp.Type[np.array]:
+def pitch_test(dataset: xr.Dataset, threshold: float) -> tp.Type[np.array]:
     """FIXME
     Pitch conditions (True fails)
     Distance from Mean
@@ -442,7 +436,7 @@ def pitch_test(dataset: tp.Type[xr.Dataset], thres: float) -> tp.Type[np.array]:
         pitch_from_mean = circular_distance(
             dataset.pitch.values, pitch_mean, units="deg"
         )
-        return pitch_from_mean > thres
+        return pitch_from_mean > threshold
 
     else:
         l.warning("Pitch test aborted. Missing one or more corr data")
@@ -450,7 +444,7 @@ def pitch_test(dataset: tp.Type[xr.Dataset], thres: float) -> tp.Type[np.array]:
 
 
 def horizontal_vel_test(
-    dataset: tp.Type[xr.Dataset], thres: float
+    dataset: xr.Dataset, threshold: float
 ) -> tp.Type[np.array]:
     """FIXME
     None finite value value will also fail"""
@@ -458,19 +452,19 @@ def horizontal_vel_test(
     horizontal_velocity = np.sqrt(dataset.u ** 2 + dataset.v ** 2)
 
     return np.greater(
-        horizontal_velocity.values, thres, where=np.isfinite(horizontal_velocity),
+        horizontal_velocity.values, threshold, where=np.isfinite(horizontal_velocity),
     )
 
 
-def vertical_vel_test(dataset: tp.Type[xr.Dataset], thres: float) -> tp.Type[np.array]:
+def vertical_vel_test(dataset: xr.Dataset, threshold: float) -> tp.Type[np.array]:
     """FIXME
     None finite value value will also fail"""
     return np.greater(
-        abs(dataset.w.values), thres, where=np.isfinite(dataset.w.values),
+        abs(dataset.w.values), threshold, where=np.isfinite(dataset.w.values),
     )
 
 
-def error_vel_test(dataset: tp.Type[xr.Dataset], thres: float) -> tp.Type[np.array]:
+def error_vel_test(dataset: xr.Dataset, thres: float) -> tp.Type[np.array]:
     """FIXME
     None finite value value will also fail"""
     return np.greater(
@@ -479,21 +473,21 @@ def error_vel_test(dataset: tp.Type[xr.Dataset], thres: float) -> tp.Type[np.arr
 
 
 def vertical_beam_test(
-    dataset: tp.Type[xr.Dataset], amp_thres: float, corr_thres: float, pg_thres: float
+    dataset: xr.Dataset, amp_threshold: float, corr_threshold: float, pg_threshold: float
 ) -> tp.Type[np.array]:
     """FIXME"""
     vb_test = np.full(dataset.depth.shape + dataset.time.shape, False)
-    if "vb_amp" in dataset.variables and amp_thres:
-        vb_test[dataset.vb_amp < amp_thres] = True
-    if "vb_corr" in dataset.variables and corr_thres:
-        vb_test[dataset.vb_corr < corr_thres] = True
-    if "vb_pg" in dataset.variables and pg_thres:
-        vb_test[dataset.vb_pg < pg_thres] = True
+    if "vb_amp" in dataset.variables and amp_threshold:
+        vb_test[dataset.vb_amp < amp_threshold] = True
+    if "vb_corr" in dataset.variables and corr_threshold:
+        vb_test[dataset.vb_corr < corr_threshold] = True
+    if "vb_pg" in dataset.variables and pg_threshold:
+        vb_test[dataset.vb_pg < pg_threshold] = True
 
     return vb_test
 
 
-def sidelobe_test(dataset: tp.Type[xr.Dataset], bottom_depth: float = None):
+def sidelobe_test(dataset: xr.Dataset, bottom_depth: float = None):
     """FIXME
     Test for sidelobe contamination (True fails).
 
@@ -506,6 +500,7 @@ def sidelobe_test(dataset: tp.Type[xr.Dataset], bottom_depth: float = None):
 
     Parameters
     ----------
+    dataset :
     bottom_depth : optional
         Fixed bottom depth to use for sidelobe correction
     """
@@ -552,14 +547,14 @@ def sidelobe_test(dataset: tp.Type[xr.Dataset], bottom_depth: float = None):
         return False
 
 
-def temperature_test(dataset):
+def temperature_test(dataset: xr.Dataset):
     """FIXME"""
     return np.bitwise_or(
         dataset.temperature > MAX_TEMPERATURE, dataset.temperature < MIN_TEMPERATURE
     ).data
 
 
-def pressure_test(dataset):
+def pressure_test(dataset: xr.Dataset):
     """FIXME"""
     return np.bitwise_or(dataset.pres > MAX_PRESSURE, dataset.pres < MIN_PRESSURE).data
 
@@ -584,10 +579,10 @@ if __name__ == "__main__":
     test = "SW_PD0"
 
     if test == "SV":
-        ds = load_adcp_binary(v50_files, sonar="sv", yearbase=2020, orientation="down",)
+        _dataset = load_adcp_binary(v50_files, sonar="sv", yearbase=2020, orientation="down",)
 
     if test == "ENX":
-        ds = load_adcp_binary(
+        _dataset = load_adcp_binary(
             #            [sillex_path + fn + ".ENX" for fn in sillex_fns],
             sillex_path + "COR1805-ADCP-150kHz009.ENX",
             sonar="os",
@@ -595,11 +590,11 @@ if __name__ == "__main__":
             orientation="down",
         )
     if test == "SW_PD0":
-        ds = load_adcp_binary(
+        _dataset = load_adcp_binary(
             pd0_sw_path, sonar="sw_pd0", yearbase=2020, orientation="down"
         )
     if test == "ENS":
-        ds = load_adcp_binary(
+        _dataset = load_adcp_binary(
             ens_sw_path,
             sonar="sw",
             yearbase=2020,
@@ -608,17 +603,9 @@ if __name__ == "__main__":
             trailing_index=None,
         )
 
-    adcp_quality_control(
-        ds,
-        sidelobes_correction=True,
-        bottom_depth=None,
-        motion_correction_mode="bt",
-        roll_th=20,
-        pitch_th=20,
-        horizontal_vel_th=2,
-        vertical_vel_th=0.1,
-    )
+    adcp_quality_control(_dataset, roll_th=20, pitch_th=20, horizontal_vel_th=2, vertical_vel_th=0.1,
+                         motion_correction_mode="bt", sidelobes_correction=True, bottom_depth=None)
 
-    ds.u.where(ds.u_QC == 1).plot()
+    _dataset.u.where(_dataset.u_QC == 1).plot()
 
     plt.show()

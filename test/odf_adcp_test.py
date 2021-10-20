@@ -17,16 +17,16 @@ P01_TO_GENEREIC_NAME = {
 }
 
 SENSOR_METADATA = {
-    "platform_name": "platform_name",
-    "platform_type": "buoy",
-    "description": "platform_description",
+    "platform_name": "platform_name_test",
+    "platform_type": "buoy_test",
+    "description": "platform_description_test",
     "buoy_specs": {
-        "type": "buoy_type",
-        "model": "buoy_model",
-        "height": "buoy_height",
-        "diameter": "buoy_diameter",
-        "weight": "buoy_weight",
-        "description": "buoy_description",
+        "type": "buoy_type_test",
+        "model": "buoy_model_test",
+        "height": "buoy_height_test",
+        "diameter": "buoy_diameter_test",
+        "weight": "buoy_weight_test",
+        "description": "buoy_description_test",
     },
 }
 
@@ -47,11 +47,10 @@ def test_make():
 def test_platform_type(platform_type, headers, cruise_platform):
     SENSOR_METADATA["platform_type"] = platform_type
     odf = make_odf(DATASET, SENSOR_METADATA, GLOBAL_ATTRS, P01_TO_GENEREIC_NAME)
-
     for header in headers:
         assert header in odf.__dict__
         assert odf.cruise["platform"] == cruise_platform
     if platform_type == "buoy":
         assert odf.buoy["name"] == SENSOR_METADATA["platform_name"]
-        for key, value in SENSOR_METADATA.items():
+        for key, value in SENSOR_METADATA["buoy_specs"].items():
             assert odf.buoy[key] == value
