@@ -28,7 +28,7 @@ PARAMETERS_TYPES = {
 }
 PARAMETER = ["time", "depth", "u", "u_QC", "v", "v_QC", "w", "w_QC", "e"]
 PARAMETERS_METADATA_PATH = os.path.join(
-    os.path.dirname(__file__), "../files/odf_parameter_metadata.json"
+    os.path.dirname(__file__), "../files/odf_parameters_metadata.json"
 )
 CRUISE_ATTRS = {
     "country_institute_code": ("dataset", "country_institute_code"),
