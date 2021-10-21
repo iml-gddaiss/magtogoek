@@ -189,7 +189,7 @@ DATA_FILL_VALUE = -9999.0
 DATA_ENCODING = {"dtype": "float32", "_FillValue": DATA_FILL_VALUE}
 
 
-def process_adcp(config: ConfigParser):
+def process_adcp(config: dict):
     """Process adcp data with parameters from a ConfigFile.
 
     Pipes the params to _to_process_adcp_data which in turn pipes

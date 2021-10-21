@@ -42,13 +42,12 @@ from configparser import RawConfigParser
 from pathlib import Path
 
 import click
-from pandas import Timestamp
+from datetime import datetime
 
 REFERENCE = "https://github.com/JeromeJGuay/magtogoek"
 TRUE_VALUES = ["True", "true", "1", "On", "on"]
 FALSE_VALUES = ["False", "False", "0", "Off", "off"]
 SENSOR_TYPES = ["adcp"]
-
 
 option_infos = namedtuple(
     "option_infos",
@@ -62,13 +61,13 @@ option_infos = namedtuple(
         "value_min",
         "value_max",
     ),
-    defaults=[[]] + [None] * 7,
+    defaults=[[], None, None, None, None, None, None, None],
 )
 
 
 class ConfigFileError(SystemExit):
     def __init__(
-        self, error, section=None, option=None, option_info=option_infos(), value=None
+            self, error, section=None, option=None, option_info=option_infos(), value=None
     ):
         self.error = error
         self.section = section
@@ -123,7 +122,7 @@ BASIC_CONFIG = dict(
         "sensor_type": option_infos(dtypes=["str"], default=""),
         "made_by": option_infos(dtypes=["str"], default=getpass.getuser()),
         "last_updated": option_infos(
-            dtypes=["str"], default=Timestamp.now().strftime("%Y-%m-%d")
+            dtypes=["str"], default=datetime.now().strftime("%Y-%m-%d")
         ),
     },
     INPUT={
@@ -259,7 +258,7 @@ def make_configfile(filename: str, sensor_type: str, values: tp.Dict = None):
     _write_configfile(parser, filename)
 
 
-def _update_parser_values(parser: tp.Type[RawConfigParser], values: tp.Dict):
+def _update_parser_values(parser: RawConfigParser, values: tp.Dict):
     """Overwrite the default values with those from `values`."""
     for section, options in values.items():
         for option, value in options.items():
@@ -274,10 +273,10 @@ def _write_configfile(parser, filename):
 def load_configfile(filename: str, updated_params: tp.Dict = None) -> dict:
     """load a configfile.
 
-    Returns parser as a dictionnary with the appropriate types.
+    Returns parser as a dictionary with the appropriate types.
 
     - Add the missing expected sections and options with empty string as value.
-    - Updates the value if dictionnary is passed as `updated_params`.
+    - Updates the value if dictionary is passed as `updated_params`.
     - saves the edited configuration files.
     - convert the options from string to the correct type for processing.
 
@@ -306,7 +305,7 @@ def load_configfile(filename: str, updated_params: tp.Dict = None) -> dict:
     return config
 
 
-def _get_sensor_type(parser: tp.Type[RawConfigParser]):
+def _get_sensor_type(parser: RawConfigParser):
     if parser.has_option("HEADER", "sensor_type"):
         sensor_type = parser["HEADER"]["sensor_type"]
         if not sensor_type:
@@ -316,7 +315,7 @@ def _get_sensor_type(parser: tp.Type[RawConfigParser]):
         raise ConfigFileError(error="sensor_type")
 
 
-def _add_config_missing(parser: tp.Type[RawConfigParser], sensor_type):
+def _add_config_missing(parser: RawConfigParser, sensor_type):
     """Check for missing sections or options compared to the expected parser
 
     - Adds the options or section if needed with empty string as value.
