@@ -2,6 +2,7 @@
 module to map xarray dataset to Odf
 """
 import re
+from collections import namedtuple
 from pathlib import Path
 
 import pandas as pd
@@ -274,7 +275,7 @@ def _make_buoy_instrument_comment(odf, instrument, dataset, sensor_metadata):
     """
     configuration = "CONFIGURATION_01"
     for key, value in BUOY_INSTRUMENT_CONFIGURATION.items():
-        v=""
+        v = ""
         if key == "Ping_Interval_s":
             if "ping_per_ensemble" in dataset.attrs and "delta_t_sec" in dataset.attrs:
                 if dataset.attrs["ping_per_ensemble"] and dataset.attrs["delta_t_sec"]:

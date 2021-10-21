@@ -2,9 +2,7 @@
 This script has to functions to process and quick process adcp data.
 These functions are called by the app command `process` and `quick adcp`.
 
-
 Script to process adcp data. FIXME
-
 - Load
 - Global_attributes
 - Quality_Control
@@ -14,44 +12,39 @@ Script to process adcp data. FIXME
 - Make Logbook
 - Export -> .nc or .odf
 
-
 Notes
 -----
-Unspecified attributes fill value "".
-`magnetic_declination`:
-    declination of the magnetic north in `degree east`.
+-Unspecified attributes fill value is an empty string.
+-`magnetic_declination`:
+     declination of the magnetic north in `degree east`.
 
-`sensor_depth`:
-    The `sensor_depth` value in the platform file is used to set the netcdf
-    global attributes of the same name. However, the `sensor_depth` value in
-    the ConfigFile is used to compute the bin depth coordinates.
-    If no `sensor_depth` value is set in the Configfile, a value is computed from
-    the XducerDepth.
-    If no `sensor_depth` value is given in both the ConfigFile and platform file,
-    the `sensor_depth` attributes is computed from the adcp `Xducer_depth`.
+-`sensor_depth`:
+     The `sensor_depth` value in the platform file is used to set the netcdf
+     global attributes of the same name. However, the `sensor_depth` value in
+     the ConfigFile is used to compute the bin depth coordinates.
+     If no `sensor_depth` value is set in the Configfile, a value is computed from
+     the XducerDepth.
+     If no `sensor_depth` value is given in both the ConfigFile and platform file,
+     the `sensor_depth` attributes is computed from the adcp `xducer_depth`.
 
-`chief_scientist`:
-     The value in the ConfigFile is used over the one in the platform file.
+-`chief_scientist`:
+      The value in the ConfigFile is used over the one in the platform file.
 
-`sounding` :
-    bt_depth data are used for the `sounding` attributes, taking precedent over the value given in
-    the platform file. If the bottom data are shit, set the option keep_bt to False.
+-`sounding` :
+     bt_depth data are used for the `sounding` attributes, taking precedent over the value given in
+     the platform file. If the bottom data are shit, set the option keep_bt to False.
 
-`manufacturer` :
-   The manufactuer is automaticaly added to the dataset by the loader. However, the value given in the platform file will
-   overwrite it.
+-`manufacturer` :
+    The manufacturer is automatically added to the dataset by the loader. However, the value given in the platform file will
+    overwrite it.
 
 TODO TEST NAVIGATIN FILES !
 FIXME DATA_TYPES: Missing for ship adcp
 FIXME SOURCE : moored adcp ?
 
-NOTE
-Add option to force platform file metadata over over those computed from the adcp file.
-- Global Attributes Priorities:
-  `force_platform` is False True:
-      CONFIGFILE > COMPUTED > PLATFORM
-  `force_platform` is False False:
-      CONFIGFILE > PLATFORM > COMPUTED
+Notes
+-----
+Should be a class
 """
 
 import getpass
@@ -65,15 +58,13 @@ import pandas as pd
 import xarray as xr
 from magtogoek.adcp.loader import load_adcp_binary
 from magtogoek.adcp.odf_exporter import make_odf
-# from magtogoek.adcp.quality_control import l as qc_log
 from magtogoek.adcp.quality_control import (adcp_quality_control,
                                             no_adcp_quality_control)
 from magtogoek.adcp.tools import magnetic_to_true
 from magtogoek.attributes_formatter import (
     compute_global_attrs, format_variables_names_and_attributes)
 from magtogoek.navigation import load_navigation
-# from magtogoek.tools import get_gps_bearing, vincenty
-from magtogoek.utils import Logger, json2dict
+from magtogoek.utils import Logger, json2dict, format_str2list
 
 l = Logger(level=0)
 
@@ -94,8 +85,6 @@ GLOBAL_ATTRS_TO_DROP = [
     "xducer_depth",
     "sonar",
 ]
-
-
 CONFIG_GLOBAL_ATTRS_SECTIONS = ["NETCDF_CF", "PROJECT", "CRUISE", "GLOBAL_ATTRIBUTES"]
 PLATFORM_TYPES = ["buoy", "mooring", "ship"]
 DEFAULT_PLATFORM_TYPE = "buoy"
@@ -200,19 +189,19 @@ DATA_FILL_VALUE = -9999.0
 DATA_ENCODING = {"dtype": "float32", "_FillValue": DATA_FILL_VALUE}
 
 
-def process_adcp(config: tp.Type[ConfigParser]):
+def process_adcp(config: ConfigParser):
     """Process adcp data with parameters from a ConfigFile.
 
     Pipes the params to _to_process_adcp_data which in turn pipes
     it to _process_adcp_data.
 
     Using `platform_id`, `sensor_id`, the sensor metadata are loaded
-    into a dictionnary and pass to _process_adcp_data.
+    into a dictionary and pass to _process_adcp_data.
 
     Notes
     -----
     missing `platform_type` :
-        If the platform_type cannot be found, the function automaticaly default to
+        If the platform_type cannot be found, the function automatically default to
         `mooring` to set BODC P01 parameter codes.
 
     See Also
@@ -223,8 +212,7 @@ def process_adcp(config: tp.Type[ConfigParser]):
     """
     params, global_attrs = _get_config(config)
 
-    if isinstance(params["input_files"], str):
-        params["input_files"] = list(params["input_files"])
+    params["input_files"] = format_str2list(params["input_files"])
 
     if len(params["input_files"]) == 0:
         raise ValueError("No adcp file was provided in the configfile.")
@@ -368,7 +356,7 @@ def _process_adcp_data(
 
     if sensor_metadata["platform_type"] in ["mooring", "buoy"]:
         if "bt_depth" in dataset:
-            dataset.attrs["sounding"] = round(np.median(dataset.bt_depth.data), 2)
+            dataset.attrs["sounding"] = np.round(np.median(dataset.bt_depth.data), 2)
 
     # if not params["force_platform_metadata"]: # Note Probably useless.
     _set_xducer_depth_as_sensor_depth(dataset)
@@ -403,8 +391,9 @@ def _process_adcp_data(
                 dataset, additional_correction,
             )
             l.log(
-                f"""Magnetic declination found in adcp file: {dataset.attrs["magnetic_declination"]} degree east.
-An additionnal correction of {additional_correction} degree east was added to have a  {params['magnetic_declination']} degree east correction."""
+                f"Magnetic declination found in adcp file: {dataset.attrs['magnetic_declination']} degree east."
+                f"An additional correction of {additional_correction} degree east was added to have a " 
+                f"{params['magnetic_declination']} degree east correction."
             )
         dataset.attrs["magnetic_declination"] = params["magnetic_declination"]
 
@@ -487,6 +476,7 @@ An additionnal correction of {additional_correction} degree east was added to ha
     # OUTPUTS #
     # ------- #
     l.section("Output")
+    log_output = params["input_files"][0]
     if params["odf_output"]:
         if params["bodc_name"]:
             generic_to_p01_name = P01_VEL_CODES[sensor_metadata["platform_type"]]
@@ -519,10 +509,9 @@ An additionnal correction of {additional_correction} degree east was added to ha
         params["netcdf_output"] = True
 
     if params["netcdf_output"]:
+        nc_output = params["netcdf_output"]
         if isinstance(params["netcdf_output"], bool):
             nc_output = params["input_files"][0]
-        else:
-            nc_output = params["netcdf_output"]
         nc_output = Path(nc_output).with_suffix(".nc")
         dataset.to_netcdf(nc_output)
         l.log(f"netcdf file made -> {nc_output}")
@@ -539,7 +528,7 @@ An additionnal correction of {additional_correction} degree east was added to ha
     click.echo(click.style("=" * TERMINAL_WIDTH, fg="white", bold=True))
 
 
-def _load_adcp_data(params: tp.Dict) -> tp.Type[xr.Dataset]:
+def _load_adcp_data(params: tp.Dict) -> xr.Dataset:
     """
     Load and trim the adcp data into a xarray.Dataset.
     Drops bottom track data if params `keep_bt` is False.
@@ -548,7 +537,7 @@ def _load_adcp_data(params: tp.Dict) -> tp.Type[xr.Dataset]:
     end_time, trailing_index = _get_datetime_and_count(params["trailing_trim"])
 
     dataset = load_adcp_binary(
-        params["input_files"],
+        filenames=params["input_files"],
         yearbase=params["yearbase"],
         sonar=params["sonar"],
         leading_index=leading_index,
@@ -587,7 +576,7 @@ def _load_adcp_data(params: tp.Dict) -> tp.Type[xr.Dataset]:
     return dataset
 
 
-def _get_config(config: tp.Type[ConfigParser]):
+def _get_config(config: ConfigParser)->tp.Tuple[dict, dict]:
     """Split and flattens the config in two unested dictionnary"""
     params = dict()
     global_attrs = dict()
@@ -665,19 +654,19 @@ _check_platform_type.__doc__ = f"""Check if the `plaform_type` is valid.
     `platform_type` defaults to {DEFAULT_PLATFORM_TYPE} if the one given is invalid."""
 
 
-def _set_xducer_depth_as_sensor_depth(dataset: tp.Type[xr.Dataset]):
+def _set_xducer_depth_as_sensor_depth(dataset: xr.Dataset):
     """Set xducer_depth value to dataset attributes sensor_depth"""
     if "xducer_depth" in dataset.attrs:  # OCEAN SURVEYOR
         dataset.attrs["sensor_depth"] = dataset.attrs["xducer_depth"]
 
     if "xducer_depth" in dataset:
-        dataset.attrs["sensor_depth"] = round(
+        dataset.attrs["sensor_depth"] = np.round(
             np.median(dataset["xducer_depth"].data), 2
         )
 
 
 def _set_platform_metadata(
-    dataset: tp.Type[xr.Dataset],
+    dataset: xr.Dataset,
     sensor_metadata: dict,
     force_platform_metadata: bool = False,
 ):
@@ -691,7 +680,7 @@ def _set_platform_metadata(
         Dataset to which add the navigation data.
     sensor_metadata :
         metadata returned by  _load_platform
-    force_platform_metadat :
+    force_platform_metadata :
         If `True`, metadata from sensor_metadata overwrite those already present in dataset.attrs
     """
     metadata_key = []
@@ -702,7 +691,7 @@ def _set_platform_metadata(
     if force_platform_metadata:
         for key in metadata_key:
             dataset.attrs[key] = sensor_metadata[key]
-        if "sensor_depth" in key:
+        if "sensor_depth" in metadata_key:
             l.log(
                 f"`sensor_depth` value ({sensor_metadata['sensor_depth']} was set by the user."
             )
@@ -716,7 +705,7 @@ def _set_platform_metadata(
                 dataset.attrs[key] = sensor_metadata[key]
 
 
-def _load_navigation(dataset: tp.Type[xr.Dataset], navigation_files: str):
+def _load_navigation(dataset: xr.Dataset, navigation_files: str):
     """Load navigation data from nmea, gpx or netcdf files.
 
     Returns the dataset with the added navigation data. Data from the navigation file
@@ -741,12 +730,12 @@ def _load_navigation(dataset: tp.Type[xr.Dataset], navigation_files: str):
     return dataset
 
 
-def _quality_control(dataset: tp.Type[xr.Dataset], params: tp.Dict):
+def _quality_control(dataset: xr.Dataset, params: tp.Dict):
     """Carries quality control.
 
     Wrapper for adcp_quality_control"""
 
-    adcp_quality_control(dataset, amp_th=params["amplitude_threshold"], corr_th=params["correlation_threshold"],
+    adcp_quality_control(dataset=dataset, amp_th=params["amplitude_threshold"], corr_th=params["correlation_threshold"],
                          pg_th=params["percentgood_threshold"], roll_th=params["roll_threshold"],
                          pitch_th=params["pitch_threshold"], horizontal_vel_th=params["horizontal_velocity_threshold"],
                          vertical_vel_th=params["vertical_velocity_threshold"],
@@ -755,7 +744,7 @@ def _quality_control(dataset: tp.Type[xr.Dataset], params: tp.Dict):
                          sidelobes_correction=params["sidelobes_correction"], bottom_depth=params["bottom_depth"])
 
 
-def _magnetnic_correction(dataset: tp.Type[xr.Dataset], magnetic_declination: float):
+def _magnetnic_correction(dataset: xr.Dataset, magnetic_declination: float):
     """Correct for magnetic declination.
     Rotate eastward and northward velocities from magnetic to geographic and
     """
@@ -801,7 +790,7 @@ def _get_datetime_and_count(trim_arg: str):
         return (None, None)
 
 
-def _drop_beam_data(dataset: tp.Type[xr.Dataset], params: tp.Dict):
+def _drop_beam_data(dataset: xr.Dataset, params: tp.Dict):
     """check in params if pg, corr and amp are to be dropped
     (drop_pg, drop_corr, drop_amp)
 
@@ -820,7 +809,7 @@ def _drop_beam_data(dataset: tp.Type[xr.Dataset], params: tp.Dict):
     return dataset
 
 
-def _format_data_encoding(dataset: tp.Type[xr.Dataset]):
+def _format_data_encoding(dataset: xr.Dataset):
     """Format data encoding with default value in module."""
     l.section("Data Encoding")
     for var in dataset.variables:

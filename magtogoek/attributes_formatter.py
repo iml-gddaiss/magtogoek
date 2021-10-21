@@ -30,9 +30,7 @@ dynamic variables attributes :
 Sea Also
 --------
 Read the functions and the docs below. They are pretty explicit.
-
 """
-import json
 import typing as tp
 from pathlib import Path
 
@@ -41,14 +39,15 @@ import xarray as xr
 
 from magtogoek.utils import json2dict
 
-STATIC_ATTRIBUTES_FILE_PATH = (
-    Path(__file__).resolve().parent.joinpath("files/CF_P01_GF3_formats.json").resolve()
+STATIC_ATTRIBUTES_RELATIVE_FILE_PATH = "files/CF_P01_GF3_formats.json"
+STATIC_ATTRIBUTES_ABSOLUTE_FILE_PATH = (
+    Path(__file__).resolve().parent.joinpath(STATIC_ATTRIBUTES_RELATIVE_FILE_PATH).resolve()
 )
 
 
 def format_variables_names_and_attributes(
-    dataset: tp.Type[xr.Dataset], use_bodc_codes: bool
-) -> tp.Type[xr.Dataset]:
+    dataset: xr.Dataset, use_bodc_codes: bool
+) -> xr.Dataset:
     """Format variables names and attributes
 
     Returns dataset with variables attributes set.
@@ -59,7 +58,7 @@ def format_variables_names_and_attributes(
     their original names (generic_name) setting `use_bodc_codes` as `False`/
 
     Require dataset global attributes  :
-        `P01_CODE_TRANSLATOR` : a dictionnary containing `generic_name`:`p01_codes`
+        `P01_CODE_TRANSLATOR` : a dictionary containing `generic_name`:`p01_codes`
              as keys and items.
 
     None essential global attributes :
@@ -75,7 +74,7 @@ def format_variables_names_and_attributes(
         dataset to format. The dataset must contain a global_attributes named `P01_CODE_TRANSLATOR`
     which has to be a dictionnary containing `generic_name`:`p01_code` as keys and items.
 
-    use_bodc_name :
+    use_bodc_codes :
        If `True`, the variable names are changed to th BODC P01 parameters codes.
 
     Notes
@@ -92,7 +91,7 @@ def format_variables_names_and_attributes(
             if var in dataset:
                 dataset[var].attrs["sensor_type"] = dataset.attrs["sensor_type"]
 
-    _add_sdn_and_cf_var_attrs(dataset, json2dict(STATIC_ATTRIBUTES_FILE_PATH))
+    _add_sdn_and_cf_var_attrs(dataset, json2dict(STATIC_ATTRIBUTES_ABSOLUTE_FILE_PATH))
 
     if not use_bodc_codes:
         dataset = _convert_variables_names(dataset, convert_back_to_generic=True)
@@ -109,14 +108,14 @@ def format_variables_names_and_attributes(
         _add_sensor_serial_to_var_attrs(dataset)
 
     _add_ancillary_variables_to_var_attrs(dataset)
-    _add_names_to_QC_var_attrs(dataset)
+    _add_names_to_qc_var_attrs(dataset)
 
     return dataset
 
 
 def _convert_variables_names(
-    dataset: tp.Type[xr.Dataset], convert_back_to_generic: bool = False
-) -> tp.Type[xr.Dataset]:
+    dataset: xr.Dataset, convert_back_to_generic: bool = False
+) -> xr.Dataset:
     """Convert variable and coords names.
 
     From generic to BODC P01 names or from BODC P01 to generic names if
@@ -126,11 +125,11 @@ def _convert_variables_names(
     ----------
     dataset :
         FIXME
-    convert_to_generic:
-       converts from bodc to generitc.
+    convert_back_to_generic:
+       converts from bodc to generic.
     Notes
     -----
-    Conveting names is used to add the conventionned attributes to variables.
+    Converting names is used to add the convention attributes to variables.
     """
     varname_translator = dataset.attrs["P01_CODES"]
 
@@ -149,7 +148,7 @@ def _convert_variables_names(
     return dataset
 
 
-def _add_sdn_and_cf_var_attrs(dataset: tp.Type[xr.Dataset], sdn: tp.Dict):
+def _add_sdn_and_cf_var_attrs(dataset: xr.Dataset, sdn: tp.Dict):
     """add sdn (sea data net) attributes.
 
     Parameters
@@ -187,7 +186,7 @@ def _add_data_min_max_to_var_attrs(dataset):
                 dataset[var].attrs["data_min"] = dataset[var].min().values
 
 
-def _add_sensor_depth_to_var_attrs(dataset: tp.Type[xr.Dataset]):
+def _add_sensor_depth_to_var_attrs(dataset: xr.Dataset):
     """Add sensor depth to variables with sensor_type"""
     for var in dataset.variables:
         if "sensor_type" in dataset[var].attrs:
@@ -195,7 +194,7 @@ def _add_sensor_depth_to_var_attrs(dataset: tp.Type[xr.Dataset]):
                 dataset[var].attrs["sensor_depth"] = dataset.attrs["sensor_depth"]
 
 
-def _add_sensor_serial_to_var_attrs(dataset: tp.Type[xr.Dataset]):
+def _add_sensor_serial_to_var_attrs(dataset: xr.Dataset):
     """Add sensor serial number `dataset['serial_number'] to variables using XducerDepth."""
     for var in dataset.variables:
         if "sensor_type" in dataset[var].attrs:
@@ -203,8 +202,8 @@ def _add_sensor_serial_to_var_attrs(dataset: tp.Type[xr.Dataset]):
                 dataset[var].attrs["serial_number"] = dataset.attrs["serial_number"]
 
 
-def _add_ancillary_variables_to_var_attrs(dataset: tp.Type[xr.Dataset]):
-    """add accillary_variables to variables attributes
+def _add_ancillary_variables_to_var_attrs(dataset: xr.Dataset):
+    """add ancillary_variables to variables attributes
 
     Looks for `_QC` variable names and adds 'ancillary_variables` attributes
     to the corresponding variables.
@@ -214,16 +213,16 @@ def _add_ancillary_variables_to_var_attrs(dataset: tp.Type[xr.Dataset]):
             dataset[var[:-3]].attrs["ancillary_variables"] = var
 
 
-def _add_names_to_QC_var_attrs(dataset: tp.Type[xr.Dataset]) -> None:
+def _add_names_to_qc_var_attrs(dataset: xr.Dataset) -> None:
     """add long_name and standard_name to QualityControl `_QC` variables."""
-    for var in list(dataset.variables):
+    for var in list(map(str, dataset.variables)):
         if "_QC" in var:
             value = f"Quality flag for {var.split('_')[0]}"
             dataset[var].attrs["long_name"] = value
             dataset[var].attrs["standard_name"] = value
 
 
-def compute_global_attrs(dataset: tp.Type[xr.Dataset]):
+def compute_global_attrs(dataset: xr.Dataset):
     """
     Sets :
      -time_coverage_start
@@ -249,7 +248,7 @@ def compute_global_attrs(dataset: tp.Type[xr.Dataset]):
     _time_global_attrs(dataset)
 
 
-def _time_global_attrs(dataset: tp.Type[xr.Dataset]):
+def _time_global_attrs(dataset: xr.Dataset):
     """
     Notes
     -----
@@ -275,7 +274,7 @@ def _time_global_attrs(dataset: tp.Type[xr.Dataset]):
     dataset.attrs["time_coverage_duration_units"] = "days"
 
 
-def _geospatial_global_attrs(dataset: tp.Type[xr.Dataset]):
+def _geospatial_global_attrs(dataset: xr.Dataset):
     """Compute and add geospatial global attributes to dataset.
 
     If `lon` and `lon` are variables in the dataset, lat/lon

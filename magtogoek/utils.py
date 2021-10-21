@@ -113,6 +113,14 @@ class Logger:
         """Make a time stamp"""
         return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+def format_str2list(filenames: tp.Union[str, tp.List[str]])->tp.List[str]:
+    """
+    Returns
+    -------
+    """
+    if isinstance(filenames, str):
+        filenames = [filenames]
+    return filenames
 
 def get_files_from_expresion(filenames: tp.Union[str, tp.List[str]]) -> tp.List[str]:
     """Get existing files from expression.
@@ -123,7 +131,6 @@ def get_files_from_expresion(filenames: tp.Union[str, tp.List[str]]) -> tp.List[
     ------
     FileNotFoundError :
         If files does not exist, or a matching regex not found.
-        @rtype: object
     """
     if isinstance(filenames, str):
         p = Path(filenames)

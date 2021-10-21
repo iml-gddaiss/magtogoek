@@ -17,14 +17,20 @@ RTI data re read using Magtogoek rti_reader built from rti_python tools by RoweT
 - Rowtech files can also be exporter directly to Teledyne `PD0` formats and read by pycurrnets
 using 'sw_pd0' for sonar.
 
-Notes:
+Notes
 -----
 - Orientation is taken from the first profile of the first file if not no value is pass.
-- We assume that the `dep` from OS  already is the bin depth below surface.
+- We assume that the `dep` from OS already is the bin depth below surface.
 - pd0 Fixed_Leader are know to have invalid configuration. msb=`11111111` and lsb=`11111111`. The
 file will be processed but a warning will be raised. The cause was not investigated.
+- This should probably be turned into an object.
 
-- This schould probably be turned into an object.
+TODO
+----
+- Change PG good test for beam coord. each should be greater than 25% sum > 100.
+
+
+
 See Also
 --------
    * pycurrents.adcp.rdiraw.Multiread
@@ -172,7 +178,7 @@ def load_adcp_binary(
         )
         if invalid_config_count:
             l.warning(
-                f"Invalide configuration, msb=`11111111` and lsb=`11111111`, found in the SysCfg of {invalid_config_count} FixedLeader."
+                f"Invalide configuration, msb=`11111111` and lsb=`11111111`, found in the SysCfg of {invalid_config_count} FixedLeader. "
             )
 
     else:
@@ -233,7 +239,6 @@ def load_adcp_binary(
             data.XducerDepth[:] = 0
             l.log("XducerDepth set to 0 m.")
 
-
     average_xducer_depth = np.round(np.median(data.XducerDepth), 3)
     xducer_depth = data.XducerDepth
 
@@ -267,9 +272,9 @@ def load_adcp_binary(
         l.warning("Bin depths are all negative, ADCP orientation is probably wrong.")
 
     # --------------------- #
-    # Initating the dataset #
+    # Initializing the dataset #
     # --------------------- #
-    ds = xr.Dataset(coords={"depth": depth, "time": time})
+    dataset = xr.Dataset(coords={"depth": depth, "time": time})
 
     # --------------------------------------- #
     # Dealing with the coordinates system     #
@@ -289,19 +294,19 @@ def load_adcp_binary(
     # --------------------------- #
     data.vel[data.vel == VEL_FILL_VALUE] = np.nan
     # WATER VELOCITIES
-    ds["u"] = (["depth", "time"], data.vel[:, :, 0].T)
-    ds["v"] = (["depth", "time"], data.vel[:, :, 1].T)
-    ds["w"] = (["depth", "time"], data.vel[:, :, 2].T)
-    ds["e"] = (["depth", "time"], data.vel[:, :, 3].T)
+    dataset["u"] = (["depth", "time"], data.vel[:, :, 0].T)
+    dataset["v"] = (["depth", "time"], data.vel[:, :, 1].T)
+    dataset["w"] = (["depth", "time"], data.vel[:, :, 2].T)
+    dataset["e"] = (["depth", "time"], data.vel[:, :, 3].T)
     l.log("Velocity data loaded")
 
     if sonar == "sv":
         data.vbvel[data.vbvel == VEL_FILL_VALUE] = np.nan
-        ds["vb_vel"] = (["depth", "time"], data.vbvel.T)
-        ds["vb_corr"] = (["depth", "time"], np.asarray(data.VBCorrelation.T))
-        ds["vb_amp"] = (["depth", "time"], np.asarray(data.VBIntensity.T))
+        dataset["vb_vel"] = (["depth", "time"], data.vbvel.T)
+        dataset["vb_corr"] = (["depth", "time"], np.asarray(data.VBCorrelation.T))
+        dataset["vb_amp"] = (["depth", "time"], np.asarray(data.VBIntensity.T))
         if "VBPercentGood" in data:
-            ds["vb_pg"] = (["depth", "time"], np.asarray(data.VBPercentGood.T))
+            dataset["vb_pg"] = (["depth", "time"], np.asarray(data.VBPercentGood.T))
         l.log("Data from the Sentinel V fifth beam loaded.")
 
     # BOTTOM VELOCITIES
@@ -317,10 +322,10 @@ def load_adcp_binary(
 
         else:
             data.bt_vel[data.bt_vel == VEL_FILL_VALUE] = np.nan
-            ds["bt_u"] = (["time"], data.bt_vel[:, 0])
-            ds["bt_v"] = (["time"], data.bt_vel[:, 1])
-            ds["bt_w"] = (["time"], data.bt_vel[:, 2])
-            ds["bt_e"] = (["time"], data.bt_vel[:, 3])
+            dataset["bt_u"] = (["time"], data.bt_vel[:, 0])
+            dataset["bt_v"] = (["time"], data.bt_vel[:, 1])
+            dataset["bt_w"] = (["time"], data.bt_vel[:, 2])
+            dataset["bt_e"] = (["time"], data.bt_vel[:, 3])
             l.log("Bottom track data loaded")
 
     # BOTTOM DEPTH
@@ -334,7 +339,7 @@ def load_adcp_binary(
                 "Bottom depth values were all `nan`, therefore they were dropped from the ouput."
             )
         else:
-            ds["bt_depth"] = (["time"], np.asarray(np.nanmean(data.bt_depth, axis=-1)))
+            dataset["bt_depth"] = (["time"], np.asarray(np.nanmean(data.bt_depth, axis=-1)))
             if orientation == "up":
                 l.log(
                     "In a `up` orientation, bottom_depth corresponds to the water height above adcp, thus should "
@@ -346,30 +351,30 @@ def load_adcp_binary(
                 )
             elif sensor_depth:
                 if abs(depth_difference) > 0 and sonar == "os":
-                    ds["bt_depth"] -= depth_difference
+                    dataset["bt_depth"] -= depth_difference
             else:
-                ds["bt_depth"] += xducer_depth
+                dataset["bt_depth"] += xducer_depth
 
             l.log("Bottom depth  data loaded")
 
     # QUALITY
     if "pg" in data:
         if original_coordsystem == "beam":
-            ds["pg"] = (["depth", "time"], np.asarray(np.mean(data.pg, axis=2).T))
+            dataset["pg"] = (["depth", "time"], np.asarray(np.mean(data.pg, axis=2).T))
             l.log(
                 "Percent good was computed by averaging each beam PercentGood. The raw data were in beam coordinate."
             )
         else:
-            ds["pg"] = (["depth", "time"], np.asarray(data.pg4.T))
+            dataset["pg"] = (["depth", "time"], np.asarray(data.pg4.T))
     else:
         l.warning("Percent good was not retrieve from the dataset.")
 
     if "cor1" in data:
         for i in range(1, 5):
-            ds[f"corr{i}"] = (["depth", "time"], np.asarray(data[f"cor{i}"].T))
+            dataset[f"corr{i}"] = (["depth", "time"], np.asarray(data[f"cor{i}"].T))
     if "amp1" in data:
         for i in range(1, 5):
-            ds[f"amp{i}"] = (["depth", "time"], np.asarray(data[f"amp{i}"].T))
+            dataset[f"amp{i}"] = (["depth", "time"], np.asarray(data[f"amp{i}"].T))
 
     # ------------------ #
     # Loading depth data #
@@ -377,14 +382,14 @@ def load_adcp_binary(
 
     # For `wh`, `sv` and `sw` XducerDepth varies over times but is constant for `os`.
     if sonar != "os":
-        ds["xducer_depth"] = (["time"], np.asarray(xducer_depth))
+        dataset["xducer_depth"] = (["time"], np.asarray(xducer_depth))
 
     # --------------------------- #
     # Loading the naviagtion data #
     # --------------------------- #
     if "rawnav" in data:
-        ds["lon"] = (["time"], np.array(data["rawnav"]["Lon1_BAM4"] * 180.0 / 2 ** 31))
-        ds["lat"] = (["time"], np.array(data["rawnav"]["Lat1_BAM4"] * 180.0 / 2 ** 31))
+        dataset["lon"] = (["time"], np.array(data["rawnav"]["Lon1_BAM4"] * 180.0 / 2 ** 31))
+        dataset["lat"] = (["time"], np.array(data["rawnav"]["Lat1_BAM4"] * 180.0 / 2 ** 31))
         l.log("Navigation (GPS) data loaded.")
 
     # -------------------------------------------- #
@@ -393,7 +398,7 @@ def load_adcp_binary(
     # For `wh`, `sv` and `sw` the pressure is added if available.
     if "Pressure" in data.VL.dtype.names:
         if not (data.VL["Pressure"] == 0).all():
-            ds["pres"] = (["time"], data.VL["Pressure"] / 1000)  # decapascal to decibar
+            dataset["pres"] = (["time"], data.VL["Pressure"] / 1000)  # decapascal to decibar
         else:
             l.log("Pressure data unavailable")
 
@@ -401,33 +406,33 @@ def load_adcp_binary(
         if (data.heading == 0).all() or (np.diff(data.heading) == 0).all():
             l.warning("Heading data are either all 0, or not variying.")
         else:
-            ds["heading"] = (["time"], np.asarray(data.heading))
+            dataset["heading"] = (["time"], np.asarray(data.heading))
     if "roll" in data:
         if (data.roll == 0).all() or (np.diff(data.roll) == 0).all():
             l.warning("Roll data are either all 0, or not variying.")
         else:
-            ds["roll_"] = (["time"], np.asarray(data.roll))
+            dataset["roll_"] = (["time"], np.asarray(data.roll))
     if "pitch" in data:
         if (data.pitch == 0).all() or (np.diff(data.pitch) == 0).all():
             l.warning("Pitch data are either all 0, or not variying.")
         else:
-            ds["pitch"] = (["time"], np.asarray(data.pitch))
+            dataset["pitch"] = (["time"], np.asarray(data.pitch))
     if "temperature" in data:
         if (data.temperature == 0).all() or (np.diff(data.temperature) == 0).all():
             l.warning("Temperature data are either all 0, or not variying.")
         else:
-            ds["temperature"] = (["time"], np.asarray(data.temperature))
+            dataset["temperature"] = (["time"], np.asarray(data.temperature))
 
     # ------------------------------- #
     # Load time string or dday if bad #
     # ------------------------------- #
     if bad_dday:
-        ds["dday"] = (["time"], np.asarray(data.dday))
+        dataset["dday"] = (["time"], np.asarray(data.dday))
     else:
-        ds["time_string"] = (["time"], time_string)
+        dataset["time_string"] = (["time"], time_string)
 
     if orientation == "up":
-        ds = ds.sortby("depth")
+        dataset = dataset.sortby("depth")
 
     # -------------- #
     #  Cutting bins  #
@@ -436,20 +441,20 @@ def load_adcp_binary(
         if not isinstance(depth_range, (list, tuple)):
             depth_range = [depth_range]
         if len(depth_range) == 1:
-            if depth_range[0] > ds.depth.max():
+            if depth_range[0] > dataset.depth.max():
                 l.log(
                     "depth_range value is greater than the maximum bin depth. Depth slicing aborded."
                 )
             else:
-                ds = ds.sel(depth=slice(depth_range[0], None))
+                dataset = dataset.sel(depth=slice(depth_range[0], None))
                 l.log(f"Bin of depth inferior to {depth_range[0]} m were cut.")
         elif len(depth_range) == 2:
-            if depth_range[0] > ds.depth.max() or depth_range[1] < ds.depth.min():
+            if depth_range[0] > dataset.depth.max() or depth_range[1] < dataset.depth.min():
                 l.log(
                     "depth_range values are outside the actual depth range. Depth slicing aborded."
                 )
             else:
-                ds = ds.sel(depth=slice(*depth_range))
+                dataset = dataset.sel(depth=slice(*depth_range))
                 l.log(
                     f"Bin of depth inferior to {depth_range[0]} m and superior to {depth_range[1]} m were cut."
                 )
@@ -464,50 +469,50 @@ def load_adcp_binary(
     sonar_names = dict(
         wh="WorkHorse", sv="Sentinel V", os="Ocean Surveyor", sw="SeaWATCH"
     )
-    ds.attrs["sonar"] = sonar_names[sonar]
-    ds.attrs["manufacturer"] = (
+    dataset.attrs["sonar"] = sonar_names[sonar]
+    dataset.attrs["manufacturer"] = (
         "Teledyne RD Instruments Inc."
         if sonar in ["wh", "sv", "os"]
         else "Rowe Technologie Inc. (RTI)"
     )
-    if "xducer_depth" not in ds:
-        ds.attrs["xducer_depth"] = round(average_xducer_depth, 2)
-    ds.attrs["coord_system"] = data.trans["coordsystem"]
-    ds.attrs["beam_angle"] = data.sysconfig["angle"]
-    ds.attrs["frequency"] = data.sysconfig["kHz"] * 1000  # kHz to hz
-    ds.attrs["bin_size"] = data.CellSize
-    ds.attrs["ping_per_ensemble"] = data.NPings
-    ds.attrs["ping_type"] = data.pingtype
-    ds.attrs["blank"] = data.Blank / 100  # cm to m
-    ds.attrs["bin1dist"] = data.Bin1Dist
+    if "xducer_depth" not in dataset:
+        dataset.attrs["xducer_depth"] = round(average_xducer_depth, 2)
+    dataset.attrs["coord_system"] = data.trans["coordsystem"]
+    dataset.attrs["beam_angle"] = data.sysconfig["angle"]
+    dataset.attrs["frequency"] = data.sysconfig["kHz"] * 1000  # kHz to hz
+    dataset.attrs["bin_size"] = data.CellSize
+    dataset.attrs["ping_per_ensemble"] = data.NPings
+    dataset.attrs["ping_type"] = data.pingtype
+    dataset.attrs["blank"] = data.Blank / 100  # cm to m
+    dataset.attrs["bin1dist"] = data.Bin1Dist
 
-    ds.attrs["firmware_version"] = ".".join(
+    dataset.attrs["firmware_version"] = ".".join(
         list(str(data.FL["FWV"])) + list(str(data.FL["FWR"]))
     )
-    ds.attrs["transmit_pulse_lenght_m"] = data.FL["Pulse"] / 100  # cm to m
+    dataset.attrs["transmit_pulse_lenght_m"] = data.FL["Pulse"] / 100  # cm to m
 
-    ds.attrs["delta_t_sec"] = np.round(
-        np.mean((np.diff(ds.time).astype("timedelta64[s]"))).astype(float), 2
+    dataset.attrs["delta_t_sec"] = np.round(
+        np.mean((np.diff(dataset.time).astype("timedelta64[s]"))).astype(float), 2
     )
-    ds.attrs["sampling_interval"] = str(ds.attrs["delta_t_sec"]) + " seconds"
+    dataset.attrs["sampling_interval"] = str(dataset.attrs["delta_t_sec"]) + " seconds"
 
-    ds.attrs["beam_pattern"] = "convex" if data.sysconfig["convex"] else "concave"
+    dataset.attrs["beam_pattern"] = "convex" if data.sysconfig["convex"] else "concave"
 
-    ds.attrs["janus"] = "5-Beam" if sonar == "sv" else "4-Beam"
+    dataset.attrs["janus"] = "5-Beam" if sonar == "sv" else "4-Beam"
 
-    ds.attrs["magnetic_declination"] = None
+    dataset.attrs["magnetic_declination"] = None
     if "FL" in data:
         if "EV" in data.FL:
             if data.FL["EV"] != 0:
-                ds.attrs["magnetic_declination"] = data.FL["EV"] / 100
+                dataset.attrs["magnetic_declination"] = data.FL["EV"] / 100
 
-    ds.attrs["orientation"] = orientation
-    ds.attrs["serial_number"] = data.SerialNumber if "SerialNumber" in data else None
+    dataset.attrs["orientation"] = orientation
+    dataset.attrs["serial_number"] = data.SerialNumber if "SerialNumber" in data else None
 
     l.log(f"File(s) loaded with {l.w_count} warnings")
-    ds.attrs["logbook"] = l.logbook
+    dataset.attrs["logbook"] = l.logbook
 
-    return ds
+    return dataset
 
 
 def coordsystem2earth(data: Bunch, orientation: str):
@@ -517,13 +522,13 @@ def coordsystem2earth(data: Bunch, orientation: str):
 
     Replace the values of data.vel, data.bt_vel with East, North and Up velocities
     and the velocity error for 4 beams ADCP. UHDAS transform functions are used to
-    transform for beam coordinates and xyz to east-north-up (enu). which uses a
-    three-beam solution by faking a fourth beam.
+    transform for beam coordinates and xyz to east-north-up (enu). These function
+    can use a three-beam solution by faking a fourth beam.
 
     Also change the values of of `coordinates` in data.trans.
 
     beam coordinates : Velocity measured along beam axis.
-    xyz corrdinates : Velocity in a cartesian coordinate system in the ADCP frame of refence.
+    xyz coordinates : Velocity in a cartesian coordinate system in the ADCP frame of reference.
     enu coordinates : East North Up measured using the heading, pitch, roll of the ADCP.
 
     Parameters
@@ -609,7 +614,7 @@ def check_pd0_invalid_config(
 
     Notes:
     ------
-    Althought the fixed_leader is supposed to be fixed, there is occurence
+    Although the fixed_leader is supposed to be fixed, there is occurrence
     of change in the fixed_leader of some ping. A check up of some
     the fixed_leader parameters is done in the  processing.
     """
@@ -630,12 +635,10 @@ def check_pd0_invalid_config(
             .raw.FixedLeader
         )
 
-    syscfg = fixed_leader["SysCfg"][leading_index:trailing_index]
-    invalid_cfg_count = None
-    if (syscfg == 2 ** 16 - 1).any():
-        invalid_cfg_count = np.sum((syscfg == 2 ** 16 - 1))
+    invalid_config = 2 ** 16 - 1
 
-    return invalid_cfg_count
+    return np.sum((fixed_leader["SysCfg"][leading_index:trailing_index] == invalid_config))
+
 
 
 def _fprint_filenames(file_type: str, filenames: tp.List) -> str:
