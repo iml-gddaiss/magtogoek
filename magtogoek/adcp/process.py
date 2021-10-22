@@ -576,7 +576,7 @@ def _load_adcp_data(params: tp.Dict) -> xr.Dataset:
     return dataset
 
 
-def _get_config(config: ConfigParser)->tp.Tuple[dict, dict]:
+def _get_config(config: dict)->tp.Tuple[dict, dict]:
     """Split and flattens the config in two unested dictionnary"""
     params = dict()
     global_attrs = dict()

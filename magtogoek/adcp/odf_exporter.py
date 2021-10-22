@@ -24,8 +24,8 @@ PARAMETERS_TYPES = {
     "|S1": "SYTM",
     "datetime64[ns]": "SYTM",
 }
-print(__file__)
-PARAMETER = ["time", "depth", "u", "u_QC", "v", "v_QC", "w", "w_QC", "e"]
+
+PARAMETERS = ("time", "depth", "u", "u_QC", "v", "v_QC", "w", "w_QC", "e")
 PARAMETERS_METADATA_RELATIVE_PATH = "../files/odf_parameters_metadata.json"
 PARAMETERS_METADATA_ABSOLUTE_PATH = (
     Path(__file__)
@@ -339,24 +339,26 @@ def _make_parameter_headers(odf, dataset, generic_to_p01_name=None):
         Dataset to which add the navigation data.
     generic_to_p01_name :
         map from the generic to the BODC p01 variables names
+    Notes
+    -----
+    The PARAMETERS global variable order is important.
     """
 
     parameters_metadata = json2dict(PARAMETERS_METADATA_ABSOLUTE_PATH)
 
     if generic_to_p01_name:
-        for param in PARAMETER:
+        for param in PARAMETERS:
             if param in generic_to_p01_name:
                 parameters_metadata[
                     generic_to_p01_name[param]
                 ] = parameters_metadata.pop(param)
 
-    data = dataset[list(parameters_metadata.keys())].to_dataframe().reset_index()
+    data = dataset[list(parameters_metadata.keys())].to_dataframe().reset_index().sort_values(['time', 'depth'])
 
     for var in parameters_metadata:
         if var in dataset:
             items = {}
-            for key, value in parameters_metadata[var].items():
-                items[key] = value
+            items.update(parameters_metadata[var])
 
             items["depth"] = dataset.attrs["sensor_depth"]
             if "_QC" not in var:

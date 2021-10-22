@@ -439,19 +439,19 @@ def load_adcp_binary(
     # -------------- #
     if depth_range:
         if not isinstance(depth_range, (list, tuple)):
-            depth_range = [depth_range]
-        if len(depth_range) == 1:
-            if depth_range[0] > dataset.depth.max():
+            if depth_range > dataset.depth.max():
                 l.log(
                     "depth_range value is greater than the maximum bin depth. Depth slicing aborded."
                 )
             else:
-                dataset = dataset.sel(depth=slice(depth_range[0], None))
-                l.log(f"Bin of depth inferior to {depth_range[0]} m were cut.")
+                dataset = dataset.sel(depth=slice(depth_range, None))
+                l.log(f"Bin of depth inferior to {depth_range} m were cut.")
         elif len(depth_range) == 2:
+            if dataset.depth[0] > dataset.depth[-1]:
+                depth_range.reverse()
             if depth_range[0] > dataset.depth.max() or depth_range[1] < dataset.depth.min():
                 l.log(
-                    "depth_range values are outside the actual depth range. Depth slicing aborded."
+                    "depth_range values are outside the actual depth range. Depth slicing aborted."
                 )
             else:
                 dataset = dataset.sel(depth=slice(*depth_range))
@@ -460,7 +460,7 @@ def load_adcp_binary(
                 )
         else:
             l.log(
-                f"depth_range expects a maximum of 2 values but {len(depth_range)} were givien. Depth slicing aborded."
+                f"depth_range expects a maximum of 2 values but {len(depth_range)} were given. Depth slicing aborted."
             )
 
     # -------------- #

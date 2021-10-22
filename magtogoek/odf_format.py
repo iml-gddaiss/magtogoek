@@ -530,7 +530,7 @@ class Odf:
         data :
             1-D sequence of data. Each parameters must have the same length.
         items :
-            Dictionnary containing parameter header items. `items` must contain
+            Dictionary containing parameter header items. `items` must contain
             the items `null_value` to compute  `number_valid` and `number_null`.
 
 
