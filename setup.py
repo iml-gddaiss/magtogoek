@@ -25,7 +25,7 @@ setup(
         "matplotlib",
         "typing",
         "nptyping",
-        "click",
+        "click<8",
         "configparser",
         "tqdm",
         "pathlib",

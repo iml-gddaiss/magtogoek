@@ -312,7 +312,7 @@ def quick_adcp(
     required=True,
 )
 @click.pass_context
-def check_rti(info, input_files, **options):
+def check_rti(ctx, info, input_files, **options):
     """Prints info about RTI .ENS files."""
     from magtogoek.adcp.rti_reader import RtiReader
 
