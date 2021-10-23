@@ -50,8 +50,6 @@ Should be a class
 import getpass
 import sys
 import typing as tp
-from configparser import ConfigParser
-
 import click
 import numpy as np
 import pandas as pd
@@ -577,7 +575,7 @@ def _load_adcp_data(params: tp.Dict) -> xr.Dataset:
 
 
 def _get_config(config: dict)->tp.Tuple[dict, dict]:
-    """Split and flattens the config in two unested dictionnary"""
+    """Split and flattens the config in two untested dictionary"""
     params = dict()
     global_attrs = dict()
     for section, options in config.items():
@@ -594,7 +592,7 @@ def _get_config(config: dict)->tp.Tuple[dict, dict]:
 def _load_platform(params: dict) -> tp.Dict:
     """load sensor metadata into dict
 
-    Returns a `flat` dictionnary with all the parents metadata
+    Returns a `flat` dictionary with all the parents metadata
     to `platform.json/platform_id/sensors/sensor_id` and the
     metadata of the `sensor_id.`
     """
