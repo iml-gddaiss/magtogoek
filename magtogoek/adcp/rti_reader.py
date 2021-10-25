@@ -135,18 +135,20 @@ class RtiReader:
         for filename in self.filenames:
             self.current_file = filename
             self.get_ens_chunks()
-            ens = BinaryCodec.decode_data_sets(self.ens_chunks[0][1])
+            first_ens = BinaryCodec.decode_data_sets(self.ens_chunks[0][1])
+            last_time = BinaryCodec.decode_data_sets(self.ens_chunks[-1][1]).EnsembleData.datetime()
 
             print("-" * 40)
             print("File:", Path(filename).name)
-            print("Year:", ens.EnsembleData.Year)
+            print("start time:", first_ens.EnsembleData.datetime())
+            print("last time:", last_time)
             print("Number of ens:", len(self.ens_chunks))
-            print("Number of beams:", ens.EnsembleData.NumBeams)
-            print("Number of bins:", ens.EnsembleData.NumBins)
-            print("Binsize:", ens.AncillaryData.BinSize)
-            print("Distance first bin:", round(ens.AncillaryData.FirstBinRange, 3), "m")
-            print("Beam angle:", _beam_angle(ens.EnsembleData.SerialNumber))
-            print("Frequency:", int(ens.SystemSetup.WpSystemFreqHz), "hz")
+            print("Number of beams:", first_ens.EnsembleData.NumBeams)
+            print("Number of bins:", first_ens.EnsembleData.NumBins)
+            print("Binsize:", first_ens.AncillaryData.BinSize)
+            print("Distance first bin:", round(first_ens.AncillaryData.FirstBinRange, 3), "m")
+            print("Beam angle:", _beam_angle(first_ens.EnsembleData.SerialNumber))
+            print("Frequency:", int(first_ens.SystemSetup.WpSystemFreqHz), "hz")
 
     def read(self, start_index: int = None, stop_index: int = None) -> Bunch:
         """Return a Bunch object with the read data.
