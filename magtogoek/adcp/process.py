@@ -546,10 +546,10 @@ def _load_adcp_data(params: tp.Dict) -> xr.Dataset:
         bad_pressure=params["bad_pressure"],
     )
 
-    dataset = dataset.sel(time=slice(start_time, end_time))
-
-    if len(dataset.time) == 0:
-        l.warning(f"{params['input_files']} time dims is of lenght 0 after eslicing.")
+    if start_time > dataset.time.max() or end_time < dataset.time.min():
+        l.warning("Triming datetimes out of bounds. Time slicing aborted.")
+    else:
+       dataset = dataset.sel(time=slice(start_time, end_time))
 
     l.log(
         (
