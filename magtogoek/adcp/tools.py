@@ -11,11 +11,10 @@ from nptyping import NDArray
 from pandas import Timestamp, to_datetime
 
 
-def magnetic_to_true(
-    magnetic_east: NDArray, magnetic_north: NDArray, magnetic_declination: float
+def rotate_2d_vector(
+    X: NDArray, Y: NDArray, angle: float
 ) -> tp.Tuple[NDArray, NDArray]:
     """Convert velocities from magnetic to true(geographic).
-    FIXME
 
     angle:  magnetic_declination
 
@@ -41,15 +40,12 @@ def magnetic_to_true(
         Northward velocities in the geographic frame of reference
     """
 
-    def R(angle):
-        return [[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]]
+    angle_rad = np.deg2rad(angle)
 
-    angle_rad = np.radians(magnetic_declination)
+    X_r = np.cos(angle_rad) * X - np.sin(angle_rad) * Y
+    Y_r = np.sin(angle_rad) * X + np.cos(angle_rad) * Y
 
-    true_east = np.cos(angle_rad) * magnetic_east - np.sin(angle_rad) * magnetic_north
-    true_north = np.sin(angle_rad) * magnetic_east + np.cos(angle_rad) * magnetic_north
-
-    return true_east, true_north
+    return X_r, Y_r
 
 
 def dday_to_datetime64(dday: tp.List, yearbase: int) -> tp.Tuple[NDArray, NDArray]:

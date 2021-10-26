@@ -58,7 +58,7 @@ from magtogoek.adcp.loader import load_adcp_binary
 from magtogoek.adcp.odf_exporter import make_odf
 from magtogoek.adcp.quality_control import (adcp_quality_control,
                                             no_adcp_quality_control)
-from magtogoek.adcp.tools import magnetic_to_true
+from magtogoek.adcp.tools import rotate_2d_vector
 from magtogoek.attributes_formatter import (
     compute_global_attrs, format_variables_names_and_attributes)
 from magtogoek.navigation import load_navigation
@@ -374,31 +374,16 @@ def _process_adcp_data(
 
     l.section("Data transformation")
 
-    if params["magnetic_declination"]:
-        if not dataset.attrs["magnetic_declination"]:
-            _magnetnic_correction(dataset, params["magnetic_declination"])
-        else:
-            additional_correction = round(
-                (
-                    params["magnetic_declination"]
-                    - dataset.attrs["magnetic_declination"]
-                ),
-                4,
-            )
-            _magnetnic_correction(
-                dataset, additional_correction,
-            )
-            l.log(
-                f"Magnetic declination found in adcp file: {dataset.attrs['magnetic_declination']} degree east."
-                f"An additional correction of {additional_correction} degree east was added to have a " 
-                f"{params['magnetic_declination']} degree east correction."
-            )
-        dataset.attrs["magnetic_declination"] = params["magnetic_declination"]
-
-    else:
-        dataset.attrs["magnetic_declination"] = 0
-
+    dataset.attrs["magnetic_declination"] = 0
     dataset.attrs["magnetic_declination_units"] = "degree east"
+    if params["magnetic_declination"]:
+        angle = params["magnetic_declination"]
+        if dataset.attrs["magnetic_declination"]:
+            l.log(f"Magnetic declination found in adcp file: {dataset.attrs['magnetic_declination']} degree east.")
+            angle = round((params["magnetic_declination"] - dataset.attrs["magnetic_declination"]),4)
+            l.log(f"An additional correction of {angle} degree east was carried out.")
+        _magnetnic_correction(dataset, angle)
+        dataset.attrs["magnetic_declination"] = params["magnetic_declination"]
 
     # --------------- #
     # QUALITY CONTROL #
@@ -565,11 +550,8 @@ def _load_adcp_data(params: tp.Dict) -> xr.Dataset:
             + f"End time : {np.datetime_as_string(dataset.time.max().data, unit='s')}"
         )
     )
-
     if not params["keep_bt"]:
-        for var in ["bt_u", "bt_v", "bt_w", "bt_e", "bt_depht"]:
-            if var in dataset:
-                dataset = dataset.drop_vars([var])
+        dataset = _drop_bottom_track(dataset)
 
     return dataset
 
@@ -621,7 +603,7 @@ def _load_platform(params: dict) -> tp.Dict:
 def _default_platform() -> dict:
     """Return an empty platform data dictionnary"""
     sensor_metadata = dict()
-    for key in PLATFORM_FILE_DEFAULT_KEYS:  # FIXME make in form paltform.py
+    for key in PLATFORM_FILE_DEFAULT_KEYS:  # FIXME make in from paltform.p y
         sensor_metadata[key] = None
     sensor_metadata["buoy_specs"] = dict()
     sensor_metadata["platform_type"] = DEFAULT_PLATFORM_TYPE
@@ -743,14 +725,28 @@ def _quality_control(dataset: xr.Dataset, params: tp.Dict):
 
 
 def _magnetnic_correction(dataset: xr.Dataset, magnetic_declination: float):
-    """Correct for magnetic declination.
-    Rotate eastward and northward velocities from magnetic to geographic and
+    """Transform velocities and heading to true north and east.
+
+    Rotates velocities and heading by the given `magnetic_declination` angle.
+
+    Parameters
+    ----------
+    dataset :
+      dataset containing variables (u, v) (required) and (bt_u, bt_v) (optional).
+    magnetic_declination :
+        angle in decimal degrees measured in the geographic frame of reference.
     """
 
-    dataset.u.values, dataset.v.values = magnetic_to_true(
+    dataset.u.values, dataset.v.values = rotate_2d_vector(
         dataset.u, dataset.v, magnetic_declination
     )
     l.log(f"Velocities transformed to true north and true east.")
+    if all(v in dataset for v in ['bt_u', 'bt_v']):
+        dataset.bt_u.values, dataset.bt_v.values = rotate_2d_vector(
+            dataset.bt_u, dataset.bt_v, magnetic_declination
+        )
+        l.log(f"Bottom velocities transformed to true north and true east.")
+
     # heading goes from -180 to 180
     if "heading" in dataset:
         dataset.heading.values = (
@@ -825,3 +821,9 @@ def _format_data_encoding(dataset: xr.Dataset):
 
     l.log(f"Data _FillValue: {DATA_FILL_VALUE}")
     l.log(f"Ancillary Data _FillValue: {QC_FILL_VALUE}")
+
+def _drop_bottom_track(dataset):
+    "Drop `bt_u`, `bt_v`, `bt_w`, `bt_e`, `bt_depht`"
+    for var in ["bt_u", "bt_v", "bt_w", "bt_e", "bt_depht"]:
+        if var in dataset:
+            dataset = dataset.drop_vars([var])
