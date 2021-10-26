@@ -16,11 +16,10 @@ import warnings
 from pathlib import Path
 
 import gpxpy
-import matplotlib.pyplot as plt
 import numpy as np
 import pynmea2
 import xarray as xr
-
+import matplotlib.pyplot as plt
 from magtogoek.tools import get_gps_bearing, vincenty
 from magtogoek.utils import Logger, get_files_from_expresion
 
@@ -77,12 +76,10 @@ def load_navigation(filenames):
         return None
 
 
-def _load_gps(filename: str, file_type: str) -> tp.Type[xr.Dataset]:
+def _load_gps(filename: str, file_type: str) -> xr.Dataset:
     """Load navigation data `lon`, `lat` and `time` from a gpx or nmea file format."""
-    if file_type == "gpx":
-        gps_data = _read_gpx(filename)
-    if file_type == "nmea":
-        gps_data = _read_nmea(filename)
+    reader = {"gpx": _read_gpx, "nmea":_read_nmea}[file_type]
+    gps_data = reader(filename)
 
     dataset = xr.Dataset(
         {"lon": (["time"], gps_data["lon"]), "lat": (["time"], gps_data["lat"])},
@@ -166,8 +163,8 @@ def compute_navigation(
 
 
 def _compute_navigation(
-    dataset: tp.Type[xr.Dataset], window: int = 1
-) -> tp.Type[xr.Dataset]:
+    dataset: xr.Dataset, window: int = 1
+) -> xr.Dataset:
     """compute bearing, speed, u_ship and v_ship
 
     Computes the distance between each GPS coordinates with Vincenty and
@@ -194,12 +191,12 @@ def _compute_navigation(
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", category=RuntimeWarning)
 
-    speed = distances / time_delta.astype("float64")  # meter per seconds
+        speed = distances / time_delta.astype("float64")  # meter per seconds
 
     time_centered = dataset.time[:-1] + time_delta / 2
 
-    u_ship = speed * np.sin(np.radians(bearing))
-    v_ship = speed * np.cos(np.radians(bearing))
+    u_ship = speed * np.sin(np.deg2rad(bearing))
+    v_ship = speed * np.cos(np.deg2rad(bearing))
 
     nav_dataset = xr.Dataset(
         {
@@ -215,12 +212,12 @@ def _compute_navigation(
         nav_dataset.rolling(time=window, center=True).mean().interp(time=dataset.time)
     )
 
-    dataset = xr.merge((dataset, nav_dataset))
+    dataset = xr.merge((nav_dataset, dataset), compat='override')
 
     return dataset
 
 
-def _plot_navigation(dataset: tp.Type[xr.Dataset]):
+def _plot_navigation(dataset: xr.Dataset):
     """plots bearing, speed, u_ship and v_ship from a dataset"""
 
     fig = plt.figure(figsize=(12, 8))
@@ -262,13 +259,3 @@ def _check_variables_names(dataset):
 
     return dataset
 
-
-if __name__ == "__main__":
-
-    import matplotlib.pyplot as plt
-
-    gpx_file = "../../../Data/gpx_test.gpx"
-    nmea_file = "../../../Data/nmea.log"
-
-    ds_nmea = compute_navigation(nmea_file, window=50)
-    ds_gpx = compute_navigation(gpx_file, window=100)

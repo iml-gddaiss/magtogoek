@@ -486,7 +486,10 @@ class RtiReader:
             ppd.roll = np.array(ens.AncillaryData.Roll)
 
         if ens.IsBottomTrack:
-            ppd.bt_vel = np.array(ens.BottomTrack.EarthVelocity)
+            if ens.IsInstrumentVelocity:
+                ppd.bt_vel = np.array(ens.BottomTrack.InstrumentVelocity)
+            if ens.IsEarthVelocity:
+                ppd.bt_vel = np.array(ens.BottomTrack.EarthVelocity)
             ppd.bt_pg = np.array(ens.BottomTrack.BeamGood)
             ppd.bt_cor = np.array(ens.BottomTrack.Correlation) * 255
             ppd.bt_depth = np.array(ens.BottomTrack.Range)

@@ -326,11 +326,11 @@ def motion_correction(dataset: xr.Dataset, mode: str):
     if mode == "bt":
         if all(f"bt_{v}" in dataset for v in ["u", "v", "w"]):
             for field in ["u", "v", "w"]:
-                dataset[field] -= dataset[f"bt_{field}"].values
+                dataset[field].values -= dataset[f"bt_{field}"].values
             l.log("Motion correction carried out with bottom track")
         else:
             l.warning(
-                "Motion correction aborded. Bottom velocity (bt_u, bt_v, bt_w) missing"
+                "Motion correction aborted. Bottom velocity (bt_u, bt_v, bt_w) missing"
             )
     elif mode == "nav":
         if all(f"{v}_ship" in dataset for v in ["u", "v"]):
@@ -339,11 +339,11 @@ def motion_correction(dataset: xr.Dataset, mode: str):
                     dataset[field + "_ship"].where(np.isfinite(dataset.lon.values), 0),
                     (dataset.depth.size, 1),
                 )
-                dataset[f"{field}ship"].values = dataset[field].values
+                # dataset[f"{field}ship"].values = dataset[field].values NOTE not sure of why that was there.
                 l.log("Motion correction carried out with navigation")
         else:
             l.warning(
-                "Motion correction aborded. Navigation velocity (u_ship, v_ship) missing"
+                "Motion correction aborted. Navigation velocity (u_ship, v_ship) missing"
             )
     else:
         l.warning(
