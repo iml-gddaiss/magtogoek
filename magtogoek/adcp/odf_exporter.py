@@ -14,8 +14,8 @@ from magtogoek.utils import json2dict
 REPOSITORY_ADDRESS = "https://github.com/JeromeJGuay/magtogoek"
 
 PARAMETERS_TYPES = {
-    "int8": "BYTE",
-    "int16": "SHORT",
+    "int8": "BYTE", #-128, 127
+    "int16": "SHORT", #-32768, 32767
     "int32": "INT",
     "int64": "LONG",
     "float16": "HALF",
@@ -33,6 +33,9 @@ PARAMETERS_METADATA_ABSOLUTE_PATH = (
     .parent.joinpath(PARAMETERS_METADATA_RELATIVE_PATH)
     .resolve()
 )
+
+meta_map = namedtuple('meta_map', ['source', 'key'], defaults=[None, None])
+
 CRUISE_ATTRS = {
     "country_institute_code": ("dataset", "country_institute_code"),
     "organization": ("dataset", "organization"),

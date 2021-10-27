@@ -323,7 +323,7 @@ def _add_config_missing(parser: RawConfigParser, sensor_type):
     Notes
     -----
     This prevents missing key error later in the processing without needing
-    to add tons of conditionnal statements.
+    to add tons of conditional statements.
 
     """
 
@@ -405,7 +405,7 @@ def _format_option_type(value, option_info, section, option):
     return value
 
 
-def _format_value_dtypes(value, dtypes):
+def _format_value_dtypes(value: str, dtypes: str)->tp.Union[bool, int, float, str]:
     if "bool" in dtypes:
         if value in TRUE_VALUES + FALSE_VALUES:
             return value in TRUE_VALUES

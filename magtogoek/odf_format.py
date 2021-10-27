@@ -549,7 +549,7 @@ class Odf:
         Parameters
         ----------
         items :
-            Dictionnary containing two items; 'creation_date' and 'process'.
+            Dictionary containing two items; 'creation_date' and 'process'.
             'creation_date' should be formatted like '01-JAN-2000 00:00:00.00
             'process' should a list of string.
 

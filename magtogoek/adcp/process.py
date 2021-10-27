@@ -168,7 +168,7 @@ VAR_TO_ADD_SENSOR_TYPE = ["TEMPPR01", "PRESPR01", "ADEPZZ01", "BATHDPTH"]
 TIME_ATTRS = {"cf_role": "profile_id"}
 
 TIME_ENCODING = {
-    "units": "Seconds since 1970-1-1 00:00:00Z",
+    "units": "seconds since 1970-1-1 00:00:00Z",
     "calendar": "gregorian",
     "_FillValue": None,
 }
@@ -177,7 +177,6 @@ DEPTH_ENCODING = {
     "_FillValue": -9999.0,
     "dtype": "float32",
 }
-
 
 DATE_STRING_FILL_VALUE = "17-NOV-1858 00:00:00.00"  # filled value used by ODF format
 QC_FILL_VALUE = 127
@@ -234,7 +233,7 @@ def quick_process_adcp(params: tp.Dict):
     Notes
     -----
     missing `platform_type` :
-        If the platform_type cannot be found, the function automaticaly default to
+        If the platform_type cannot be found, the function automatically default to
         `mooring` to set the correct BODC P01 parameter codes.
 
     See Also
@@ -257,12 +256,12 @@ def quick_process_adcp(params: tp.Dict):
 
 
 def _pipe_to_process_adcp_data(
-    params, sensor_metadata, global_attrs, drop_empty_attrs=False
+        params, sensor_metadata, global_attrs, drop_empty_attrs=False
 ):
-    """Check if the input_file must be split in mutiple output.
+    """Check if the input_file must be split in multiple output.
 
         Looks for `merge_output_files` in the ConfigFile and if False,
-    each file in `input_files` is process individually and then call _porcess_adcp_data.
+    each file in `input_files` is process individually and then call _process_adcp_data.
     """
 
     if not params["merge_output_files"]:
@@ -274,7 +273,7 @@ def _pipe_to_process_adcp_data(
                     params["netcdf_output"] = filename
                 else:
                     params["netcdf_output"] = (
-                        str(Path(netcdf_output).name) + f"_{count}"
+                            str(Path(netcdf_output).name) + f"_{count}"
                     )
             params["input_files"] = [filename]
 
@@ -284,7 +283,7 @@ def _pipe_to_process_adcp_data(
 
 
 def _process_adcp_data(
-    params: tp.Dict, sensor_metadata: tp.Dict, global_attrs, drop_empty_attrs=False
+        params: tp.Dict, sensor_metadata: tp.Dict, global_attrs, drop_empty_attrs=False
 ):
     """Process adcp data
 
@@ -380,9 +379,9 @@ def _process_adcp_data(
         angle = params["magnetic_declination"]
         if dataset.attrs["magnetic_declination"]:
             l.log(f"Magnetic declination found in adcp file: {dataset.attrs['magnetic_declination']} degree east.")
-            angle = round((params["magnetic_declination"] - dataset.attrs["magnetic_declination"]),4)
+            angle = round((params["magnetic_declination"] - dataset.attrs["magnetic_declination"]), 4)
             l.log(f"An additional correction of {angle} degree east was carried out.")
-        _magnetnic_correction(dataset, angle)
+        _magnetic_correction(dataset, angle)
         dataset.attrs["magnetic_declination"] = params["magnetic_declination"]
 
     # --------------- #
@@ -394,12 +393,12 @@ def _process_adcp_data(
     if params["quality_control"]:
         _quality_control(dataset, params)
     else:
-        no_adcp_quality_control(dataset,)
+        no_adcp_quality_control(dataset, )
 
     l.reset()
 
     if any(
-        params["drop_" + var] for var in ("percent_good", "correlation", "amplitude")
+            params["drop_" + var] for var in ("percent_good", "correlation", "amplitude")
     ):
         dataset = _drop_beam_data(dataset, params)
 
@@ -534,20 +533,20 @@ def _load_adcp_data(params: tp.Dict) -> xr.Dataset:
     if start_time > dataset.time.max() or end_time < dataset.time.min():
         l.warning("Triming datetimes out of bounds. Time slicing aborted.")
     else:
-       dataset = dataset.sel(time=slice(start_time, end_time))
+        dataset = dataset.sel(time=slice(start_time, end_time))
 
     l.log(
         (
-            f"Bins count : {len(dataset.depth.data)}, "
-            + f"Min depth : {np.round(dataset.depth.min().data,3)} m, "
-            + f"Max depth : {np.round(dataset.depth.max().data,3)} m"
+                f"Bins count : {len(dataset.depth.data)}, "
+                + f"Min depth : {np.round(dataset.depth.min().data, 3)} m, "
+                + f"Max depth : {np.round(dataset.depth.max().data, 3)} m"
         )
     )
     l.log(
         (
-            f"Ensembles count : {len(dataset.time.data)}, "
-            + f"Start time : {np.datetime_as_string(dataset.time.min().data, unit='s')}, "
-            + f"End time : {np.datetime_as_string(dataset.time.max().data, unit='s')}"
+                f"Ensembles count : {len(dataset.time.data)}, "
+                + f"Start time : {np.datetime_as_string(dataset.time.min().data, unit='s')}, "
+                + f"End time : {np.datetime_as_string(dataset.time.max().data, unit='s')}"
         )
     )
     if not params["keep_bt"]:
@@ -556,7 +555,7 @@ def _load_adcp_data(params: tp.Dict) -> xr.Dataset:
     return dataset
 
 
-def _get_config(config: dict)->tp.Tuple[dict, dict]:
+def _get_config(config: dict) -> tp.Tuple[dict, dict]:
     """Split and flattens the config in two untested dictionary"""
     params = dict()
     global_attrs = dict()
@@ -629,7 +628,7 @@ def _check_platform_type(sensor_metadata: dict):
         l.warning(f"platform_type invalid. Must be one of {PLATFORM_TYPES}")
 
 
-_check_platform_type.__doc__ = f"""Check if the `plaform_type` is valid.
+_check_platform_type.__doc__ = f"""Check if the `platform_type` is valid.
     `platform _type` must be one of {PLATFORM_TYPES}.
     `platform_type` defaults to {DEFAULT_PLATFORM_TYPE} if the one given is invalid."""
 
@@ -646,13 +645,13 @@ def _set_xducer_depth_as_sensor_depth(dataset: xr.Dataset):
 
 
 def _set_platform_metadata(
-    dataset: xr.Dataset,
-    sensor_metadata: dict,
-    force_platform_metadata: bool = False,
+        dataset: xr.Dataset,
+        sensor_metadata: dict,
+        force_platform_metadata: bool = False,
 ):
     """Add metadata from platform_metadata files to dataset.attrs.
 
-    Values that are dictionnary instances are not added.
+    Values that are dictionary instances are not added.
 
     Parameters
     ----------
@@ -724,7 +723,7 @@ def _quality_control(dataset: xr.Dataset, params: tp.Dict):
                          sidelobes_correction=params["sidelobes_correction"], bottom_depth=params["bottom_depth"])
 
 
-def _magnetnic_correction(dataset: xr.Dataset, magnetic_declination: float):
+def _magnetic_correction(dataset: xr.Dataset, magnetic_declination: float):
     """Transform velocities and heading to true north and east.
 
     Rotates velocities and heading by the given `magnetic_declination` angle.
@@ -750,22 +749,22 @@ def _magnetnic_correction(dataset: xr.Dataset, magnetic_declination: float):
     # heading goes from -180 to 180
     if "heading" in dataset:
         dataset.heading.values = (
-            dataset.heading.data + 360 + magnetic_declination
-        ) % 360 - 180
+                                         dataset.heading.data + 360 + magnetic_declination
+                                 ) % 360 - 180
         l.log(f"Heading transformed to true north.")
 
 
 def _get_datetime_and_count(trim_arg: str):
-    """Get datime and count from trim_arg.
+    """Get datetime and count from trim_arg.
 
     If `trim_arg` is None, returns (None, None)
-    If 'T' is a datetime or a count returns (Timstamp(trim_arg), None)
+    If 'T' is a datetime or a count returns (Timestamp(trim_arg), None)
     Else returns (None, int(trim_arg))
 
     Returns:
     --------
     datetime:
-        None or pandas.Timstamp
+        None or pandas.Timestamp
     count:
         None or int
 
@@ -773,15 +772,15 @@ def _get_datetime_and_count(trim_arg: str):
     if trim_arg:
         if not trim_arg.isdecimal():
             try:
-                return (pd.Timestamp(trim_arg), None)
+                return pd.Timestamp(trim_arg), None
             except ValueError:
                 print("Bad datetime format for trim. Use YYYY-MM-DDTHH:MM:SS.ssss")
-                print("Process aborded")
+                print("Process aborted")
                 sys.exit()
         else:
-            return (None, int(trim_arg))
+            return None, int(trim_arg)
     else:
-        return (None, None)
+        return None, None
 
 
 def _drop_beam_data(dataset: xr.Dataset, params: tp.Dict):
@@ -822,8 +821,9 @@ def _format_data_encoding(dataset: xr.Dataset):
     l.log(f"Data _FillValue: {DATA_FILL_VALUE}")
     l.log(f"Ancillary Data _FillValue: {QC_FILL_VALUE}")
 
+
 def _drop_bottom_track(dataset):
-    "Drop `bt_u`, `bt_v`, `bt_w`, `bt_e`, `bt_depht`"
-    for var in ["bt_u", "bt_v", "bt_w", "bt_e", "bt_depht"]:
+    "Drop `bt_u`, `bt_v`, `bt_w`, `bt_e`, `bt_depth`"
+    for var in ["bt_u", "bt_v", "bt_w", "bt_e", "bt_depth"]:
         if var in dataset:
             dataset = dataset.drop_vars([var])
