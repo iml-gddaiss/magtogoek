@@ -154,8 +154,8 @@ def _add_sdn_and_cf_var_attrs(dataset: xr.Dataset, sdn: tp.Dict):
     Parameters
     ----------
     sdn :
-        sdn is a dictionnary with the P01 variable Code as `key` and dictionnary
-    of attributes as `value`. The dictionnary is saved as a json file in
+        sdn is a dictionary with the P01 variable Code as `key` and dictionary
+    of attributes as `value`. The dictionary is saved as a json file in
     magtogoek/files/sdn.json
 
     Notes
@@ -282,7 +282,7 @@ def _geospatial_global_attrs(dataset: xr.Dataset):
     are not present, the values are taken form the `longitude` and
     `latitude` dataset attributes.
 
-    The 'longitude' and 'latitude' attributes shoud previously be
+    The 'longitude' and 'latitude' attributes should previously be
     taken from the platform file attributes
 
     Notes

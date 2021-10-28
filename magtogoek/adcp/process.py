@@ -402,10 +402,9 @@ def _process_adcp_data(
     ):
         dataset = _drop_beam_data(dataset, params)
 
-    # -------------- #
-    # DATA ENCONDING #
-    # -------------- #
-
+    # ------------- #
+    # DATA ENCODING #
+    # ------------- #
     _format_data_encoding(dataset)
 
     # -------------------- #
@@ -427,9 +426,8 @@ def _process_adcp_data(
     l.log("Variables attributes added.")
 
     # ------------------------------------ #
-    # FINAL FORMATING OF GLOBAL ATTRIBUTES #
+    # FINAL FORMATTING OF GLOBAL ATTRIBUTES #
     # ------------------------------------ #
-
     if "platform_name" in dataset.attrs:
         dataset.attrs["platform"] = dataset.attrs.pop("platform_name")
 
@@ -446,17 +444,9 @@ def _process_adcp_data(
     for attr in GLOBAL_ATTRS_TO_DROP:
         if attr in dataset.attrs:
             del dataset.attrs[attr]
-
-    for attr in list(dataset.attrs.keys()):
-        if not dataset.attrs[attr]:
-            if drop_empty_attrs:
-                del dataset.attrs[attr]
-            else:
-                dataset.attrs[attr] = ""
-
-    # ------- #
-    # OUTPUTS #
-    # ------- #
+    # ----------- #
+    # ODF OUTPUTS #
+    # ----------- #
     l.section("Output")
     log_output = params["input_files"][0]
     if params["odf_output"]:
@@ -465,7 +455,17 @@ def _process_adcp_data(
         else:
             generic_to_p01_name = None
 
-        odf = make_odf(dataset, sensor_metadata, global_attrs, generic_to_p01_name)
+        output_path = "" #TODO
+
+        odf_output_path = params["odf_output"]
+        if params["odf_output"] is True:
+            odf_output_path = output_path
+
+        odf = make_odf(dataset,
+                       sensor_metadata,
+                       global_attrs,
+                       generic_to_p01_name,
+                       odf_output_path)
 
         if params["odf_output"] is True:
             odf_output = (
@@ -487,8 +487,19 @@ def _process_adcp_data(
         l.log(f"odf file made -> {odf_output}")
         log_output = odf_output
 
-    elif not params["netcdf_output"]:
+    else:
         params["netcdf_output"] = True
+
+    # ----------- #
+    # NC OUTPUTS #
+    # ----------- #
+
+    for attr in list(dataset.attrs.keys()):
+        if not dataset.attrs[attr]:
+            if drop_empty_attrs:
+                del dataset.attrs[attr]
+            else:
+                dataset.attrs[attr] = ""
 
     if params["netcdf_output"]:
         nc_output = params["netcdf_output"]

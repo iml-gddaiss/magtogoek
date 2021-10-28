@@ -1,4 +1,5 @@
-{"time": {
+{
+    "time": {
         "code": "STYM_01",
         "name": "Time Format DD-MMM-YYYY HH:MM:SS.ss",
         "units": "GMT",

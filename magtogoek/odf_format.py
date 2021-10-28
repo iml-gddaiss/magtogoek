@@ -12,7 +12,6 @@ save()
 
 to_dataset()
 
-
 add_buoy_instrument()
 
 add_general_cal()
@@ -30,7 +29,7 @@ from_dataframe()
 Notes
 -----
 ODF object structure:
-    Headers are stored as dictionnaries containing. They are either direction attributes or store
+    Headers are stored as dictionaries containing. They are either direction attributes or store
     in one of the following attributes .buoy_instrument, .general_cal, .polynomial_cal, .compass, .history
     or .parameter.
     Data are pandas dataframe. ODF.data.
@@ -38,16 +37,15 @@ Writing ODF files.
     Using .save(filename), the ODF file will be written.
     - Headers keys are always printed in upper case.
     Headers values can be one of: int, float, str, list, tuple, or list(tuple).
-      - floats are printed with the number of significan digit specified by the gloabal variable PRECISION.
+      - floats are printed with the number of significant digit specified by the global variable PRECISION.
       - list elements are printed with the same headers key.
       - coefficients, directions and corrections items need to be stored as tuple for the correct formatting
         field width of 12 and 8 decimals precision.
 
 TODO FIXME:
 time are printed with singles quotes
-move odf specidif config in .ini to separate header
+move odf specific config in .ini to separate header
 """
-
 
 import typing as tp
 from pathlib import Path
@@ -140,8 +138,8 @@ def get_headers_default():
             ice_thickness=None,
             meteo_comments=[],
         ),
-        instrument=dict(inst_type="", model="", serial_number="", description="",),
-        quality=dict(quality_date="", quality_tests=[], quality_comments=[],),
+        instrument=dict(inst_type="", model="", serial_number="", description="", ),
+        quality=dict(quality_date="", quality_tests=[], quality_comments=[], ),
         record=dict(
             num_calibration=None,
             num_swing=None,
@@ -216,7 +214,7 @@ class Odf:
     """
     ODF class object can make, read and write ODF (ocean data format) files.
 
-    Usefull methods
+    Useful methods
     ---------------
     read()
 
@@ -239,7 +237,7 @@ class Odf:
     Notes
     -----
     ODF object structure:
-        Headers are stored as dictionnaries containing. They are either direction attributes or store
+        Headers are stored as dictionaries containing. They are either direction attributes or store
         in one of the following attributes .buoy_instrument, .general_cal, .polynomial_cal, .compass, .history
         or .parameter.
     Data are pandas dataframe. ODF.data.
@@ -247,7 +245,7 @@ class Odf:
         Using .save(filename), the ODF file will be written.
         - Headers keys are always printed in upper case.
         Headers values can be one of: int, float, str, list, tuple, or list(tuple).
-        - floats are printed with the number of significan digit specified by the gloabal variable PRECISION.
+        - floats are printed with the number of significant digit specified by the global variable PRECISION.
         - list elements are printed with the same headers key.
         - coefficients, directions and corrections items need to be stored as tuple for the correct formatting
           field width of 12 and 8 decimals precision.
@@ -299,12 +297,12 @@ class Odf:
 
     def read(self, filename: str):
         """Read ODF files.
-        The ODF headers section in nested dictionnaries in ODF.headers and
+        The ODF headers section in nested dictionaries in ODF.headers and
         ODF.parameters. The data is store in a pandas.DataFrame.
 
         Notes
         -----
-        All items values are stored in list. After all the headers are read, list of lenght one
+        All items values are stored in list. After all the headers are read, list of length one
         are converted to int, float or str.
 
         Calibration coefficients, directions and corrections are stored in tuple.
@@ -392,8 +390,8 @@ class Odf:
     def save(self, filename: str = None):
         """Save file
 
-        Paramters
-        ---------
+        Parameters
+        ---------_
         filename :
             path/to/filename. filename will overwrite the value at Odf.odf['file_specification']"""
         filename = Path(filename)
@@ -415,7 +413,7 @@ class Odf:
            Dimensions names. If one of the dimensions is named `STYM_01`, it will be
            converted to datetime64.
         time :
-            Specify wich dimensions is to be converted into datetime64.
+            Specify which dimensions is to be converted into datetime64.
         """
         if time:
             self.data[time] = pd.to_datetime(self.data[time])
@@ -459,7 +457,7 @@ class Odf:
         code :
             Name(key) for the parameter code.
         items :
-            Dictionnary containing parameter header items.
+            Dictionary containing parameter header items.
         """
         if items is None:
             items = {}
@@ -475,7 +473,7 @@ class Odf:
         code :
             Name(key) for the parameter code.
         items:
-            Dictionnary containing parameter header items.
+            Dictionary containing parameter header items.
         """
         if items is None:
             items = {}
@@ -491,7 +489,7 @@ class Odf:
         code :
             Name(key) for the parameter code.
         items :
-            Dictionnary containing compass cal header items.
+            Dictionary containing compass cal header items.
         """
         if items is None:
             items = {}
@@ -507,7 +505,7 @@ class Odf:
         name :
             Name(key) for the instrument header.
         items :
-            Dictionnary containing parameter header items.
+            Dictionary containing parameter header items.
         """
         if items is None:
             items = {}
@@ -516,12 +514,17 @@ class Odf:
         self.buoy_instrument[name].update(items)
 
     def add_parameter(
-        self, code: str, data: tp.Union[list, tp.Type[np.ndarray]], items: dict = None
-    ):
+            self,
+            code: str,
+            data: tp.Union[list, np.ndarray],
+            null_value: tp.Union[int, float],
+            items: tp.Dict = None):
         """Add a the parameter to ODF.parameters and the data to ODF.data.
 
         Computes `number_valid`, `number_null`, `minimum_value` and `maximum_value` from
         the data and a provided `null_value` in `items`.
+        If code is 'STYM_01', computes 'time_coverage_start', 'time_coverage_end'.
+        If code is 'DEPH_01', computes 'geospatial_vertical_min', 'geospatial_vertical_max'.
 
         Parameters
         ----------
@@ -529,19 +532,88 @@ class Odf:
             Name(key) for the parameter code.
         data :
             1-D sequence of data. Each parameters must have the same length.
+        null_value :
+            `null_value` to compute  `number_valid` and `number_null`.
         items :
-            Dictionary containing parameter header items. `items` must contain
-            the items `null_value` to compute  `number_valid` and `number_null`.
-
+             dictionary containing the parameters metadata.
 
         """
         if items is None:
             items = {}
+
+        data = np.asarray(data)
+
+        data[not np.isfinite(data)] = null_value
+
         self.parameter[code] = _get_repeated_headers_default()["parameter"]
+        self.parameter.update(items)
         self.parameter[code]["code"] = code
-        self.parameter[code].update(items)
+        self.parameter[code]['null_value'] = null_value
         self.data[code] = data
         self._compute_parameter_attrs(code)
+
+        if code == 'STYM_01':
+            self.event['time_coverage_start'] = self.parameter['STYM_01']['minimum_value']
+            self.event['time_coverage_end'] = self.parameter['STYM_01']['maximum_value']
+        if code == 'DEPH_01':
+            self.event['geospatial_vertical_min'] = self.parameter['DEPH_01']['minimum_value']
+            self.event['geospatial_vertical_max'] = self.parameter['DEPH_01']['maximum_value']
+
+    def _compute_parameter_attrs(self, parameter: str):
+        """Compute `number_valid`, `number_null`, `minimum_value` and `maximum_value` from
+        the data and the "null_value" in `parameter[parameter]`.
+        """
+        null_value = self.parameter[parameter]["null_value"]
+        n_null = (self.data[parameter] == null_value).sum().item()
+        self.parameter[parameter]["number_null"] = n_null
+        self.parameter[parameter]["number_valid"] = len(self.data[parameter]) - n_null
+        self.parameter[parameter]["minimum_value"] = (
+            self.data[parameter].where(self.data[parameter] != null_value).min()
+        )
+        self.parameter[parameter]["maximum_value"] = (
+            self.data[parameter].where(self.data[parameter] != null_value).max()
+        )
+
+    def from_dataframe(
+            self,
+            dataframe: tp.Type[pd.DataFrame],
+            null_values: tp.Union[int, float, list, tuple, dict],
+            items: None,
+    ):
+        """Add data and parameters from a pandas.dataframe. Columns names are used for
+        the new parameters code.
+
+        Parameters
+        ----------
+        dataframe :
+            The data to be added to the ODF.
+
+        null_values :
+            Value used for missing or null value in data. From this value `number_valid`,
+            `number_null` will be computed. If a single value is provided, it will be
+            applied to all the data. A dictionary of with matching keys matching dataframe
+            columns or list and tuple can be pass with different null_value but all null_value
+            must have the same length as the number of columns in the dataframe.
+        items :
+            Dictionary containing parameter header items. Keys must be the parameters code.
+
+        """
+        if items is None:
+            items = {}
+
+        if isinstance(dataframe, pd.DataFrame):
+            dataframe = dataframe.reset_index(drop=True)
+        else:
+            raise TypeError("dataframe must be a pandas.DataFrame")
+
+        _null_values = _get_null_values(dataframe.columns, null_values, items)
+
+        for code in dataframe.columns:
+            self.add_parameter(code, dataframe[code].values, _null_values[code], items[code])
+
+        self.record = self._make_record()
+
+        return self
 
     def add_history(self, items: dict = None):
         """Add a history header
@@ -563,88 +635,6 @@ class Odf:
             self.history[header_name]["creation_date"] = odf_time_format(
                 pd.Timestamp.now()
             )
-
-    def from_dataframe(
-        self,
-        dataframe: tp.Type[pd.DataFrame],
-        items: None,
-        null_values: tp.Union[int, float, list, tuple, dict] = None,
-    ):
-        """Add data and parameters from a pandas.dataframe. Collumns names are used for
-        the new parameters code.
-
-        Paramters
-        ---------
-        dataframe :
-            The data to be added to the ODF.
-
-        null_values :
-            Value used for missing or null value in data. From this value `number_valid`,
-            `number_null` will be computed. If a single value is provided, it will be
-            applied to all the data. A dictionnary of with matching keys matching dataframe
-            collumns or list and tuple can be pass with different null_value but all null_value
-            must have the same length as the number of collumns in the dataframe.
-        items :
-            Dictionnary containing parameter header items. Keys must be the parameters code.
-
-        """
-        if items is None:
-            items = {}
-
-        if isinstance(dataframe, pd.DataFrame):
-            dataframe = dataframe.reset_index(drop=True)
-        else:
-            raise TypeError("dataframe must be a pandas.DataFrame")
-
-        for code in dataframe.columns:
-            self.parameter[code] = dict(_get_repeated_headers_default()["parameter"])
-            self.parameter[code]["parameter"] = code
-            if code in items:
-                self.parameter[code].update(items[code])
-
-        if self.data.empty:
-            self.data = dataframe
-        else:
-            self.data.merge(dataframe)
-
-        if isinstance(null_values, (float, int)) or null_values:
-            null_values = dict.fromkeys(dataframe.columns, null_values)
-        elif isinstance(null_values, (list, tuple)):
-            if len(null_values) != len(dataframe.columns):
-                raise ValueError(
-                    f"null_values lenght ({len(null_values)}) doesn't match"
-                    + " the number of collumns ({len(dataframe.columns)})in the dataframe."
-                )
-            else:
-                null_values = dict(zip(dataframe.columns, null_values))
-        else:
-            null_values = dict.fromkeys(dataframe.columns, null_values)
-            for key, item in items.items():
-                if "null_value" in item:
-                    null_values[key] = item["null_value"]
-
-        for code in dataframe.columns:
-            self._compute_parameter_attrs(code, null_values[code])
-
-        self.record = self._make_record()
-
-        return self
-
-    def _compute_parameter_attrs(self, parameter: str, null_value=None):
-        """Compute `number_valid`, `number_null`, `minimum_value` and `maximum_value` from
-        the data."""
-        if not null_value:
-            null_value = self.parameter[parameter]["null_value"]
-        n_null = (self.data[parameter] == null_value).sum().item()
-        self.parameter[parameter]["null_value"] = null_value
-        self.parameter[parameter]["number_null"] = n_null
-        self.parameter[parameter]["number_valid"] = len(self.data[parameter]) - n_null
-        self.parameter[parameter]["minimum_value"] = (
-            self.data[parameter].where(self.data[parameter] != null_value).min()
-        )
-        self.parameter[parameter]["maximum_value"] = (
-            self.data[parameter].where(self.data[parameter] != null_value).max()
-        )
 
     def _headers_string_format(self):
         s = ""
@@ -704,18 +694,44 @@ class Odf:
             #                )
             elif self.data[vd].dtypes == np.dtype("<M8[ns]"):
                 formats[vd] = lambda x, p=padding: (
-                    SPACE + ("'" + odf_time_format(x) + "'").rjust(p, SPACE)
+                        SPACE + ("'" + odf_time_format(x) + "'").rjust(p, SPACE)
                 )
 
             elif self.data[vd].dtypes == np.floating:
                 formats[vd] = lambda x, p=padding, d=decimal_places: (
-                    SPACE + (f"{x:.{d}f}").rjust(p, SPACE)
+                        SPACE + f"{x:.{d}f}".rjust(p, SPACE)
                 )
 
         self.data.to_string(
             buf=buf, formatters=formats, header=False, index=False, na_rep=NA_REP,
         )
 
+def _get_null_values(
+        codes: list,
+        null_values: tp.Union[int,float,list,tuple],
+        items: dict
+        ) -> dict:
+    _null_values = {}
+    if isinstance(null_values, (float, int)):
+        _null_values = dict.fromkeys(codes, null_values)
+    elif isinstance(null_values, (list, tuple)):
+        if len(null_values) != len(codes):
+            raise ValueError(
+                f"`null_values` length ({len(null_values)}) doesn't match"
+                + " the number of columns ({len(dataframe.columns)})in the dataframe."
+            )
+        else:
+            _null_values = dict(zip(codes, null_values))
+    else:
+        for key, params_items in items.items():
+            if "null_value" in params_items:
+                if not isinstance(params_items['null_value'](int, float)):
+                    _null_values[key] = params_items["null_value"]
+                else:
+                    raise ValueError(f"[{key}][`null_values`] must be a `int` or `float`.")
+            else:
+                raise ValueError(f"[{key}] is missing a `null_values` key and value.")
+    return _null_values
 
 def _format_headers(name: str, header: dict) -> str:
     s = name.upper() + "_HEADER," + NEWLINE
@@ -733,12 +749,12 @@ def _format_headers(name: str, header: dict) -> str:
             s += _format_list(value, parent)
         elif isinstance(value, tuple):
             s += (
-                INDENT
-                + key.upper()
-                + " = "
-                + "".join([f"{v:{12}.{8}f}" for v in value])
-                + ","
-                + NEWLINE
+                    INDENT
+                    + key.upper()
+                    + " = "
+                    + "".join([f"{v:{12}.{8}f}" for v in value])
+                    + ","
+                    + NEWLINE
             )
 
         elif not value:
@@ -758,10 +774,10 @@ def _format_list(_list: list, parents: str) -> str:
         for value in _list:
             if isinstance(value, tuple):
                 s += (
-                    parents
-                    + " ".join([f"{v:{12}.{8}f}" for v in value])
-                    + ","
-                    + NEWLINE
+                        parents
+                        + " ".join([f"{v:{12}.{8}f}" for v in value])
+                        + ","
+                        + NEWLINE
                 )
             else:
                 s += parents + "'" + f"{value}'," + NEWLINE
@@ -820,8 +836,6 @@ def odf_time_format(time):
 
 
 if __name__ == "__main__":
-    import matplotlib.pyplot as plt
-
     path = [
         "/home/jeromejguay/ImlSpace/Docs/ODF/Format_ODF/Exemples/CTD_BOUEE2019_RIKI_04130218_DN",
         "/home/jeromejguay/ImlSpace/Docs/ODF/Format_ODF/Exemples/MADCP_BOUEE2019_RIMOUSKI_553_VEL",
@@ -830,7 +844,6 @@ if __name__ == "__main__":
     ]
 
     odf = Odf().read(path[1] + ".ODF")
-    dataset = odf.to_dataset()
     dataset = odf.to_dataset(dims=["SYTM_01", "DEPH_01"], time="SYTM_01").isel(
         SYTM_01=slice(0, 100)
     )

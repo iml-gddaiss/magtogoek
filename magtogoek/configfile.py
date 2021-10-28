@@ -176,7 +176,7 @@ BASIC_CONFIG = dict(
         "keywords": option_infos(dtypes=["str"], default=""),
         "keywords_vocabulary": option_infos(dtypes=["str"], default=""),
         "standard_name_vocabulary": option_infos(dtypes=["str"], default="CF v.52"),
-        "aknowledgment": option_infos(dtypes=["str"], default=""),
+        "acknowledgment": option_infos(dtypes=["str"], default=""),
     },
 )
 
@@ -341,12 +341,12 @@ def _format_config_options(config: tp.Dict):
 
     - Convert the sensor specific configuration parameters values to the right
     data type, skipping `None` value set previously.
-    - Boolean `True` entry have to be in ['True','true','1'] else, it considere `False`.
+    - Boolean `True` entry have to be in ['True','true','1'] else, it considered `False`.
 
     Raises
     ------
     ConfigFileError :
-        Error are rised if the options value cannot be converted to the right dtypes,
+        Error are risen if the options value cannot be converted to the right dtypes,
         length, value, choice,  etc.
 
     Notes
