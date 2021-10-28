@@ -345,7 +345,6 @@ def motion_correction(dataset: tp.Type[xr.Dataset], mode: str):
                     dataset[field + "_ship"].where(np.isfinite(dataset.lon.values), 0),
                     (dataset.depth.size, 1),
                 )
-                dataset[f"{field}ship"].values = dataset[field].values
                 l.log("Motion correction carried out with navigation")
         else:
             l.warning(
