@@ -77,7 +77,6 @@ def load_adcp_binary(
     orientation: str = None,
     leading_index: int = None,
     trailing_index: int = None,
-    depth_range: tp.Union[int, float, list] = None,
     sensor_depth: float = None,
     bad_pressure: bool = False,
 ) -> xr.Dataset:
@@ -87,7 +86,7 @@ def load_adcp_binary(
 
     Notes:
     -----
-    The adcp prientation is taken from the first profile of the first file
+    The adcp orientation is taken from the first profile of the first file
     if no orientation is given.
 
     Parameters
@@ -105,8 +104,6 @@ def load_adcp_binary(
         Number of ensemble to cut from the start.
     trailing_index :
         Number of ensemble to cut from the end.
-    depth_range :
-        Depth min or (min max)
     sensor_depth:
         If provided, the adcp depth (meter) will be adjusted so that its median equal `sensor_depth`.
     bad_pressure:
@@ -178,7 +175,7 @@ def load_adcp_binary(
         )
         if invalid_config_count:
             l.warning(
-                f"Invalide configuration, msb=`11111111` and lsb=`11111111`, found in the SysCfg of {invalid_config_count} FixedLeader. "
+                f"Invalid configuration, msb=`11111111` and lsb=`11111111`, found in the SysCfg of {invalid_config_count} FixedLeader. "
             )
 
     else:
@@ -231,7 +228,7 @@ def load_adcp_binary(
     # Convert depth relative to the ADCP to depth below surface   #
     # ----------------------------------------------------------- #
     if bad_pressure:
-        l.log("XducerDepth were discarted by the user.")
+        l.log("XducerDepth were discarded by the user.")
         if sensor_depth:
             data.XducerDepth[:] = sensor_depth
             l.log(f"XducerDepth set to {sensor_depth} m.")
@@ -254,7 +251,7 @@ def load_adcp_binary(
             )
 
             l.log(
-                f"{-depth_difference} m was added to the depths mesured by the instrument."
+                f"{-depth_difference} m was added to the depths measured by the instrument."
             )
 
         average_xducer_depth = sensor_depth
@@ -433,35 +430,6 @@ def load_adcp_binary(
 
     if orientation == "up":
         dataset = dataset.sortby("depth")
-
-    # -------------- #
-    #  Cutting bins  #
-    # -------------- #
-    if depth_range:
-        if not isinstance(depth_range, (list, tuple)):
-            if depth_range > dataset.depth.max():
-                l.log(
-                    "depth_range value is greater than the maximum bin depth. Depth slicing aborded."
-                )
-            else:
-                dataset = dataset.sel(depth=slice(depth_range, None))
-                l.log(f"Bin of depth inferior to {depth_range} m were cut.")
-        elif len(depth_range) == 2:
-            if dataset.depth[0] > dataset.depth[-1]:
-                depth_range.reverse()
-            if depth_range[0] > dataset.depth.max() or depth_range[1] < dataset.depth.min():
-                l.log(
-                    "depth_range values are outside the actual depth range. Depth slicing aborted."
-                )
-            else:
-                dataset = dataset.sel(depth=slice(*depth_range))
-                l.log(
-                    f"Bin of depth inferior to {depth_range[0]} m and superior to {depth_range[1]} m were cut."
-                )
-        else:
-            l.log(
-                f"depth_range expects a maximum of 2 values but {len(depth_range)} were given. Depth slicing aborted."
-            )
 
     # -------------- #
     # Add attributes #

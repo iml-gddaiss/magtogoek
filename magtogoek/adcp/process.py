@@ -537,14 +537,12 @@ def _load_adcp_data(params: tp.Dict) -> xr.Dataset:
         trailing_index=trailing_index,
         orientation=params["adcp_orientation"],
         sensor_depth=params["sensor_depth"],
-        depth_range=params["depth_range"],
         bad_pressure=params["bad_pressure"],
     )
 
-    if start_time > dataset.time.max() or end_time < dataset.time.min():
-        l.warning("Triming datetimes out of bounds. Time slicing aborted.")
-    else:
-        dataset = dataset.sel(time=slice(start_time, end_time))
+    dataset = cut_bin_depths(dataset, params["depth_range"])
+
+    dataset = cut_times(dataset, start_time, end_time)
 
     l.log(
         (
@@ -611,9 +609,9 @@ def _load_platform(params: dict) -> tp.Dict:
 
 
 def _default_platform() -> dict:
-    """Return an empty platform data dictionnary"""
+    """Return an empty platform data dictionary"""
     sensor_metadata = dict()
-    for key in PLATFORM_FILE_DEFAULT_KEYS:  # FIXME make in from paltform.p y
+    for key in PLATFORM_FILE_DEFAULT_KEYS:  # FIXME make in from platform.py
         sensor_metadata[key] = None
     sensor_metadata["buoy_specs"] = dict()
     sensor_metadata["platform_type"] = DEFAULT_PLATFORM_TYPE
@@ -833,8 +831,87 @@ def _format_data_encoding(dataset: xr.Dataset):
     l.log(f"Ancillary Data _FillValue: {QC_FILL_VALUE}")
 
 
-def _drop_bottom_track(dataset):
+def _drop_bottom_track(dataset: xr.Dataset) -> xr.Dataset:
     "Drop `bt_u`, `bt_v`, `bt_w`, `bt_e`, `bt_depth`"
     for var in ["bt_u", "bt_v", "bt_w", "bt_e", "bt_depth"]:
         if var in dataset:
             dataset = dataset.drop_vars([var])
+    return dataset
+
+
+def cut_bin_depths(
+        dataset: xr.Dataset,
+        depth_range: tp.Union[int, float, list] = None
+    )-> xr.Dataset:
+    """
+    Return dataset with cut bin depths if the depth_range are not outside the depth span.
+    Parameters
+    ----------
+    dataset :
+    depth_range :
+        min or (min, max) to be included in the dataset.
+        Bin depths outside this range will be cut.
+
+    Returns
+    -------
+    dataset with depths cut.
+
+    """
+    if depth_range:
+        if not isinstance(depth_range, (list, tuple)):
+            if depth_range > dataset.depth.max():
+                l.log(
+                    "depth_range value is greater than the maximum bin depth. Depth slicing aborded."
+                )
+            else:
+                dataset = dataset.sel(depth=slice(depth_range, None))
+                l.log(f"Bin of depth inferior to {depth_range} m were cut.")
+        elif len(depth_range) == 2:
+            if dataset.depth[0] > dataset.depth[-1]:
+                depth_range.reverse()
+            if depth_range[0] > dataset.depth.max() or depth_range[1] < dataset.depth.min():
+                l.log(
+                    "depth_range values are outside the actual depth range. Depth slicing aborted."
+                )
+            else:
+                dataset = dataset.sel(depth=slice(*depth_range))
+                l.log(
+                    f"Bin of depth inferior to {depth_range[0]} m and superior to {depth_range[1]} m were cut."
+                )
+        else:
+            l.log(
+                f"depth_range expects a maximum of 2 values but {len(depth_range)} were given. Depth slicing aborted."
+            )
+    return dataset
+
+def cut_times(dataset: xr.Dataset,
+              start_time: str = None,
+              end_time: str = None) -> xr.Dataset:
+    """
+    Return a dataset with time cut if they are not outside the dataset time span.
+
+    Parameters
+    ----------
+    dataset
+    start_time :
+        minimum time to be included in the dataset.
+    end_time
+        maximum time to be included in the dataset.
+    Returns
+    -------
+    dataset with times cut.
+
+    """
+    out_off_bound_time = False
+    if start_time is not None:
+        if start_time > dataset.time.max():
+            out_off_bound_time = True
+    if end_time is not None:
+        if end_time < dataset.time.min():
+            out_off_bound_time = True
+    if out_off_bound_time is True:
+        l.warning("Trimming datetimes out of bounds. Time slicing aborted.")
+    else:
+        dataset = dataset.sel(time=slice(start_time, end_time))
+
+    return dataset
