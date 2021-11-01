@@ -2,7 +2,6 @@
 module to map xarray dataset to Odf
 """
 import re
-from collections import namedtuple
 from pathlib import Path
 
 from datetime import datetime
@@ -10,13 +9,11 @@ import xarray as xr
 from magtogoek.odf_format import Odf, odf_time_format
 from magtogoek.utils import json2dict
 
-# - dtype : sing or doub
-
 REPOSITORY_ADDRESS = "https://github.com/JeromeJGuay/magtogoek"
 
 PARAMETERS_TYPES = {
-    "int8": "BYTE", #-128, 127
-    "int16": "SHORT", #-32768, 32767
+    "int8": "INT",  # "BYTE",  # -128, 127
+    "int16": "INT",  # SHORT  # -32768, 32767
     "int32": "INT",
     "int64": "LONG",
     "float16": "HALF",
@@ -30,71 +27,18 @@ PARAMETERS = ("time", "depth", "u", "u_QC", "v", "v_QC", "w", "w_QC", "e")
 PARAMETERS_METADATA_RELATIVE_PATH = "../files/odf_parameters_metadata.json"
 PARAMETERS_METADATA_ABSOLUTE_PATH = (
     Path(__file__)
-    .resolve()
-    .parent.joinpath(PARAMETERS_METADATA_RELATIVE_PATH)
-    .resolve()
+        .resolve()
+        .parent.joinpath(PARAMETERS_METADATA_RELATIVE_PATH)
+        .resolve()
 )
 
-meta_map = namedtuple('meta_map', ['source', 'key'], defaults=[None, None])
-
-
-EVENT_ATTRS = {
-    "data_type": meta_map("dataset", "data_type"), #dataset
-    "orig_creation_date": meta_map("dataset", "date_created"),
-
-    "sampling_interval": meta_map("dataset", "delta_t_sec"),
-    "event_number": meta_map("global_attrs", "event_number"),
-    "event_qualifier1": meta_map("global_attrs", "event_qualifier1"),
-    "event_qualifier2": meta_map("global_attrs", "event_qualifier2"),
-    "event_comments": meta_map("global_attrs", "event_comments"),
-}
-INSTRUMENT_ATTRS = {  # NOTE SHOULD BE GOOD
-    "inst_type": meta_map("dataset", "manufacturer"),
-    "model": meta_map("dataset", "model"),
-    "serial_number": meta_map("dataset", "serial_number"),
-    "description": meta_map("dataset", "comments"),
-}
-BUOY_ATTRS = {
-    "name": meta_map("sensor_metadata", "platform_name"),
-    "type": meta_map("buoy_specs", "type"),
-    "model": meta_map("buoy_specs", "model"),
-    "height": meta_map("buoy_specs", "height"),
-    "diameter": meta_map("buoy_specs", "diameter"),
-    "weight": meta_map("buoy_specs", "weight"),
-    "description": meta_map("buoy_specs", "description"),
-}
-BUOY_INSTRUMENT_ATTRS = {
-    "type": meta_map("dataset", "manufacturer"),
-    "model": meta_map("dataset", "model"),
-    "serial_number": meta_map("dataset", "serial_number"),
-    "description": meta_map("dataset", "comments"),  # FIXME BUOY DESCRIPTION buoy_specs ?
-    "inst_start_date_time": meta_map("dataset", "time_coverage_start"),
-    "inst_end_date_time": meta_map("dataset", "time_coverage_end"),
-}
-BUOY_INSTRUMENT_CONFIGURATION = {
-    "Mode": meta_map("dataset", "orientation"),
-    "Ping_Type": meta_map("dataset", "ping_type"),
-    "Frequency": meta_map("dataset", "frequency"),
-    "Firmware_Version": meta_map("dataset", "firmware_version"),
-    "Ping_per_Ensemble": meta_map("dataset", "ping_per_ensemble"),
-    "Ensemble_Length_s": meta_map("dataset", "delta_t_sec"),
-    "Ping_Interval_s": None,
-    "ADCP_Depth_m": meta_map("dataset", "sensor_depth"),
-    "Distance_ADCP_to_First_Bin_Center_m": meta_map("dataset", "bin1dist"),
-    "Bin_Size_m": meta_map("dataset", "bin_size"),
-    "Bin_Count": None,
-    "Blank_m": meta_map("dataset", "blank"),
-    "Transmit_Pulse_Length_m": meta_map("dataset", "transmit_pulse_length_m"),
-    "Magnetic_Declination": None,
-    "Comments": meta_map("sensor_metadata_sensors", "comments"),  # FIXME Description ?
-}
 
 def make_odf(
-    dataset: xr.Dataset,
-    sensor_metadata: dict,
-    global_attrs: dict,
-    generic_to_p01_name: dict = None,
-    output_path: str = None
+        dataset: xr.Dataset,
+        sensor_metadata: dict,
+        global_attrs: dict,
+        generic_to_p01_name: dict = None,
+        output_path: str = None
 ):
     """
     Parameters
@@ -106,7 +50,9 @@ def make_odf(
     global_attrs :
         Global attributes parameter from the configFile.
     generic_to_p01_name :
-        map from the generic to the BODC p01 variables names
+        map from the generic to the BODC p01 variables names.
+    output_path :
+
 
     """
     odf = Odf()
@@ -124,7 +70,8 @@ def make_odf(
 
     output_path = Path(output_path)
 
-    if output_path:
+    if output_path:  # TODO check if dir/ or /name. Look in process
+        pass
 
     return odf
 
@@ -152,21 +99,19 @@ def _make_event_header(odf, dataset, global_attrs):
     -----
     `depth_off_bottom` is `0` if "sounding" is missing.
     """
-    for key, value in EVENT_ATTRS.items():
-        if value.source == "dataset":
-            if value.key in dataset.attrs:
-                if "date" in key:
-                    odf.event['orig_creation_date'] = odf_time_format(dataset.attrs['date_created'])
-                else:
-                    odf.event[key] = dataset.attrs[value.key]
-        if value.source == "global_attrs":
-            if value.key in global_attrs:
-                odf.event[key] = global_attrs[value.key]
+    odf.event["creation_date"] = odf_time_format(datetime.now())
+    odf.event['orig_creation_date'] = odf_time_format(dataset.attrs['date_created'])
+    if 'delta_t_sec' in dataset.attrs:
+        odf.event['sampling_interval'] = dataset.attrs['delta_t_sec']
+    odf.event["event_number"] = global_attrs["event_number"]
+    odf.event["event_qualifier1"] = global_attrs["event_qualifier1"]
+    odf.event["event_qualifier2"] = global_attrs["event_qualifier2"]
+    odf.event["event_comments"] = global_attrs["event_comments"]
 
-     odf.event["creation_date"] = odf_time_format(datetime.now())
+    _set_event_header_geospatials(odf, dataset)  # TO BE TESTED TODO
 
 
-def _set_geospatials(odf: Odf, dataset: xr.Dataset) -> None:
+def _set_event_header_geospatials(odf: Odf, dataset: xr.Dataset) -> None:
     """ Set geospatial metadata from dataset.
 
     Sets :
@@ -178,13 +123,18 @@ def _set_geospatials(odf: Odf, dataset: xr.Dataset) -> None:
     ----------
     odf :
     dataset :
-
     """
+    odf.event['time_coverage_start'] = odf_time_format(dataset.time.values.min())
+    odf.event['time_coverage_end'] = odf_time_format(dataset.time.values.max())
+
+    odf.event['geospatial_vertical_min'] = dataset.depth.values.min()
+    odf.event['geospatial_vertical_max'] = dataset.depth.values.max()
+
     if "lat" in dataset and "lon" in dataset:
-        odf.event["initial_latitude"] = dataset.lat[0]
-        odf.event["end_latitude"] = dataset.lat[-1]
-        odf.event["initial_longitude"] = dataset.lon[0]
-        odf.event["end_longitude"] = dataset.lon[-1]
+        odf.event["initial_latitude"] = dataset.lat.values[0]
+        odf.event["end_latitude"] = dataset.lat.values[-1]
+        odf.event["initial_longitude"] = dataset.lon.values[0]
+        odf.event["end_longitude"] = dataset.lon.values[-1]
     elif "latitude" in dataset.attrs and "longitude" in dataset.attrs:
         odf.event["initial_latitude"] = dataset.attrs["latitude"]
         odf.event["end_latitude"] = dataset.attrs["latitude"]
@@ -193,10 +143,10 @@ def _set_geospatials(odf: Odf, dataset: xr.Dataset) -> None:
 
     odf.event["depth_off_bottom"] = 0
     if "sounding" in dataset.attrs:
-        if dataset.attrs["sounding"] and dataset.attrs["geospatial_vertical_max"]:
+        if dataset.attrs["sounding"]:
             odf.event["depth_off_bottom"] = (
-                dataset.attrs["sounding"] - odf.event["max_depth"]
-                )
+                    dataset.attrs["sounding"] - odf.event['geospatial_vertical_max']
+            )
 
 
 def _make_odf_header(odf):
@@ -223,53 +173,51 @@ def _make_instrument_header(odf, dataset):
     serial_number
     description
     """
-    for key, value in INSTRUMENT_ATTRS.items():
-        if value.source == "dataset":
-            if value.key in dataset.attrs:
-                if "date" in key and dataset.attrs[value.key]:
-                    odf.instrument[key] = odf_time_format(dataset.attrs[value.key])
-                else:
-                    odf.instrument[key] = dataset.attrs[value.key]
-
-
-def _make_quality_header():
-    """TODO Multiple"""
+    # FIXME maybe rename it to instrument_comments.
+    for key_odf, key_nc in (('inst_type', 'manufacturer'), ("description", "comments")):
+        if key_nc in dataset.attrs:
+            odf.instrument[key_odf] = dataset.attrs[key_nc]
+    for key in ['model', 'serial_number']:
+        if key in dataset.attrs:
+            odf.instrument[key] = dataset.attrs[key]
 
 
 def _make_buoy_header(odf, sensor_metadata):
     """
     Use BUOY_ATTRS
     """
-    for key, value in BUOY_ATTRS.items():
-        if value.source == "buoy_specs":
-
-            if value.key in sensor_metadata["buoy_specs"]:
-                odf.buoy[key] = sensor_metadata["buoy_specs"][value.key]
-        if value.source == "sensor_metadata":
-            if value.key in sensor_metadata:
-                odf.buoy[key] = sensor_metadata[value.key]
+    odf.buoy["name"] = sensor_metadata["platform_name"]
+    if 'buoy_specs' in sensor_metadata:
+        for key in ['type', 'model', 'diameter', 'weight', 'description']:
+            if key in sensor_metadata['buoy_specs']:
+                odf.buoy[key] = sensor_metadata["buoy_specs"][key]
 
 
 def _make_buoy_instrument_header(odf, dataset, sensor_metadata):
     """Uses buoy_instrument_attrs
     Missing: comments and sensors
+    odf.buoy_instrument[instrument]['comments'] is left empty.
     """
     instrument = "ADCP_01"
     odf.add_buoy_instrument(instrument)
-    for key, value in BUOY_INSTRUMENT_ATTRS.items():
-        if value.source == "dataset":
-            if value.key in dataset.attrs:
-                if "date" in key and dataset.attrs[value.key]:
-                    odf.buoy_instrument[instrument][key] = odf_time_format(
-                        dataset.attrs[value.key]
-                    )
-                else:
-                    odf.buoy_instrument[instrument][key] = dataset.attrs[value.key]
+    header = odf.buoy_instrument[instrument]
 
-    _make_buoy_instrument_comment(odf, instrument, dataset, sensor_metadata)
+    # FIXME BUOY DESCRIPTION buoy_specs ?
+    for key_odf, key_nc in (('type', 'manufacturer'),):
+        if key_nc in dataset.attrs:
+            header[key_odf] = dataset.attrs[key_nc]
+    for key in ['model', 'serial_number']:
+        if key in dataset.attrs:
+            header[key] = dataset.attrs[key]
+
+    header["inst_start_date_time"] = odf_time_format(dataset.time.values.min())
+    header["inst_end_date_time"] = odf_time_format(dataset.time.values.max())
+
+    _make_buoy_instrument_comments(odf, instrument, dataset, sensor_metadata)
+    # _make_buoy_instrument_sensor() TODO
 
 
-def _make_buoy_instrument_comment(odf, instrument, dataset, sensor_metadata):
+def _make_buoy_instrument_comments(odf, instrument, dataset, sensor_metadata):
     """
 
     Note
@@ -277,36 +225,50 @@ def _make_buoy_instrument_comment(odf, instrument, dataset, sensor_metadata):
     LagLength was removed from the original ODF adcp format.
     """
     configuration = "CONFIGURATION_01"
-    for key, value in BUOY_INSTRUMENT_CONFIGURATION.items():
-        v = ""
-        if key == "Ping_Interval_s":
-            if "ping_per_ensemble" in dataset.attrs and "delta_t_sec" in dataset.attrs:
-                if dataset.attrs["ping_per_ensemble"] and dataset.attrs["delta_t_sec"]:
-                    v = round(
-                        dataset.attrs["ping_per_ensemble"]
-                        / dataset.attrs["delta_t_sec"],
-                        2,
-                    )
-        elif key == "Magnetic_Declination":
-            if (
-                "magnetic_declination" in dataset.attrs
-                and "magnetic_declination_units" in dataset.attrs
-            ):
-                v = (
+    comments = {}
+    keys = (("Mode", "orientation"),
+            ("Ping_Type", "ping_type"),
+            ("Frequency", "frequency"),
+            ("Firmware_Version", "firmware_version"),
+            ("Ping_per_Ensemble", "ping_per_ensemble"),
+            ("Ensemble_Length_s", "delta_t_sec"),
+            ("ADCP_Depth_m", "sensor_depth"),
+            ("Distance_ADCP_to_First_Bin_Center_m", "bin1dist"),
+            ("Bin_Size_m", "bin_size"),
+            ("Blank_m", "blank"),
+            ("Transmit_Pulse_Length_m", "transmit_pulse_length_m"))
+    for key_odf, key_nc in keys:
+        if key_nc in dataset.attrs:
+            comments[key_odf] = dataset.attrs[key_nc]
+
+    if "ping_per_ensemble" in dataset.attrs and "delta_t_sec" in dataset.attrs:
+        if dataset.attrs["ping_per_ensemble"] and dataset.attrs["delta_t_sec"]:
+            comments["Ping_Interval_s"] = round(
+                dataset.attrs["ping_per_ensemble"]
+                / dataset.attrs["delta_t_sec"],
+                2,
+            )
+    if "magnetic_declination" in dataset.attrs:
+        if "magnetic_declination_units" in dataset.attrs:
+            comments["Magnetic_Declination"] = (
                     str(dataset.attrs["magnetic_declination"])
                     + " "
                     + dataset.attrs["magnetic_declination_units"]
-                )
-        elif key == "Bin_Count":
-            v = len(dataset.depth)
-        elif value.source == "dataset" and value.key in dataset.attrs:
-            v = dataset.attrs[value.key]
-        elif value.source == "sensor_metadata":
-            v = sensor_metadata[value.key]
+            )
+    comments["Bin_Count"] = len(dataset.depth)
+    comments['Comments'] = sensor_metadata['comments']
 
+    for key, value in comments.items():
         odf.buoy_instrument[instrument]["buoy_instrument_comments"].append(
-            configuration + "." + key + ": " + str(v)
+            configuration + "." + key + ": " + str(value)
         )
+
+def _make_quality_header(odf, dataset):
+    """
+    quality_date
+    quality_test = []
+    quality_comments = []
+    """
 
 
 def _make_history_header(odf, dataset):
@@ -359,13 +321,16 @@ def _make_parameter_headers(odf, dataset, generic_to_p01_name=None):
     data = dataset[list(parameters_metadata.keys())].to_dataframe().reset_index().sort_values(['time', 'depth'])
 
     for var in parameters_metadata:
-        if var in dataset:
+        if var in dataset.variables:
             items = {}
-            items.update(parameters_metadata[var])
+            qc_mask = None
 
+            items.update(parameters_metadata[var])
             items["depth"] = dataset.attrs["sensor_depth"]
             if "_QC" not in var:
                 items["magnetic_variation"] = dataset.attrs["magnetic_declination"]
+            if var+'_QC' in dataset.variables:
+                qc_mask = data[var+'_QC'].values <= 2
             items["type"] = PARAMETERS_TYPES[str(dataset[var].data.dtype)]
 
             null_value = None
@@ -374,7 +339,11 @@ def _make_parameter_headers(odf, dataset, generic_to_p01_name=None):
             elif "_FillValue" in dataset[var].encoding:
                 null_value = dataset[var].encoding["_FillValue"]
 
-            odf.add_parameter(code=items["code"], data=data[var].values, null_value=null_value, items=items)
+            odf.add_parameter(code=items["code"],
+                              data=data[var].values,
+                              null_value=null_value,
+                              items=items,
+                              qc_mask=qc_mask)
 
 
 if __name__ == "__main__":

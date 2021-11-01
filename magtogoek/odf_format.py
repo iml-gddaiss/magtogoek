@@ -518,13 +518,13 @@ class Odf:
             code: str,
             data: tp.Union[list, np.ndarray],
             null_value: tp.Union[int, float],
-            items: tp.Dict = None):
+            items: tp.Dict = None,
+            qc_mask: np.ndarray = None,
+    ):
         """Add a the parameter to ODF.parameters and the data to ODF.data.
 
         Computes `number_valid`, `number_null`, `minimum_value` and `maximum_value` from
         the data and a provided `null_value` in `items`.
-        If code is 'STYM_01', computes 'time_coverage_start', 'time_coverage_end'.
-        If code is 'DEPH_01', computes 'geospatial_vertical_min', 'geospatial_vertical_max'.
 
         Parameters
         ----------
@@ -542,24 +542,19 @@ class Odf:
             items = {}
 
         data = np.asarray(data)
-
-        data[not np.isfinite(data)] = null_value
+        _null_value = null_value
+        if code == 'STYM_01':
+            _null_value = pd.Timestamp(null_value)
+        data[~np.isfinite(data)] = _null_value
 
         self.parameter[code] = _get_repeated_headers_default()["parameter"]
-        self.parameter.update(items)
+        self.parameter[code].update(items)
         self.parameter[code]["code"] = code
         self.parameter[code]['null_value'] = null_value
         self.data[code] = data
-        self._compute_parameter_attrs(code)
+        self._compute_parameter_attrs(code, qc_mask)
 
-        if code == 'STYM_01':
-            self.event['time_coverage_start'] = self.parameter['STYM_01']['minimum_value']
-            self.event['time_coverage_end'] = self.parameter['STYM_01']['maximum_value']
-        if code == 'DEPH_01':
-            self.event['geospatial_vertical_min'] = self.parameter['DEPH_01']['minimum_value']
-            self.event['geospatial_vertical_max'] = self.parameter['DEPH_01']['maximum_value']
-
-    def _compute_parameter_attrs(self, parameter: str):
+    def _compute_parameter_attrs(self, parameter: str, qc_mask: np.ndarray = None):
         """Compute `number_valid`, `number_null`, `minimum_value` and `maximum_value` from
         the data and the "null_value" in `parameter[parameter]`.
         """
@@ -567,12 +562,13 @@ class Odf:
         n_null = (self.data[parameter] == null_value).sum().item()
         self.parameter[parameter]["number_null"] = n_null
         self.parameter[parameter]["number_valid"] = len(self.data[parameter]) - n_null
-        self.parameter[parameter]["minimum_value"] = (
-            self.data[parameter].where(self.data[parameter] != null_value).min()
-        )
-        self.parameter[parameter]["maximum_value"] = (
-            self.data[parameter].where(self.data[parameter] != null_value).max()
-        )
+
+        mask = (self.data[parameter] != null_value).values
+        if qc_mask is not None:
+            mask &= qc_mask
+
+        self.parameter[parameter]["minimum_value"] = self.data[parameter].where(mask).min()
+        self.parameter[parameter]["maximum_value"] = self.data[parameter].where(mask).max()
 
     def from_dataframe(
             self,
@@ -688,10 +684,6 @@ class Odf:
             if self.data[vd].dtype == int:
                 formats[vd] = lambda x, p=padding: SPACE + str(x).rjust(p, SPACE)
 
-            #            elif any(self.data[vd].dtypes == t for t in [int, object]):
-            #                formats[vd] = lambda x, p=padding: (
-            #                    SPACE + ("'" + str(x) + "'").rjust(p, SPACE)
-            #                )
             elif self.data[vd].dtypes == np.dtype("<M8[ns]"):
                 formats[vd] = lambda x, p=padding: (
                         SPACE + ("'" + odf_time_format(x) + "'").rjust(p, SPACE)
@@ -708,10 +700,12 @@ class Odf:
 
 def _get_null_values(
         codes: list,
-        null_values: tp.Union[int,float,list,tuple],
+        null_values: tp.Union[int, float, list, tuple],
         items: dict
         ) -> dict:
     _null_values = {}
+    """
+    """
     if isinstance(null_values, (float, int)):
         _null_values = dict.fromkeys(codes, null_values)
     elif isinstance(null_values, (list, tuple)):
@@ -733,7 +727,19 @@ def _get_null_values(
                 raise ValueError(f"[{key}] is missing a `null_values` key and value.")
     return _null_values
 
+
 def _format_headers(name: str, header: dict) -> str:
+    """
+
+    Parameters
+    ----------
+    name
+    header
+
+    Returns
+    -------
+
+    """
     s = name.upper() + "_HEADER," + NEWLINE
     for key, value in header.items():
         if isinstance(value, pd.Timestamp):
@@ -826,7 +832,7 @@ def odf_time_format(time):
 
     Returns
     -------
-    string formated time.
+    string formatted time.
     """
     try:
         odf_time = pd.Timestamp(time).strftime("%d-%b-%Y %H:%M:%S.%f").upper()[:-4]
