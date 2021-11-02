@@ -84,7 +84,7 @@ FLAG_MEANINGS = (
 def no_adcp_quality_control(dataset: xr.Dataset):
     """Adds var_QC ancillary variables to dataset with value 0.
 
-    ANcillary variables:  temperature, pres, u, v, w.
+    AAncillary variables:  temperature, pres, u, v, w.
 
     SeaDataNet Quality Control Flags Value
     * 0: no_quality_control
@@ -95,7 +95,7 @@ def no_adcp_quality_control(dataset: xr.Dataset):
         ADCP dataset formatted as done by adcp_init.
     """
     l.reset()
-    l.section("No Quality Controlled")
+    l.section("No Quality Controlled", t=True)
 
     l.log("No quality control carried out")
     variables = ["temperature", "pres", "u", "v", "w"]
@@ -263,7 +263,7 @@ def adcp_quality_control(
         vel_flags[np.tile(pressure_flags, dataset.depth.shape + (1,))] = 3
         dataset["pres_QC"].attrs[
             "quality_test"
-        ] = f"presssure_threshold: less than {MIN_PRESSURE} dbar and greater than {MAX_PRESSURE} dbar"
+        ] = f"pressure_threshold: less than {MIN_PRESSURE} dbar and greater than {MAX_PRESSURE} dbar"
         vel_qc_test.append(dataset["pres_QC"].attrs["quality_test"])
 
     if "temperature" in dataset:
@@ -273,7 +273,7 @@ def adcp_quality_control(
         dataset["temperature_QC"] = (["time"], temperature_QC)
         dataset["temperature_QC"].attrs[
             "quality_test"
-        ] = f"temperature_threshold: less than {MIN_TEMPERATURE} celcius and greater than {MAX_TEMPERATURE} celsius"
+        ] = f"temperature_threshold: less than {MIN_TEMPERATURE} Celsius and greater than {MAX_TEMPERATURE} celsius"
     if "vb_vel" in dataset:
         l.log(
             "Fifth beam quality control carried out with"
@@ -308,7 +308,7 @@ def adcp_quality_control(
             dataset[var].attrs["flag_values"] = FLAG_VALUES
             dataset[var].attrs["flag_reference"] = FLAG_REFERENCE
 
-    dataset.attrs["quality_comments"] = l.logbook
+    dataset.attrs["quality_comments"] = l.logbook[1:]
     l.log(f"Quality Control was carried out with {l.w_count} warnings")
     dataset.attrs["logbook"] += l.logbook
 
@@ -347,14 +347,14 @@ def motion_correction(dataset: xr.Dataset, mode: str):
             )
     else:
         l.warning(
-            "Motion correction aborded. Motion correction mode invalid. ('bt' or 'nav')"
+            "Motion correction aborted. Motion correction mode invalid. ('bt' or 'nav')"
         )
 
 
 def flag_implausible_vel(
     dataset: xr.Dataset, threshold: float = 15
 ) -> tp.Type[np.array]:
-    """Values greater than `thres` return True"""
+    """Values greater than `threshold` return True"""
     return (
         (dataset.v > threshold) & (dataset.u > threshold) & (dataset.w > threshold)
     ).data

@@ -5,6 +5,8 @@ import re
 from pathlib import Path
 
 from datetime import datetime
+
+import pandas as pd
 import xarray as xr
 from magtogoek.odf_format import Odf, odf_time_format
 from magtogoek.utils import json2dict
@@ -65,10 +67,11 @@ def make_odf(
         _make_buoy_instrument_header(odf, dataset, sensor_metadata)
     else:
         _make_instrument_header(odf, dataset)
-    _make_parameter_headers(odf, dataset, generic_to_p01_name)
+    _make_quality_header(odf, dataset)
     _make_history_header(odf, dataset)
+    _make_parameter_headers(odf, dataset, generic_to_p01_name)
 
-    output_path = Path(output_path)
+    output_path = Path(output_path) # TODO
 
     if output_path:  # TODO check if dir/ or /name. Look in process
         pass
@@ -99,6 +102,7 @@ def _make_event_header(odf, dataset, global_attrs):
     -----
     `depth_off_bottom` is `0` if "sounding" is missing.
     """
+    odf.event['data_type'] = 'madcp'
     odf.event["creation_date"] = odf_time_format(datetime.now())
     odf.event['orig_creation_date'] = odf_time_format(dataset.attrs['date_created'])
     if 'delta_t_sec' in dataset.attrs:
@@ -124,11 +128,11 @@ def _set_event_header_geospatials(odf: Odf, dataset: xr.Dataset) -> None:
     odf :
     dataset :
     """
-    odf.event['time_coverage_start'] = odf_time_format(dataset.time.values.min())
-    odf.event['time_coverage_end'] = odf_time_format(dataset.time.values.max())
+    odf.event['start_date_time'] = odf_time_format(dataset.time.values.min())
+    odf.event['end_date_time'] = odf_time_format(dataset.time.values.max())
 
-    odf.event['geospatial_vertical_min'] = dataset.depth.values.min()
-    odf.event['geospatial_vertical_max'] = dataset.depth.values.max()
+    odf.event['min_depth'] = dataset.depth.values.min()
+    odf.event['max_depth'] = dataset.depth.values.max()
 
     if "lat" in dataset and "lon" in dataset:
         odf.event["initial_latitude"] = dataset.lat.values[0]
@@ -145,7 +149,7 @@ def _set_event_header_geospatials(odf: Odf, dataset: xr.Dataset) -> None:
     if "sounding" in dataset.attrs:
         if dataset.attrs["sounding"]:
             odf.event["depth_off_bottom"] = (
-                    dataset.attrs["sounding"] - odf.event['geospatial_vertical_max']
+                    dataset.attrs["sounding"] - odf.event['max_depth']
             )
 
 
@@ -163,7 +167,7 @@ def _make_odf_header(odf):
         odf.event["event_qualifier2"],
     ]
 
-    odf.odf["file_specification"] = "_".join(name_part).strip("_") + ".ODF"
+    odf.odf["file_specification"] = "_".join(name_part).strip("_").upper() + ".ODF"
 
 
 def _make_instrument_header(odf, dataset):
@@ -188,7 +192,7 @@ def _make_buoy_header(odf, sensor_metadata):
     """
     odf.buoy["name"] = sensor_metadata["platform_name"]
     if 'buoy_specs' in sensor_metadata:
-        for key in ['type', 'model', 'diameter', 'weight', 'description']:
+        for key in ['type', 'model', 'diameter', 'height','weight', 'description']:
             if key in sensor_metadata['buoy_specs']:
                 odf.buoy[key] = sensor_metadata["buoy_specs"][key]
 
@@ -263,35 +267,43 @@ def _make_buoy_instrument_comments(odf, instrument, dataset, sensor_metadata):
             configuration + "." + key + ": " + str(value)
         )
 
+
 def _make_quality_header(odf, dataset):
     """
-    quality_date
-    quality_test = []
-    quality_comments = []
     """
+    comments = dataset.attrs['quality_comments'].strip("\n").split("\n")
+    time_stamp = _find_section_timestamp(comments.pop())
+
+    odf.quality["quality_date"] = odf_time_format(datetime.now())
+    if time_stamp:
+        odf.quality["quality_date"] = odf_time_format(time_stamp)
+
+    odf.quality["quality_tests"] = comments
+    keys = ['flags_reference', 'flags_values', 'flags_meanings']
+    for key in keys:
+        odf.quality["quality_comments"].append(key + ': ' + str(dataset.attrs[key]))
 
 
 def _make_history_header(odf, dataset):
     """
-    One history header is made by log datetime entry.
-    THe histories header is made with dataset.attrs['quality_comments']
+    One history header is made from the log entry under [Loading adcp data]
+    and [Data transformation] log entries. Use the datetime logged if available.
     """
-    process = [
-        "Data processed by Magtogoek Processing Software. More at " + REPOSITORY_ADDRESS
-    ]
-    creation_date = datetime.now().strftime("%d-%b-%Y %H:%M:%S.%f").upper()[:-4]
+    process = ["Data processed by Magtogoek Processing Software. More at " + REPOSITORY_ADDRESS]
+    creation_date = odf_time_format(datetime.now())
+    histories = re.split("(\[.*\])", dataset.attrs["history"])
 
-    regex = r"(\[.*\])\s+([0-9]{4}-[0-9]{2}-[0-9]{2}\s[0-9]{2}:[0-9]{2}:[0-9]{2})"
-    histories = dataset.attrs["quality_comments"].strip("\n").split("\n")
-
-    for history in histories:
-        m = re.findall(regex, history)
-        if m:
-            odf.add_history({"creation_date": creation_date, "process": process})
-            process = [m[0][0]]
-            creation_date = m[0][1]
-        else:
-            process.append(history)
+    iter_histories = iter(histories)
+    for history in iter_histories:
+        if history in ["[Loading adcp data]", "[Data transformation]"]:
+            processes = next(iter_histories).strip("\n").split("\n")
+            time_stamp = _find_section_timestamp(processes[0])
+            if time_stamp is not None:
+                odf.add_history({"creation_date": creation_date, "process": process})
+                creation_date = odf_time_format(pd.Timestamp(time_stamp))
+                process = []
+                del processes[0]
+            process += processes
     odf.add_history({"creation_date": creation_date, "process": process})
 
 
@@ -329,8 +341,8 @@ def _make_parameter_headers(odf, dataset, generic_to_p01_name=None):
             items["depth"] = dataset.attrs["sensor_depth"]
             if "_QC" not in var:
                 items["magnetic_variation"] = dataset.attrs["magnetic_declination"]
-            if var+'_QC' in dataset.variables:
-                qc_mask = data[var+'_QC'].values <= 2
+            if var + '_QC' in dataset.variables:
+                qc_mask = data[var + '_QC'].values <= 2
             items["type"] = PARAMETERS_TYPES[str(dataset[var].data.dtype)]
 
             null_value = None
@@ -344,6 +356,18 @@ def _make_parameter_headers(odf, dataset, generic_to_p01_name=None):
                               null_value=null_value,
                               items=items,
                               qc_mask=qc_mask)
+
+
+def _find_section_timestamp(s: str) -> str:
+    """ String of Section - Timestamp
+
+    regex : ([0-9]{4}-[0-9]{2}-[0-9]{2}\s[0-9]{2}:[0-9]{2}:[0-9]{2})
+    """
+    regex = r"([0-9]{4}-[0-9]{2}-[0-9]{2}\s[0-9]{2}:[0-9]{2}:[0-9]{2})"
+    match = re.findall(regex, s)
+    if match:
+        return match[0]
+    return None
 
 
 if __name__ == "__main__":
