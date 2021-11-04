@@ -38,7 +38,7 @@ PARAMETERS_METADATA_ABSOLUTE_PATH = (
 def make_odf(
         dataset: xr.Dataset,
         sensor_metadata: dict,
-        global_attrs: dict,
+        config_attrs: dict,
         generic_to_p01_name: dict = None,
         output_path: str = None
 ):
@@ -49,18 +49,17 @@ def make_odf(
         Dataset to which add the navigation data.
     sensor_metadata :
         Metadata from the platform file.
-    global_attrs :
+    config_attrs :
         Global attributes parameter from the configFile.
     generic_to_p01_name :
         map from the generic to the BODC p01 variables names.
     output_path :
 
-
     """
     odf = Odf()
 
-    _make_cruise_header(odf, sensor_metadata, global_attrs)
-    _make_event_header(odf, dataset, global_attrs)
+    _make_cruise_header(odf, sensor_metadata, config_attrs)
+    _make_event_header(odf, dataset, config_attrs)
     _make_odf_header(odf)
     if sensor_metadata["platform_type"] == "buoy":
         _make_buoy_header(odf, sensor_metadata)
@@ -71,7 +70,7 @@ def make_odf(
     _make_history_header(odf, dataset)
     _make_parameter_headers(odf, dataset, generic_to_p01_name)
 
-    output_path = Path(output_path) # TODO
+  #  output_path = Path(output_path) # TODO
 
     if output_path:  # TODO check if dir/ or /name. Look in process
         pass
@@ -79,22 +78,22 @@ def make_odf(
     return odf
 
 
-def _make_cruise_header(odf, sensor_metadata, global_attrs):
-    odf.cruise["country_institute_code"] = global_attrs["country_institute_code"]
-    odf.cruise["organization"] = global_attrs["organization"]
-    odf.cruise["chief_scientist"] = global_attrs["chief_scientist"]
-    odf.cruise["start_date"] = odf_time_format(global_attrs["start_date"])
-    odf.cruise["end_date"] = odf_time_format(global_attrs["end_date"])
-    odf.cruise["cruise_number"] = global_attrs["cruise_number"]
-    odf.cruise["cruise_name"] = global_attrs["cruise_name"]
-    odf.cruise["cruise_description"] = global_attrs["cruise_description"]
+def _make_cruise_header(odf, sensor_metadata, config_attrs):
+    odf.cruise["country_institute_code"] = config_attrs["country_institute_code"]
+    odf.cruise["organization"] = config_attrs["organization"]
+    odf.cruise["chief_scientist"] = config_attrs["chief_scientist"]
+    odf.cruise["start_date"] = odf_time_format(config_attrs["start_date"])
+    odf.cruise["end_date"] = odf_time_format(config_attrs["end_date"])
+    odf.cruise["cruise_number"] = config_attrs["cruise_number"]
+    odf.cruise["cruise_name"] = config_attrs["cruise_name"]
+    odf.cruise["cruise_description"] = config_attrs["cruise_description"]
 
     odf.cruise["platform"] = sensor_metadata["platform_name"]
     if sensor_metadata["platform_type"] == "buoy":
         odf.cruise["platform"] = "Oceanographic Buoy"
 
 
-def _make_event_header(odf, dataset, global_attrs):
+def _make_event_header(odf, dataset, config_attrs):
     """
     Make the event header.
 
@@ -107,12 +106,14 @@ def _make_event_header(odf, dataset, global_attrs):
     odf.event['orig_creation_date'] = odf_time_format(dataset.attrs['date_created'])
     if 'delta_t_sec' in dataset.attrs:
         odf.event['sampling_interval'] = dataset.attrs['delta_t_sec']
-    odf.event["event_number"] = global_attrs["event_number"]
-    odf.event["event_qualifier1"] = global_attrs["event_qualifier1"]
-    odf.event["event_qualifier2"] = global_attrs["event_qualifier2"]
-    odf.event["event_comments"] = global_attrs["event_comments"]
+    odf.event["event_number"] = config_attrs["event_number"]
+    odf.event["event_qualifier1"] = config_attrs["event_qualifier1"]
+    odf.event["event_qualifier2"] = config_attrs["event_qualifier2"]
+    if 'sounding' in dataset.attrs:
+        odf.event['sounding'] = dataset.attrs['sounding']
+    odf.event["event_comments"] = config_attrs["event_comments"]
 
-    _set_event_header_geospatials(odf, dataset)  # TO BE TESTED TODO
+    _set_event_header_geospatials(odf, dataset)
 
 
 def _set_event_header_geospatials(odf: Odf, dataset: xr.Dataset) -> None:
@@ -146,11 +147,8 @@ def _set_event_header_geospatials(odf: Odf, dataset: xr.Dataset) -> None:
         odf.event["end_longitude"] = dataset.attrs["longitude"]
 
     odf.event["depth_off_bottom"] = 0
-    if "sounding" in dataset.attrs:
-        if dataset.attrs["sounding"]:
-            odf.event["depth_off_bottom"] = (
-                    dataset.attrs["sounding"] - odf.event['max_depth']
-            )
+    if odf.event["sounding"] is not None:
+        odf.event["depth_off_bottom"] = odf.event['sounding'] - odf.event['max_depth']
 
 
 def _make_odf_header(odf):
@@ -200,13 +198,12 @@ def _make_buoy_header(odf, sensor_metadata):
 def _make_buoy_instrument_header(odf, dataset, sensor_metadata):
     """Uses buoy_instrument_attrs
     Missing: comments and sensors
-    odf.buoy_instrument[instrument]['comments'] is left empty.
+    odf.buoy_instrument[instrument]['description'] is left empty.
     """
     instrument = "ADCP_01"
     odf.add_buoy_instrument(instrument)
     header = odf.buoy_instrument[instrument]
 
-    # FIXME BUOY DESCRIPTION buoy_specs ?
     for key_odf, key_nc in (('type', 'manufacturer'),):
         if key_nc in dataset.attrs:
             header[key_odf] = dataset.attrs[key_nc]
@@ -285,25 +282,26 @@ def _make_quality_header(odf, dataset):
 
 
 def _make_history_header(odf, dataset):
-    """
-    One history header is made from the log entry under [Loading adcp data]
-    and [Data transformation] log entries. Use the datetime logged if available.
+    """Make one or more history_header.
+    1 - Default process comments is added with a Timestamp (datetime.now()).
+    2 - Looks for log section `[Loading adcp data], [Data transformation]` in
+        dataset.attrs['logbook'] and add the log messages that follow.
+    3 - New history_header are made for each TimeStamp found with the log section.
     """
     process = ["Data processed by Magtogoek Processing Software. More at " + REPOSITORY_ADDRESS]
     creation_date = odf_time_format(datetime.now())
-    histories = re.split("(\[.*\])", dataset.attrs["history"])
 
-    iter_histories = iter(histories)
-    for history in iter_histories:
-        if history in ["[Loading adcp data]", "[Data transformation]"]:
-            processes = next(iter_histories).strip("\n").split("\n")
-            time_stamp = _find_section_timestamp(processes[0])
+    iter_logbook = iter(re.split(r"(\[.*])", dataset.attrs["logbook"]))
+    for log_entry in iter_logbook:
+        if log_entry in ["[Loading adcp data]", "[Data transformation]"]:
+            logs = next(iter_logbook).strip("\n").split("\n")
+            time_stamp = _find_section_timestamp(logs[0])
             if time_stamp is not None:
+                del logs[0]
                 odf.add_history({"creation_date": creation_date, "process": process})
                 creation_date = odf_time_format(pd.Timestamp(time_stamp))
                 process = []
-                del processes[0]
-            process += processes
+            process += logs
     odf.add_history({"creation_date": creation_date, "process": process})
 
 
@@ -359,9 +357,9 @@ def _make_parameter_headers(odf, dataset, generic_to_p01_name=None):
 
 
 def _find_section_timestamp(s: str) -> str:
-    """ String of Section - Timestamp
+    r""" String of Section - Timestamp
 
-    regex : ([0-9]{4}-[0-9]{2}-[0-9]{2}\s[0-9]{2}:[0-9]{2}:[0-9]{2})
+    regex : ([0-9]{4}-[0-9]{2}-[0-9]{2}\s[0-9]{2}:[0-9]{2}:[0-9]{2})'
     """
     regex = r"([0-9]{4}-[0-9]{2}-[0-9]{2}\s[0-9]{2}:[0-9]{2}:[0-9]{2})"
     match = re.findall(regex, s)

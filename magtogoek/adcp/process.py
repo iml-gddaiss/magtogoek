@@ -38,7 +38,7 @@ Notes
     The manufacturer is automatically added to the dataset by the loader. However, the value given in the platform file will
     overwrite it.
 
-TODO TEST NAVIGATIN FILES !
+TODO TEST NAVIGATIoN FILES !
 FIXME DATA_TYPES: Missing for ship adcp
 FIXME SOURCE : moored adcp ?
 
@@ -63,6 +63,7 @@ from magtogoek.attributes_formatter import (
     compute_global_attrs, format_variables_names_and_attributes)
 from magtogoek.navigation import load_navigation
 from magtogoek.utils import Logger, json2dict, format_str2list
+from magtogoek.platforms import _add_platform
 
 l = Logger(level=0)
 
@@ -86,21 +87,8 @@ GLOBAL_ATTRS_TO_DROP = [
 CONFIG_GLOBAL_ATTRS_SECTIONS = ["NETCDF_CF", "PROJECT", "CRUISE", "GLOBAL_ATTRIBUTES"]
 PLATFORM_TYPES = ["buoy", "mooring", "ship"]
 DEFAULT_PLATFORM_TYPE = "buoy"
-DATA_TYPES = {"buoy": "MADCP", "mooring": "MADCP", "ship": "MADCP"}
-PLATFORM_FILE_DEFAULT_KEYS = [
-    "platform_type",
-    "platform_subtype",
-    "longitude",
-    "latitude",
-    "sounding",
-    "sensor_depth",
-    "serial_number",
-    "manufacturer",
-    "model",
-    "firmware_version",
-    "chief_scientist",
-    "comments",
-]
+DATA_TYPES = {"buoy": "MADCP", "mooring": "MADCP", "ship": "ADCP"}
+
 P01_VEL_CODES = dict(
     buoy=dict(
         u="LCEWAP01",
@@ -207,7 +195,7 @@ def process_adcp(config: dict):
         For the processing workflow.
 
     """
-    params, global_attrs = _get_config(config)
+    params, config_attrs = _get_config(config)
 
     params["input_files"] = format_str2list(params["input_files"])
 
@@ -217,11 +205,11 @@ def process_adcp(config: dict):
     sensor_metadata = _default_platform()
     if params["platform_file"]:
         if Path(params["platform_file"]).is_file():
-            sensor_metadata = _load_platform(params)
+            sensor_metadata.update(_load_platform(params))
         else:
             l.warning(f"platform_file, {params['platform_file']}, not found")
 
-    _pipe_to_process_adcp_data(params, sensor_metadata, global_attrs)
+    _pipe_to_process_adcp_data(params, sensor_metadata, config_attrs)
 
 
 def quick_process_adcp(params: tp.Dict):
@@ -241,22 +229,22 @@ def quick_process_adcp(params: tp.Dict):
     _process_adcp_data :
         For the processing workflow."""
 
-    global_attrs = _default_global_attrs()
+    config_attrs = _get_default_config_attrs()
     sensor_metadata = _default_platform()
 
     sensor_metadata["platform_type"] = params["platform_type"]
 
     params["force_platform_metadata"] = False
-    if params["odf_output"] in [1, "true", "True"]:
+    if params["odf_output"] in [1, "true", "True", 't', "T"]:
         params["odf_output"] = True
 
     _pipe_to_process_adcp_data(
-        params, sensor_metadata, global_attrs, drop_empty_attrs=True
+        params, sensor_metadata, config_attrs, drop_empty_attrs=True
     )
 
 
 def _pipe_to_process_adcp_data(
-        params, sensor_metadata, global_attrs, drop_empty_attrs=False
+        params, sensor_metadata, config_attrs, drop_empty_attrs=False
 ):
     """Check if the input_file must be split in multiple output.
 
@@ -277,13 +265,13 @@ def _pipe_to_process_adcp_data(
                     )
             params["input_files"] = [filename]
 
-            _process_adcp_data(params, sensor_metadata, global_attrs, drop_empty_attrs)
+            _process_adcp_data(params, sensor_metadata, config_attrs, drop_empty_attrs)
     else:
-        _process_adcp_data(params, sensor_metadata, global_attrs)
+        _process_adcp_data(params, sensor_metadata, config_attrs)
 
 
 def _process_adcp_data(
-        params: tp.Dict, sensor_metadata: tp.Dict, global_attrs, drop_empty_attrs=False
+        params: tp.Dict, sensor_metadata: tp.Dict, config_attrs, drop_empty_attrs=False
 ):
     """Process adcp data
 
@@ -297,7 +285,7 @@ def _process_adcp_data(
     params :
         Processing parameters from the ConfigFile.
 
-    global_attrs :
+    config_attrs :
         Global attributes parameter from the configFile.
 
     sensor_metadata :
@@ -362,7 +350,7 @@ def _process_adcp_data(
     _set_platform_metadata(dataset, sensor_metadata, params["force_platform_metadata"])
 
     # setting Metadata from the config_files
-    dataset = dataset.assign_attrs(global_attrs)
+    dataset = dataset.assign_attrs(config_attrs)
 
     if not dataset.attrs["source"]:
         dataset.attrs["source"] = sensor_metadata["platform_type"]
@@ -425,11 +413,9 @@ def _process_adcp_data(
 
     l.log("Variables attributes added.")
 
-    # ------------------------------------ #
-    # FINAL FORMATTING OF GLOBAL ATTRIBUTES #
-    # ------------------------------------ #
-    if "platform_name" in dataset.attrs:
-        dataset.attrs["platform"] = dataset.attrs.pop("platform_name")
+    # --------------------------- #
+    # ADDING OF GLOBAL ATTRIBUTES #
+    # ----------------------------#
 
     if not dataset.attrs["date_created"]:
         dataset.attrs["date_created"] = pd.Timestamp.now().strftime("%Y-%m-%d")
@@ -438,12 +424,6 @@ def _process_adcp_data(
 
     dataset.attrs["logbook"] += l.logbook
 
-    dataset.attrs["history"] = dataset.attrs["logbook"]
-    del dataset.attrs["logbook"]
-
-    for attr in GLOBAL_ATTRS_TO_DROP:
-        if attr in dataset.attrs:
-            del dataset.attrs[attr]
     # ----------- #
     # ODF OUTPUTS #
     # ----------- #
@@ -455,7 +435,7 @@ def _process_adcp_data(
         else:
             generic_to_p01_name = None
 
-        output_path = "" #TODO
+        output_path = ""  # TODO
 
         odf_output_path = params["odf_output"]
         if params["odf_output"] is True:
@@ -463,7 +443,7 @@ def _process_adcp_data(
 
         odf = make_odf(dataset,
                        sensor_metadata,
-                       global_attrs,
+                       config_attrs,
                        generic_to_p01_name,
                        odf_output_path)
 
@@ -490,9 +470,19 @@ def _process_adcp_data(
     else:
         params["netcdf_output"] = True
 
-    # ----------- #
-    # NC OUTPUTS #
-    # ----------- #
+    # ---------------------------- #
+    # FORMATTING GLOBAL ATTRIBUTES #
+    # ---------------------------- #
+
+    dataset.attrs["history"] = dataset.attrs["logbook"]
+    del dataset.attrs["logbook"]
+
+    if "platform_name" in dataset.attrs:
+        dataset.attrs["platform"] = dataset.attrs.pop("platform_name")
+
+    for attr in GLOBAL_ATTRS_TO_DROP:
+        if attr in dataset.attrs:
+            del dataset.attrs[attr]
 
     for attr in list(dataset.attrs.keys()):
         if not dataset.attrs[attr]:
@@ -500,6 +490,10 @@ def _process_adcp_data(
                 del dataset.attrs[attr]
             else:
                 dataset.attrs[attr] = ""
+
+    # ---------- #
+    # NC OUTPUTS #
+    # ---------- #
 
     if params["netcdf_output"]:
         nc_output = params["netcdf_output"]
@@ -567,16 +561,16 @@ def _load_adcp_data(params: tp.Dict) -> xr.Dataset:
 def _get_config(config: dict) -> tp.Tuple[dict, dict]:
     """Split and flattens the config in two untested dictionary"""
     params = dict()
-    global_attrs = dict()
+    config_attrs = dict()
     for section, options in config.items():
         if section in CONFIG_GLOBAL_ATTRS_SECTIONS:
             for option in options:
-                global_attrs[option] = config[section][option]
+                config_attrs[option] = config[section][option]
         else:
             for option in options:
                 params[option] = config[section][option]
 
-    return params, global_attrs
+    return params, config_attrs
 
 
 def _load_platform(params: dict) -> tp.Dict:
@@ -585,7 +579,9 @@ def _load_platform(params: dict) -> tp.Dict:
     Returns a `flat` dictionary with all the parents metadata
     to `platform.json/platform_id/sensors/sensor_id` and the
     metadata of the `sensor_id.`
+
     """
+
     sensor_metadata = dict()
     json_dict = json2dict(params["platform_file"])
     if params["platform_id"] in json_dict:
@@ -610,16 +606,14 @@ def _load_platform(params: dict) -> tp.Dict:
 
 def _default_platform() -> dict:
     """Return an empty platform data dictionary"""
-    sensor_metadata = dict()
-    for key in PLATFORM_FILE_DEFAULT_KEYS:  # FIXME make in from platform.py
-        sensor_metadata[key] = None
-    sensor_metadata["buoy_specs"] = dict()
+    sensor_metadata = _add_platform()
     sensor_metadata["platform_type"] = DEFAULT_PLATFORM_TYPE
+    sensor_metadata.update(sensor_metadata['sensors'].pop('__enter_a_sensor_ID_here'))
     return sensor_metadata
 
 
-def _default_global_attrs():
-    """Return default global_attrs()"""
+def _get_default_config_attrs():
+    """Return default config_attrs()"""
     return {
         "date_created": pd.Timestamp.now().strftime("%Y-%m-%d"),
         "publisher_name": getpass.getuser(),
@@ -842,7 +836,7 @@ def _drop_bottom_track(dataset: xr.Dataset) -> xr.Dataset:
 def cut_bin_depths(
         dataset: xr.Dataset,
         depth_range: tp.Union[int, float, list] = None
-    )-> xr.Dataset:
+) -> xr.Dataset:
     """
     Return dataset with cut bin depths if the depth_range are not outside the depth span.
     Parameters
@@ -883,6 +877,7 @@ def cut_bin_depths(
                 f"depth_range expects a maximum of 2 values but {len(depth_range)} were given. Depth slicing aborted."
             )
     return dataset
+
 
 def cut_times(dataset: xr.Dataset,
               start_time: str = None,

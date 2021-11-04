@@ -1,6 +1,7 @@
 import pytest
 import xarray as xr
 from magtogoek.adcp.odf_exporter import make_odf
+from magtogoek.adcp.process import _default_platform
 from magtogoek.utils import json2dict
 
 DATASET = xr.open_dataset("data/netcdf_test_files/test_netcdf.nc")
@@ -16,19 +17,22 @@ P01_TO_GENEREIC_NAME = {
     "e": "LERRAP01",
 }
 
-SENSOR_METADATA = {
-    "platform_name": "platform_name_test",
-    "platform_type": "buoy_test",
-    "description": "platform_description_test",
-    "buoy_specs": {
-        "type": "buoy_type_test",
-        "model": "buoy_model_test",
-        "height": "buoy_height_test",
-        "diameter": "buoy_diameter_test",
-        "weight": "buoy_weight_test",
-        "description": "buoy_description_test",
-    },
-}
+SENSOR_METADATA = _default_platform()
+SENSOR_METADATA.update(
+    {
+        "platform_name": "platform_name_test",
+        "platform_type": "buoy_test",
+        "description": "platform_description_test",
+        "buoy_specs": {
+            "type": "buoy_type_test",
+            "model": "buoy_model_test",
+            "height": "buoy_height_test",
+            "diameter": "buoy_diameter_test",
+            "weight": "buoy_weight_test",
+            "description": "buoy_description_test",
+        },
+    }
+)
 
 
 def test_make():
