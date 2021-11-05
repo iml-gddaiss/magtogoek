@@ -310,7 +310,7 @@ def _process_adcp_data(
     l.reset()
 
     _check_platform_type(platform_metadata)
-    platform_type = platform_metadata['platform']
+    platform_type = platform_metadata['platform']['platform_type']
 
     # ----------------- #
     # LOADING ADCP DATA #
@@ -333,14 +333,14 @@ def _process_adcp_data(
 
     dataset.attrs["data_type"] = DATA_TYPES[platform_type]
 
-    if platform_metadata["longitude"]:
-        dataset.attrs["longitude"] = platform_metadata["longitude"]
-    if platform_metadata["latitude"]:
-        dataset.attrs["latitude"] = platform_metadata["latitude"]
+    if platform_metadata['platform']["longitude"]:
+        dataset.attrs["longitude"] = platform_metadata['platform']["longitude"]
+    if platform_metadata['platform']["latitude"]:
+        dataset.attrs["latitude"] = platform_metadata['platform']["latitude"]
 
     compute_global_attrs(dataset)
 
-    if platform_metadata["platform_type"] in ["mooring", "buoy"]:
+    if platform_metadata['platform']["platform_type"] in ["mooring", "buoy"]:
         if "bt_depth" in dataset:
             dataset.attrs["sounding"] = np.round(np.median(dataset.bt_depth.data), 2)
 
@@ -348,7 +348,7 @@ def _process_adcp_data(
     _set_xducer_depth_as_sensor_depth(dataset)
 
     # setting Metadata from the platform_file
-    _set_platform_metadata(dataset, platform_metadata, params["force_platform_metadata"])
+    _set_platform_metadata(dataset, platform_metadata, 'adcp', params["force_platform_metadata"])
 
     # setting Metadata from the config_files
     dataset = dataset.assign_attrs(config_attrs)
@@ -428,43 +428,29 @@ def _process_adcp_data(
     # ----------- #
     # ODF OUTPUTS #
     # ----------- #
+    # GET PATH FROM app.py # FIXME
+    output_path = Path(params['input_files'][0]).parent
+    if isinstance(params['netcdf_output'], str): #FIXME TODO
+        if Path(params['netcdf_output']).parent.is_dir():
+            output_path = Path(params['netcdf_output']).parent
+
     l.section("Output")
-    log_output = params["input_files"][0]
+    log_output = params["input_files"][0] # FIXME same name as ini ?
     if params["odf_output"]:
         if params["bodc_name"]:
             generic_to_p01_name = P01_VEL_CODES[platform_type]
         else:
             generic_to_p01_name = None
 
-        output_path = ""  # TODO
-
-        odf_output_path = params["odf_output"]
         if params["odf_output"] is True:
-            odf_output_path = output_path
+            params["odf_output"] = output_path
 
-        odf = make_odf(dataset,
-                       platform_metadata,
-                       config_attrs,
-                       generic_to_p01_name,
-                       odf_output_path)
-
-        if params["odf_output"] is True:
-            odf_output = (
-                odf.odf["file_specification"]
-                if odf.odf["file_specification"]
-                else params["input_files"][0]
-            )
-
-        else:
-            odf_output = params["odf_output"]
-
-        odf_output = Path(odf_output).with_suffix(".ODF")
-        if odf_output.is_dir():
-            odf_output.joinpath(Path(odf.odf["file_specification"]))
-        else:
-            odf.odf["file_specification"] = odf_output.name
-
-        odf.save(odf_output)
+        odf_output = make_odf(
+            dataset,
+            platform_metadata,
+            config_attrs,
+            generic_to_p01_name,
+            params["odf_output"])
         l.log(f"odf file made -> {odf_output}")
         log_output = odf_output
 
@@ -610,8 +596,7 @@ def _load_platform(params: dict) -> tp.Dict:
 
 def _default_platform() -> dict:
     """Return an empty platform data dictionary"""
-    platform_metadata = {}
-    platform_metadata['platform'] = _add_platform()
+    platform_metadata = {'platform': _add_platform()}
     platform_metadata['platform']["platform_type"] = DEFAULT_PLATFORM_TYPE
     platform_metadata['sensors'] = platform_metadata['platform'].pop('sensors')
     platform_metadata['adcp'] = platform_metadata['sensors'].pop('__enter_a_sensor_ID_here')
@@ -629,10 +614,10 @@ def _get_default_config_attrs():
     }
 
 
-def _check_platform_type(sensor_metadata: dict):
+def _check_platform_type(platform_metadata: dict):
     """DEFINED BELOW"""
-    if sensor_metadata["platform_type"] not in PLATFORM_TYPES:
-        sensor_metadata["platform_type"] = DEFAULT_PLATFORM_TYPE
+    if platform_metadata['platform']["platform_type"] not in PLATFORM_TYPES:
+        platform_metadata['platform']["platform_type"] = DEFAULT_PLATFORM_TYPE
         l.warning(
             f"platform_file missing or invalid, defaulting to `{DEFAULT_PLATFORM_TYPE}` for platform_type."
         )
@@ -657,7 +642,8 @@ def _set_xducer_depth_as_sensor_depth(dataset: xr.Dataset):
 
 def _set_platform_metadata(
         dataset: xr.Dataset,
-        platform_metadata: tp.Dict[str,dict],
+        platform_metadata: tp.Dict[str, dict],
+        sensor: str,
         force_platform_metadata: bool = False,
 ):
     """Add metadata from platform_metadata files to dataset.attrs.
@@ -673,8 +659,8 @@ def _set_platform_metadata(
     force_platform_metadata :
         If `True`, metadata from sensor_metadata overwrite those already present in dataset.attrs
     """
-    metadata = {**platform_metadata['platform'], **platform_metadata['adcp']}
-
+    metadata = {**platform_metadata['platform'], **platform_metadata[sensor]}
+    metadata['sensor_comments'] = metadata['comments']
     if force_platform_metadata:
         for key, value in metadata.items():
             dataset.attrs[key] = value

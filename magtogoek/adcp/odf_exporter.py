@@ -70,12 +70,16 @@ def make_odf(
     _make_history_header(odf, dataset)
     _make_parameter_headers(odf, dataset, generic_to_p01_name)
 
-  #  output_path = Path(output_path) # TODO
+    output_path = Path(output_path)
+    if output_path.is_dir():
+        output_path.joinpath(Path(odf.odf["file_specification"]))
+    else:
+        odf.odf["file_specification"] = output_path.name
+    output_path = Path(output_path).with_suffix(".ODF")
 
-    if output_path:  # TODO check if dir/ or /name. Look in process
-        pass
+    odf.save(output_path)
 
-    return odf
+    return output_path
 
 
 def _make_cruise_header(odf, platform_metadata, config_attrs):

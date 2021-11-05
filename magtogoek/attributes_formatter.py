@@ -72,7 +72,7 @@ def format_variables_names_and_attributes(
     ----------
     dataset :
         dataset to format. The dataset must contain a global_attributes named `P01_CODE_TRANSLATOR`
-    which has to be a dictionnary containing `generic_name`:`p01_code` as keys and items.
+    which has to be a dictionary containing `generic_name`:`p01_code` as keys and items.
 
     use_bodc_codes :
        If `True`, the variable names are changed to th BODC P01 parameters codes.
