@@ -202,14 +202,14 @@ def process_adcp(config: dict):
     if len(params["input_files"]) == 0:
         raise ValueError("No adcp file was provided in the configfile.")
 
-    sensor_metadata = _default_platform()
+    platform_metadata = _default_platform()
     if params["platform_file"]:
         if Path(params["platform_file"]).is_file():
-            sensor_metadata.update(_load_platform(params))
+            platform_metadata = _load_platform(params)
         else:
             l.warning(f"platform_file, {params['platform_file']}, not found")
 
-    _pipe_to_process_adcp_data(params, sensor_metadata, config_attrs)
+    _pipe_to_process_adcp_data(params, platform_metadata, config_attrs)
 
 
 def quick_process_adcp(params: tp.Dict):
@@ -230,21 +230,21 @@ def quick_process_adcp(params: tp.Dict):
         For the processing workflow."""
 
     config_attrs = _get_default_config_attrs()
-    sensor_metadata = _default_platform()
+    platform_metadata = _default_platform()
 
-    sensor_metadata["platform_type"] = params["platform_type"]
+    platform_metadata['platform']["platform_type"] = params["platform_type"]
 
     params["force_platform_metadata"] = False
     if params["odf_output"] in [1, "true", "True", 't', "T"]:
         params["odf_output"] = True
 
     _pipe_to_process_adcp_data(
-        params, sensor_metadata, config_attrs, drop_empty_attrs=True
+        params, platform_metadata, config_attrs, drop_empty_attrs=True
     )
 
 
 def _pipe_to_process_adcp_data(
-        params, sensor_metadata, config_attrs, drop_empty_attrs=False
+        params, platform_metadata, config_attrs, drop_empty_attrs=False
 ):
     """Check if the input_file must be split in multiple output.
 
@@ -265,13 +265,13 @@ def _pipe_to_process_adcp_data(
                     )
             params["input_files"] = [filename]
 
-            _process_adcp_data(params, sensor_metadata, config_attrs, drop_empty_attrs)
+            _process_adcp_data(params, platform_metadata, config_attrs, drop_empty_attrs)
     else:
-        _process_adcp_data(params, sensor_metadata, config_attrs)
+        _process_adcp_data(params, platform_metadata, config_attrs)
 
 
 def _process_adcp_data(
-        params: tp.Dict, sensor_metadata: tp.Dict, config_attrs, drop_empty_attrs=False
+        params: tp.Dict, platform_metadata: tp.Dict, config_attrs, drop_empty_attrs=False
 ):
     """Process adcp data
 
@@ -288,7 +288,7 @@ def _process_adcp_data(
     config_attrs :
         Global attributes parameter from the configFile.
 
-    sensor_metadata :
+    platform_metadata :
         Metadata from the platform file.
 
     Notes
@@ -309,7 +309,8 @@ def _process_adcp_data(
     """
     l.reset()
 
-    _check_platform_type(sensor_metadata)
+    _check_platform_type(platform_metadata)
+    platform_type = platform_metadata['platform']
 
     # ----------------- #
     # LOADING ADCP DATA #
@@ -330,16 +331,16 @@ def _process_adcp_data(
 
     dataset = dataset.assign_attrs(STANDARD_ADCP_GLOBAL_ATTRIBUTES)
 
-    dataset.attrs["data_type"] = DATA_TYPES[sensor_metadata["platform_type"]]
+    dataset.attrs["data_type"] = DATA_TYPES[platform_type]
 
-    if sensor_metadata["longitude"]:
-        dataset.attrs["longitude"] = sensor_metadata["longitude"]
-    if sensor_metadata["latitude"]:
-        dataset.attrs["latitude"] = sensor_metadata["latitude"]
+    if platform_metadata["longitude"]:
+        dataset.attrs["longitude"] = platform_metadata["longitude"]
+    if platform_metadata["latitude"]:
+        dataset.attrs["latitude"] = platform_metadata["latitude"]
 
     compute_global_attrs(dataset)
 
-    if sensor_metadata["platform_type"] in ["mooring", "buoy"]:
+    if platform_metadata["platform_type"] in ["mooring", "buoy"]:
         if "bt_depth" in dataset:
             dataset.attrs["sounding"] = np.round(np.median(dataset.bt_depth.data), 2)
 
@@ -347,13 +348,13 @@ def _process_adcp_data(
     _set_xducer_depth_as_sensor_depth(dataset)
 
     # setting Metadata from the platform_file
-    _set_platform_metadata(dataset, sensor_metadata, params["force_platform_metadata"])
+    _set_platform_metadata(dataset, platform_metadata, params["force_platform_metadata"])
 
     # setting Metadata from the config_files
     dataset = dataset.assign_attrs(config_attrs)
 
     if not dataset.attrs["source"]:
-        dataset.attrs["source"] = sensor_metadata["platform_type"]
+        dataset.attrs["source"] = platform_type
 
     # ----------------------------------- #
     # CORRECTION FOR MAGNETIC DECLINATION #
@@ -400,7 +401,7 @@ def _process_adcp_data(
     # -------------------- #
     dataset.attrs["VAR_TO_ADD_SENSOR_TYPE"] = VAR_TO_ADD_SENSOR_TYPE
     dataset.attrs["P01_CODES"] = {
-        **P01_VEL_CODES[sensor_metadata["platform_type"]],
+        **P01_VEL_CODES[platform_type],
         **P01_CODES,
     }
 
@@ -431,7 +432,7 @@ def _process_adcp_data(
     log_output = params["input_files"][0]
     if params["odf_output"]:
         if params["bodc_name"]:
-            generic_to_p01_name = P01_VEL_CODES[sensor_metadata["platform_type"]]
+            generic_to_p01_name = P01_VEL_CODES[platform_type]
         else:
             generic_to_p01_name = None
 
@@ -442,7 +443,7 @@ def _process_adcp_data(
             odf_output_path = output_path
 
         odf = make_odf(dataset,
-                       sensor_metadata,
+                       platform_metadata,
                        config_attrs,
                        generic_to_p01_name,
                        odf_output_path)
@@ -581,35 +582,42 @@ def _load_platform(params: dict) -> tp.Dict:
     metadata of the `sensor_id.`
 
     """
+    platform_metadata = _default_platform()
 
-    sensor_metadata = dict()
     json_dict = json2dict(params["platform_file"])
     if params["platform_id"] in json_dict:
-        platform_dict = json_dict[params["platform_id"]]
-        if "sensors" in platform_dict:
-            if params["sensor_id"] in platform_dict["sensors"]:
-                sensor_metadata = platform_dict["sensors"][params["sensor_id"]]
+        platform_metadata['platform'].update(json_dict[params["platform_id"]])
+        if 'buoy_specs' in platform_metadata['platform']:
+            platform_metadata['buoy_specs'].update(platform_metadata['platform'].pop('buoy_specs'))
+        if 'sensors' in platform_metadata['platform']:
+            platform_metadata['sensors'].update(platform_metadata['platform'].pop('sensors'))
+            if params["sensor_id"] in platform_metadata["sensors"]:
+                platform_metadata['adcp'].update(platform_metadata["sensors"].pop(params["sensor_id"]))
             else:
                 l.warning(
-                    f"{params['sensor_id']} not found in {params['platform_id']}['sensor'] of the platform file."
+                    f"{params['sensor_id']} not found in the {params['platform_id']}['sensor'] section "
+                    f"of the platform file."
                 )
         else:
-            l.warning("`sensors` section missing from the platform file")
-        for key in platform_dict.keys():
-            if key != "sensors":
-                sensor_metadata[key] = platform_dict[key]
+            l.warning(
+                f"sensors section missing in the {params['platform_id']} section of the platform file."
+            )
     else:
         l.warning(f"{params['platform_id']} not found in platform file.")
-        sensor_metadata = None
-    return sensor_metadata
+
+    return platform_metadata
 
 
 def _default_platform() -> dict:
     """Return an empty platform data dictionary"""
-    sensor_metadata = _add_platform()
-    sensor_metadata["platform_type"] = DEFAULT_PLATFORM_TYPE
-    sensor_metadata.update(sensor_metadata['sensors'].pop('__enter_a_sensor_ID_here'))
-    return sensor_metadata
+    platform_metadata = {}
+    platform_metadata['platform'] = _add_platform()
+    platform_metadata['platform']["platform_type"] = DEFAULT_PLATFORM_TYPE
+    platform_metadata['sensors'] = platform_metadata['platform'].pop('sensors')
+    platform_metadata['adcp'] = platform_metadata['sensors'].pop('__enter_a_sensor_ID_here')
+    platform_metadata['buoy_specs'] = platform_metadata['platform'].pop('buoy_specs')
+
+    return platform_metadata
 
 
 def _get_default_config_attrs():
@@ -649,7 +657,7 @@ def _set_xducer_depth_as_sensor_depth(dataset: xr.Dataset):
 
 def _set_platform_metadata(
         dataset: xr.Dataset,
-        sensor_metadata: dict,
+        platform_metadata: tp.Dict[str,dict],
         force_platform_metadata: bool = False,
 ):
     """Add metadata from platform_metadata files to dataset.attrs.
@@ -660,31 +668,28 @@ def _set_platform_metadata(
     ----------
     dataset :
         Dataset to which add the navigation data.
-    sensor_metadata :
+    platform_metadata :
         metadata returned by  _load_platform
     force_platform_metadata :
         If `True`, metadata from sensor_metadata overwrite those already present in dataset.attrs
     """
-    metadata_key = []
-    for key, value in sensor_metadata.items():
-        if value and not isinstance(value, dict):
-            metadata_key.append(key)
+    metadata = {**platform_metadata['platform'], **platform_metadata['adcp']}
 
     if force_platform_metadata:
-        for key in metadata_key:
-            dataset.attrs[key] = sensor_metadata[key]
-        if "sensor_depth" in metadata_key:
+        for key, value in metadata.items():
+            dataset.attrs[key] = value
+        if "sensor_depth" in metadata:
             l.log(
-                f"`sensor_depth` value ({sensor_metadata['sensor_depth']} was set by the user."
+                f"`sensor_depth` value ({platform_metadata['sensor_depth']} was set by the user."
             )
 
     else:
-        for key in metadata_key:
+        for key, value in metadata.items():
             if key in dataset.attrs:
                 if not dataset.attrs[key]:
-                    dataset.attrs[key] = sensor_metadata[key]
+                    dataset.attrs[key] = value
             else:
-                dataset.attrs[key] = sensor_metadata[key]
+                dataset.attrs[key] = value
 
 
 def _load_navigation(dataset: xr.Dataset, navigation_files: str):

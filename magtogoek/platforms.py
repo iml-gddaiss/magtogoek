@@ -34,7 +34,6 @@ def _add_platform():
 
 def _add_buoy_specs():
     return dict(
-        name=None,
         type=None,
         model=None,
         height=None,

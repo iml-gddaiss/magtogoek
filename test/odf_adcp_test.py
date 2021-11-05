@@ -17,44 +17,43 @@ P01_TO_GENEREIC_NAME = {
     "e": "LERRAP01",
 }
 
-SENSOR_METADATA = _default_platform()
-SENSOR_METADATA.update(
+PLATFORM_METADATA = _default_platform()
+PLATFORM_METADATA['platform'].update(
     {
         "platform_name": "platform_name_test",
-        "platform_type": "buoy_test",
-        "description": "platform_description_test",
-        "buoy_specs": {
-            "type": "buoy_type_test",
-            "model": "buoy_model_test",
-            "height": "buoy_height_test",
-            "diameter": "buoy_diameter_test",
-            "weight": "buoy_weight_test",
-            "description": "buoy_description_test",
-        },
-    }
+        "description": "platform_description_test"}
+)
+PLATFORM_METADATA['buoy_specs'].update(
+    {
+        "type": "buoy_type_test",
+        "model": "buoy_model_test",
+        "height": "buoy_height_test",
+        "diameter": "buoy_diameter_test",
+        "weight": "buoy_weight_test",
+        "description": "buoy_description_test",
+        }
 )
 
-
 def test_make():
-    odf = make_odf(DATASET, SENSOR_METADATA, GLOBAL_ATTRS, P01_TO_GENEREIC_NAME)
+    odf = make_odf(DATASET, PLATFORM_METADATA, GLOBAL_ATTRS, P01_TO_GENEREIC_NAME)
     assert odf.data.shape == (40, 9)
 
 
 @pytest.mark.parametrize(
     "platform_type, headers, cruise_platform",
     [
-        ("mooring", ["instrument"], SENSOR_METADATA["platform_name"]),
-        ("ship", ["instrument"], SENSOR_METADATA["platform_name"]),
+        ("mooring", ["instrument"], PLATFORM_METADATA['platform']["platform_name"]),
+        ("ship", ["instrument"], PLATFORM_METADATA['platform']["platform_name"]),
         ("buoy", ["buoy_instrument", "buoy"], "Oceanographic Buoy"),
     ],
 )
 def test_platform_type(platform_type, headers, cruise_platform):
-    SENSOR_METADATA["platform_type"] = platform_type
-    odf = make_odf(DATASET, SENSOR_METADATA, GLOBAL_ATTRS, P01_TO_GENEREIC_NAME)
+    PLATFORM_METADATA['platform']["platform_type"] = platform_type
+    odf = make_odf(DATASET, PLATFORM_METADATA, GLOBAL_ATTRS, P01_TO_GENEREIC_NAME)
+    assert odf.cruise["platform"] == cruise_platform
     for header in headers:
         assert header in odf.__dict__
-        assert odf.cruise["platform"] == cruise_platform
     if platform_type == "buoy":
-        assert odf.buoy["name"] == SENSOR_METADATA["platform_name"]
-        for key, value in SENSOR_METADATA["buoy_specs"].items():
+        assert odf.buoy["name"] == PLATFORM_METADATA['platform']["platform_name"]
+        for key, value in PLATFORM_METADATA["buoy_specs"].items():
             assert odf.buoy[key] == value
