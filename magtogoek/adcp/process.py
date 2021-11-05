@@ -444,15 +444,19 @@ def _process_adcp_data(
 
         if params["odf_output"] is True:
             params["odf_output"] = output_path
+        elif not Path(params['odf_output']).is_dir():
+            if not Path(params['odf_output']).parent.is_dir():
+                params["odf_output"] = Path(output_path).joinpath(params["odf_output"])
 
-        odf_output = make_odf(
+        odf = make_odf( # TO TEST TODO
             dataset,
             platform_metadata,
             config_attrs,
             generic_to_p01_name,
             params["odf_output"])
-        l.log(f"odf file made -> {odf_output}")
-        log_output = odf_output
+        odf_output_path = Path(params["odf_output"]).parent.joinpath(odf.odf["file_specification"])
+        l.log(f"odf file made -> {odf_output_path.resolve()}")
+        log_output = Path(params["odf_output"]).parent
 
     else:
         params["netcdf_output"] = True
@@ -488,14 +492,14 @@ def _process_adcp_data(
             nc_output = params["input_files"][0]
         nc_output = Path(nc_output).with_suffix(".nc")
         dataset.to_netcdf(nc_output)
-        l.log(f"netcdf file made -> {nc_output}")
+        l.log(f"netcdf file made -> {nc_output.resolve()}")
         log_output = nc_output
 
     if params["make_log"]:
         log_output = Path(log_output).with_suffix(".log")
         with open(log_output, "w") as log_file:
             log_file.write(dataset.attrs["history"])
-            print(f"log file made -> {log_output}")
+            print(f"log file made -> {log_output.resolve()}")
 
     # MAKE_FIG TODO
 

@@ -40,7 +40,7 @@ def make_odf(
         platform_metadata: dict,
         config_attrs: dict,
         generic_to_p01_name: dict = None,
-        output_path: str = None
+        output_path: str = None,
 ):
     """
     Parameters
@@ -70,16 +70,17 @@ def make_odf(
     _make_history_header(odf, dataset)
     _make_parameter_headers(odf, dataset, generic_to_p01_name)
 
-    output_path = Path(output_path)
-    if output_path.is_dir():
-        output_path.joinpath(Path(odf.odf["file_specification"]))
-    else:
-        odf.odf["file_specification"] = output_path.name
-    output_path = Path(output_path).with_suffix(".ODF")
+    if output_path is not None:
+        output_path = Path(output_path)
+        if output_path.is_dir():
+            output_path = output_path.joinpath(odf.odf["file_specification"])
+        else:
+            odf.odf["file_specification"] = output_path.name
+        output_path = Path(output_path).with_suffix(".ODF")
 
-    odf.save(output_path)
+        odf.save(output_path)
 
-    return output_path
+    return odf
 
 
 def _make_cruise_header(odf, platform_metadata, config_attrs):
