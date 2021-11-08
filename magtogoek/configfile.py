@@ -46,7 +46,7 @@ from datetime import datetime
 
 REFERENCE = "https://github.com/JeromeJGuay/magtogoek"
 TRUE_VALUES = ["True", "true", "1", "On", "on"]
-FALSE_VALUES = ["False", "False", "0", "Off", "off"]
+FALSE_VALUES = ["False", "False", "0", "Off", "off", ""]
 SENSOR_TYPES = ["adcp"]
 
 option_infos = namedtuple(
@@ -60,8 +60,9 @@ option_infos = namedtuple(
         "choice",
         "value_min",
         "value_max",
+        "is_path",
     ),
-    defaults=[[], None, None, None, None, None, None, None],
+    defaults=[[], None, None, None, None, None, None, None, False],
 )
 
 
@@ -126,14 +127,14 @@ BASIC_CONFIG = dict(
         ),
     },
     INPUT={
-        "input_files": option_infos(dtypes=["str"], default="", nargs_min=1),
-        "platform_file": option_infos(dtypes=["str"], default=""),
+        "input_files": option_infos(dtypes=["str"], default="", nargs_min=1, is_path=True),
+        "platform_file": option_infos(dtypes=["str"], default="", is_path=True),
         "platform_id": option_infos(dtypes=["str"], default=""),
         "sensor_id": option_infos(dtypes=["str"], default=""),
     },
     OUTPUT={
-        "netcdf_output": option_infos(dtypes=["str", "bool"], default=""),
-        "odf_output": option_infos(dtypes=["str", "bool"], default=""),
+        "netcdf_output": option_infos(dtypes=["str", "bool"], default="", is_path=True),
+        "odf_output": option_infos(dtypes=["str", "bool"], default="", is_path=True),
     },
     NETCDF_CF={
         "Conventions": option_infos(dtypes=["str"], default="CF 1.8"),
@@ -187,7 +188,7 @@ ADCP_CONFIG = dict(
         "sonar": option_infos(
             dtypes=["str"], choice=["wh", "sv", "os", "sw", "sw_pd0"]
         ),
-        "navigation_file": option_infos(dtypes=["str"], default=""),
+        "navigation_file": option_infos(dtypes=["str"], default="", is_path=True),
         "leading_trim": option_infos(dtypes=["str"], default=""),
         "trailing_trim": option_infos(dtypes=["str"], default=""),
         "sensor_depth": option_infos(dtypes=["float"], default=""),
@@ -240,7 +241,7 @@ ADCP_CONFIG = dict(
 def make_configfile(filename: str, sensor_type: str, values: tp.Dict = None):
     """make a configfile with default and update it if `options` are passed"""
 
-    # geting the default config as dict
+    # getting the default config as dict
     default_config = _get_default_config(sensor_type)
 
     # Building the parser
@@ -300,7 +301,7 @@ def load_configfile(filename: str, updated_params: tp.Dict = None) -> dict:
     config = {}
     config.update(parser._sections)
 
-    _format_config_options(config)
+    _format_config_options(config, Path(filename).parent)
 
     return config
 
@@ -336,7 +337,7 @@ def _add_config_missing(parser: RawConfigParser, sensor_type):
                 parser[section][option] = ""
 
 
-def _format_config_options(config: tp.Dict):
+def _format_config_options(config: tp.Dict, config_path: Path):
     """Format config options for processing.
 
     - Convert the sensor specific configuration parameters values to the right
@@ -362,30 +363,30 @@ def _format_config_options(config: tp.Dict):
         for option in options:
             option_info = config_info[section][option]
             value = config[section][option]
-            if option_info.dtypes != "bool":
+            if "bool" not in option_info.dtypes:
                 if not value and value != 0:
                     value = None
             if value is not None:
                 value = _format_option(
-                    config[section][option], option_info, section, option
+                    config[section][option], option_info, section, option, config_path
                 )
 
             config[section][option] = value
 
 
-def _format_option(value, option_info, section, option):
+def _format_option(value, option_info, section, option, config_path):
     if option_info.nargs or option_info.nargs_min or option_info.nargs_max:
         value = _get_sequence_from_string(value)
         _check_options_length(value, option_info, section, option)
         for i, _value in enumerate(value):
-            value[i] = _format_option_type(_value, option_info, section, option)
+            value[i] = _format_option_type(_value, option_info, section, option, config_path)
     else:
-        value = _format_option_type(value, option_info, section, option)
+        value = _format_option_type(value, option_info, section, option, config_path)
 
     return value
 
 
-def _format_option_type(value, option_info, section, option):
+def _format_option_type(value, option_info, section, option, config_path):
     """Format option to the right dtypes.
     - Checks if value is outside option_info.min_value and option_info.max_value.
     - Check if values is within the option_info.choice."""
@@ -398,14 +399,17 @@ def _format_option_type(value, option_info, section, option):
     if option_info.value_min or option_info.value_max:
         _check_option_min_max(value, option_info, section, option)
 
-    if option_info.choice:
+    if option_info.choice is not None:
         if value not in option_info.choice:
             raise ConfigFileError("choice", section, option, option_info, value)
+
+    if option_info.is_path is True and isinstance(value, str):
+        value = str(Path(config_path).joinpath(Path(value)).resolve())
 
     return value
 
 
-def _format_value_dtypes(value: str, dtypes: str)->tp.Union[bool, int, float, str]:
+def _format_value_dtypes(value: str, dtypes: str) -> tp.Union[bool, int, float, str]:
     if "bool" in dtypes:
         if value in TRUE_VALUES + FALSE_VALUES:
             return value in TRUE_VALUES
@@ -421,7 +425,7 @@ def _format_value_dtypes(value: str, dtypes: str)->tp.Union[bool, int, float, st
 def _get_sequence_from_string(sequence: str) -> tp.List:
     """Decode string containing a sequence of value.
 
-    The sequence can be between brakets, parenthesis or nothing
+    The sequence can be between brackets, parenthesis or nothing
     and have comma, colon, semi-colon, newlines or spaces as separators.
 
     Example

@@ -134,7 +134,7 @@ def process(info, config_file):
     """Process data by reading configfile"""
     # NOTE This could be update as a group with sensor specific command.
     # Doing so would allow the user to pass config options. The load_configfile
-    # command is already able to take uptated_params options and update de configile.
+    # command is already able to take updated_params options and update de configfile.
     # The same options (or nearly all the same )as for adcp_config could be use.
     from configparser import ParsingError
 
@@ -143,7 +143,7 @@ def process(info, config_file):
     try:
         configuration = load_configfile(config_file)
     except ParsingError:
-        print("Failed to open the given configfile.\n mtgk process aborded.")
+        print("Failed to open the given configfile.\n mtgk process aborted.")
         sys.exit()
 
     if configuration["HEADER"]["sensor_type"] == "adcp":
