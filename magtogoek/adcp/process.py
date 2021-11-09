@@ -208,7 +208,9 @@ def process_adcp(config: dict):
             platform_metadata = _load_platform(params)
         else:
             l.warning(f"platform_file, {params['platform_file']}, not found")
-
+    else:
+        if params["platform_type"]:
+            platform_metadata["platform"]['platform_type'] = params["platform_type"]
     _pipe_to_process_adcp_data(params, platform_metadata, config_attrs)
 
 

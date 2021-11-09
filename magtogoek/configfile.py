@@ -121,6 +121,7 @@ class ConfigFileError(SystemExit):
 BASIC_CONFIG = dict(
     HEADER={
         "sensor_type": option_infos(dtypes=["str"], default=""),
+        "platform_type": option_infos(dtypes=["str"], default=""),
         "made_by": option_infos(dtypes=["str"], default=getpass.getuser()),
         "last_updated": option_infos(
             dtypes=["str"], default=datetime.now().strftime("%Y-%m-%d")
