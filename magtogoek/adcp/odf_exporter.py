@@ -13,6 +13,13 @@ from magtogoek.utils import json2dict
 
 REPOSITORY_ADDRESS = "https://github.com/JeromeJGuay/magtogoek"
 
+ADCP_COMMENTS_SENSOR = {
+    'PRESPR01': {'sensor': 'PRESSURE_SENSOR_01', 'comments': { 'CODE': 'DEPH_01', 'Name': 'pressure'}},
+    'HEADCM01': {'sensor': 'COMPAS_SENSOR_01', 'comments': {'CODE' : 'HEAD_01', 'Name': 'compas'}},
+    'ROLLGP01': {'sensor': 'INClINOMETER_SENSOR_01', 'comments':{'CODE': 'ROLL_01', 'Name': 'tilt'}},
+    'TEMPPR01': {'sensor': 'TEMPERATURE_SENSOR_01', 'comments':{'CODE': 'TE90_01', 'Name': 'temperature'}}
+}
+
 PARAMETERS_TYPES = {
     "int8": "INT",  # "BYTE",  # -128, 127
     "int16": "INT",  # SHORT  # -32768, 32767
@@ -77,7 +84,7 @@ def make_odf(
         else:
             odf.odf["file_specification"] = output_path.name
         output_path = Path(output_path).with_suffix(".ODF")
-
+        print(output_path)
         odf.save(output_path)
 
     return odf
@@ -220,7 +227,7 @@ def _make_buoy_instrument_header(odf, dataset, platform_metadata):
     header["inst_end_date_time"] = odf_time_format(dataset.time.values.max())
 
     _make_buoy_instrument_comments(odf, instrument, dataset, platform_metadata)
-    # _make_buoy_instrument_sensor() TODO
+    _make_buoy_instrument_sensor(odf, instrument, dataset)
 
 
 def _make_buoy_instrument_comments(odf, instrument, dataset, platform_metadata):
@@ -268,6 +275,26 @@ def _make_buoy_instrument_comments(odf, instrument, dataset, platform_metadata):
         odf.buoy_instrument[instrument]["buoy_instrument_comments"].append(
             configuration + "." + key + ": " + str(value)
         )
+
+def _make_buoy_instrument_sensor(odf: Odf, instrument: str, dataset: xr.Dataset):
+    """
+
+    Parameters
+    ----------
+    odf
+
+    dataset
+
+    Returns
+    -------
+    """
+    for var, item in ADCP_COMMENTS_SENSOR.items():
+        if var in dataset.variables:
+            for key, value in item['comments'].items():
+                odf.buoy_instrument[instrument]["sensors"].append(
+                item['sensor'] + "." + key + ': ' + value
+                )
+
 
 
 def _make_quality_header(odf, dataset):

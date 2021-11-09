@@ -456,7 +456,7 @@ def _process_adcp_data(
             config_attrs,
             generic_to_p01_name,
             params["odf_output"])
-        odf_output_path = Path(params["odf_output"]).parent.joinpath(odf.odf["file_specification"])
+        odf_output_path = Path(params["odf_output"]).joinpath(odf.odf["file_specification"])
         l.log(f"odf file made -> {odf_output_path.resolve()}")
         log_output = Path(params["odf_output"]).parent
 
