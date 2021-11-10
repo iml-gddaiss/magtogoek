@@ -49,7 +49,7 @@ TRUE_VALUES = ["True", "true", "1", "On", "on"]
 FALSE_VALUES = ["False", "False", "0", "Off", "off", ""]
 SENSOR_TYPES = ["adcp"]
 
-option_infos = namedtuple(
+OptionInfos = namedtuple(
     "option_infos",
     (
         "dtypes",
@@ -68,11 +68,13 @@ option_infos = namedtuple(
 
 class ConfigFileError(SystemExit):
     def __init__(
-            self, error, section=None, option=None, option_info=option_infos(), value=None
+            self, error, section=None, option=None, option_info=None, value=None
     ):
         self.error = error
         self.section = section
         self.option = option
+        if option_info is None:
+            option_info = OptionInfos()
         self.option_info = option_info
         self.value = value
         self.msg = ""
@@ -120,121 +122,121 @@ class ConfigFileError(SystemExit):
 
 BASIC_CONFIG = dict(
     HEADER={
-        "sensor_type": option_infos(dtypes=["str"], default=""),
-        "platform_type": option_infos(dtypes=["str"], default=""),
-        "made_by": option_infos(dtypes=["str"], default=getpass.getuser()),
-        "last_updated": option_infos(
+        "sensor_type": OptionInfos(dtypes=["str"], default=""),
+        "platform_type": OptionInfos(dtypes=["str"], default=""),
+        "made_by": OptionInfos(dtypes=["str"], default=getpass.getuser()),
+        "last_updated": OptionInfos(
             dtypes=["str"], default=datetime.now().strftime("%Y-%m-%d")
         ),
     },
     INPUT={
-        "input_files": option_infos(dtypes=["str"], default="", nargs_min=1, is_path=True),
-        "platform_file": option_infos(dtypes=["str"], default="", is_path=True),
-        "platform_id": option_infos(dtypes=["str"], default=""),
-        "sensor_id": option_infos(dtypes=["str"], default=""),
+        "input_files": OptionInfos(dtypes=["str"], default="", nargs_min=1, is_path=True),
+        "platform_file": OptionInfos(dtypes=["str"], default="", is_path=True),
+        "platform_id": OptionInfos(dtypes=["str"], default=""),
+        "sensor_id": OptionInfos(dtypes=["str"], default=""),
     },
     OUTPUT={
-        "netcdf_output": option_infos(dtypes=["str", "bool"], default="", is_path=True),
-        "odf_output": option_infos(dtypes=["str", "bool"], default="", is_path=True),
+        "netcdf_output": OptionInfos(dtypes=["str", "bool"], default="", is_path=True),
+        "odf_output": OptionInfos(dtypes=["str", "bool"], default="", is_path=True),
     },
     NETCDF_CF={
-        "Conventions": option_infos(dtypes=["str"], default="CF 1.8"),
-        "title": option_infos(dtypes=["str"], default=""),
-        "institution": option_infos(dtypes=["str"], default=""),
-        "summary": option_infos(dtypes=["str"], default=""),
-        "references": option_infos(dtypes=["str"], default=REFERENCE),
-        "comments": option_infos(dtypes=["str"], default=""),
-        "naming_authority": option_infos(dtypes=["str"], default="BODC, SDC, CF, MEDS"),
-        "source": option_infos(dtypes=["str"], default=""),
+        "Conventions": OptionInfos(dtypes=["str"], default="CF 1.8"),
+        "title": OptionInfos(dtypes=["str"], default=""),
+        "institution": OptionInfos(dtypes=["str"], default=""),
+        "summary": OptionInfos(dtypes=["str"], default=""),
+        "references": OptionInfos(dtypes=["str"], default=REFERENCE),
+        "comments": OptionInfos(dtypes=["str"], default=""),
+        "naming_authority": OptionInfos(dtypes=["str"], default="BODC, SDC, CF, MEDS"),
+        "source": OptionInfos(dtypes=["str"], default=""),
     },
     PROJECT={
-        "project": option_infos(dtypes=["str"], default=""),
-        "sea_name": option_infos(dtypes=["str"], default=""),
-        "sea_code": option_infos(dtypes=["str"], default=""),
+        "project": OptionInfos(dtypes=["str"], default=""),
+        "sea_name": OptionInfos(dtypes=["str"], default=""),
+        "sea_code": OptionInfos(dtypes=["str"], default=""),
     },
     CRUISE={
-        "country_institute_code": option_infos(dtypes=["str"], default=""),
-        "cruise_number": option_infos(dtypes=["str"], default=""),
-        "cruise_name": option_infos(dtypes=["str"], default=""),
-        "cruise_description": option_infos(dtypes=["str"], default=""),
-        "organization": option_infos(dtypes=["str"], default=""),
-        "chief_scientist": option_infos(dtypes=["str"], default=""),
-        "start_date": option_infos(dtypes=["str"], default=""),
-        "end_date": option_infos(dtypes=["str"], default=""),
-        "event_number": option_infos(dtypes=["str"], default=""),
-        "event_qualifier1": option_infos(dtypes=["str"], default=""),
-        "event_qualifier2": option_infos(dtypes=["str"], default=""),
-        "event_comments": option_infos(dtypes=["str"], default=""),
+        "country_institute_code": OptionInfos(dtypes=["str"], default=""),
+        "cruise_number": OptionInfos(dtypes=["str"], default=""),
+        "cruise_name": OptionInfos(dtypes=["str"], default=""),
+        "cruise_description": OptionInfos(dtypes=["str"], default=""),
+        "organization": OptionInfos(dtypes=["str"], default=""),
+        "chief_scientist": OptionInfos(dtypes=["str"], default=""),
+        "start_date": OptionInfos(dtypes=["str"], default=""),
+        "end_date": OptionInfos(dtypes=["str"], default=""),
+        "event_number": OptionInfos(dtypes=["str"], default=""),
+        "event_qualifier1": OptionInfos(dtypes=["str"], default=""),
+        "event_qualifier2": OptionInfos(dtypes=["str"], default=""),
+        "event_comments": OptionInfos(dtypes=["str"], default=""),
     },
     GLOBAL_ATTRIBUTES={
-        "date_created": option_infos(dtypes=["str"], default=""),
-        "data_type": option_infos(dtypes=["str"], default=""),
-        "data_subtype": option_infos(dtypes=["str"], default=""),
-        "cdm_data_type": option_infos(dtypes=["str"], default=""),
-        "country_code": option_infos(dtypes=["str"], default=""),
-        "publisher_email": option_infos(dtypes=["str"], default=""),
-        "creator_type": option_infos(dtypes=["str"], default=""),
-        "publisher_name": option_infos(dtypes=["str"], default=""),
-        "keywords": option_infos(dtypes=["str"], default=""),
-        "keywords_vocabulary": option_infos(dtypes=["str"], default=""),
-        "standard_name_vocabulary": option_infos(dtypes=["str"], default="CF v.52"),
-        "acknowledgment": option_infos(dtypes=["str"], default=""),
+        "date_created": OptionInfos(dtypes=["str"], default=""),
+        "data_type": OptionInfos(dtypes=["str"], default=""),
+        "data_subtype": OptionInfos(dtypes=["str"], default=""),
+        "cdm_data_type": OptionInfos(dtypes=["str"], default=""),
+        "country_code": OptionInfos(dtypes=["str"], default=""),
+        "publisher_email": OptionInfos(dtypes=["str"], default=""),
+        "creator_type": OptionInfos(dtypes=["str"], default=""),
+        "publisher_name": OptionInfos(dtypes=["str"], default=""),
+        "keywords": OptionInfos(dtypes=["str"], default=""),
+        "keywords_vocabulary": OptionInfos(dtypes=["str"], default=""),
+        "standard_name_vocabulary": OptionInfos(dtypes=["str"], default="CF v.52"),
+        "acknowledgment": OptionInfos(dtypes=["str"], default=""),
     },
 )
 
 ADCP_CONFIG = dict(
     ADCP_PROCESSING={
-        "yearbase": option_infos(dtypes=["int"], default=""),
-        "adcp_orientation": option_infos(dtypes=["str"], choice=["up", "down"]),
-        "sonar": option_infos(
+        "yearbase": OptionInfos(dtypes=["int"], default=""),
+        "adcp_orientation": OptionInfos(dtypes=["str"], choice=["up", "down"]),
+        "sonar": OptionInfos(
             dtypes=["str"], choice=["wh", "sv", "os", "sw", "sw_pd0"]
         ),
-        "navigation_file": option_infos(dtypes=["str"], default="", is_path=True),
-        "leading_trim": option_infos(dtypes=["str"], default=""),
-        "trailing_trim": option_infos(dtypes=["str"], default=""),
-        "sensor_depth": option_infos(dtypes=["float"], default=""),
-        "depth_range": option_infos(
+        "navigation_file": OptionInfos(dtypes=["str"], default="", is_path=True),
+        "leading_trim": OptionInfos(dtypes=["str"], default=""),
+        "trailing_trim": OptionInfos(dtypes=["str"], default=""),
+        "sensor_depth": OptionInfos(dtypes=["float"], default=""),
+        "depth_range": OptionInfos(
             dtypes=["float"], default="()", nargs_min=1, nargs_max=2
         ),
-        "bad_pressure": option_infos(dtypes=["bool"], default=False),
-        "magnetic_declination": option_infos(dtypes=["float"], default=""),
-        "keep_bt": option_infos(dtypes=["bool"], default=True),
+        "bad_pressure": OptionInfos(dtypes=["bool"], default=False),
+        "magnetic_declination": OptionInfos(dtypes=["float"], default=""),
+        "keep_bt": OptionInfos(dtypes=["bool"], default=True),
     },
     ADCP_QUALITY_CONTROL={
-        "quality_control": option_infos(dtypes=["bool"], default=True),
-        "amplitude_threshold": option_infos(
+        "quality_control": OptionInfos(dtypes=["bool"], default=True),
+        "amplitude_threshold": OptionInfos(
             dtypes=["int"], default=0, value_min=0, value_max=255
         ),
-        "percentgood_threshold": option_infos(
+        "percentgood_threshold": OptionInfos(
             dtypes=["int"], default=64, value_min=0, value_max=100
         ),
-        "correlation_threshold": option_infos(
+        "correlation_threshold": OptionInfos(
             dtypes=["int"], default=90, value_min=0, value_max=255
         ),
-        "horizontal_velocity_threshold": option_infos(dtypes=["float"], default=5),
-        "vertical_velocity_threshold": option_infos(dtypes=["float"], default=5),
-        "error_velocity_threshold": option_infos(dtypes=["float"], default=5),
-        "sidelobes_correction": option_infos(dtypes=["bool"], default=True),
-        "bottom_depth": option_infos(dtypes=["float"]),
-        "pitch_threshold": option_infos(
+        "horizontal_velocity_threshold": OptionInfos(dtypes=["float"], default=5),
+        "vertical_velocity_threshold": OptionInfos(dtypes=["float"], default=5),
+        "error_velocity_threshold": OptionInfos(dtypes=["float"], default=5),
+        "sidelobes_correction": OptionInfos(dtypes=["bool"], default=True),
+        "bottom_depth": OptionInfos(dtypes=["float"]),
+        "pitch_threshold": OptionInfos(
             dtypes=["int"], default=20, value_min=0, value_max=180
         ),
-        "roll_threshold": option_infos(
+        "roll_threshold": OptionInfos(
             dtypes=["int"], default=20, value_min=0, value_max=180
         ),
-        "motion_correction_mode": option_infos(
+        "motion_correction_mode": OptionInfos(
             dtypes=["str"], default="bt", choice=["bt", "nav", "off"]
         ),
     },
     ADCP_OUTPUT={
-        "merge_output_files": option_infos(dtypes=["bool"], default=True),
-        "bodc_name": option_infos(dtypes=["bool"], default=True),
-        "force_platform_metadata": option_infos(dtypes=["bool"], default=False),
-        "drop_percent_good": option_infos(dtypes=["bool"], default=True),
-        "drop_correlation": option_infos(dtypes=["bool"], default=True),
-        "drop_amplitude": option_infos(dtypes=["bool"], default=True),
-        "make_figures": option_infos(dtypes=["bool"], default=True),
-        "make_log": option_infos(dtypes=["bool"], default=True),
+        "merge_output_files": OptionInfos(dtypes=["bool"], default=True),
+        "bodc_name": OptionInfos(dtypes=["bool"], default=True),
+        "force_platform_metadata": OptionInfos(dtypes=["bool"], default=False),
+        "drop_percent_good": OptionInfos(dtypes=["bool"], default=True),
+        "drop_correlation": OptionInfos(dtypes=["bool"], default=True),
+        "drop_amplitude": OptionInfos(dtypes=["bool"], default=True),
+        "make_figures": OptionInfos(dtypes=["bool"], default=True),
+        "make_log": OptionInfos(dtypes=["bool"], default=True),
     },
 )
 

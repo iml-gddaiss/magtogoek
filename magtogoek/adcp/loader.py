@@ -340,7 +340,7 @@ def load_adcp_binary(
             if orientation == "up":
                 l.log(
                     "In a `up` orientation, bottom_depth corresponds to the water height above adcp, thus should "
-                    "correspond to the xducer_depth mesurements and bottom velocities correspond to the water surface "
+                    "correspond to the xducer_depth measurements and bottom velocities correspond to the water surface "
                     "velocity. "
                 )
                 l.log(
@@ -401,22 +401,22 @@ def load_adcp_binary(
 
     if "heading" in data:
         if (data.heading == 0).all() or (np.diff(data.heading) == 0).all():
-            l.warning("Heading data are either all 0, or not variying.")
+            l.warning("Heading data are either all 0, or not varying.")
         else:
             dataset["heading"] = (["time"], np.asarray(data.heading))
     if "roll" in data:
         if (data.roll == 0).all() or (np.diff(data.roll) == 0).all():
-            l.warning("Roll data are either all 0, or not variying.")
+            l.warning("Roll data are either all 0, or not varying.")
         else:
             dataset["roll_"] = (["time"], np.asarray(data.roll))
     if "pitch" in data:
         if (data.pitch == 0).all() or (np.diff(data.pitch) == 0).all():
-            l.warning("Pitch data are either all 0, or not variying.")
+            l.warning("Pitch data are either all 0, or not varying.")
         else:
             dataset["pitch"] = (["time"], np.asarray(data.pitch))
     if "temperature" in data:
         if (data.temperature == 0).all() or (np.diff(data.temperature) == 0).all():
-            l.warning("Temperature data are either all 0, or not variying.")
+            l.warning("Temperature data are either all 0, or not varying.")
         else:
             dataset["temperature"] = (["time"], np.asarray(data.temperature))
 
@@ -441,7 +441,7 @@ def load_adcp_binary(
     dataset.attrs["manufacturer"] = (
         "Teledyne RD Instruments Inc."
         if sonar in ["wh", "sv", "os"]
-        else "Rowe Technologie Inc. (RTI)"
+        else "Rowe Technologies Inc. (RTI)"
     )
     if "xducer_depth" not in dataset:
         dataset.attrs["xducer_depth"] = round(average_xducer_depth, 2)
@@ -457,7 +457,7 @@ def load_adcp_binary(
     dataset.attrs["firmware_version"] = ".".join(
         list(str(data.FL["FWV"])) + list(str(data.FL["FWR"]))
     )
-    dataset.attrs["transmit_pulse_lenght_m"] = data.FL["Pulse"] / 100  # cm to m
+    dataset.attrs["transmit_pulse_length_m"] = data.FL["Pulse"] / 100  # cm to m
 
     dataset.attrs["delta_t_sec"] = np.round(
         np.mean((np.diff(dataset.time).astype("timedelta64[s]"))).astype(float), 2
@@ -476,7 +476,6 @@ def load_adcp_binary(
 
     dataset.attrs["orientation"] = orientation
     dataset.attrs["serial_number"] = data.SerialNumber if "SerialNumber" in data else None
-
     l.log(f"File(s) loaded with {l.w_count} warnings")
     dataset.attrs["logbook"] = l.logbook
 

@@ -52,5 +52,6 @@ def _add_sensors():
         model=None,
         firmware_version=None,
         chief_scientist=None,
+        description=None,
         comments=None,
     )

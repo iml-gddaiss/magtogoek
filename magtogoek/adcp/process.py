@@ -584,6 +584,7 @@ def _load_platform(params: dict) -> tp.Dict:
         if 'sensors' in platform_metadata['platform']:
             platform_metadata['sensors'].update(platform_metadata['platform'].pop('sensors'))
             if params["sensor_id"] in platform_metadata["sensors"]:
+                platform_metadata['adcp_id'] = params["sensor_id"]
                 platform_metadata['adcp'].update(platform_metadata["sensors"].pop(params["sensor_id"]))
             else:
                 l.warning(
