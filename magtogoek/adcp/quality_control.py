@@ -12,7 +12,7 @@ Notes
    - Failing amplitude, correlation, percentgood, roll, pitch, side_lobe, horizontal
    velocity or vertical velocity test returns a flag_value of `3` (probably_bad_value)
    for the corresponding velocity cells.
-   - Temperatures outside [-2, 32] Celcius have a flag_value of `4` (bad_value).
+   - Temperatures outside [-2, 32] Celsius have a flag_value of `4` (bad_value).
    - Pressures outside [0, 180] dbar value have a flag_value of `4` (bad_value).
    and the corresponding velocity cells have a flag_value of `3` (probably_bad_value)
    - The amplitude, correlation and percentgood thresholds are also applied to
@@ -126,7 +126,7 @@ def adcp_quality_control(
     """
     Perform ADCP quality control.
 
-    This was adaptated from jeanlucshaw adcp2nc package.
+    This was adapted from jeanlucshaw adcp2nc package.
 
     Parameters
     ----------
@@ -165,8 +165,8 @@ def adcp_quality_control(
        - Velocities in any direction are set to NaN if greater than 15 meters per second gets a 4.
        - Failing amplitude, correlation, percentgood, roll, pitch, side_lobe, horizontal
        velocity or vertical velocity test returns a flag_value of `3` (probably_bad_value)
-       for the corresponding veoclity cells.
-       - Temperatures outside [-2, 32] Celcius have a flag_value of `4` (bad_value).
+       for the corresponding velocity cells.
+       - Temperatures outside [-2, 32] Celsius have a flag_value of `4` (bad_value).
        - Pressures outside [0, 180] dbar value have a flag_value of `4` (bad_value).
        and the corresponding velocity cells have a flag_value of `3` (probably_bad_value)
        - The amplitude, correlation and percentgood thresholds are also applied to
@@ -195,7 +195,7 @@ def adcp_quality_control(
 
     # vel_flags = set_implausible_vel_to_nan(dataset, thres=IMPLAUSIBLE_VEL_TRESHOLD)
 
-    vel_flags = 2 * np.ones(dataset.depth.shape + dataset.time.shape).astype(int)
+    vel_flags = np.ones(dataset.depth.shape + dataset.time.shape).astype(int)
 
     vel_qc_test = []
 
@@ -464,11 +464,11 @@ def vertical_vel_test(dataset: xr.Dataset, threshold: float) -> tp.Type[np.array
     )
 
 
-def error_vel_test(dataset: xr.Dataset, thres: float) -> tp.Type[np.array]:
+def error_vel_test(dataset: xr.Dataset, threshold: float) -> tp.Type[np.array]:
     """FIXME
     None finite value value will also fail"""
     return np.greater(
-        abs(dataset.e.values), thres, where=np.isfinite(dataset.w.values),
+        abs(dataset.e.values), threshold, where=np.isfinite(dataset.w.values),
     )
 
 
@@ -508,7 +508,7 @@ def sidelobe_test(dataset: xr.Dataset, bottom_depth: float = None):
         angle_cos = np.cos(np.radians(dataset.attrs["beam_angle"]))
         depth_array = (
             np.tile(dataset.depth.data, dataset.time.shape + (1,))
-            + dataset.attrs["bin_size"] / 2
+            + dataset.attrs["bin_size_m"] / 2
         )
 
         if "xducer_depth" in dataset.attrs:
@@ -517,7 +517,7 @@ def sidelobe_test(dataset: xr.Dataset, bottom_depth: float = None):
             xducer_depth = dataset["xducer_depth"].data
         else:
             l.warning(
-                "Sidelobes correction aborded. Adcp depth `xducer_depth` not provided."
+                "Sidelobes correction aborted. Adcp depth `xducer_depth` not provided."
             )
             return False
 
@@ -526,7 +526,7 @@ def sidelobe_test(dataset: xr.Dataset, bottom_depth: float = None):
                 bottom_depth = dataset.bt_depth.data
             elif not bottom_depth:
                 l.warning(
-                    "Sidelobes correction aborded. Bottom depth not found or provided."
+                    "Sidelobes correction aborted. Bottom depth not found or provided."
                 )
                 return False
 

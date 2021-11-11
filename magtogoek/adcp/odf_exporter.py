@@ -411,7 +411,9 @@ def _make_parameter_headers(odf, dataset, generic_to_p01_name=None):
             items["type"] = PARAMETERS_TYPES[str(dataset[var].data.dtype)]
 
             null_value = None
-            if "null_value" in items:
+            if '_QC' in var:
+                null_value = 9
+            elif "null_value" in items:
                 null_value = items["null_value"]
             elif "_FillValue" in dataset[var].encoding:
                 null_value = dataset[var].encoding["_FillValue"]

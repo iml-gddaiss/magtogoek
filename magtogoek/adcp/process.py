@@ -430,14 +430,14 @@ def _process_adcp_data(
     # ----------- #
     # ODF OUTPUTS #
     # ----------- #
-    # GET PATH FROM app.py # FIXME
+
     output_path = Path(params['input_files'][0]).parent
-    if isinstance(params['netcdf_output'], str): #FIXME TODO
+    if isinstance(params['netcdf_output'], str):
         if Path(params['netcdf_output']).parent.is_dir():
             output_path = Path(params['netcdf_output']).parent
 
     l.section("Output")
-    log_output = params["input_files"][0] # FIXME same name as ini ?
+    log_output = params["input_files"][0]
     if params["odf_output"]:
         if params["bodc_name"]:
             generic_to_p01_name = P01_VEL_CODES[platform_type]
