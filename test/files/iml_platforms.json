@@ -41,12 +41,22 @@
             "ADCP_01": {
                 "sensor_type": "adcp",
                 "sensor_depth": 5,
-                "serial_number": "000000000serial_test",
+                "serial_number": "Serial_test_platform",
                 "manufacturer": "Teledyne RD Instruments Inc.",
                 "model": "WorkHorse",
                 "firmware_version": "sensor_firmware_test",
                 "chief_scientist": "Peter Galbraith",
                 "comments": "The model and serial number are the same for the temperature and pressure sensors as the ADCP."
+            },
+            "CTD_01": {
+                "sensor_type": "CTD",
+                "sensor_depth": 10,
+                "serial_number": "ctd_serial",
+                "manufacturer": "Seabird",
+                "model": "SBE19",
+                "firmware_version": "ctd_firmware_test",
+                "chief_scientist": "ctd_chief_scientist",
+                "comments": "ctd_comments"
             }
         }
    }

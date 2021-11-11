@@ -575,7 +575,6 @@ def _load_platform(params: dict) -> tp.Dict:
 
     """
     platform_metadata = _default_platform()
-
     json_dict = json2dict(params["platform_file"])
     if params["platform_id"] in json_dict:
         platform_metadata['platform'].update(json_dict[params["platform_id"]])
@@ -603,7 +602,7 @@ def _load_platform(params: dict) -> tp.Dict:
 
 def _default_platform() -> dict:
     """Return an empty platform data dictionary"""
-    platform_metadata = {'platform': _add_platform()}
+    platform_metadata = {'platform': _add_platform(), 'adcp_id': 'ADCP_01'}
     platform_metadata['platform']["platform_type"] = DEFAULT_PLATFORM_TYPE
     platform_metadata['sensors'] = platform_metadata['platform'].pop('sensors')
     platform_metadata['adcp'] = platform_metadata['sensors'].pop('__enter_a_sensor_ID_here')

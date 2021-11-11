@@ -241,8 +241,6 @@ def _make_sensor_buoy_instrument_header(odf: Odf, platform_metadata: dict):
 # FIXME
     """
     configuration = "CONFIGURATION_01"
-    print(platform_metadata['sensors'])
-    exit()
     for sensor, metadata in platform_metadata['sensors'].items():
         odf.add_buoy_instrument(sensor)
         if 'sensor_type' in metadata:
