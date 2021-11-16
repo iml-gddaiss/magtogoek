@@ -7,14 +7,14 @@ based in part  on: https://github.com/jeanlucshaw/adcp2nc/
 
 This script contains functions to read adcp files and load them in xarray.Dataset.
 
-RDI data are read using CODAS Multiread reader from the pycurrent pacakge. The Multiread
+RDI data are read using CODAS Multiread reader from the pycurrents package. The Multiread
 reader supports .000, .ENX, .ENS, .LTA and .STA binary files.
 - sonar: 'wh', 'sv', 'os'.
-- Sentinel V encoding is not fully supported by pycurrent.
+- Sentinel V encoding is not fully supported by pycurrents.
 
 RTI data re read using Magtogoek rti_reader built from rti_python tools by RoweTech.
 - sonar: 'sw'
-- Rowtech files can also be exporter directly to Teledyne `PD0` formats and read by pycurrnets
+- Rowetech files can also be exporter directly to Teledyne `PD0` formats and read by pycurrents
 using 'sw_pd0' for sonar.
 
 Notes
@@ -43,6 +43,7 @@ import typing as tp
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import xarray as xr
 from magtogoek.adcp.rti_reader import RtiReader
 from magtogoek.adcp.rti_reader import l as rti_log
@@ -79,10 +80,12 @@ def load_adcp_binary(
     trailing_index: int = None,
     sensor_depth: float = None,
     bad_pressure: bool = False,
+    start_time: str = None,
+    time_step: float = None,
 ) -> xr.Dataset:
     """Load RDI and RTI adcp data.
 
-    Return a dataset with the ADCP data loaded. For RDI FIXME pycurcurents...
+    Return a dataset with the ADCP data loaded. For RDI FIXME pycurrents...
 
     Notes:
     -----
@@ -91,23 +94,29 @@ def load_adcp_binary(
 
     Parameters
     ----------
-    filenames :
+    filenames:
         Path/to/files
-    sonar :
+    sonar:
         Type of sonar (`os`, `wh`, `sv`, `sw`, `sw_pd0`)
-    yearbase :
+    yearbase:
         year that the sampling begun.
-    orientation :
+    orientation:
         Adcp orientation. Either `up` or `down`. Will overwrite the value
         of the binary file.
-    leading_index :
+    leading_index:
         Number of ensemble to cut from the start.
-    trailing_index :
+    trailing_index:
         Number of ensemble to cut from the end.
     sensor_depth:
         If provided, the adcp depth (meter) will be adjusted so that its median equal `sensor_depth`.
     bad_pressure:
         If True, XducerDepth is set to 0 or to `sensor_depth` if provided.
+    start_time:
+        Format "YYYY-MM-DDThh:mm:ss.ssss".
+        If provided, a new time coordinate vector is used starting at `start_time`.
+        Use the parameter `time_step` to use a different time step than the one found in the adcp raw file.
+    time_step:
+        Time step in seconds. Only use if a `start_time` value is provided.
     Returns
     -------
         Dataset with the loaded adcp data
@@ -131,7 +140,7 @@ def load_adcp_binary(
     # Reading the data file(s) #
     # ------------------------ #
     if sonar in RTI_SONAR:
-        l.log(_fprint_filenames("RTI ENS", filenames))
+        l.log(_print_filenames("RTI ENS", filenames))
         data = RtiReader(filenames=filenames).read(
             start_index=leading_index, stop_index=trailing_index
         )
@@ -139,9 +148,9 @@ def load_adcp_binary(
     elif sonar in RDI_SONAR:
         if sonar == "sw_pd0":
             sonar = "wh"
-            l.log(_fprint_filenames("RTI pd0", filenames))
+            l.log(_print_filenames("RTI pd0", filenames))
         else:
-            l.log(_fprint_filenames("RDI pd0", filenames))
+            l.log(_print_filenames("RDI pd0", filenames))
 
         if trailing_index:
             trailing_index *= -1
@@ -200,29 +209,8 @@ def load_adcp_binary(
     # ---------------------------- #
     # Convert `dday` to datetime64 #
     # ---------------------------- #
-    bad_dday = False
-    if (data.dday < 0).any():
-        bad_dday = True
-        l.warning(
-            f"""The `dday` vector contains negative values. The provided yearbase might be wrong.
-            The time coords was replaced by a default datetime vector: {len(data.dday)} with a 1 x
-            second time step since {yearbase}-1-1 00:00:00."""
-        )
-        time, time_string = dday_to_datetime64(
-            np.arange(len(data.dday)) / (3600 * 24), yearbase
-        )
-    elif (np.diff(data.dday) < 0).any():
-        bad_dday = True
-        l.warning(
-            f"""The `dday` vector is not monotonically increasing.
-            The time coords was replaced by a default datetime vector: len(dday) with a 1 second time
-            step since {yearbase}-1-1 00:00:00."""
-        )
-        time, time_string = dday_to_datetime64(
-            np.arange(len(data.dday)) / (3600 * 24), yearbase
-        )
-    else:
-        time, time_string = dday_to_datetime64(data.dday, yearbase)
+
+    time, time_string, bad_dday = _get_time(data.dday, yearbase, start_time, time_step)
 
     # ----------------------------------------------------------- #
     # Convert depth relative to the ADCP to depth below surface   #
@@ -310,11 +298,11 @@ def load_adcp_binary(
     if "bt_vel" in data:
         if (data.bt_vel == 0).all():
             l.log(
-                "Bottom track values were all `0`, therefore they were dropped from the ouput."
+                "Bottom track values were all `0`, therefore they were dropped from the output."
             )
         elif not np.isfinite(data.bt_vel).all():
             l.log(
-                "Bottom track values were all `nan`, therefore they were dropped from the ouput."
+                "Bottom track values were all `nan`, therefore they were dropped from the output."
             )
 
         else:
@@ -329,14 +317,17 @@ def load_adcp_binary(
     if "bt_depth" in data:
         if (data.bt_depth == 0).all():
             l.log(
-                "Bottom depth values were all `0`, therefore they were dropped from the ouput."
+                "Bottom depth values were all `0`, therefore they were dropped from the output."
             )
         elif not np.isfinite(data.bt_depth).all():
             l.log(
-                "Bottom depth values were all `nan`, therefore they were dropped from the ouput."
+                "Bottom depth values were all `nan`, therefore they were dropped from the output."
             )
         else:
-            dataset["bt_depth"] = (["time"], np.asarray(np.nanmean(data.bt_depth, axis=-1)))
+            dataset["bt_depth"] = (
+                ["time"],
+                np.asarray(np.nanmean(data.bt_depth, axis=-1)),
+            )
             if orientation == "up":
                 l.log(
                     "In a `up` orientation, bottom_depth corresponds to the water height above adcp, thus should "
@@ -382,11 +373,17 @@ def load_adcp_binary(
         dataset["xducer_depth"] = (["time"], np.asarray(xducer_depth))
 
     # --------------------------- #
-    # Loading the naviagtion data #
+    # Loading the navigation data #
     # --------------------------- #
     if "rawnav" in data:
-        dataset["lon"] = (["time"], np.array(data["rawnav"]["Lon1_BAM4"] * 180.0 / 2 ** 31))
-        dataset["lat"] = (["time"], np.array(data["rawnav"]["Lat1_BAM4"] * 180.0 / 2 ** 31))
+        dataset["lon"] = (
+            ["time"],
+            np.array(data["rawnav"]["Lon1_BAM4"] * 180.0 / 2 ** 31),
+        )
+        dataset["lat"] = (
+            ["time"],
+            np.array(data["rawnav"]["Lat1_BAM4"] * 180.0 / 2 ** 31),
+        )
         l.log("Navigation (GPS) data loaded.")
 
     # -------------------------------------------- #
@@ -395,7 +392,10 @@ def load_adcp_binary(
     # For `wh`, `sv` and `sw` the pressure is added if available.
     if "Pressure" in data.VL.dtype.names:
         if not (data.VL["Pressure"] == 0).all():
-            dataset["pres"] = (["time"], data.VL["Pressure"] / 1000)  # decapascal to decibar
+            dataset["pres"] = (
+                ["time"],
+                data.VL["Pressure"] / 1000,
+            )  # decapascal to decibar
         else:
             l.log("Pressure data unavailable")
 
@@ -475,7 +475,9 @@ def load_adcp_binary(
                 dataset.attrs["magnetic_declination"] = data.FL["EV"] / 100
 
     dataset.attrs["orientation"] = orientation
-    dataset.attrs["serial_number"] = data.SerialNumber if "SerialNumber" in data else None
+    dataset.attrs["serial_number"] = (
+        data.SerialNumber if "SerialNumber" in data else None
+    )
     l.log(f"File(s) loaded with {l.w_count} warnings")
     dataset.attrs["logbook"] = l.logbook
 
@@ -604,11 +606,12 @@ def check_pd0_invalid_config(
 
     invalid_config = 2 ** 16 - 1
 
-    return np.sum((fixed_leader["SysCfg"][leading_index:trailing_index] == invalid_config))
+    return np.sum(
+        (fixed_leader["SysCfg"][leading_index:trailing_index] == invalid_config)
+    )
 
 
-
-def _fprint_filenames(file_type: str, filenames: tp.List) -> str:
+def _print_filenames(file_type: str, filenames: tp.List) -> str:
     """Format a string of filenames for prints
     `file_type` files :
       |-filename1
@@ -620,3 +623,85 @@ def _fprint_filenames(file_type: str, filenames: tp.List) -> str:
         + " files : \n  |-"
         + "\n  |-".join([p.name for p in list(map(Path, filenames))])
     )
+
+
+def _get_time(
+    dday: np.ndarray, yearbase: int, start_time: str = None, time_step: float = None
+) -> tp.Union[np.ndarray, np.ndarray, bool]:
+    """
+    Parameters
+    ----------
+    yearbase:
+        Year that the sampling started
+    start_time:
+        Format: 'YYYY-MM-DDThh:mm:ss.ssss'.
+    time_step:
+        Time step in seconds.
+    """
+    bad_dday = False
+    if start_time is None:
+        if (dday < 0).any():
+            bad_dday = True
+            l.warning(
+                "The `dday` (time in fraction of days) vector in the adcp file had negative values."
+            )
+        elif (np.diff(dday) < 0).any():
+            bad_dday = True
+            l.warning(
+                "The `dday` (time in fraction of days) was no monotonically increasing."
+            )
+        if bad_dday is True:
+            l.log('`dday` values were added to the dataset.')
+            start_time = str(dday_to_datetime64(dday[0], yearbase)[1])
+            time_step = _get_time_step(dday)
+            time, time_string = _make_time(start_time, len(dday), time_step)
+        else:
+            time, time_string = dday_to_datetime64(dday, yearbase)
+    else:
+        if time_step is None:
+            time_step = _get_time_step(dday)
+        time, time_string = _make_time(start_time, len(dday), time_step)
+
+    return time, time_string, bad_dday
+
+
+def _make_time(
+    start_time: str, length: int, time_step: float
+) -> tp.Union[np.ndarray, np.ndarray]:
+    """
+    Parameters
+    ----------
+    start_time:
+        Format 'YYYY-MM-DDThh:mm:ss.ssss'.
+    length:
+        Length of the time vector.
+    time_step:
+        Time step in seconds.
+    """
+    l.warning(
+        f"Time vector was replace with a time series starting at {start_time} with {time_step.seconds} seconds time step."
+    )
+    time = pd.date_range(pd.Timestamp(start_time), periods=length, freq=time_step)
+    return time, time.astype(str)
+
+
+def _get_time_step(dday: np.ndarray) -> pd.Timedelta:
+    """
+    Parameters
+    ----------
+    dday
+    Returns
+    -------
+    """
+    time = dday * 86400
+    deltas, counts = np.unique(np.round(np.diff(time), 4), return_counts=True)
+
+    return pd.Timedelta(deltas[counts.argmax()], "seconds")
+
+
+if __name__ == "__main__":
+    import matplotlib.pyplot as plt
+
+    path = "/home/jeromejguay/ImlSpace/Data/MPO/iml42020/"
+
+    ds = load_adcp_binary(filenames=path + "*4.ENS", sonar="sw", yearbase=2020)

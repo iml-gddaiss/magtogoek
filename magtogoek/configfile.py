@@ -8,7 +8,7 @@ This make_configparser is called by magtogoek_command.py
 This modules also contains the sections and default parameters values for the configparsers.
 
 NOTE: More comments should be added in the configparser files.
-NOTE: Missing,fonctions to open the config files.
+NOTE: Missing,functions to open the config files.
 NOTE: Make a class ? Config(config_name, sensor_type=None).{update(options), .load(), .save()}
 
 INPUT:
@@ -43,6 +43,7 @@ from pathlib import Path
 
 import click
 from datetime import datetime
+import dateutil.parser
 
 REFERENCE = "https://github.com/JeromeJGuay/magtogoek"
 TRUE_VALUES = ["True", "true", "1", "On", "on"]
@@ -61,8 +62,9 @@ OptionInfos = namedtuple(
         "value_min",
         "value_max",
         "is_path",
+        "is_time_stamp"
     ),
-    defaults=[[], None, None, None, None, None, None, None, False],
+    defaults=[[], None, None, None, None, None, None, None, False, False],
 )
 
 
@@ -114,6 +116,10 @@ class ConfigFileError(SystemExit):
             self.msg += f", but received a value of `{self.value}`."
         if self.error == "choice":
             self.msg = f"`{self.section}/{self.option}` expected a value in `{self.option_info.choice}` but received `{self.value}`."
+        if self.error == 'string_format':
+            self.msg = f"`{self.section}/{self.option}` is an invalid datetime format. Use `YYYY-MM-DDThh:mm:ss.ssss`"
+        if self.error == 'path':
+            self.msg = f"`{self.section}/{self.option}` path or path/to/file does not exist."
         if "bool" in self.option_info.dtypes:
             self.msg += (
                 f"\nBoolean have to be express with {TRUE_VALUES} or {FALSE_VALUES}."
@@ -201,6 +207,8 @@ ADCP_CONFIG = dict(
         "bad_pressure": OptionInfos(dtypes=["bool"], default=False),
         "magnetic_declination": OptionInfos(dtypes=["float"], default=""),
         "keep_bt": OptionInfos(dtypes=["bool"], default=True),
+        "start_time": OptionInfos(dtypes=["str"], default=""),
+        "time_step": OptionInfos(dtypes=['float'], default="")
     },
     ADCP_QUALITY_CONTROL={
         "quality_control": OptionInfos(dtypes=["bool"], default=True),
@@ -407,7 +415,16 @@ def _format_option_type(value, option_info, section, option, config_path):
             raise ConfigFileError("choice", section, option, option_info, value)
 
     if option_info.is_path is True and isinstance(value, str):
-        value = str(Path(config_path).joinpath(Path(value)).resolve())
+        value = Path(config_path).joinpath(Path(value)).resolve()
+        if not any((value.is_file(), value.is_dir(), value.parent.is_dir())):
+            raise ConfigFileError("path", section, option, option_info, value)
+        value = str(value)
+
+    if option_info.is_time_stamp is True:
+        try:
+            dateutil.parser.parse(value)
+        except dateutil.parser._parser.ParserError:
+            raise ConfigFileError('string_format', section, option, option_info, value)
 
     return value
 

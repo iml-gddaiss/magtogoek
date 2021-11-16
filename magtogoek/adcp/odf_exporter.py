@@ -84,7 +84,6 @@ def make_odf(
         else:
             odf.odf["file_specification"] = output_path.name
         output_path = Path(output_path).with_suffix(".ODF")
-        print(output_path)
         odf.save(output_path)
 
     return odf

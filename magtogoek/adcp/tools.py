@@ -14,30 +14,28 @@ from pandas import Timestamp, to_datetime
 def rotate_2d_vector(
     X: NDArray, Y: NDArray, angle: float
 ) -> tp.Tuple[NDArray, NDArray]:
-    """Convert velocities from magnetic to true(geographic).
+    """Rotates the X and Y component of the velocities anti-clockwise.
 
-    angle:  magnetic_declination
-
-    [true_east,  = [[np.cos(angle), -np.sin(angle)] * [magnetic_east,
-     true_north]    [np.sin(angle),  np.cos(angle)]]    magnetic_north]
+    [X_r]  = [cos(angle), -sin(angle)][X]
+    [Y_r]  = [sin(angle),  cos(angle)][Y]
 
     Parameters
     ----------
-    magnetic_east :
-       Eastward velocities in the magnetic frame of reference.
+    X:
+       Velocity components of velocities along X
 
-    magnetic_north :
-       Northward velocities in the magnetic frame of reference.
+    Y:
+       Velocity components of velocities along Y
 
-    declination :
-        Measured in the geographic frame of reference in decimal degrees.
+    angle:
+        Angle of rotation in decimal degree
 
     Returns
     -------
-    true_east :
-        Eastward velocities in the geographic frame of reference
-    true_north :
-        Northward velocities in the geographic frame of reference
+    X_r :
+        Rotated velocity components along X_r.
+    Y_r :
+        Rotated velocity components along Y_r.
     """
 
     angle_rad = np.deg2rad(angle)
@@ -48,7 +46,7 @@ def rotate_2d_vector(
     return X_r, Y_r
 
 
-def dday_to_datetime64(dday: tp.List, yearbase: int) -> tp.Tuple[NDArray, NDArray]:
+def dday_to_datetime64(dday: np.ndarray, yearbase: int) -> tp.Tuple[NDArray, NDArray]:
     """Convert time recorded time to pandas time (np.datetime64[s]).
 
     Replace time coordinates with datetime64 in strftime='%Y-%m-%d %H:%M:%S'
@@ -56,8 +54,9 @@ def dday_to_datetime64(dday: tp.List, yearbase: int) -> tp.Tuple[NDArray, NDArra
 
     Parameters
     ----------
-    dataset:
-       FIXME
+    yearbase:
+    dday:
+
     """
     start_time = Timestamp(str(yearbase) + "-01-01")
     time = np.array(
@@ -88,16 +87,16 @@ def datetime_to_dday(
 
 
 def get_datetime_and_count(trim_arg: str):
-    """Get datime and count from trim_arg.
+    """Get datetime and count from trim_arg.
 
     If `trim_arg` is None, returns (None, None)
-    If 'T' is a datetimeor a count returns (Timstamp(trim_arg), None)
+    If 'T' is a datetime or a count returns (Timestamp(trim_arg), None)
     Else returns (None, int(trim_arg))
 
     Returns:
     --------
     datetime:
-        None or pandas.Timstamp
+        None or pandas.Timestamp
     count:
         None or int
 

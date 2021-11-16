@@ -38,7 +38,7 @@ Notes
     The manufacturer is automatically added to the dataset by the loader. However, the value given in the platform file will
     overwrite it.
 
-TODO TEST NAVIGATIoN FILES !
+TODO TEST NAVIGATION FILES !
 FIXME DATA_TYPES: Missing for ship adcp
 FIXME SOURCE : moored adcp ?
 
@@ -431,9 +431,12 @@ def _process_adcp_data(
     # ODF OUTPUTS #
     # ----------- #
 
+    output_name = Path(params['input_files'][0]).stem
     output_path = Path(params['input_files'][0]).parent
     if isinstance(params['netcdf_output'], str):
-        if Path(params['netcdf_output']).parent.is_dir():
+        if Path(params['netcdf_output']).is_dir():
+            output_path = Path(params['netcdf_output'])
+        elif Path(params['netcdf_output']).parent.is_dir():
             output_path = Path(params['netcdf_output']).parent
 
     l.section("Output")
@@ -456,8 +459,11 @@ def _process_adcp_data(
             config_attrs,
             generic_to_p01_name,
             params["odf_output"])
-        odf_output_path = Path(params["odf_output"]).joinpath(odf.odf["file_specification"])
-        l.log(f"odf file made -> {odf_output_path.resolve()}")
+
+        odf_output_path = params["odf_output"]
+        if not Path(params["odf_output"]).is_file():
+            odf_output_path = Path(params["odf_output"]).joinpath(odf.odf["file_specification"]).resolve()
+        l.log(f"odf file made -> {odf_output_path}")
         log_output = Path(params["odf_output"]).parent
 
     else:
@@ -525,6 +531,8 @@ def _load_adcp_data(params: tp.Dict) -> xr.Dataset:
         orientation=params["adcp_orientation"],
         sensor_depth=params["sensor_depth"],
         bad_pressure=params["bad_pressure"],
+        start_time=params["start_time"],
+        time_step=params["time_step"],
     )
 
     dataset = cut_bin_depths(dataset, params["depth_range"])
@@ -705,7 +713,10 @@ def _load_navigation(dataset: xr.Dataset, navigation_files: str):
     data to correct the data for the platform motion by setting the config parameter `m_corr` to `nav`.
     """
     nav_ds = load_navigation(navigation_files).interp(time=dataset.time)
-    dataset = xr.merge((dataset, nav_ds), combine_attrs="no_conflicts")
+    for var in ['lon', 'lat', 'u_ship', 'v_ship']:
+        dataset[var] = nav_ds[var]
+    nav_ds.close()
+
     return dataset
 
 
