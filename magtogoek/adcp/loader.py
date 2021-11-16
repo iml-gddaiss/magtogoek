@@ -660,13 +660,15 @@ def _get_time(
     else:
         if time_step is None:
             time_step = _get_time_step(dday)
+        else:
+            time_step = pd.Timedelta(time_step,'seconds')
         time, time_string = _make_time(start_time, len(dday), time_step)
 
     return time, time_string, bad_dday
 
 
 def _make_time(
-    start_time: str, length: int, time_step: float
+    start_time: str, length: int, time_step: pd.Timedelta
 ) -> tp.Union[np.ndarray, np.ndarray]:
     """
     Parameters
