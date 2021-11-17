@@ -430,48 +430,31 @@ def _process_adcp_data(
     # ----------- #
     # ODF OUTPUTS #
     # ----------- #
-
-    output_name = Path(params['input_files'][0]).stem
-    output_path = Path(params['input_files'][0]).parent
-    if isinstance(params['netcdf_output'], str):
-        if Path(params['netcdf_output']).is_dir():
-            output_path = Path(params['netcdf_output'])
-        elif Path(params['netcdf_output']).parent.is_dir():
-            output_path = Path(params['netcdf_output']).parent
+    netcdf_path, odf_path, log_path = _make_outputs(params['input_files'][0],
+                                                    params['odf_output'],
+                                                    params['netcdf_output'])
 
     l.section("Output")
-    log_output = params["input_files"][0]
-    if params["odf_output"]:
+    if odf_path:
         if params["bodc_name"]:
             generic_to_p01_name = P01_VEL_CODES[platform_type]
         else:
             generic_to_p01_name = None
-
-        if params["odf_output"] is True:
-            params["odf_output"] = output_path
-        elif not Path(params['odf_output']).is_dir():
-            if not Path(params['odf_output']).parent.is_dir():
-                params["odf_output"] = Path(output_path).joinpath(params["odf_output"])
 
         odf = make_odf( # TO TEST TODO
             dataset,
             platform_metadata,
             config_attrs,
             generic_to_p01_name,
-            params["odf_output"])
+            odf_path)
 
-        odf_output_path = params["odf_output"]
-        if not Path(params["odf_output"]).is_file():
-            odf_output_path = Path(params["odf_output"]).joinpath(odf.odf["file_specification"]).resolve()
-        l.log(f"odf file made -> {odf_output_path}")
-        log_output = Path(params["odf_output"]).parent
+        if not Path(odf_path).is_file():
+            odf_path = Path(odf_path).joinpath(odf.odf["file_specification"]).resolve()
+        l.log(f"odf file made -> {odf_path}")
 
-    else:
-        params["netcdf_output"] = True
-
-    # ---------------------------- #
-    # FORMATTING GLOBAL ATTRIBUTES #
-    # ---------------------------- #
+    # --------------------------------------- #
+    # FORMATTING GLOBAL ATTRIBUTES FOR OUTPUT #
+    # --------------------------------------- #
 
     dataset.attrs["history"] = dataset.attrs["logbook"]
     del dataset.attrs["logbook"]
@@ -494,20 +477,16 @@ def _process_adcp_data(
     # NC OUTPUTS #
     # ---------- #
 
-    if params["netcdf_output"]:
-        nc_output = params["netcdf_output"]
-        if isinstance(params["netcdf_output"], bool):
-            nc_output = params["input_files"][0]
-        nc_output = Path(nc_output).with_suffix(".nc")
-        dataset.to_netcdf(nc_output)
-        l.log(f"netcdf file made -> {nc_output.resolve()}")
-        log_output = nc_output
+    if not isinstance(netcdf_path, bool):
+        netcdf_path = Path(netcdf_path).with_suffix('.nc')
+        dataset.to_netcdf(netcdf_path)
+        l.log(f"netcdf file made -> {netcdf_path}")
 
     if params["make_log"]:
-        log_output = Path(log_output).with_suffix(".log")
-        with open(log_output, "w") as log_file:
+        log_path = Path(log_path).with_suffix(".log")
+        with open(log_path, "w") as log_file:
             log_file.write(dataset.attrs["history"])
-            print(f"log file made -> {log_output.resolve()}")
+            print(f"log file made -> {log_path.resolve()}")
 
     # MAKE_FIG TODO
 
@@ -918,3 +897,62 @@ def cut_times(dataset: xr.Dataset,
         dataset = dataset.sel(time=slice(start_time, end_time))
 
     return dataset
+
+
+def _make_outputs(input_path: str,
+                  odf_output: tp.Union[bool, str],
+                  netcdf_output: tp.Union[bool, str]) -> tp.Tuple[tp.Union[bool, str], tp.Union[bool, str], str]:
+    '''
+
+    Parameters
+    ----------
+    odf_output
+    nc_output
+
+    Returns
+    -------
+
+    '''
+    default_path = Path(input_path).parent
+    default_filename = Path(input_path).stem
+
+    if not odf_output and not netcdf_output:
+        netcdf_output = True
+
+    netcdf_path = False
+    if isinstance(netcdf_output, bool):
+        if netcdf_output is True:
+            netcdf_path = default_path.joinpath(default_filename)
+    elif isinstance(netcdf_output, str):
+        netcdf_output = Path(netcdf_output)
+        if Path(netcdf_output.name) == netcdf_output:
+            netcdf_path = default_path.joinpath(netcdf_output).resolve()
+        elif netcdf_output.is_dir():
+            netcdf_path = netcdf_output.joinpath(default_filename)
+        elif netcdf_output.parent.is_dir():
+            netcdf_path = netcdf_output
+        default_path = netcdf_path.parent
+        default_filename = netcdf_path.stem
+        netcdf_path = str(netcdf_path)
+        netcdf_output = True
+
+    odf_path = False
+    if isinstance(odf_output, bool):
+        if odf_output is True:
+            odf_path = default_path
+    elif isinstance(odf_output, str):
+        odf_output = Path(odf_output)
+        if Path(odf_output.name) == odf_output:
+            odf_path = default_path.joinpath(odf_output).resolve()
+        elif odf_output.is_dir():
+            odf_path = odf_output
+        elif odf_output.parent.is_dir():
+            odf_path = odf_output
+        if not netcdf_output:
+            default_path = odf_path.parent
+            default_filename = odf_path.stem
+        odf_path = str(odf_path)
+
+    log_path = str(default_path.joinpath(default_filename))
+
+    return netcdf_path, odf_path, log_path
