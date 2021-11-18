@@ -19,8 +19,8 @@ Usage:
 
 
 NOTE
--Maybe add a fonction for the navigation data. from csv ?
-   -n nc_fileaname
+-Maybe add a function for the navigation data. from csv ?
+   -n nc_filename
    -c csv_filename
    -o output netcdf4 file name
    -l longitude_var_name latitude_var_name (2 args)
@@ -356,9 +356,10 @@ def navigation(ctx, info, input_files, **options):
 #        Functions         #
 # ------------------------ #
 def _format_options_for_configfile(sensor_type, options):
-    """format options into the  configfile struture"""
+    """format options into the  configfile structure"""
     options = _convert_options_names(sensor_type, options)
 
+    configfile_struct = {}
     if sensor_type == "adcp":
         configfile_struct = {**BASE_CONFIG_STRUCT, **ADCP_CONFIG_STRUCT}
         if not options["bottom_depth"]:
@@ -381,7 +382,7 @@ def _format_options_for_configfile(sensor_type, options):
 
 def _convert_options_names(sensor_type, options):
     """Translate options name.
-    Translate options anmes from the commad names to
+    Translate options names from the command names to
     the parameters name used by magtogoek."""
 
     for key, item in OPTIONS_NAME_TRANSLATOR[sensor_type].items():
@@ -391,7 +392,7 @@ def _convert_options_names(sensor_type, options):
 
 
 def _print_passed_options(ctx_params: tp.Dict):
-    """print pass and default options/paramsd"""
+    """print pass and default options/params"""
     click.secho("Options:", fg="green")
     click.echo(click.style("=" * TERMINAL_WIDTH, fg="white", bold=True))
     for key, item in ctx_params.items():

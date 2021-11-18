@@ -112,9 +112,10 @@ def load_adcp_binary(
     bad_pressure:
         If True, XducerDepth is set to 0 or to `sensor_depth` if provided.
     start_time:
-        Format "YYYY-MM-DDThh:mm:ss.ssss".
-        If provided, a new time coordinate vector is used starting at `start_time`.
-        Use the parameter `time_step` to use a different time step than the one found in the adcp raw file.
+        Format 'YYYY-MM-DDThh:mm:ss.ssss'.
+        If provided, a new time coordinate vector, starting at `start_time`, is used instead of the
+        one found in the raw adcp file.
+        Use the parameter `time_step` to use a different time step than the one found in the adcp raw adcp file.
     time_step:
         Time step in seconds. Only use if a `start_time` value is provided.
     Returns
@@ -504,7 +505,7 @@ def coordsystem2earth(data: Bunch, orientation: str):
     ----------
     data:
         pycurrents.adcp.rdiraw.Bunche object containing: vel[time, depth, beams], bt_vel[time, beams],
-        heading, roll, pitch sysconfig.convex, sysconfig.angle  and trans.coordsytem.
+        heading, roll, pitch sysconfig.convex, sysconfig.angle  and trans.coordsystem.
 
     orientation:
         adcp orientation. Either `up` or `down`.

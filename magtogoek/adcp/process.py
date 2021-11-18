@@ -553,6 +553,15 @@ def _get_config(config: dict) -> tp.Tuple[dict, dict]:
     return params, config_attrs
 
 
+def _get_default_config_attrs():
+    """Return default config_attrs()"""
+    return {
+        "date_created": pd.Timestamp.now().strftime("%Y-%m-%d"),
+        "publisher_name": getpass.getuser(),
+        "source": "adcp",
+    }
+
+
 def _load_platform(params: dict) -> tp.Dict:
     """load sensor metadata into dict
 
@@ -596,15 +605,6 @@ def _default_platform() -> dict:
     platform_metadata['buoy_specs'] = platform_metadata['platform'].pop('buoy_specs')
 
     return platform_metadata
-
-
-def _get_default_config_attrs():
-    """Return default config_attrs()"""
-    return {
-        "date_created": pd.Timestamp.now().strftime("%Y-%m-%d"),
-        "publisher_name": getpass.getuser(),
-        "source": "adcp",
-    }
 
 
 def _check_platform_type(platform_metadata: dict):

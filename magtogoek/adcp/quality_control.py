@@ -340,7 +340,7 @@ def motion_correction(dataset: xr.Dataset, mode: str):
                     (dataset.depth.size, 1),
                 )
                 # dataset[f"{field}ship"].values = dataset[field].values NOTE not sure of why that was there.
-                l.log("Motion correction carried out with navigation")
+            l.log("Motion correction carried out with navigation")
         else:
             l.warning(
                 "Motion correction aborted. Navigation velocity (u_ship, v_ship) missing"
