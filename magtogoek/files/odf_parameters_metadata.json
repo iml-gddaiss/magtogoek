@@ -21,26 +21,12 @@
         "print_field_width": 10,
         "print_decimal_places": 4
     },
-    "u_QC": {
-        "code": "QQQQ_01",
-        "name": "Quality flag: East (true) Component of Current",
-        "units": "none",
-        "print_field_width": 1,
-        "print_decimal_places": 0
-    },
     "v": {
         "code": "NSCT_01",
         "name": "North (true) Component of Current",
         "units": "m/s",
         "print_field_width": 10,
         "print_decimal_places": 4
-    },
-    "v_QC": {
-        "code": "QQQQ_02",
-        "name": "Quality flag: North (true) Component of Current",
-        "units": "none",
-        "print_field_width": 1,
-        "print_decimal_places": 0
     },
     "w": {
         "code": "VCSP_01",
@@ -49,17 +35,59 @@
         "print_field_width": 10,
         "print_decimal_places": 4
     },
-    "w_QC": {
-        "code": "QQQQ_03",
-        "name": "Quality flag: Vertical Current Speed (positive up)",
-        "units": "none",
-        "print_field_width": 1,
-        "print_decimal_places": 0
-    },
     "e": {
         "code": "ERRV_01",
         "name": "Error Velocity (ADCP)",
         "units": "m/s",
+        "print_field_width": 10,
+        "print_decimal_places": 4
+    },
+    "pitch": {
+        "code": "PTCH_01",
+        "name": "Pitch Angle",
+        "units": "degrees",
+        "print_field_width": 6,
+        "print_decimal_places": 1
+    },
+    "roll_": {
+        "code": "ROLL_01",
+        "name": "Roll Angle",
+        "units": "degrees",
+        "print_field_width": 6,
+        "print_decimal_places": 1
+    },
+    "heading": {
+        "code": "HEAD_01",
+        "name": "Heading",
+        "units": "True degrees",
+        "print_field_width": 6,
+        "print_decimal_places": 1
+    },
+    "temperature": {
+        "code": "TE90_01",
+        "name": "Temperature (1990 scale)",
+        "units": "degrees C",
+        "print_field_width": 10,
+        "print_decimal_places": 4
+    },
+    "pres": {
+        "code": "PRES_01",
+        "name": "Sea Pressure (sea surface - 0)",
+        "units": "decibars",
+        "print_field_width": 10,
+        "print_decimal_places": 4
+    },
+    "lon": {
+        "code": "LOND_01",
+        "name": "Longitude (East +ve)",
+        "units": "degrees",
+        "print_field_width": 10,
+        "print_decimal_places": 4
+    },
+    "lat": {
+        "code": "LATD_01",
+        "name": "Latitude (North +ve)",
+        "units": "degrees",
         "print_field_width": 10,
         "print_decimal_places": 4
     }

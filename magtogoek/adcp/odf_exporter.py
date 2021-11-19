@@ -30,8 +30,10 @@ PARAMETERS_TYPES = {
     "|S1": "SYTM",
     "datetime64[ns]": "SYTM",
 }
-
-PARAMETERS = ("time", "depth", "u", "u_QC", "v", "v_QC", "w", "w_QC", "e")
+#TE90, HEAD_01, ROLL_01, DEPH_01
+VEL_PARAMETERS = ("time", "depth", "u", "v", "w", "e")
+ANC_PARAMETERS = ('time', 'pitch', 'roll_', 'heading', 'pres','temperature', 'xducer_depth','lon','lat')
+QC_PARAMETERS = ('u','v','w', 'pres', 'temperature')
 PARAMETERS_METADATA_RELATIVE_PATH = "../files/odf_parameters_metadata.json"
 PARAMETERS_METADATA_ABSOLUTE_PATH = (
     Path(__file__)
@@ -75,7 +77,7 @@ def make_odf(
         _make_instrument_header(odf, dataset)
     _make_quality_header(odf, dataset)
     _make_history_header(odf, dataset)
-    _make_parameter_headers(odf, dataset, generic_to_p01_name)
+    _make_parameter_headers(odf, dataset, generic_to_p01_name, VEL_PARAMETERS)
 
     if output_path is not None:
         output_path = Path(output_path)
@@ -371,7 +373,7 @@ def _make_history_header(odf, dataset):
     odf.add_history({"creation_date": creation_date, "process": process})
 
 
-def _make_parameter_headers(odf, dataset, generic_to_p01_name=None):
+def _make_parameter_headers(odf, dataset, parameters: tp.List[str], generic_to_p01_name=None):
     """
     Parameters
     ----------
@@ -388,19 +390,18 @@ def _make_parameter_headers(odf, dataset, generic_to_p01_name=None):
     parameters_metadata = json2dict(PARAMETERS_METADATA_ABSOLUTE_PATH)
 
     if generic_to_p01_name:
-        for param in PARAMETERS:
+        for param in parameters:
             if param in generic_to_p01_name:
                 parameters_metadata[
                     generic_to_p01_name[param]
                 ] = parameters_metadata.pop(param)
 
     data = dataset[list(parameters_metadata.keys())].to_dataframe().reset_index().sort_values(['time', 'depth'])
-
+    qc_count = 1
     for var in parameters_metadata:
         if var in dataset.variables:
             items = {}
             qc_mask = None
-
             items.update(parameters_metadata[var])
             items["depth"] = dataset.attrs["sensor_depth"]
             if "_QC" not in var:
@@ -410,9 +411,7 @@ def _make_parameter_headers(odf, dataset, generic_to_p01_name=None):
             items["type"] = PARAMETERS_TYPES[str(dataset[var].data.dtype)]
 
             null_value = None
-            if '_QC' in var:
-                null_value = 9
-            elif "null_value" in items:
+            if "null_value" in items:
                 null_value = items["null_value"]
             elif "_FillValue" in dataset[var].encoding:
                 null_value = dataset[var].encoding["_FillValue"]
@@ -423,6 +422,21 @@ def _make_parameter_headers(odf, dataset, generic_to_p01_name=None):
                               items=items,
                               qc_mask=qc_mask)
 
+            if var in QC_PARAMETERS and var+'_QC' in dataset.variables:
+                qc_items = {
+                    "code": "QQQQ_"+str(qc_count).zfill(2),
+                    "name": "Quality flag: " + items['name'],
+                    "units": "none",
+                    "print_field_width": 1,
+                    "print_decimal_places": 0,
+                    "null_value":9
+                }
+                odf.add_parameter(code=items["code"],
+                                  data=data[var+'_QC'].values,
+                                  null_value=9,
+                                  items=qc_items,
+                                  qc_mask=None)
+                qc_count += 1
 
 def _find_section_timestamp(s: str) -> str:
     r""" String of Section - Timestamp
