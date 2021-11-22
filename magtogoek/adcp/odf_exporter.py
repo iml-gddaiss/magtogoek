@@ -89,6 +89,8 @@ def make_odf(
         if output_path.is_dir():
             output_path = output_path.joinpath(odf.odf["file_specification"])
         else:
+            if not ('VEL' in output_path.name or 'ANC' in output_path.name):
+                output_path = output_path.with_suffix('_VEL')
             odf.odf["file_specification"] = output_path.name
 
         output_path = Path(output_path).with_suffix(".ODF")
