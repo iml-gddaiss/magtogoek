@@ -39,10 +39,10 @@ import sys
 import typing as tp
 from collections import namedtuple
 from configparser import RawConfigParser
+from datetime import datetime
 from pathlib import Path
 
 import click
-from datetime import datetime
 import dateutil.parser
 
 REFERENCE = "https://github.com/JeromeJGuay/magtogoek"
@@ -62,16 +62,14 @@ OptionInfos = namedtuple(
         "value_min",
         "value_max",
         "is_path",
-        "is_time_stamp"
+        "is_time_stamp",
     ),
     defaults=[[], None, None, None, None, None, None, None, False, False],
 )
 
 
 class ConfigFileError(SystemExit):
-    def __init__(
-            self, error, section=None, option=None, option_info=None, value=None
-    ):
+    def __init__(self, error, section=None, option=None, option_info=None, value=None):
         self.error = error
         self.section = section
         self.option = option
@@ -116,10 +114,12 @@ class ConfigFileError(SystemExit):
             self.msg += f", but received a value of `{self.value}`."
         if self.error == "choice":
             self.msg = f"`{self.section}/{self.option}` expected a value in `{self.option_info.choice}` but received `{self.value}`."
-        if self.error == 'string_format':
+        if self.error == "string_format":
             self.msg = f"`{self.section}/{self.option}` is an invalid datetime format. Use `YYYY-MM-DDThh:mm:ss.ssss`"
-        if self.error == 'path':
-            self.msg = f"`{self.section}/{self.option}` path or path/to/file does not exist."
+        if self.error == "path":
+            self.msg = (
+                f"`{self.section}/{self.option}` path or path/to/file does not exist."
+            )
         if "bool" in self.option_info.dtypes:
             self.msg += (
                 f"\nBoolean have to be express with {TRUE_VALUES} or {FALSE_VALUES}."
@@ -136,7 +136,9 @@ BASIC_CONFIG = dict(
         ),
     },
     INPUT={
-        "input_files": OptionInfos(dtypes=["str"], default="", nargs_min=1, is_path=True),
+        "input_files": OptionInfos(
+            dtypes=["str"], default="", nargs_min=1, is_path=True
+        ),
         "platform_file": OptionInfos(dtypes=["str"], default="", is_path=True),
         "platform_id": OptionInfos(dtypes=["str"], default=""),
         "sensor_id": OptionInfos(dtypes=["str"], default=""),
@@ -171,13 +173,13 @@ BASIC_CONFIG = dict(
         "end_date": OptionInfos(dtypes=["str"], default=""),
         "event_number": OptionInfos(dtypes=["str"], default=""),
         "event_qualifier1": OptionInfos(dtypes=["str"], default=""),
-        "event_qualifier2": OptionInfos(dtypes=["str"], default=""),
+       # "event_qualifier2": OptionInfos(dtypes=["str"], default=""),
         "event_comments": OptionInfos(dtypes=["str"], default=""),
     },
     GLOBAL_ATTRIBUTES={
         "date_created": OptionInfos(dtypes=["str"], default=""),
-        "data_type": OptionInfos(dtypes=["str"], default=""),
-        "data_subtype": OptionInfos(dtypes=["str"], default=""),
+        #        "data_type": OptionInfos(dtypes=["str"], default=""),
+        #        "data_subtype": OptionInfos(dtypes=["str"], default=""),
         "cdm_data_type": OptionInfos(dtypes=["str"], default=""),
         "country_code": OptionInfos(dtypes=["str"], default=""),
         "publisher_email": OptionInfos(dtypes=["str"], default=""),
@@ -194,9 +196,7 @@ ADCP_CONFIG = dict(
     ADCP_PROCESSING={
         "yearbase": OptionInfos(dtypes=["int"], default=""),
         "adcp_orientation": OptionInfos(dtypes=["str"], choice=["up", "down"]),
-        "sonar": OptionInfos(
-            dtypes=["str"], choice=["wh", "sv", "os", "sw", "sw_pd0"]
-        ),
+        "sonar": OptionInfos(dtypes=["str"], choice=["wh", "sv", "os", "sw", "sw_pd0"]),
         "navigation_file": OptionInfos(dtypes=["str"], default="", is_path=True),
         "leading_trim": OptionInfos(dtypes=["str"], default=""),
         "trailing_trim": OptionInfos(dtypes=["str"], default=""),
@@ -208,7 +208,7 @@ ADCP_CONFIG = dict(
         "magnetic_declination": OptionInfos(dtypes=["float"], default=""),
         "keep_bt": OptionInfos(dtypes=["bool"], default=True),
         "start_time": OptionInfos(dtypes=["str"], default=""),
-        "time_step": OptionInfos(dtypes=['float'], default="")
+        "time_step": OptionInfos(dtypes=["float"], default=""),
     },
     ADCP_QUALITY_CONTROL={
         "quality_control": OptionInfos(dtypes=["bool"], default=True),
@@ -390,7 +390,9 @@ def _format_option(value, option_info, section, option, config_path):
         value = _get_sequence_from_string(value)
         _check_options_length(value, option_info, section, option)
         for i, _value in enumerate(value):
-            value[i] = _format_option_type(_value, option_info, section, option, config_path)
+            value[i] = _format_option_type(
+                _value, option_info, section, option, config_path
+            )
     else:
         value = _format_option_type(value, option_info, section, option, config_path)
 
@@ -424,7 +426,7 @@ def _format_option_type(value, option_info, section, option, config_path):
         try:
             dateutil.parser.parse(value)
         except dateutil.parser._parser.ParserError:
-            raise ConfigFileError('string_format', section, option, option_info, value)
+            raise ConfigFileError("string_format", section, option, option_info, value)
 
     return value
 
@@ -438,6 +440,8 @@ def _format_value_dtypes(value: str, dtypes: str) -> tp.Union[bool, int, float, 
     if "float" in dtypes:
         return float(value)
     if "str" in dtypes:
+        for quotes in ["'", '"']:
+            value = value.strip(quotes)
         return value
     raise ValueError
 
@@ -452,7 +456,7 @@ def _get_sequence_from_string(sequence: str) -> tp.List:
     -------
     _format_string_list'(arg1, arg2, arg3)' -> [arg1 arg2 arg3]
     """
-    for sep in (":", ";", " ", "\n", "(", ")", "[", "]", "'","\""):
+    for sep in (":", ";", " ", "\n", "(", ")", "[", "]", "'", '"'):
         sequence = sequence.replace(sep, ",")
 
     return list(filter(None, sequence.split(",")))

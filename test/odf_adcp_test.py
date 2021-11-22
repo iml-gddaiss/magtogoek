@@ -6,8 +6,7 @@ from magtogoek.utils import json2dict
 
 DATASET = xr.open_dataset("data/netcdf_test_files/test_netcdf.nc")
 GLOBAL_ATTRS = json2dict("data/test_global_attributes.json")
-
-P01_TO_GENEREIC_NAME = {
+P01_TO_GENERIC_NAME = {
     "u": "LCEWAP01",
     "u_QC": "LCEWAP01_QC",
     "v": "LCNSAP01",
@@ -16,6 +15,7 @@ P01_TO_GENEREIC_NAME = {
     "w_QC": "LRZAAP01_QC",
     "e": "LERRAP01",
 }
+DATASET.attrs['P01_CODES'] = P01_TO_GENERIC_NAME
 
 PLATFORM_METADATA = _default_platform()
 PLATFORM_METADATA['platform'].update(
@@ -35,7 +35,7 @@ PLATFORM_METADATA['buoy_specs'].update(
 )
 
 def test_make():
-    odf = make_odf(DATASET, PLATFORM_METADATA, GLOBAL_ATTRS, P01_TO_GENEREIC_NAME)
+    odf = make_odf(DATASET, PLATFORM_METADATA, GLOBAL_ATTRS)
     assert odf.data.shape == (40, 9)
 
 
@@ -49,7 +49,7 @@ def test_make():
 )
 def test_platform_type(platform_type, headers, cruise_platform):
     PLATFORM_METADATA['platform']["platform_type"] = platform_type
-    odf = make_odf(DATASET, PLATFORM_METADATA, GLOBAL_ATTRS, P01_TO_GENEREIC_NAME)
+    odf = make_odf(DATASET, PLATFORM_METADATA, GLOBAL_ATTRS)
     assert odf.cruise["platform"] == cruise_platform
     for header in headers:
         assert header in odf.__dict__

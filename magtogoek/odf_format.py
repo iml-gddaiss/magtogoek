@@ -552,7 +552,9 @@ class Odf:
         self.parameter[code]["code"] = code
         self.parameter[code]['null_value'] = null_value
         self.data[code] = data
-        self._compute_parameter_attrs(code, qc_mask)
+        self.parameter[code]['number_valid'] = len(self.data[code])
+        if not 'QQQQ' in code:
+            self._compute_parameter_attrs(code, qc_mask)
 
     def _compute_parameter_attrs(self, parameter: str, qc_mask: np.ndarray = None):
         """Compute `number_valid`, `number_null`, `minimum_value` and `maximum_value` from
@@ -561,7 +563,7 @@ class Odf:
         null_value = self.parameter[parameter]["null_value"]
         n_null = (self.data[parameter] == null_value).sum().item()
         self.parameter[parameter]["number_null"] = n_null
-        self.parameter[parameter]["number_valid"] = len(self.data[parameter]) - n_null
+        self.parameter[parameter]["number_valid"] -= n_null
 
         mask = (self.data[parameter] != null_value).values
         if qc_mask is not None:

@@ -7,16 +7,17 @@ from datetime import datetime
 
 import pandas as pd
 import xarray as xr
+from typing import List, Union, Tuple, Dict
 from magtogoek.odf_format import Odf, odf_time_format
 from magtogoek.utils import json2dict
 
 REPOSITORY_ADDRESS = "https://github.com/JeromeJGuay/magtogoek"
 
 ADCP_COMMENTS_SENSOR = {
-    'PRESPR01': {'sensor': 'PRESSURE_SENSOR_01', 'comments': {'CODE':'DEPH_01', 'Name':'pressure'}},
-    'HEADCM01': {'sensor': 'COMPAS_SENSOR_01', 'comments': {'CODE':'HEAD_01', 'Name':'compas'}},
-    'ROLLGP01': {'sensor': 'INClINOMETER_SENSOR_01', 'comments': {'CODE':'ROLL_01', 'Name':'tilt'}},
-    'TEMPPR01': {'sensor': 'TEMPERATURE_SENSOR_01', 'comments': {'CODE':'TE90_01', 'Name':'temperature'}}
+    'PRESPR01': {'sensor': 'PRESSURE_SENSOR_01', 'comments': {'CODE': 'DEPH_01', 'Name': 'pressure'}},
+    'HEADCM01': {'sensor': 'COMPAS_SENSOR_01', 'comments': {'CODE': 'HEAD_01', 'Name': 'compas'}},
+    'ROLLGP01': {'sensor': 'INClINOMETER_SENSOR_01', 'comments': {'CODE': 'ROLL_01', 'Name': 'tilt'}},
+    'TEMPPR01': {'sensor': 'TEMPERATURE_SENSOR_01', 'comments': {'CODE': 'TE90_01', 'Name': 'temperature'}}
 }
 
 PARAMETERS_TYPES = {
@@ -30,26 +31,29 @@ PARAMETERS_TYPES = {
     "|S1": "SYTM",
     "datetime64[ns]": "SYTM",
 }
-#TE90, HEAD_01, ROLL_01, DEPH_01
-VEL_PARAMETERS = ("time", "depth", "u", "v", "w", "e")
-ANC_PARAMETERS = ('time', 'pitch', 'roll_', 'heading', 'pres','temperature', 'xducer_depth','lon','lat')
-QC_PARAMETERS = ('u','v','w', 'pres', 'temperature')
+# TE90, HEAD_01, ROLL_01, DEPH_01
+PARAMETERS = {
+    'VEL':("time", "depth", "u", "v", "w", "e"),
+    "ANC":('time', 'pitch', 'roll_', 'heading', 'pres', 'temperature', 'lon', 'lat')
+}
+QC_PARAMETERS = ('u', 'v', 'w', 'pres', 'temperature')
 PARAMETERS_METADATA_RELATIVE_PATH = "../files/odf_parameters_metadata.json"
 PARAMETERS_METADATA_ABSOLUTE_PATH = (
     Path(__file__)
-    .resolve()
-    .parent.joinpath(PARAMETERS_METADATA_RELATIVE_PATH)
-    .resolve()
+        .resolve()
+        .parent.joinpath(PARAMETERS_METADATA_RELATIVE_PATH)
+        .resolve()
 )
+PARAMETERS_METADATA = json2dict(PARAMETERS_METADATA_ABSOLUTE_PATH)
 
 
 def make_odf(
         dataset: xr.Dataset,
         platform_metadata: dict,
         config_attrs: dict,
-        generic_to_p01_name: dict = None,
+        bodc_name: bool = True,
         output_path: str = None,
-):
+        event_qualifier2: str = 'VEL'):
     """
     Parameters
     ----------
@@ -59,15 +63,17 @@ def make_odf(
         Metadata from the platform file.
     config_attrs :
         Global attributes parameter from the configFile.
-    generic_to_p01_name :
-        map from the generic to the BODC p01 variables names.
-    output_path :
+    bodc_name:
+        If True, map from the generic to the BODC p01 variables names.
+    output_path:
+    event_qualifier2:
+        Either `VEL` or `ANC`.
 
     """
     odf = Odf()
 
     _make_cruise_header(odf, platform_metadata, config_attrs)
-    _make_event_header(odf, dataset, config_attrs)
+    _make_event_header(odf, dataset, config_attrs, event_qualifier2)
     _make_odf_header(odf)
     if platform_metadata['platform']["platform_type"] == "buoy":
         _make_buoy_header(odf, platform_metadata)
@@ -77,14 +83,14 @@ def make_odf(
         _make_instrument_header(odf, dataset)
     _make_quality_header(odf, dataset)
     _make_history_header(odf, dataset)
-    _make_parameter_headers(odf, dataset, generic_to_p01_name, VEL_PARAMETERS)
-
+    _make_parameter_headers(odf, dataset, PARAMETERS[event_qualifier2], bodc_name)
     if output_path is not None:
         output_path = Path(output_path)
         if output_path.is_dir():
             output_path = output_path.joinpath(odf.odf["file_specification"])
         else:
             odf.odf["file_specification"] = output_path.name
+
         output_path = Path(output_path).with_suffix(".ODF")
         odf.save(output_path)
 
@@ -106,7 +112,7 @@ def _make_cruise_header(odf, platform_metadata, config_attrs):
         odf.cruise["platform"] = "Oceanographic Buoy"
 
 
-def _make_event_header(odf, dataset, config_attrs):
+def _make_event_header(odf, dataset, config_attrs, event_qualifier2):
     """
     Make the event header.
 
@@ -114,14 +120,14 @@ def _make_event_header(odf, dataset, config_attrs):
     -----
     `depth_off_bottom` is `0` if "sounding" is missing.
     """
-    odf.event['data_type'] = 'madcp'
+    odf.event['data_type'] = dataset.attrs['data_type']
     odf.event["creation_date"] = odf_time_format(datetime.now())
     odf.event['orig_creation_date'] = odf_time_format(dataset.attrs['date_created'])
     if 'delta_t_sec' in dataset.attrs:
         odf.event['sampling_interval'] = dataset.attrs['delta_t_sec']
     odf.event["event_number"] = config_attrs["event_number"]
     odf.event["event_qualifier1"] = config_attrs["event_qualifier1"]
-    odf.event["event_qualifier2"] = config_attrs["event_qualifier2"]
+    odf.event["event_qualifier2"] = event_qualifier2
     if 'sounding' in dataset.attrs:
         odf.event['sounding'] = dataset.attrs['sounding']
     odf.event["event_comments"] = config_attrs["event_comments"]
@@ -250,16 +256,16 @@ def _make_sensor_buoy_instrument_header(odf: Odf, platform_metadata: dict):
             if key in metadata:
                 odf.buoy_instrument[sensor][key] = metadata[key]
         comments = {}
-        keys =(("Firmware_Version", "firmware_version"),
-               ("depth_m", "sensor_depth"),
-               ("Comments", "comments"))
+        keys = (("Firmware_Version", "firmware_version"),
+                ("depth_m", "sensor_depth"),
+                ("Comments", "comments"))
         for key_odf, meta_key in keys:
             comments[key_odf] = metadata[meta_key]
 
         for key, value in comments.items():
             odf.buoy_instrument[sensor]["buoy_instrument_comments"].append(
                 configuration + "." + key + ": " + str(value)
-                )
+            )
 
 
 def _make_buoy_instrument_comments(odf: Odf, sensor: str, dataset: xr.Dataset, platform_metadata: dict):
@@ -321,7 +327,7 @@ def _make_buoy_instrument_sensor(odf: Odf, instrument: str, dataset: xr.Dataset)
     Returns
     -------
     """
-    dataset_attrs = {'Manufacturer':'manufacturer', 'Depth':'sensor_depth', 'Serial_Number':'serial_number'}
+    dataset_attrs = {'Manufacturer': 'manufacturer', 'Depth': 'sensor_depth', 'Serial_Number': 'serial_number'}
     for var, item in ADCP_COMMENTS_SENSOR.items():
         if var in dataset.variables:
             for key, value in item['comments'].items():
@@ -373,70 +379,75 @@ def _make_history_header(odf, dataset):
     odf.add_history({"creation_date": creation_date, "process": process})
 
 
-def _make_parameter_headers(odf, dataset, parameters: tp.List[str], generic_to_p01_name=None):
+def _make_parameter_headers(odf, dataset, variables: List[str], bodc_name=False):
     """
     Parameters
     ----------
-    odf :
-    dataset :
+    odf:
+    dataset:
         Dataset to which add the navigation data.
-    generic_to_p01_name :
-        map from the generic to the BODC p01 variables names
+    variables:
+       variables to put in the ODF.
+    bodc_name:
+        If True, map from the generic to the BODC p01 variables names.
     Notes
     -----
-    The PARAMETERS global variable order is important.
+    The variable order is important in the variables list.
     """
 
-    parameters_metadata = json2dict(PARAMETERS_METADATA_ABSOLUTE_PATH)
+    parameters_metadata = {}
+    parameters = []
+    qc_parameters= []
 
-    if generic_to_p01_name:
-        for param in parameters:
-            if param in generic_to_p01_name:
-                parameters_metadata[
-                    generic_to_p01_name[param]
-                ] = parameters_metadata.pop(param)
+    for var in variables:
+        dataset_variable_name = var
+        if bodc_name is True and not var in ('time', 'depth'):
+            dataset_variable_name = dataset.attrs["P01_CODES"][var]
+        if dataset_variable_name in dataset.variables:
+            parameters_metadata[dataset_variable_name] = PARAMETERS_METADATA[var]
+            parameters.append(dataset_variable_name)
+            if var in QC_PARAMETERS and dataset_variable_name + '_QC' in dataset.variables:
+                qc_parameters.append(dataset_variable_name+'_QC')
 
-    data = dataset[list(parameters_metadata.keys())].to_dataframe().reset_index().sort_values(['time', 'depth'])
+    dims = ['time', 'depth'] if 'depth' in variables else ['time']
+    data = dataset[parameters+qc_parameters].to_dataframe().reset_index().sort_values(dims)
+
     qc_count = 1
-    for var in parameters_metadata:
-        if var in dataset.variables:
-            items = {}
-            qc_mask = None
-            items.update(parameters_metadata[var])
-            items["depth"] = dataset.attrs["sensor_depth"]
-            if "_QC" not in var:
-                items["magnetic_variation"] = dataset.attrs["magnetic_declination"]
-            if var + '_QC' in dataset.variables:
-                qc_mask = data[var + '_QC'].values <= 2
-            items["type"] = PARAMETERS_TYPES[str(dataset[var].data.dtype)]
+    for var in parameters:
+        add_qc_var = var + '_QC' in qc_parameters
 
-            null_value = None
-            if "null_value" in items:
-                null_value = items["null_value"]
-            elif "_FillValue" in dataset[var].encoding:
-                null_value = dataset[var].encoding["_FillValue"]
+        items = {"depth": dataset.attrs["sensor_depth"],
+                 'magnetic_variation': dataset.attrs["magnetic_declination"],
+                 "type": PARAMETERS_TYPES[str(dataset[var].data.dtype)]}
+        items.update(parameters_metadata[var])
 
-            odf.add_parameter(code=items["code"],
-                              data=data[var].values,
-                              null_value=null_value,
-                              items=items,
-                              qc_mask=qc_mask)
+        qc_mask = data[var + '_QC'].values <= 2 if add_qc_var is True else None
 
-            if var in QC_PARAMETERS and var+'_QC' in dataset.variables:
-                qc_items = {
-                    "code": "QQQQ_"+str(qc_count).zfill(2),
-                    "name": "Quality flag: " + items['name'],
-                    "units": "none",
-                    "print_field_width": 1,
-                    "print_decimal_places": 0,
-                    "null_value":9
-                }
-                odf.add_parameter(code=items["code"],
-                                  data=data[var+'_QC'].values,
-                                  null_value=9,
-                                  items=qc_items,
-                                  qc_mask=None)
-                qc_count += 1
+        null_value = items["null_value"] if "null_value" in items else dataset[var].encoding["_FillValue"]
+
+        odf.add_parameter(code=items["code"],
+                          data=data[var].values,
+                          null_value=null_value,
+                          items=items,
+                          qc_mask=qc_mask)
+
+        if add_qc_var is True:
+            qc_items = {
+                "code": "QQQQ_" + str(qc_count).zfill(2),
+                "name": "Quality flag: " + items['name'],
+                "units": "none",
+                "print_field_width": 1,
+                "print_decimal_places": 0,
+                "null_value": 9,
+                "type": PARAMETERS_TYPES[str(dataset[var + '_QC'].data.dtype)]
+            }
+            odf.add_parameter(code=qc_items["code"],
+                              data=data[var + '_QC'].values,
+                              null_value=9,
+                              items=qc_items,
+                              qc_mask=None)
+            qc_count += 1
+
 
 def _find_section_timestamp(s: str) -> str:
     r""" String of Section - Timestamp

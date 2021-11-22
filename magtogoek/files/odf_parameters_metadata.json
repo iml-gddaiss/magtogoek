@@ -5,7 +5,7 @@
         "units": "GMT",
         "print_field_width": 23,
         "print_decimal_places": 0,
-    "null_value": "17-NOV-1858 00:00:00.00"
+        "null_value": "17-NOV-1858 00:00:00.00"
 },
     "depth": {
         "code": "DEPH_01",

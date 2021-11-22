@@ -87,7 +87,8 @@ GLOBAL_ATTRS_TO_DROP = [
 CONFIG_GLOBAL_ATTRS_SECTIONS = ["NETCDF_CF", "PROJECT", "CRUISE", "GLOBAL_ATTRIBUTES"]
 PLATFORM_TYPES = ["buoy", "mooring", "ship"]
 DEFAULT_PLATFORM_TYPE = "buoy"
-DATA_TYPES = {"buoy": "MADCP", "mooring": "MADCP", "ship": "ADCP"}
+DATA_TYPES = {"buoy": "madcp", "mooring": "madcp", "ship": "adcp"}
+DATA_SUBTYPES = {"buoy": "BUOY", "mooring": "MOORED", "ship": "SHIPBORNE"}
 
 P01_VEL_CODES = dict(
     buoy=dict(
@@ -334,6 +335,7 @@ def _process_adcp_data(
     dataset = dataset.assign_attrs(STANDARD_ADCP_GLOBAL_ATTRIBUTES)
 
     dataset.attrs["data_type"] = DATA_TYPES[platform_type]
+    dataset.attrs["data_subtype"] = DATA_SUBTYPES[platform_type]
 
     if platform_metadata['platform']["longitude"]:
         dataset.attrs["longitude"] = platform_metadata['platform']["longitude"]
@@ -436,21 +438,19 @@ def _process_adcp_data(
 
     l.section("Output")
     if odf_path:
-        if params["bodc_name"]:
-            generic_to_p01_name = P01_VEL_CODES[platform_type]
-        else:
-            generic_to_p01_name = None
-
-        odf = make_odf( # TO TEST TODO
-            dataset,
-            platform_metadata,
-            config_attrs,
-            generic_to_p01_name,
-            odf_path)
-
-        if not Path(odf_path).is_file():
-            odf_path = Path(odf_path).joinpath(odf.odf["file_specification"]).resolve()
-        l.log(f"odf file made -> {odf_path}")
+        for qualifier in ('VEL', 'ANC'):
+            odf = make_odf(
+                dataset=dataset,
+                platform_metadata=platform_metadata,
+                config_attrs=config_attrs,
+                bodc_name=params['bodc_name'],
+                output_path=odf_path,
+                event_qualifier2=qualifier
+            )
+            _odf_path = odf_path
+            if not Path(odf_path).is_file():
+                _odf_path = Path(odf_path).joinpath(odf.odf["file_specification"]).resolve()
+            l.log(f"odf file made -> {_odf_path}")
 
     # --------------------------------------- #
     # FORMATTING GLOBAL ATTRIBUTES FOR OUTPUT #
@@ -914,7 +914,7 @@ def _make_outputs(input_path: str,
 
     '''
     default_path = Path(input_path).parent
-    default_filename = Path(input_path).stem
+    default_filename = Path(input_path).name
 
     if not odf_output and not netcdf_output:
         netcdf_output = True
@@ -927,12 +927,12 @@ def _make_outputs(input_path: str,
         netcdf_output = Path(netcdf_output)
         if Path(netcdf_output.name) == netcdf_output:
             netcdf_path = default_path.joinpath(netcdf_output).resolve()
-        elif netcdf_output.is_dir():
+        elif netcdf_output.absolute().is_dir():
             netcdf_path = netcdf_output.joinpath(default_filename)
         elif netcdf_output.parent.is_dir():
             netcdf_path = netcdf_output
         default_path = netcdf_path.parent
-        default_filename = netcdf_path.stem
+        default_filename = netcdf_path.name
         netcdf_path = str(netcdf_path)
         netcdf_output = True
 
