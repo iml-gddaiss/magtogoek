@@ -308,7 +308,7 @@ def adcp_quality_control(
             dataset[var].attrs["flag_values"] = FLAG_VALUES
             dataset[var].attrs["flag_reference"] = FLAG_REFERENCE
 
-    dataset.attrs["quality_comments"] = l.logbook[1:]
+    dataset.attrs["quality_comments"] = l.logbook[len('[Quality Control]'):]
     l.log(f"Quality Control was carried out with {l.w_count} warnings")
     dataset.attrs["logbook"] += l.logbook
 
