@@ -257,15 +257,20 @@ def _pipe_to_process_adcp_data(
 
     if not params["merge_output_files"]:
         netcdf_output = params["netcdf_output"]
+        if isinstance(params["odf_output"], str):
+            if not Path(params['odf_output']).is_dir():
+                params['odf_output'] = True #File name will not overwrite.
         input_files = params["input_files"]
         for filename, count in zip(input_files, range(len(input_files))):
             if netcdf_output:
                 if isinstance(netcdf_output, bool):
                     params["netcdf_output"] = filename
                 else:
-                    params["netcdf_output"] = (
-                            str(Path(netcdf_output).name) + f"_{count}"
-                    )
+                    params["netcdf_output"] = Path(netcdf_output).absolute().resolve()
+                    if params["netcdf_output"].is_dir():
+                        params["netcdf_output"] = str(params["netcdf_output"].joinpath(filename))
+                    else:
+                        params["netcdf_output"] = str(params["netcdf_output"].with_suffix("")) + f"_{count}"
             params["input_files"] = [filename]
 
             _process_adcp_data(params, platform_metadata, config_attrs, drop_empty_attrs)
