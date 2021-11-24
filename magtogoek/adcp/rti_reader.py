@@ -18,7 +18,7 @@ from typing import Dict, List, Tuple, Union
 
 import numpy as np
 from magtogoek.adcp.tools import datetime_to_dday
-from magtogoek.utils import Logger, get_files_from_expresion
+from magtogoek.utils import Logger, get_files_from_expression
 from rti_python.Codecs.BinaryCodec import BinaryCodec
 from rti_python.Ensemble.EnsembleData import *
 from scipy.interpolate import griddata
@@ -115,7 +115,7 @@ class RtiReader:
         filenames :
             path/to/filename or list(path/to/filenames) or path/to/regex
         """
-        self.filenames = get_files_from_expresion(filenames)
+        self.filenames = get_files_from_expression(filenames)
 
         self.start_index = None
         self.stop_index = None

@@ -126,14 +126,12 @@ class ConfigFileError(SystemExit):
             )
 
 
-BASIC_CONFIG = dict(
+BASE_CONFIG = dict(
     HEADER={
-        "sensor_type": OptionInfos(dtypes=["str"], default=""),
-        "platform_type": OptionInfos(dtypes=["str"], default=""),
         "made_by": OptionInfos(dtypes=["str"], default=getpass.getuser()),
-        "last_updated": OptionInfos(
-            dtypes=["str"], default=datetime.now().strftime("%Y-%m-%d")
-        ),
+        "last_updated": OptionInfos(dtypes=["str"], default=datetime.now().strftime("%Y-%m-%d")),
+        "sensor_type": OptionInfos(dtypes=["str"], default=""),
+        "platform_type": OptionInfos(dtypes=["str"], default="buoy", choice =["buoy", "mooring", "ship"]),
     },
     INPUT={
         "input_files": OptionInfos(
@@ -201,9 +199,7 @@ ADCP_CONFIG = dict(
         "leading_trim": OptionInfos(dtypes=["str"], default=""),
         "trailing_trim": OptionInfos(dtypes=["str"], default=""),
         "sensor_depth": OptionInfos(dtypes=["float"], default=""),
-        "depth_range": OptionInfos(
-            dtypes=["float"], default="()", nargs_min=1, nargs_max=2
-        ),
+        "depth_range": OptionInfos(dtypes=["float"], default="()", nargs_min=1, nargs_max=2),
         "bad_pressure": OptionInfos(dtypes=["bool"], default=False),
         "magnetic_declination": OptionInfos(dtypes=["float"], default=""),
         "keep_bt": OptionInfos(dtypes=["bool"], default=True),
@@ -212,29 +208,17 @@ ADCP_CONFIG = dict(
     },
     ADCP_QUALITY_CONTROL={
         "quality_control": OptionInfos(dtypes=["bool"], default=True),
-        "amplitude_threshold": OptionInfos(
-            dtypes=["int"], default=0, value_min=0, value_max=255
-        ),
-        "percentgood_threshold": OptionInfos(
-            dtypes=["int"], default=64, value_min=0, value_max=100
-        ),
-        "correlation_threshold": OptionInfos(
-            dtypes=["int"], default=90, value_min=0, value_max=255
-        ),
+        "amplitude_threshold": OptionInfos(dtypes=["int"], default=0, value_min=0, value_max=255),
+        "percentgood_threshold": OptionInfos(dtypes=["int"], default=64, value_min=0, value_max=100),
+        "correlation_threshold": OptionInfos(dtypes=["int"], default=90, value_min=0, value_max=255),
         "horizontal_velocity_threshold": OptionInfos(dtypes=["float"], default=5),
         "vertical_velocity_threshold": OptionInfos(dtypes=["float"], default=5),
         "error_velocity_threshold": OptionInfos(dtypes=["float"], default=5),
         "sidelobes_correction": OptionInfos(dtypes=["bool"], default=True),
         "bottom_depth": OptionInfos(dtypes=["float"]),
-        "pitch_threshold": OptionInfos(
-            dtypes=["int"], default=20, value_min=0, value_max=180
-        ),
-        "roll_threshold": OptionInfos(
-            dtypes=["int"], default=20, value_min=0, value_max=180
-        ),
-        "motion_correction_mode": OptionInfos(
-            dtypes=["str"], default="bt", choice=["bt", "nav", "off"]
-        ),
+        "pitch_threshold": OptionInfos(dtypes=["int"], default=20, value_min=0, value_max=180),
+        "roll_threshold": OptionInfos(dtypes=["int"], default=20, value_min=0, value_max=180),
+        "motion_correction_mode": OptionInfos(dtypes=["str"], default="bt", choice=["bt", "nav", "off"]),
     },
     ADCP_OUTPUT={
         "merge_output_files": OptionInfos(dtypes=["bool"], default=True),
@@ -243,14 +227,17 @@ ADCP_CONFIG = dict(
         "drop_percent_good": OptionInfos(dtypes=["bool"], default=True),
         "drop_correlation": OptionInfos(dtypes=["bool"], default=True),
         "drop_amplitude": OptionInfos(dtypes=["bool"], default=True),
+        "odf_data": OptionInfos(dtypes=['str'], default='both', choice=['vel', 'anc', ' both']),
         "make_figures": OptionInfos(dtypes=["bool"], default=True),
         "make_log": OptionInfos(dtypes=["bool"], default=True),
     },
 )
 
 
-def make_configfile(filename: str, sensor_type: str, values: tp.Dict = None):
-    """make a configfile with default and update it if `options` are passed"""
+def make_configfile(filename: str, sensor_type: str, new_values: tp.Dict = None):
+    """Make a configfile for the given sensor_type.
+
+     Uses default values and update/adds it if `new_values` are passed"""
 
     # getting the default config as dict
     default_config = _get_default_config(sensor_type)
@@ -263,9 +250,10 @@ def make_configfile(filename: str, sensor_type: str, values: tp.Dict = None):
         for option, value in options.items():
             parser[section][option] = str(value)
 
+
     # Overwrite the default values with the `updated_params`.
-    if values:
-        _update_parser_values(parser, values)
+    if new_values:
+        _update_parser_values(parser, new_values)
 
     _write_configfile(parser, filename)
 
@@ -338,7 +326,6 @@ def _add_config_missing(parser: RawConfigParser, sensor_type):
     to add tons of conditional statements.
 
     """
-
     default_config = _get_default_config(sensor_type)
     for section, options in default_config.items():
         if not parser.has_section(section):
@@ -485,7 +472,7 @@ def _check_option_min_max(value, option_info, section, option):
 
 def _get_config_info(sensor_type: str):
     if sensor_type == "adcp":
-        config_info = {**BASIC_CONFIG, **ADCP_CONFIG}
+        config_info = {**BASE_CONFIG, **ADCP_CONFIG}
     else:
         raise ConfigFileError(error="sensor_type")
 

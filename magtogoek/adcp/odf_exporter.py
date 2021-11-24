@@ -9,7 +9,8 @@ import pandas as pd
 import xarray as xr
 from typing import List, Union, Tuple, Dict
 from magtogoek.odf_format import Odf, odf_time_format
-from magtogoek.utils import json2dict
+from magtogoek.utils import json2dict, resolve_relative_path
+
 
 REPOSITORY_ADDRESS = "https://github.com/JeromeJGuay/magtogoek"
 
@@ -37,14 +38,9 @@ PARAMETERS = {
     "ANC":('time', 'pitch', 'roll_', 'heading', 'pres', 'temperature', 'lon', 'lat')
 }
 QC_PARAMETERS = ('u', 'v', 'w', 'pres', 'temperature')
-PARAMETERS_METADATA_RELATIVE_PATH = "../files/odf_parameters_metadata.json"
-PARAMETERS_METADATA_ABSOLUTE_PATH = (
-    Path(__file__)
-        .resolve()
-        .parent.joinpath(PARAMETERS_METADATA_RELATIVE_PATH)
-        .resolve()
-)
-PARAMETERS_METADATA = json2dict(PARAMETERS_METADATA_ABSOLUTE_PATH)
+PARAMETERS_METADATA_PATH = resolve_relative_path("../files/odf_parameters_metadata.json", __file__)
+
+PARAMETERS_METADATA = json2dict(PARAMETERS_METADATA_PATH)
 
 
 def make_odf(
@@ -52,8 +48,8 @@ def make_odf(
         platform_metadata: dict,
         config_attrs: dict,
         bodc_name: bool = True,
-        output_path: str = None,
-        event_qualifier2: str = 'VEL'):
+        event_qualifier2: str = 'VEL',
+        output_path: str = None,):
     """
     Parameters
     ----------
@@ -84,17 +80,19 @@ def make_odf(
     _make_quality_header(odf, dataset)
     _make_history_header(odf, dataset)
     _make_parameter_headers(odf, dataset, PARAMETERS[event_qualifier2], bodc_name)
+
     if output_path is not None:
         output_path = Path(output_path)
         if output_path.is_dir():
             output_path = output_path.joinpath(odf.odf["file_specification"])
         else:
-            if not ('VEL' in output_path.name or 'ANC' in output_path.name):
-                output_path = output_path.with_suffix('_VEL')
+            if not event_qualifier2 in output_path.name:
+                output_path = output_path.with_suffix(f'_{event_qualifier2}')
             odf.odf["file_specification"] = output_path.name
 
         output_path = Path(output_path).with_suffix(".ODF")
         odf.save(output_path)
+        print(f"odf {event_qualifier2.upper()} file made -> {output_path}")
 
     return odf
 
@@ -247,7 +245,6 @@ def _make_sensor_buoy_instrument_header(odf: Odf, platform_metadata: dict):
 
     Returns
     -------
-# FIXME
     """
     configuration = "CONFIGURATION_01"
     for sensor, metadata in platform_metadata['sensors'].items():
@@ -361,13 +358,13 @@ def _make_history_header(odf, dataset):
     """Make one or more history_header.
     1 - Default process comments is added with a Timestamp (datetime.now()).
     2 - Looks for log section `[Loading adcp data], [Data transformation]` in
-        dataset.attrs['logbook'] and add the log messages that follow.
+        dataset.attrs['history'] and add the log messages that follow.
     3 - New history_header are made for each TimeStamp found with the log section.
     """
     process = ["Data processed by Magtogoek Processing Software. More at " + REPOSITORY_ADDRESS]
     creation_date = odf_time_format(datetime.now())
 
-    iter_logbook = iter(re.split(r"(\[.*])", dataset.attrs["logbook"]))
+    iter_logbook = iter(re.split(r"(\[.*])", dataset.attrs["history"]))
     for log_entry in iter_logbook:
         if log_entry in ["[Loading adcp data]", "[Data transformation]"]:
             logs = next(iter_logbook).strip("\n").split("\n")

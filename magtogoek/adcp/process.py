@@ -429,6 +429,12 @@ def _process_adcp_data(
 
     dataset.attrs["logbook"] += l.logbook
 
+    dataset.attrs["history"] = dataset.attrs["logbook"]
+    del dataset.attrs["logbook"]
+
+    if "platform_name" in dataset.attrs:
+        dataset.attrs["platform"] = dataset.attrs.pop("platform_name")
+
     # ----------- #
     # ODF OUTPUTS #
     # ----------- #
@@ -438,30 +444,22 @@ def _process_adcp_data(
 
     l.section("Output")
     if odf_path:
-        for qualifier in ('VEL', 'ANC'):
-            odf = make_odf(
+        if params['odf_data'] is None:
+            params['odf_data']='both'
+        odf_data = {'both': ['VEL', 'ANC'], 'vel': ['VEL'], 'anc': ['ANC']}[params['odf_data']]
+        for qualifier in odf_data:
+            _ = make_odf(
                 dataset=dataset,
                 platform_metadata=platform_metadata,
                 config_attrs=config_attrs,
                 bodc_name=params['bodc_name'],
+                event_qualifier2=qualifier,
                 output_path=odf_path,
-                event_qualifier2=qualifier
             )
-            _odf_path = odf_path
-            if not Path(odf_path).is_file():
-                _odf_path = Path(odf_path).joinpath(odf.odf["file_specification"]).resolve()
-            l.log(f"odf file made -> {_odf_path}")
 
     # --------------------------------------- #
     # FORMATTING GLOBAL ATTRIBUTES FOR OUTPUT #
     # --------------------------------------- #
-
-    dataset.attrs["history"] = dataset.attrs["logbook"]
-    del dataset.attrs["logbook"]
-
-    if "platform_name" in dataset.attrs:
-        dataset.attrs["platform"] = dataset.attrs.pop("platform_name")
-
     for attr in GLOBAL_ATTRS_TO_DROP:
         if attr in dataset.attrs:
             del dataset.attrs[attr]
@@ -476,7 +474,6 @@ def _process_adcp_data(
     # ---------- #
     # NC OUTPUTS #
     # ---------- #
-
     if not isinstance(netcdf_path, bool):
         netcdf_path = Path(netcdf_path).with_suffix('.nc')
         dataset.to_netcdf(netcdf_path)

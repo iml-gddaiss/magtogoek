@@ -21,7 +21,7 @@ import pynmea2
 import xarray as xr
 import matplotlib.pyplot as plt
 from magtogoek.tools import get_gps_bearing, vincenty
-from magtogoek.utils import Logger, get_files_from_expresion
+from magtogoek.utils import Logger, get_files_from_expression
 
 l = Logger(level=0)
 
@@ -40,7 +40,7 @@ def load_navigation(filenames):
     Returns a xarray.Dataset with the loaded data.
     """
 
-    filenames = get_files_from_expresion(filenames)
+    filenames = get_files_from_expression(filenames)
 
     datasets = []
 
@@ -142,7 +142,7 @@ def compute_navigation(
 
     """
 
-    filenames = get_files_from_expresion(filenames)
+    filenames = get_files_from_expression(filenames)
 
     dataset = load_navigation(filenames)
     dataset = _compute_navigation(dataset, window=window)

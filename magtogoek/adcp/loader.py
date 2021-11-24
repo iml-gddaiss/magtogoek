@@ -48,7 +48,7 @@ import xarray as xr
 from magtogoek.adcp.rti_reader import RtiReader
 from magtogoek.adcp.rti_reader import l as rti_log
 from magtogoek.adcp.tools import dday_to_datetime64
-from magtogoek.utils import Logger, get_files_from_expresion
+from magtogoek.utils import Logger, get_files_from_expression
 from pycurrents.adcp import rdiraw, transform
 from pycurrents.adcp.rdiraw import Bunch, Multiread, rawfile
 
@@ -127,7 +127,7 @@ def load_adcp_binary(
 
     l.section("Loading adcp data", t=True)
 
-    filenames = get_files_from_expresion(filenames)
+    filenames = get_files_from_expression(filenames)
 
     if sonar == "sv":
         l.warning(
