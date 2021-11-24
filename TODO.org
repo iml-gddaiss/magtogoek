@@ -2,11 +2,15 @@
 #+TITLE: Notes on Magtogoek
 
 * Command to add.
-** navigation command
-   + Add a command for the navigation.py module.
-** odf2nc command
-   + Add a command for a odf2nc.
-** Add the options to use certain variables attributes
+** navigation command.
+*** Add Navigation loadable from csv file maybe ?
+   -n nc_filename
+   -c csv_filename
+   -o output netcdf4 file name
+   -l longitude_var_name latitude_var_name (2 args)
+   -t time_dims_name
+   -w length of the averaging window
+
 ** Rotation command.
 * Improvement
 ** ~/.magtogoek configuration files.
