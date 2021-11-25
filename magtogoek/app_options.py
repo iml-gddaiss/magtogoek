@@ -166,7 +166,7 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
             "-w",
             "--vertical-velocity-threshold",
             type=click.FLOAT,
-            help="Vertial velocity threshold (w).  [m/s]",
+            help="Vertical velocity threshold (w).  [m/s]",
             nargs=1,
             default=5,
             show_default=True,
@@ -199,7 +199,8 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
             "-d",
             "--sensor-depth",
             type=click.FLOAT,
-            help="""If provided, the adcp depth (XducerDepth) will be adjusted so that its median value equal the given `sensor_depth` value.""",
+            help="""If provided, the adcp depth (XducerDepth) will be adjusted so that its median value equal the 
+            given `sensor_depth` value.""",
             default=None,
             show_default=True,
         ),
@@ -309,6 +310,6 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
             help="Time step in seconds. Only use if a `start_time` value is provided.",
             nargs=1,
             default=None,
-        )
+        ),
     ]
     return options
