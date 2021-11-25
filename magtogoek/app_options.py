@@ -166,7 +166,7 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
             "-w",
             "--vertical-velocity-threshold",
             type=click.FLOAT,
-            help="Vertial velocity threshold (w).  [m/s]",
+            help="Vertical velocity threshold (w).  [m/s]",
             nargs=1,
             default=5,
             show_default=True,
@@ -199,14 +199,15 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
             "-d",
             "--sensor-depth",
             type=click.FLOAT,
-            help="""If provided, the adcp depth (XducerDepth) will be adjusted so that its median value equal the given `sensor_depth` value.""",
+            help="""If provided, the adcp depth (XducerDepth) will be adjusted so that its median value equal the 
+            given `sensor_depth` value.""",
             default=None,
             show_default=True,
         ),
         click.option(
             "--bad-pressure/-",
             help="""Use the `--bad-pressure` flag to discard pressure data from the processing.
-            This will inturn discard the adcp depth (XducerDepth) mesured by the ADCP.
+            This will in turn discard the adcp depth (XducerDepth) measured by the ADCP.
             Use the option `--sensor-depth` to enter a fixed depth.""",
             default=False,
             show_default=True,
@@ -291,6 +292,24 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
             help="""Weather to use or discard the bottom (bt) track data.""",
             default=True,
             show_default=True,
+        ),
+        click.option(
+            "--start_time",
+            type=click.STRING,
+            help="""Format 'YYYY-MM-DDThh:mm:ss.ssss'.
+        If provided, a new time coordinate vector, starting at `start_time`, is used instead of the one found in the 
+        raw adcp file. Use the parameter `time_step` to use a different time step than the one found in the 
+        adcp raw adcp file.
+        """,
+            nargs=1,
+            default=None,
+        ),
+        click.option(
+            "--time_step",
+            type=click.FLOAT,
+            help="Time step in seconds. Only use if a `start_time` value is provided.",
+            nargs=1,
+            default=None,
         ),
     ]
     return options

@@ -3,15 +3,10 @@ magotogek utils
 """
 import json
 import typing as tp
-import warnings
 from datetime import datetime
 from pathlib import Path
 
 import click
-
-
-class FileNotFoundError(Exception):
-    pass
 
 
 class Logger:
@@ -73,7 +68,7 @@ class Logger:
         self.logbook += "[" + section + "]" + time + "\n"
         click.secho(section, fg="green") if self.level < 1 else None
 
-    def log(self, msg: str, t: bool = False):
+    def log(self, msg: tp.Union[str, tp.List[str]], t: bool = False):
         """Add a log.
         Parameters
         ----------
@@ -119,7 +114,17 @@ class Logger:
         return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
-def get_files_from_expresion(filenames: tp.Tuple[str, tp.List[str]]) -> tp.List[str]:
+def format_str2list(filenames: tp.Union[str, tp.List[str]]) -> tp.List[str]:
+    """ If not str1 -> [str1].
+    Returns
+    -------
+    """
+    if isinstance(filenames, str):
+        filenames = [filenames]
+    return filenames
+
+
+def get_files_from_expression(filenames: tp.Union[str, tp.List[str]]) -> tp.List[str]:
     """Get existing files from expression.
 
     Returns a list of existing files.
@@ -145,7 +150,7 @@ def is_valid_filename(filename: str, ext: str) -> str:
     """Check if directory or/and file name exist.
 
     -Ask to make the directories if they don't exist.
-    -Ask  to ovewrite the file if a file already exist.
+    -Ask  to overwrite the file if a file already exist.
     -Adds the correct suffix (extension) if it was not added
      but keeps other suffixes.
         Ex. path/to/file.ext1.ext2.ini
@@ -155,10 +160,10 @@ def is_valid_filename(filename: str, ext: str) -> str:
 
     while not Path(filename).parents[0].is_dir():
         if click.confirm(
-            click.style(
-                "Directory does not exist. Do you want to create it ?", bold=True
-            ),
-            default=False,
+                click.style(
+                    "Directory does not exist. Do you want to create it ?", bold=True
+                ),
+                default=False,
         ):
             Path(filename).parents[0].mkdir(parents=True)
         else:
@@ -166,10 +171,10 @@ def is_valid_filename(filename: str, ext: str) -> str:
 
     if Path(filename).is_file():
         if not click.confirm(
-            click.style(
-                f"A `{ext}` file with this name already exists. Overwrite ?", bold=True
-            ),
-            default=True,
+                click.style(
+                    f"A `{ext}` file with this name already exists. Overwrite ?", bold=True
+                ),
+                default=True,
         ):
             return is_valid_filename(ask_for_filename(ext), ext)
     return filename
@@ -184,20 +189,26 @@ def ask_for_filename(ext: str) -> str:
     )
 
 
-def dict2json(file_name: str, dictionnary: tp.Dict, indent: int = 4) -> None:
-    """Makes json file from dictionnary
+def dict2json(filename: str, dictionary: tp.Dict, indent: int = 4) -> None:
+    """Makes json file from dictionary
 
     Parameters
     ----------
+    dictionary
+    filename
     indent :
         argument is passed to json.dump(..., indent=indent)
     """
-    with open(file_name, "w") as f:
-        json.dump(dictionnary, f, indent=indent)
+    with open(filename, "w") as f:
+        json.dump(dictionary, f, indent=indent)
 
 
-def json2dict(json_file: str):
-    """Open json file as a dictionnary."""
+def json2dict(json_file: tp.Union[str, Path]):
+    """Open json file as a dictionary."""
     with open(json_file) as f:
         dictionary = json.load(f)
     return dictionary
+
+def resolve_relative_path(relative_path, current_path):
+    """ """
+    return Path(current_path).resolve().parent.joinpath(relative_path).resolve()

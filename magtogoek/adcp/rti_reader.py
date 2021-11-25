@@ -12,19 +12,15 @@ filenames: path/to/filename or list(path/to/filenames) or path/to/regex.
 ens.EnsembleData.ActualPingCount # ping_per_ensemble.
 
 """
-
-import logging
-from datetime import datetime
 from multiprocessing import Pool, cpu_count
 from pathlib import Path
-from typing import Dict, List, Tuple, Type
+from typing import Dict, List, Tuple, Union
 
 import numpy as np
 from magtogoek.adcp.tools import datetime_to_dday
-from magtogoek.utils import Logger, get_files_from_expresion
+from magtogoek.utils import Logger, get_files_from_expression
 from rti_python.Codecs.BinaryCodec import BinaryCodec
 from rti_python.Ensemble.EnsembleData import *
-from scipy.constants import convert_temperature
 from scipy.interpolate import griddata
 from scipy.stats import circmean
 from tqdm import tqdm
@@ -105,21 +101,21 @@ class RtiReader:
            Trim leading chunks by start_index.
 
         stop_index :
-           Trim trailling chunks by stop_index.
+           Trim trailing chunks by stop_index.
 
         Returns
         -------
             data :
     """
 
-    def __init__(self, filenames: Tuple[str, List]):
+    def __init__(self, filenames: Union[str, List[str]]):
         """
         Parameters
         ----------
-        filenames
+        filenames :
             path/to/filename or list(path/to/filenames) or path/to/regex
         """
-        self.filenames = get_files_from_expresion(filenames)
+        self.filenames = get_files_from_expression(filenames)
 
         self.start_index = None
         self.stop_index = None
@@ -139,20 +135,22 @@ class RtiReader:
         for filename in self.filenames:
             self.current_file = filename
             self.get_ens_chunks()
-            ens = BinaryCodec.decode_data_sets(self.ens_chunks[0][1])
+            first_ens = BinaryCodec.decode_data_sets(self.ens_chunks[0][1])
+            last_time = BinaryCodec.decode_data_sets(self.ens_chunks[-1][1]).EnsembleData.datetime()
 
             print("-" * 40)
             print("File:", Path(filename).name)
-            print("Year:", ens.EnsembleData.Year)
+            print("start time:", first_ens.EnsembleData.datetime())
+            print("last time:", last_time)
             print("Number of ens:", len(self.ens_chunks))
-            print("Number of beams:", ens.EnsembleData.NumBeams)
-            print("Number of bins:", ens.EnsembleData.NumBins)
-            print("Binsize:", ens.AncillaryData.BinSize)
-            print("Distance first bin:", round(ens.AncillaryData.FirstBinRange, 3), "m")
-            print("Beam angle:", self._beam_angle(ens.EnsembleData.SerialNumber))
-            print("Frequency:", int(ens.SystemSetup.WpSystemFreqHz), "hz")
+            print("Number of beams:", first_ens.EnsembleData.NumBeams)
+            print("Number of bins:", first_ens.EnsembleData.NumBins)
+            print("Binsize:", first_ens.AncillaryData.BinSize)
+            print("Distance first bin:", round(first_ens.AncillaryData.FirstBinRange, 3), "m")
+            print("Beam angle:", _beam_angle(first_ens.EnsembleData.SerialNumber))
+            print("Frequency:", int(first_ens.SystemSetup.WpSystemFreqHz), "hz")
 
-    def read(self, start_index: int = None, stop_index: int = None) -> Type[Bunch]:
+    def read(self, start_index: int = None, stop_index: int = None) -> Bunch:
         """Return a Bunch object with the read data.
 
         Parameters
@@ -161,7 +159,7 @@ class RtiReader:
            Trim leading chunks by start_index.
 
         stop_index :
-           Trim trailling chunks by stop_index.
+           Trim trailing chunks by stop_index.
 
         Returns
         --------
@@ -208,7 +206,7 @@ class RtiReader:
             self.ens_chunks = self.ens_chunks[start:stop]
             files_bunch.append(self.read_file())
 
-        data = self.concatenate_files_bunch(files_bunch)
+        data: Bunch = self.concatenate_files_bunch(files_bunch)
 
         return data
 
@@ -216,7 +214,6 @@ class RtiReader:
         """Read each files to find the number of ensemble in each file."""
         self.files_ens_count = []
         buff = bytes()
-        ii = 0
         self.ens_chunks = []
 
         for filename in self.filenames:
@@ -313,13 +310,8 @@ class RtiReader:
                 self.ens_chunks.append((ii, DELIMITER + buff))
                 ii += 1
 
-    def read_file(self) -> Type[Bunch]:
+    def read_file(self) -> Bunch:
         """Read data from one RTB .ENS file put them into a Bunch object
-
-        Parameters
-        ----------
-        ens_file_path :
-            path/to/ens_file_path
 
         Returns
         -------
@@ -348,12 +340,8 @@ class RtiReader:
         ppd.dep = ppd.Bin1Dist + np.arange(0, ppd.nbin * ppd.CellSize, ppd.CellSize)
 
         ppd.pingtype = ens.SystemSetup.WpBroadband
-        ppd.sysconfig = dict(
-            angle=self._beam_angle(ppd.SerialNumber),
-            kHz=ens.SystemSetup.WpSystemFreqHz,
-            convex=True,  # Rowetech adcp seems to be convex.
-            up=None,
-        )
+        ppd.sysconfig = {'angle': _beam_angle(ppd.SerialNumber), 'kHz': ens.SystemSetup.WpSystemFreqHz, 'convex': True,
+                         'up': False}
         ppd.FL = dict()
         ppd.FL["FWV"] = int(
             str(ens.EnsembleData.SysFirmwareMajor)
@@ -374,7 +362,8 @@ class RtiReader:
 
         # Determine up/down configuration
         mean_roll = circmean(np.radians(ppd.roll))
-        ppd.sysconfig["up"] = True if abs(mean_roll) < np.radians(30) else False
+        if abs(mean_roll) < np.radians(30):
+            ppd.sysconfig["up"] = True
 
         # Determine bin depths
         if ppd.sysconfig["up"] is True:
@@ -393,7 +382,7 @@ class RtiReader:
 
         return ppd
 
-    def read_chunks(self) -> Type[Bunch]:
+    def read_chunks(self) -> Bunch:
         """Read and decode chunks over multple process
 
         Notes
@@ -444,7 +433,7 @@ class RtiReader:
         return ppd
 
     @staticmethod
-    def decode_chunk(ii: int, chunk: str) -> Type[Bunch]:
+    def decode_chunk(ii: int, chunk: str) -> Tuple[int, Bunch]:
         """Decode single chunk of data.
 
         Parameters
@@ -497,7 +486,10 @@ class RtiReader:
             ppd.roll = np.array(ens.AncillaryData.Roll)
 
         if ens.IsBottomTrack:
-            ppd.bt_vel = np.array(ens.BottomTrack.EarthVelocity)
+            if ens.IsInstrumentVelocity:
+                ppd.bt_vel = np.array(ens.BottomTrack.InstrumentVelocity)
+            if ens.IsEarthVelocity:
+                ppd.bt_vel = np.array(ens.BottomTrack.EarthVelocity)
             ppd.bt_pg = np.array(ens.BottomTrack.BeamGood)
             ppd.bt_cor = np.array(ens.BottomTrack.Correlation) * 255
             ppd.bt_depth = np.array(ens.BottomTrack.Range)
@@ -510,22 +502,7 @@ class RtiReader:
         return ii, ppd
 
     @staticmethod
-    def _beam_angle(serial_number):
-        """Get the beam angle from the serial number"""
-        if serial_number[1] in "12345678DEFGbcdefghi":
-            return 20
-        elif serial_number[1] in "OPQRST":
-            return (15,)
-        elif serial_number[1] in "IJKLMNjklmnopqrstuvwxy":
-            return 30
-        elif "9ABCUVWXYZ":
-            return 0
-        else:
-            print("Could not determine beam angle.")
-            return None
-
-    @staticmethod
-    def format_rawnav(data: Type[Bunch]) -> Dict:
+    def format_rawnav(data: Bunch) -> Dict:
         """Format rawnav to pycurent rawnav.
 
         Interpolates longitude and latitude on adcp dday.
@@ -539,7 +516,7 @@ class RtiReader:
         )
         return rawnav
 
-    def concatenate_files_bunch(self, bunches: List[Type[Bunch]]) -> Type[Bunch]:
+    def concatenate_files_bunch(self, bunches: List[Bunch]) -> Bunch:
         """Concatenante the file bunches.
 
         Uses the first file bunch data for static values ( e.g. dep,
@@ -548,8 +525,8 @@ class RtiReader:
         Parameters
         ----------
         bunches :
-            List of the files bunches to concatenante.
-        Returns :
+            List of the files bunches to concatenate.
+        Returns
         --------
         ppd :
             Bunch fo the concatenate files.
@@ -564,7 +541,7 @@ class RtiReader:
         self.check_mismatch_dep(bunches)
 
         ppd = Bunch()
-        b0 = bunches[0]
+        b0: Bunch = bunches[0]
         ppd.dep = b0.dep
 
         for k in b0:
@@ -577,7 +554,7 @@ class RtiReader:
         return ppd
 
     @staticmethod
-    def check_mismatch_dep(bunches: List[Type[Bunch]]):
+    def check_mismatch_dep(bunches: List[Bunch]):
         """Look for mismatch in bin depth.
 
         Parameters
@@ -585,8 +562,8 @@ class RtiReader:
         bunches :
             List of the files bunches to concatenante.
 
-        Raise
-        -----
+        Raises
+        ------
         DepLengthMismatch : (check_mismatch_depth())
             Bin depth vector lenght mismatch.
             Lenght, thus values, of the dep vector can change through files.
@@ -596,7 +573,7 @@ class RtiReader:
         filenames = [b.filename for b in bunches]
         deps = [len(b.dep) for b in bunches]
         if np.diff(deps).any() != 0:
-            msg = "\n".join([f"{f} has {len(d)} bin" for f, d in zip(filenames, deps)])
+            msg = "\n".join([f"{f} has {d} bin" for f, d in zip(filenames, deps)])
             raise BinDepMismatch("\n" + msg)
 
         bin1dists = [b.Bin1Dist for b in bunches]
@@ -604,14 +581,18 @@ class RtiReader:
             f"First bin distance was taken from {filenames[0]}. For each files, first bin distances were : "
         )
         for d, f in zip(bin1dists, filenames):
-            l.log(f"  {f} : {np.round(d,3)} meters")
+            l.log(f"  {f} : {np.round(d, 3)} meters")
 
 
-if __name__ == "__main__":
-    fp = "../../test/files/"
-    fn = "rowetech_seawatch.ens"
-
-    # fp0 = '/media/sf_Shared_Folder/IML4_2017_ENS/'
-    RtiReader(fp + "*.ens").check_files()
-    data = RtiReader(fp + "*.ens").read(start_index=10, stop_index=20)
-    RtiReader(fp + "*.ens").check_files()
+def _beam_angle(serial_number):
+    """Get the beam angle from the serial number"""
+    if serial_number[1] in "12345678DEFGbcdefghi":
+        return 20
+    elif serial_number[1] in "OPQRST":
+        return 15
+    elif serial_number[1] in "IJKLMNjklmnopqrstuvwxy":
+        return 30
+    elif serial_number[1] in "9ABCUVWXYZ":
+        return 0
+    print("Could not determine beam angle.")
+    return None

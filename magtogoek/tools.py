@@ -5,12 +5,10 @@ They are separated from utils.py due to longer import time.
 import typing as tp
 
 import numpy as np
-import xarray as xr
-from nptyping import NDArray
 from pygeodesy.ellipsoidalVincenty import LatLon
 
 
-def nans(shape: tp.Tuple[list, tuple, NDArray]) -> NDArray:
+def nans(shape: tp.Union[list, tuple, np.ndarray]) -> np.ndarray:
     """return array of nan of shape `shape`"""
     return np.full(shape, np.nan)
 

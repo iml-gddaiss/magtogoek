@@ -2,12 +2,12 @@ import pytest
 from magtogoek.odf_format import Odf
 from magtogoek.utils import json2dict
 
-odf_dict = json2dict("data/odf_read_test_expected_dict.json")
+odf_dict = json2dict("data/odf_test_files/odf_read_test_expected_dict.json")
 
 
 @pytest.fixture
 def odf():
-    test_files = "data/MADCP_BOUEE2019_RIMOUSKI_553_VEL.ODF"
+    test_files = "data/odf_test_files/MADCP_BOUEE2019_RIMOUSKI_553_VEL.ODF"
 
     return Odf().read(test_files)
 
