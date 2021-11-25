@@ -63,8 +63,10 @@ OptionInfos = namedtuple(
         "value_max",
         "is_path",
         "is_time_stamp",
+        "is_required",
+        "null_value",
     ),
-    defaults=[[], None, None, None, None, None, None, None, False, False],
+    defaults=[[], None, None, None, None, None, None, None, False, False, False, None],
 )
 
 
@@ -124,18 +126,22 @@ class ConfigFileError(SystemExit):
             self.msg += (
                 f"\nBoolean have to be express with {TRUE_VALUES} or {FALSE_VALUES}."
             )
+        if self.error == "required":
+            self.msg = (
+                f"`{self.section}/{self.option}` requires a value. None were given."
+            )
 
 
 BASE_CONFIG = dict(
     HEADER={
         "made_by": OptionInfos(dtypes=["str"], default=getpass.getuser()),
         "last_updated": OptionInfos(dtypes=["str"], default=datetime.now().strftime("%Y-%m-%d")),
-        "sensor_type": OptionInfos(dtypes=["str"], default=""),
-        "platform_type": OptionInfos(dtypes=["str"], default="buoy", choice =["buoy", "mooring", "ship"]),
+        "sensor_type": OptionInfos(dtypes=["str"], default="", is_required=True),
+        "platform_type": OptionInfos(dtypes=["str"], default="buoy", choice=["buoy", "mooring", "ship"]),
     },
     INPUT={
         "input_files": OptionInfos(
-            dtypes=["str"], default="", nargs_min=1, is_path=True
+            dtypes=["str"], default="", nargs_min=1, is_path=True, is_required=True
         ),
         "platform_file": OptionInfos(dtypes=["str"], default="", is_path=True),
         "platform_id": OptionInfos(dtypes=["str"], default=""),
@@ -169,9 +175,9 @@ BASE_CONFIG = dict(
         "chief_scientist": OptionInfos(dtypes=["str"], default=""),
         "start_date": OptionInfos(dtypes=["str"], default=""),
         "end_date": OptionInfos(dtypes=["str"], default=""),
-        "event_number": OptionInfos(dtypes=["str"], default=""),
-        "event_qualifier1": OptionInfos(dtypes=["str"], default=""),
-       # "event_qualifier2": OptionInfos(dtypes=["str"], default=""),
+        "event_number": OptionInfos(dtypes=["str"], default="", null_value=""),
+        "event_qualifier1": OptionInfos(dtypes=["str"], default="", null_value=""),
+        # "event_qualifier2": OptionInfos(dtypes=["str"], default=""),
         "event_comments": OptionInfos(dtypes=["str"], default=""),
     },
     GLOBAL_ATTRIBUTES={
@@ -192,14 +198,14 @@ BASE_CONFIG = dict(
 
 ADCP_CONFIG = dict(
     ADCP_PROCESSING={
-        "yearbase": OptionInfos(dtypes=["int"], default=""),
+        "yearbase": OptionInfos(dtypes=["int"], default="", is_required=True),
         "adcp_orientation": OptionInfos(dtypes=["str"], choice=["up", "down"]),
-        "sonar": OptionInfos(dtypes=["str"], choice=["wh", "sv", "os", "sw", "sw_pd0"]),
+        "sonar": OptionInfos(dtypes=["str"], choice=["wh", "sv", "os", "sw", "sw_pd0"], is_required=True),
         "navigation_file": OptionInfos(dtypes=["str"], default="", is_path=True),
         "leading_trim": OptionInfos(dtypes=["str"], default=""),
         "trailing_trim": OptionInfos(dtypes=["str"], default=""),
         "sensor_depth": OptionInfos(dtypes=["float"], default=""),
-        "depth_range": OptionInfos(dtypes=["float"], default="()", nargs_min=1, nargs_max=2),
+        "depth_range": OptionInfos(dtypes=["float"], default="()", nargs_min=0, nargs_max=2),
         "bad_pressure": OptionInfos(dtypes=["bool"], default=False),
         "magnetic_declination": OptionInfos(dtypes=["float"], default=""),
         "keep_bt": OptionInfos(dtypes=["bool"], default=True),
@@ -227,7 +233,7 @@ ADCP_CONFIG = dict(
         "drop_percent_good": OptionInfos(dtypes=["bool"], default=True),
         "drop_correlation": OptionInfos(dtypes=["bool"], default=True),
         "drop_amplitude": OptionInfos(dtypes=["bool"], default=True),
-        "odf_data": OptionInfos(dtypes=['str'], default='both', choice=['vel', 'anc', ' both']),
+        "odf_data": OptionInfos(dtypes=['str'], default='both', choice=['vel', 'anc', 'both']),
         "make_figures": OptionInfos(dtypes=["bool"], default=True),
         "make_log": OptionInfos(dtypes=["bool"], default=True),
     },
@@ -249,7 +255,6 @@ def make_configfile(filename: str, sensor_type: str, new_values: tp.Dict = None)
         parser.add_section(section)
         for option, value in options.items():
             parser[section][option] = str(value)
-
 
     # Overwrite the default values with the `updated_params`.
     if new_values:
@@ -364,11 +369,14 @@ def _format_config_options(config: tp.Dict, config_path: Path):
             if "bool" not in option_info.dtypes:
                 if not value and value != 0:
                     value = None
+                    if option_info.is_required is True:
+                        raise ConfigFileError("required", section, option, option_info, value)
             if value is not None:
                 value = _format_option(
                     config[section][option], option_info, section, option, config_path
                 )
-
+            elif option_info.null_value is not None:
+                    value = option_info.null_value
             config[section][option] = value
 
 

@@ -18,6 +18,6 @@ def test_load():
     ],
 )
 def test_ConfigFileError(filename, error):
-    with pytest.raises(ConfigFileError) as excinfo:
+    with pytest.raises(ConfigFileError) as exc_info:
         load_configfile(filename)
-    assert str(excinfo.value.error) == error
+    assert str(exc_info.value.error) == error
