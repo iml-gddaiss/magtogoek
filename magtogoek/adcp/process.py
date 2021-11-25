@@ -39,7 +39,7 @@ Notes
     overwrite it.
 
 TODO TEST NAVIGATION FILES !
-FIXME DATA_TYPES: Missing for ship adcp
+Note DATA_TYPES: Missing for ship adcp. Set to adcp for now
 FIXME SOURCE : moored adcp ?
 
 Notes
@@ -83,6 +83,7 @@ GLOBAL_ATTRS_TO_DROP = [
     "P01_CODES",
     "xducer_depth",
     "sonar",
+    "variables_gen_name",
 ]
 CONFIG_GLOBAL_ATTRS_SECTIONS = ["NETCDF_CF", "PROJECT", "CRUISE", "GLOBAL_ATTRIBUTES"]
 PLATFORM_TYPES = ["buoy", "mooring", "ship"]
@@ -413,6 +414,7 @@ def _process_adcp_data(
         **P01_VEL_CODES[platform_type],
         **P01_CODES,
     }
+    dataset.attrs['variables_gen_name'] = [var for var in dataset.variables]
 
     l.section("Variables attributes")
     dataset = format_variables_names_and_attributes(
@@ -450,7 +452,7 @@ def _process_adcp_data(
     l.section("Output")
     if odf_path:
         if params['odf_data'] is None:
-            params['odf_data']='both'
+            params['odf_data'] = 'both'
         odf_data = {'both': ['VEL', 'ANC'], 'vel': ['VEL'], 'anc': ['ANC']}[params['odf_data']]
         for qualifier in odf_data:
             _ = make_odf(
