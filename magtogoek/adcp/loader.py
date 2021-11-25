@@ -176,13 +176,15 @@ def load_adcp_binary(
             sys.exit()
 
         # Reading the files FixedLeaders to check for invalid config.
-        invalid_config_count = check_pd0_invalid_config(
+        # noinspection PyTupleAssignmentBalance
+        data.sysconfig["up"], invalid_config_count = check_pd0_fixed_leader(
             filenames=filenames,
             sonar=sonar,
             yearbase=yearbase,
             leading_index=leading_index,
             trailing_index=trailing_index,
         )
+
         if invalid_config_count:
             l.warning(
                 f"Invalid configuration, msb=`11111111` and lsb=`11111111`, found in the SysCfg of {invalid_config_count} FixedLeader. "
@@ -553,14 +555,15 @@ def coordsystem2earth(data: Bunch, orientation: str):
             data.bt_vel[:, i] = np.round(bt_enu[:, i], decimals=3)
 
 
-def check_pd0_invalid_config(
+def check_pd0_fixed_leader(
     filenames: tp.Union[str, tp.List[str]],
     sonar: str,
     yearbase: int,
     leading_index: int = None,
     trailing_index: int = None,
-) -> tp.Optional[np.ndarray]:
-    """Read Teledyne RDI binary FixedLeader and check for invalid config.
+) -> tp.Tuple[bool, int]:
+    """Read Teledyne RDI binary FixedLeader.
+    Returns the most common orientation and flag for an invalid config.
 
     Invalid config -> msb=`11111111` and lsb=`11111111`
     Using: rawfile().read() to get the FixedLeader for all  pings.
@@ -579,8 +582,11 @@ def check_pd0_invalid_config(
 
     Returns
     -------
-    bad_cfg_count:
-        ADCP data from rawfile.read() with the .
+    upward_looking :
+        True is the adcp is looking upward
+    invalid_config_count :
+        number of invalid configuration in the fixed leaders.
+
 
     Notes:
     ------
@@ -604,20 +610,27 @@ def check_pd0_invalid_config(
             .read(varlist=["FixedLeader"])
             .raw.FixedLeader
         )
+    bad_config_value = 2 ** 16 - 1
+    _up = int('10000000', 2)
 
-    invalid_config = 2 ** 16 - 1
+    orientations = fixed_leader["SysCfg"][leading_index:trailing_index] & _up
+    upward_looking = np.mean(orientations) > 63
 
-    return np.sum(
-        (fixed_leader["SysCfg"][leading_index:trailing_index] == invalid_config)
+    invalid_config_count = np.sum(
+        (fixed_leader["SysCfg"][leading_index:trailing_index] == bad_config_value)
     )
+
+    return upward_looking, invalid_config_count
 
 
 def _print_filenames(file_type: str, filenames: tp.List) -> str:
     """Format a string of filenames for prints
+
     `file_type` files :
       |-filename1
            :
       |-filenameN
+
     """
     return (
         file_type
@@ -632,11 +645,11 @@ def _get_time(
     """
     Parameters
     ----------
-    yearbase:
+    yearbase :
         Year that the sampling started
-    start_time:
+    start_time :
         Format: 'YYYY-MM-DDThh:mm:ss.ssss'.
-    time_step:
+    time_step :
         Time step in seconds.
     """
     bad_dday = False
