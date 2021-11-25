@@ -168,7 +168,7 @@ BASE_CONFIG = dict(
     },
     CRUISE={
         "country_institute_code": OptionInfos(dtypes=["str"], default=""),
-        "cruise_number": OptionInfos(dtypes=["str"], default=""),
+        "cruise_number": OptionInfos(dtypes=["str"], default="", null_value=""),
         "cruise_name": OptionInfos(dtypes=["str"], default=""),
         "cruise_description": OptionInfos(dtypes=["str"], default=""),
         "organization": OptionInfos(dtypes=["str"], default=""),
