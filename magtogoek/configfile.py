@@ -137,7 +137,7 @@ BASE_CONFIG = dict(
         "made_by": OptionInfos(dtypes=["str"], default=getpass.getuser()),
         "last_updated": OptionInfos(dtypes=["str"], default=datetime.now().strftime("%Y-%m-%d")),
         "sensor_type": OptionInfos(dtypes=["str"], default="", is_required=True),
-        "platform_type": OptionInfos(dtypes=["str"], default="buoy", choice=["buoy", "mooring", "ship"]),
+        "platform_type": OptionInfos(dtypes=["str"], default="", choice=["buoy", "mooring", "ship"]),
     },
     INPUT={
         "input_files": OptionInfos(
