@@ -131,7 +131,7 @@ def _convert_variables_names(
     -----
     Converting names is used to add the convention attributes to variables.
     """
-    varname_translator = dataset.attrs["P01_CODES"]
+    varname_translator = {**dataset.attrs["P01_CODES"]}
 
     if convert_back_to_generic:
         # mapping key and value and value to key
