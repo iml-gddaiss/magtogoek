@@ -91,7 +91,7 @@ def _load_gps(filename: str, file_type: str) -> xr.Dataset:
 
 def _read_gpx(filename: str) -> tp.Dict:
     """Load navigation data `lon`, `lat` and `time` from a gpx file.
-    Returns a dictionnary with the loaded data."""
+    Returns a dictionary with the loaded data."""
     gps_data = dict(time=[], lon=[], lat=[])
     with open(filename, "r") as f:
         gps = gpxpy.parse(f)
@@ -108,8 +108,8 @@ def _read_gpx(filename: str) -> tp.Dict:
 
 
 def _read_nmea(filename: str) -> tp.Dict:
-    """Load gps_dataigation data `lon`, `lat` and `time` from a NMEA file.
-    Returns a dictionnary with the loaded data.
+    """Load navigation data `lon`, `lat` and `time` from a NMEA file.
+    Returns a dictionary with the loaded data.
     """
     gps_data = dict(time=[], lon=[], lat=[])
     with open(filename, "r") as f:
@@ -132,6 +132,8 @@ def compute_navigation(
 
     Parameters
     ----------
+    output_name
+    filenames
     window :
         Size of the centered averaging window for u_ship, v_ship and bearing computation.
 
