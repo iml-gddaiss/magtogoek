@@ -372,16 +372,18 @@ def _process_adcp_data(
 
     l.section("Data transformation")
 
-    dataset.attrs["magnetic_declination"] = 0
-    dataset.attrs["magnetic_declination_units"] = "degree east"
+    if dataset.attrs['magnetic_declination'] is not None:
+        l.log(f"Magnetic declination found in the raw file: {dataset.attrs['magnetic_declination']} degree east.")
+    else:
+        l.log(f"No magnetic declination found in the raw file.")
     if params["magnetic_declination"]:
         angle = params["magnetic_declination"]
         if dataset.attrs["magnetic_declination"]:
-            l.log(f"Magnetic declination found in adcp file: {dataset.attrs['magnetic_declination']} degree east.")
             angle = round((params["magnetic_declination"] - dataset.attrs["magnetic_declination"]), 4)
-            l.log(f"An additional correction of {angle} degree east was carried out.")
-        _magnetic_correction(dataset, angle)
+            l.log(f"An additional correction of {angle} degree east was applied.")
+        _apply_magnetic_correction(dataset, angle)
         dataset.attrs["magnetic_declination"] = params["magnetic_declination"]
+        l.log(f"Absolute magnetic declination: {dataset.attrs['magnetic_declination']} degree east.")
 
     # --------------- #
     # QUALITY CONTROL #
@@ -717,7 +719,7 @@ def _quality_control(dataset: xr.Dataset, params: tp.Dict):
                          sidelobes_correction=params["sidelobes_correction"], bottom_depth=params["bottom_depth"])
 
 
-def _magnetic_correction(dataset: xr.Dataset, magnetic_declination: float):
+def _apply_magnetic_correction(dataset: xr.Dataset, magnetic_declination: float):
     """Transform velocities and heading to true north and east.
 
     Rotates velocities and heading by the given `magnetic_declination` angle.

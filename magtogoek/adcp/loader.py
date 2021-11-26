@@ -228,6 +228,7 @@ def load_adcp_binary(
             l.log("XducerDepth set to 0 m.")
 
     average_xducer_depth = np.round(np.median(data.XducerDepth), 3)
+    l.log(f"Sensor depth (XducerDepth) in raw file : {average_xducer_depth} m")
     xducer_depth = data.XducerDepth
 
     depth_difference = 0
@@ -236,8 +237,8 @@ def load_adcp_binary(
         if abs(depth_difference) > 0:
             l.log(
                 [
-                    f"The difference between the instrument averaged `XducerDepth` ({average_xducer_depth} m) and the "
-                    f"given `sensor_depth` ({sensor_depth} m) is {depth_difference} m",
+                    f"The difference between the raw file sensor depth and the user"
+                    f"provided `sensor_depth` ({sensor_depth} m) is {depth_difference} m",
                 ]
             )
 
@@ -476,6 +477,7 @@ def load_adcp_binary(
         if "EV" in data.FL:
             if data.FL["EV"] != 0:
                 dataset.attrs["magnetic_declination"] = data.FL["EV"] / 100
+    dataset.attrs["magnetic_declination_units"] = "degree east"
 
     dataset.attrs["orientation"] = orientation
     dataset.attrs["serial_number"] = (
