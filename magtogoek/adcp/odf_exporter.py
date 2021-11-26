@@ -86,7 +86,7 @@ def make_odf(
             output_path = output_path.joinpath(odf.odf["file_specification"])
         else:
             if not event_qualifier2 in output_path.name:
-                output_path = output_path.with_suffix(f'_{event_qualifier2}')
+                output_path = Path(str(output_path.with_suffix('')) + f'_{event_qualifier2}')
             odf.odf["file_specification"] = output_path.name
 
         output_path = Path(output_path).with_suffix(".ODF")
