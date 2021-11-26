@@ -258,9 +258,6 @@ def _pipe_to_process_adcp_data(
 
     if not params["merge_output_files"]:
         netcdf_output = params["netcdf_output"]
-        if isinstance(params["odf_output"], str):
-            if not Path(params['odf_output']).is_dir():
-                params['odf_output'] = True #File name will not overwrite.
         input_files = params["input_files"]
         for filename, count in zip(input_files, range(len(input_files))):
             if netcdf_output:
