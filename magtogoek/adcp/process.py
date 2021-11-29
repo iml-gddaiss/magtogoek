@@ -75,7 +75,7 @@ STANDARD_ADCP_GLOBAL_ATTRIBUTES = {
     "sensor_type": "adcp",
     "featureType": "timeSeriesProfile",
 }
-
+VARIABLES_TO_DROP = ["binary_mask"]
 GLOBAL_ATTRS_TO_DROP = [
     "sensor_type",
     "platform_type",
@@ -84,6 +84,7 @@ GLOBAL_ATTRS_TO_DROP = [
     "xducer_depth",
     "sonar",
     "variables_gen_name",
+    "binary_mask_tests"
 ]
 CONFIG_GLOBAL_ATTRS_SECTIONS = ["NETCDF_CF", "PROJECT", "CRUISE", "GLOBAL_ATTRIBUTES"]
 PLATFORM_TYPES = ["buoy", "mooring", "ship"]
@@ -463,9 +464,17 @@ def _process_adcp_data(
                 output_path=odf_path,
             )
 
-    # --------------------------------------- #
-    # FORMATTING GLOBAL ATTRIBUTES FOR OUTPUT #
-    # --------------------------------------- #
+    # ------------ #
+    # MAKE FIGURES #
+    # ------------ #
+
+    # ------------------------------------ #
+    # FORMATTING DATASET FOR NETCDF OUTPUT #
+    # ------------------------------------ #
+    for var in VARIABLES_TO_DROP:
+        if var in dataset.variables:
+            dataset = dataset.drop([var])
+
     for attr in GLOBAL_ATTRS_TO_DROP:
         if attr in dataset.attrs:
             del dataset.attrs[attr]
@@ -490,8 +499,6 @@ def _process_adcp_data(
         with open(log_path, "w") as log_file:
             log_file.write(dataset.attrs["history"])
             print(f"log file made -> {log_path.resolve()}")
-
-    # MAKE_FIG TODO
 
     click.echo(click.style("=" * TERMINAL_WIDTH, fg="white", bold=True))
 

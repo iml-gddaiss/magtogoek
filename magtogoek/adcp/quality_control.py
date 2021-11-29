@@ -196,6 +196,7 @@ def adcp_quality_control(
     # vel_flags = set_implausible_vel_to_nan(dataset, thres=IMPLAUSIBLE_VEL_TRESHOLD)
 
     vel_flags = np.ones(dataset.depth.shape + dataset.time.shape).astype(int)
+    binary_mask = np.zeros(dataset.depth.shape + dataset.time.shape).astype(int)
 
     vel_qc_test = []
 
@@ -204,48 +205,56 @@ def adcp_quality_control(
         amp_flag = amplitude_test(dataset, amp_th)
         vel_flags[amp_flag] = 3
         vel_qc_test.append(f"amplitude_threshold:{amp_th}")
+        binary_mask += amp_flag * 2**0
 
     if corr_th:
         l.log(f"correlation threshold {corr_th}")
         corr_flag = correlation_test(dataset, corr_th)
         vel_flags[corr_flag] = 3
         vel_qc_test.append(f"correlation_threshold:{corr_th}")
+        binary_mask += corr_flag * 2 ** 1
 
     if pg_th:
         l.log(f"percentgood threshold {pg_th}")
         pg_flag = percentgood_test(dataset, pg_th)
         vel_flags[pg_flag] = 3
         vel_qc_test.append(f"percentgood_threshold:{pg_th}")
+        binary_mask += pg_flag * 2 ** 2
 
     if horizontal_vel_th:
         l.log(f"horizontal velocity threshold {horizontal_vel_th} m/s")
         horizontal_vel_flag = horizontal_vel_test(dataset, horizontal_vel_th)
         vel_flags[horizontal_vel_flag] = 3
         vel_qc_test.append(f"horizontal_velocity_threshold:{horizontal_vel_th} m/s")
+        binary_mask += horizontal_vel_flag * 2 ** 3
 
     if vertical_vel_th:
         l.log(f"vertical velocity threshold {vertical_vel_th} m/s")
         vertical_vel_flag = vertical_vel_test(dataset, vertical_vel_th)
         vel_flags[vertical_vel_flag] = 3
         vel_qc_test.append(f"vertical_velocity_threshold:{vertical_vel_th} m/s")
+        binary_mask += vertical_vel_flag * 2 ** 4
 
     if error_vel_th:
         l.log(f"error velocity threshold {error_vel_th} m/s")
         error_vel_flag = error_vel_test(dataset, error_vel_th)
         vel_flags[error_vel_flag] = 3
         vel_qc_test.append(f"velocity_error_threshold:{error_vel_th} m/s")
+        binary_mask += error_vel_flag * 2 ** 5
 
     if roll_th:
         l.log(f"roll threshold {roll_th} degree")
         roll_flag = np.tile(roll_test(dataset, roll_th), dataset.depth.shape + (1,))
         vel_flags[roll_flag] = 3
         vel_qc_test.append(f"roll_threshold:{roll_th} degree")
+        binary_mask += roll_flag * 2 ** 6
 
     if pitch_th:
         l.log(f"pitch threshold {pitch_th} degree")
         pitch_flag = np.tile(pitch_test(dataset, pitch_th), dataset.depth.shape + (1,))
         vel_flags[pitch_flag] = 3
         vel_qc_test.append(f"pitch_threshold:{pitch_th} degree")
+        binary_mask += pitch_flag * 2 ** 7
 
     if sidelobes_correction:
         sidelobe_flag = sidelobe_test(dataset, bottom_depth)
@@ -253,6 +262,7 @@ def adcp_quality_control(
             l.log("Sidelobe correction carried out.")
             vel_flags[sidelobe_flag] = 3
             vel_qc_test.append("sidelobes")
+            binary_mask += sidelobe_flag * 2 ** 8
 
     if "pres" in dataset:
         l.log(f"Good pressure range {MIN_PRESSURE} to {MAX_PRESSURE} dbar")
@@ -315,6 +325,12 @@ def adcp_quality_control(
     dataset.attrs["flags_reference"] = FLAG_REFERENCE
     dataset.attrs["flags_values"] = FLAG_VALUES
     dataset.attrs["flags_meanings"] = FLAG_MEANINGS
+
+    dataset['binary_mask'] = (['depth','time'], binary_mask)
+    dataset.attrs['binary_mask_tests'] = [
+        "amp", "corr", "pg", "horizontal", "vertical",
+        "error", "roll", "pitch", "sidelobe"
+    ]
 
 
 def motion_correction(dataset: xr.Dataset, mode: str):
