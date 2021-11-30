@@ -770,7 +770,7 @@ def _format_headers(name: str, header: dict) -> str:
             )
 
         elif not value:
-            s += INDENT + key.upper() + " = ''" + "," + NEWLINE 
+            s += INDENT + key.upper() + " = ''" + "," + NEWLINE
         else:
             print("Could not format", name, key, value, type(value))
 
