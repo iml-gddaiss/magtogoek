@@ -410,7 +410,7 @@ class Odf:
         Parameters
         ----------
         dims :
-           Dimensions names. If one of the dimensions is named `STYM_01`, it will be
+           Dimensions names. If one of the dimensions is named `SYTM_01`, it will be
            converted to datetime64.
         time :
             Specify which dimensions is to be converted into datetime64.
@@ -543,7 +543,7 @@ class Odf:
 
         data = np.asarray(data)
         _null_value = null_value
-        if code == 'STYM_01':
+        if code == 'SYTM_01':
             _null_value = pd.Timestamp(null_value)
         data[~np.isfinite(data)] = _null_value
 
@@ -553,21 +553,24 @@ class Odf:
         self.parameter[code]['null_value'] = null_value
         self.data[code] = data
         self.parameter[code]['number_valid'] = len(self.data[code])
-        if not 'QQQQ' in code:
-            self._compute_parameter_attrs(code, qc_mask)
+
+        self._compute_parameter_attrs(code, qc_mask)
 
     def _compute_parameter_attrs(self, parameter: str, qc_mask: np.ndarray = None):
         """Compute `number_valid`, `number_null`, `minimum_value` and `maximum_value` from
         the data and the "null_value" in `parameter[parameter]`.
         """
-        null_value = self.parameter[parameter]["null_value"]
-        n_null = (self.data[parameter] == null_value).sum().item()
-        self.parameter[parameter]["number_null"] = n_null
-        self.parameter[parameter]["number_valid"] -= n_null
+        mask = np.ones(self.data[parameter].shape).astype(bool)
 
-        mask = (self.data[parameter] != null_value).values
-        if qc_mask is not None:
-            mask &= qc_mask
+        if 'QQQQ' not in parameter:
+            null_value = self.parameter[parameter]["null_value"]
+            n_null = (self.data[parameter] == null_value).sum().item()
+            self.parameter[parameter]["number_null"] = n_null
+            self.parameter[parameter]["number_valid"] -= n_null
+
+            mask = (self.data[parameter] != null_value).values
+            if qc_mask is not None:
+                mask &= qc_mask
 
         self.parameter[parameter]["minimum_value"] = self.data[parameter].where(mask).min()
         self.parameter[parameter]["maximum_value"] = self.data[parameter].where(mask).max()
@@ -700,11 +703,12 @@ class Odf:
             buf=buf, formatters=formats, header=False, index=False, na_rep=NA_REP,
         )
 
+
 def _get_null_values(
         codes: list,
         null_values: tp.Union[int, float, list, tuple],
         items: dict
-        ) -> dict:
+) -> dict:
     _null_values = {}
     """
     """
@@ -766,7 +770,7 @@ def _format_headers(name: str, header: dict) -> str:
             )
 
         elif not value:
-            s += INDENT + key.upper() + " = " + "," + NEWLINE
+            s += INDENT + key.upper() + " = ''" + "," + NEWLINE 
         else:
             print("Could not format", name, key, value, type(value))
 

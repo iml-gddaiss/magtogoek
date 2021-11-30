@@ -119,7 +119,7 @@ def _make_event_header(odf, dataset, config_attrs, event_qualifier2):
     -----
     `depth_off_bottom` is `0` if "sounding" is missing.
     """
-    odf.event['data_type'] = dataset.attrs['data_type']
+    odf.event['data_type'] = dataset.attrs['data_type'].upper()
     odf.event["creation_date"] = odf_time_format(datetime.now())
     odf.event['orig_creation_date'] = odf_time_format(dataset.attrs['date_created'])
     if 'delta_t_sec' in dataset.attrs:
@@ -198,7 +198,7 @@ def _make_instrument_header(odf, dataset):
             odf.instrument[key_odf] = dataset.attrs[key_nc]
     for key in ['model', 'serial_number']:
         if key in dataset.attrs:
-            odf.instrument[key] = dataset.attrs[key]
+            odf.instrument[key] = str(dataset.attrs[key])
 
 
 def _make_buoy_header(odf, platform_metadata):
@@ -209,7 +209,7 @@ def _make_buoy_header(odf, platform_metadata):
     if 'buoy_specs' in platform_metadata:
         for key in ['type', 'model', 'diameter', 'weight', 'height', 'description']:
             if key in platform_metadata['buoy_specs']:
-                odf.buoy[key] = platform_metadata["buoy_specs"][key]
+                odf.buoy[key] = str(platform_metadata["buoy_specs"][key])
 
 
 def _make_adcp_buoy_instrument_header(odf, dataset, platform_metadata) -> object:
@@ -224,7 +224,7 @@ def _make_adcp_buoy_instrument_header(odf, dataset, platform_metadata) -> object
             header[key_odf] = dataset.attrs[key_nc]
     for key in ['model', 'serial_number', 'description']:
         if key in dataset.attrs:
-            header[key] = dataset.attrs[key]
+            header[key] = str(dataset.attrs[key])
 
     header["inst_start_date_time"] = odf_time_format(dataset.time.values.min())
     header["inst_end_date_time"] = odf_time_format(dataset.time.values.max())

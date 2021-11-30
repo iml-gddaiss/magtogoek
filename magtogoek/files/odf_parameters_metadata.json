@@ -1,6 +1,6 @@
 {
     "time": {
-        "code": "STYM_01",
+        "code": "SYTM_01",
         "name": "Time Format DD-MMM-YYYY HH:MM:SS.ss",
         "units": "GMT",
         "print_field_width": 23,
