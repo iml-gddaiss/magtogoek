@@ -1,6 +1,6 @@
 import pytest
-from magtogoek.configfile import (ConfigFileError, load_configfile,
-                                  make_configfile)
+from magtogoek.configfile import (ConfigFileError, load_configfile)
+
 
 
 def test_load():

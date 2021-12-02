@@ -62,11 +62,12 @@ OptionInfos = namedtuple(
         "value_min",
         "value_max",
         "is_path",
+        "is_file",
         "is_time_stamp",
         "is_required",
         "null_value",
     ),
-    defaults=[[], None, None, None, None, None, None, None, False, False, False, None],
+    defaults=[[], None, None, None, None, None, None, None, False, False, False, False, None],
 )
 
 
@@ -122,6 +123,10 @@ class ConfigFileError(SystemExit):
             self.msg = (
                 f"`{self.section}/{self.option}` path or path/to/file does not exist."
             )
+        if self.error == "file":
+            self.msg = (
+            f"`{self.section}/{self.option}` file {self.value} does not exist."
+            )
         if "bool" in self.option_info.dtypes:
             self.msg += (
                 f"\nBoolean have to be express with {TRUE_VALUES} or {FALSE_VALUES}."
@@ -130,6 +135,7 @@ class ConfigFileError(SystemExit):
             self.msg = (
                 f"`{self.section}/{self.option}` requires a value. None were given."
             )
+
 
 
 BASE_CONFIG = dict(
@@ -141,9 +147,9 @@ BASE_CONFIG = dict(
     },
     INPUT={
         "input_files": OptionInfos(
-            dtypes=["str"], default="", nargs_min=1, is_path=True, is_required=True
+            dtypes=["str"], default="", nargs_min=1, is_file=True, is_required=True
         ),
-        "platform_file": OptionInfos(dtypes=["str"], default="", is_path=True),
+        "platform_file": OptionInfos(dtypes=["str"], default="", is_file=True),
         "platform_id": OptionInfos(dtypes=["str"], default=""),
         "sensor_id": OptionInfos(dtypes=["str"], default=""),
     },
@@ -201,7 +207,7 @@ ADCP_CONFIG = dict(
         "yearbase": OptionInfos(dtypes=["int"], default="", is_required=True),
         "adcp_orientation": OptionInfos(dtypes=["str"], choice=["up", "down"]),
         "sonar": OptionInfos(dtypes=["str"], choice=["wh", "sv", "os", "sw", "sw_pd0"], is_required=True),
-        "navigation_file": OptionInfos(dtypes=["str"], default="", is_path=True),
+        "navigation_file": OptionInfos(dtypes=["str"], default="", is_file=True),
         "leading_trim": OptionInfos(dtypes=["str"], default=""),
         "trailing_trim": OptionInfos(dtypes=["str"], default=""),
         "sensor_depth": OptionInfos(dtypes=["float"], default=""),
@@ -413,8 +419,14 @@ def _format_option_type(value, option_info, section, option, config_path):
 
     if option_info.is_path is True and isinstance(value, str):
         value = Path(config_path).joinpath(Path(value)).resolve()
-        if not any((value.is_file(), value.is_dir(), value.parent.is_dir())):
+        if not any((value.is_dir(), value.parent.is_dir())):
             raise ConfigFileError("path", section, option, option_info, value)
+        value = str(value)
+
+    if option_info.is_file is True:
+        value = Path(config_path).joinpath(Path(value)).resolve()
+        if not value.is_file():
+            raise ConfigFileError("file", section, option, option_info, value)
         value = str(value)
 
     if option_info.is_time_stamp is True:
