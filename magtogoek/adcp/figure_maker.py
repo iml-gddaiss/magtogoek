@@ -14,7 +14,7 @@ from mpl_toolkits.axes_grid1 import ImageGrid
 
 warnings.filterwarnings("ignore", module="matplotlib\..*")
 
-
+# ESTIMATE THE START and END time
 FONT = {"family": "serif", "color": "darkred", "weight": "normal", "size": 14}
 BINARY_CMAP = plt.get_cmap("viridis_r", 2)
 VEL_CMAP = cmo.balance
