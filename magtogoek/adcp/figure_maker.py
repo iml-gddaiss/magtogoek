@@ -61,7 +61,7 @@ def plot_velocity_fields(dataset: xr.Dataset, flag_thres: int = 2):
             dataset.depth,
             vel_da,
             shading="auto",
-            cmap=VEL_CMAP,
+            cmap=VEL_CMAP,)
         cax = axes[index].cax
         plt.colorbar(im, cax)
         axes[index].cax.set_ylabel(vel_da.attrs["units"], fontdict=FONT)
@@ -141,11 +141,11 @@ if __name__ == "__main__":
     ds.attrs["binary_mask_tests"] = test
     ds.attrs["binary_mask_tests_value"] = [0, 64, 90, 5.0, 5.0, 5.0, 20, 20, None]
 
-    # fig_test = plot_test_fields(ds)
-    # fig_test.show()
+    fig_test = plot_test_fields(ds)
+    fig_test.show()
 
-    # fig_polar = plot_polar_velocities(ds)
-    # fig_polar.show()
+    fig_polar = plot_polar_velocities(ds)
+    fig_polar.show()
 
     fig_vel = plot_velocity_fields(ds)
     fig_vel.show()
