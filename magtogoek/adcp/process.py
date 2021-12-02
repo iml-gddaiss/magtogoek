@@ -724,7 +724,9 @@ def _quality_control(dataset: xr.Dataset, params: tp.Dict):
 def _apply_magnetic_correction(dataset: xr.Dataset, magnetic_declination: float):
     """Transform velocities and heading to true north and east.
 
-    Rotates velocities and heading by the given `magnetic_declination` angle.
+    Rotates velocities by minus the `magnetic_declination` angle effectively
+    rotating the frame fo reference by the `magnetic_declination`.
+    Adds the `magnetic_declination` to the heading.
 
     Parameters
     ----------
@@ -735,20 +737,20 @@ def _apply_magnetic_correction(dataset: xr.Dataset, magnetic_declination: float)
     """
 
     dataset.u.values, dataset.v.values = rotate_2d_vector(
-        dataset.u, dataset.v, magnetic_declination
+        dataset.u, dataset.v, -magnetic_declination
     )
     l.log(f"Velocities transformed to true north and true east.")
     if all(v in dataset for v in ['bt_u', 'bt_v']):
         dataset.bt_u.values, dataset.bt_v.values = rotate_2d_vector(
-            dataset.bt_u, dataset.bt_v, magnetic_declination
+            dataset.bt_u, dataset.bt_v, -magnetic_declination
         )
         l.log(f"Bottom velocities transformed to true north and true east.")
 
     # heading goes from -180 to 180
     if "heading" in dataset:
         dataset.heading.values = (
-                                         dataset.heading.data + 360 + magnetic_declination
-                                 ) % 360 - 180
+            dataset.heading.data + 180 + magnetic_declination
+        ) % 360 - 180
         l.log(f"Heading transformed to true north.")
 
 
