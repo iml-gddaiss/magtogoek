@@ -88,6 +88,7 @@ GLOBAL_ATTRS_TO_DROP = [
     "sonar",
     "variables_gen_name",
     "binary_mask_tests",
+    "binary_mask_tests_values",
 ]
 CONFIG_GLOBAL_ATTRS_SECTIONS = ["NETCDF_CF", "PROJECT", "CRUISE", "GLOBAL_ATTRIBUTES"]
 PLATFORM_TYPES = ["buoy", "mooring", "ship"]

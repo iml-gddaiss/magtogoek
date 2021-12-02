@@ -193,76 +193,84 @@ def adcp_quality_control(
     if motion_correction_mode in ["bt", "nav"]:
         motion_correction(dataset, motion_correction_mode)
 
-    # vel_flags = set_implausible_vel_to_nan(dataset, thres=IMPLAUSIBLE_VEL_TRESHOLD)
-
     vel_flags = np.ones(dataset.depth.shape + dataset.time.shape).astype(int)
     binary_mask = np.zeros(dataset.depth.shape + dataset.time.shape).astype(int)
 
     vel_qc_test = []
+    binary_mask_tests_value = [None] * 9
 
-    if amp_th:
+    if amp_th is not None:
         l.log(f"amplitude threshold {amp_th}")
         amp_flag = amplitude_test(dataset, amp_th)
         vel_flags[amp_flag] = 3
         vel_qc_test.append(f"amplitude_threshold:{amp_th}")
-        binary_mask += amp_flag * 2**0
+        binary_mask[amp_flag] += 2 ** 0
+        binary_mask_tests_value[0] = amp_th
 
-    if corr_th:
+    if corr_th is not None:
         l.log(f"correlation threshold {corr_th}")
         corr_flag = correlation_test(dataset, corr_th)
         vel_flags[corr_flag] = 3
         vel_qc_test.append(f"correlation_threshold:{corr_th}")
-        binary_mask += corr_flag * 2 ** 1
+        binary_mask[corr_flag] += 2 ** 1
+        binary_mask_tests_value[1] = corr_th
 
-    if pg_th:
+    if pg_th is not None:
         l.log(f"percentgood threshold {pg_th}")
         pg_flag = percentgood_test(dataset, pg_th)
         vel_flags[pg_flag] = 3
         vel_qc_test.append(f"percentgood_threshold:{pg_th}")
-        binary_mask += pg_flag * 2 ** 2
+        binary_mask[pg_flag] += 2 ** 2
+        binary_mask_tests_value[2] = pg_th
 
-    if horizontal_vel_th:
+    if horizontal_vel_th is not None:
         l.log(f"horizontal velocity threshold {horizontal_vel_th} m/s")
         horizontal_vel_flag = horizontal_vel_test(dataset, horizontal_vel_th)
         vel_flags[horizontal_vel_flag] = 3
         vel_qc_test.append(f"horizontal_velocity_threshold:{horizontal_vel_th} m/s")
-        binary_mask += horizontal_vel_flag * 2 ** 3
+        binary_mask[horizontal_vel_flag] += 2 ** 3
+        binary_mask_tests_value[3] = horizontal_vel_th
 
-    if vertical_vel_th:
+    if vertical_vel_th is not None:
         l.log(f"vertical velocity threshold {vertical_vel_th} m/s")
         vertical_vel_flag = vertical_vel_test(dataset, vertical_vel_th)
         vel_flags[vertical_vel_flag] = 3
         vel_qc_test.append(f"vertical_velocity_threshold:{vertical_vel_th} m/s")
-        binary_mask += vertical_vel_flag * 2 ** 4
+        binary_mask[vertical_vel_flag] += 2 ** 4
+        binary_mask_tests_value[4] = vertical_vel_th
 
-    if error_vel_th:
+    if error_vel_th is not None:
         l.log(f"error velocity threshold {error_vel_th} m/s")
         error_vel_flag = error_vel_test(dataset, error_vel_th)
         vel_flags[error_vel_flag] = 3
         vel_qc_test.append(f"velocity_error_threshold:{error_vel_th} m/s")
-        binary_mask += error_vel_flag * 2 ** 5
+        binary_mask[error_vel_flag] += 2 ** 5
+        binary_mask_tests_value[5] = error_vel_th
 
-    if roll_th:
+    if roll_th is not None:
         l.log(f"roll threshold {roll_th} degree")
         roll_flag = np.tile(roll_test(dataset, roll_th), dataset.depth.shape + (1,))
         vel_flags[roll_flag] = 3
         vel_qc_test.append(f"roll_threshold:{roll_th} degree")
-        binary_mask += roll_flag * 2 ** 6
+        binary_mask[roll_flag] += 2 ** 6
+        binary_mask_tests_value[6] = roll_th
 
-    if pitch_th:
+    if pitch_th is not None:
         l.log(f"pitch threshold {pitch_th} degree")
         pitch_flag = np.tile(pitch_test(dataset, pitch_th), dataset.depth.shape + (1,))
         vel_flags[pitch_flag] = 3
         vel_qc_test.append(f"pitch_threshold:{pitch_th} degree")
-        binary_mask += pitch_flag * 2 ** 7
+        binary_mask[pitch_flag] += 2 ** 7
+        binary_mask_tests_value[7] = pitch_th
 
-    if sidelobes_correction:
+    if sidelobes_correction is True:
         sidelobe_flag = sidelobe_test(dataset, bottom_depth)
         if isinstance(sidelobe_flag, np.ndarray):
             l.log("Sidelobe correction carried out.")
             vel_flags[sidelobe_flag] = 3
             vel_qc_test.append("sidelobes")
-            binary_mask += sidelobe_flag * 2 ** 8
+            binary_mask[sidelobe_flag] += 2 ** 8
+            binary_mask_tests_value[8] = sidelobes_correction
 
     if "pres" in dataset:
         l.log(f"Good pressure range {MIN_PRESSURE} to {MAX_PRESSURE} dbar")
@@ -318,7 +326,7 @@ def adcp_quality_control(
             dataset[var].attrs["flag_values"] = FLAG_VALUES
             dataset[var].attrs["flag_reference"] = FLAG_REFERENCE
 
-    dataset.attrs["quality_comments"] = l.logbook[len('[Quality Control]'):]
+    dataset.attrs["quality_comments"] = l.logbook[len("[Quality Control]") :]
     l.log(f"Quality Control was carried out with {l.w_count} warnings")
     dataset.attrs["logbook"] += l.logbook
 
@@ -326,11 +334,20 @@ def adcp_quality_control(
     dataset.attrs["flags_values"] = FLAG_VALUES
     dataset.attrs["flags_meanings"] = FLAG_MEANINGS
 
-    dataset['binary_mask'] = (['depth','time'], binary_mask)
-    dataset.attrs['binary_mask_tests'] = [
-        "amp", "corr", "pg", "horizontal", "vertical",
-        "error", "roll", "pitch", "sidelobe"
+    dataset["binary_mask"] = (["depth", "time"], binary_mask)
+
+    dataset.attrs["binary_mask_tests"] = [
+        "amp",
+        "corr",
+        "pg",
+        "horizontal vel",
+        "vertical vel",
+        "error",
+        "roll",
+        "pitch",
+        "sidelobe",
     ]
+    dataset.attrs["binary_mask_tests_values"] = binary_mask_tests_value
 
 
 def motion_correction(dataset: xr.Dataset, mode: str):
@@ -355,7 +372,6 @@ def motion_correction(dataset: xr.Dataset, mode: str):
                     dataset[field + "_ship"].where(np.isfinite(dataset.lon.values), 0),
                     (dataset.depth.size, 1),
                 )
-                # dataset[f"{field}ship"].values = dataset[field].values NOTE not sure of why that was there.
             l.log("Motion correction carried out with navigation")
         else:
             l.warning(
@@ -374,15 +390,6 @@ def flag_implausible_vel(
     return (
         (dataset.v > threshold) & (dataset.u > threshold) & (dataset.w > threshold)
     ).data
-
-
-def set_implausible_vel_to_nan(dataset: xr.Dataset, threshold: float = 15):
-    """Set bin with improbable values to Nan."""
-    for v in ["u", "v", "w"]:
-        plausible = (dataset[v] > -threshold) & (dataset[v] < threshold)
-        dataset["u"] = dataset["u"].where(plausible)
-        dataset["v"] = dataset["v"].where(plausible)
-        dataset["w"] = dataset["w"].where(plausible)
 
 
 def correlation_test(dataset: xr.Dataset, threshold: int):
@@ -459,37 +466,32 @@ def pitch_test(dataset: xr.Dataset, threshold: float) -> tp.Type[np.array]:
         return np.full(dataset.depth.shape + dataset.time.shape, False)
 
 
-def horizontal_vel_test(
-    dataset: xr.Dataset, threshold: float
-) -> tp.Type[np.array]:
+def horizontal_vel_test(dataset: xr.Dataset, threshold: float) -> tp.Type[np.array]:
     """FIXME
     None finite value value will also fail"""
 
     horizontal_velocity = np.sqrt(dataset.u ** 2 + dataset.v ** 2)
 
-    return np.greater(
-        horizontal_velocity.values, threshold, where=np.isfinite(horizontal_velocity),
-    )
+    return np.greater(horizontal_velocity.values, threshold)
 
 
 def vertical_vel_test(dataset: xr.Dataset, threshold: float) -> tp.Type[np.array]:
     """FIXME
     None finite value value will also fail"""
-    return np.greater(
-        abs(dataset.w.values), threshold, where=np.isfinite(dataset.w.values),
-    )
+    return np.greater(abs(dataset.w.values), threshold)
 
 
 def error_vel_test(dataset: xr.Dataset, threshold: float) -> tp.Type[np.array]:
     """FIXME
     None finite value value will also fail"""
-    return np.greater(
-        abs(dataset.e.values), threshold, where=np.isfinite(dataset.w.values),
-    )
+    return np.greater(abs(dataset.e.values), threshold)
 
 
 def vertical_beam_test(
-    dataset: xr.Dataset, amp_threshold: float, corr_threshold: float, pg_threshold: float
+    dataset: xr.Dataset,
+    amp_threshold: float,
+    corr_threshold: float,
+    pg_threshold: float,
 ) -> tp.Type[np.array]:
     """FIXME"""
     vb_test = np.full(dataset.depth.shape + dataset.time.shape, False)
@@ -595,7 +597,9 @@ if __name__ == "__main__":
     test = "SW_PD0"
 
     if test == "SV":
-        _dataset = load_adcp_binary(v50_files, sonar="sv", yearbase=2020, orientation="down",)
+        _dataset = load_adcp_binary(
+            v50_files, sonar="sv", yearbase=2020, orientation="down",
+        )
 
     if test == "ENX":
         _dataset = load_adcp_binary(
@@ -619,8 +623,16 @@ if __name__ == "__main__":
             trailing_index=None,
         )
 
-    adcp_quality_control(_dataset, roll_th=20, pitch_th=20, horizontal_vel_th=2, vertical_vel_th=0.1,
-                         motion_correction_mode="bt", sidelobes_correction=True, bottom_depth=None)
+    adcp_quality_control(
+        _dataset,
+        roll_th=20,
+        pitch_th=20,
+        horizontal_vel_th=2,
+        vertical_vel_th=0.1,
+        motion_correction_mode="bt",
+        sidelobes_correction=True,
+        bottom_depth=None,
+    )
 
     _dataset.u.where(_dataset.u_QC == 1).plot()
 
