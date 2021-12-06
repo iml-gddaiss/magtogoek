@@ -451,7 +451,7 @@ def load_adcp_binary(
         dataset.attrs["xducer_depth"] = round(average_xducer_depth, 2)
     dataset.attrs["coord_system"] = data.trans["coordsystem"]
     dataset.attrs["beam_angle"] = data.sysconfig["angle"]
-    dataset.attrs["frequency_kHz"] = data.sysconfig["kHz"] * 1000  # kHz to hz
+    dataset.attrs["frequency_Hz"] = data.sysconfig["kHz"] * 1000  # kHz to hz
     dataset.attrs["bin_size_m"] = data.CellSize
     dataset.attrs["ping_per_ensemble"] = data.NPings
     dataset.attrs["ping_type"] = data.pingtype

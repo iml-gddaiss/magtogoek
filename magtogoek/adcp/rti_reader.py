@@ -340,7 +340,7 @@ class RtiReader:
         ppd.dep = ppd.Bin1Dist + np.arange(0, ppd.nbin * ppd.CellSize, ppd.CellSize)
 
         ppd.pingtype = ens.SystemSetup.WpBroadband
-        ppd.sysconfig = {'angle': _beam_angle(ppd.SerialNumber), 'kHz': ens.SystemSetup.WpSystemFreqHz, 'convex': True,
+        ppd.sysconfig = {'angle': _beam_angle(ppd.SerialNumber), 'kHz': ens.SystemSetup.WpSystemFreqHz/1000, 'convex': True,
                          'up': False}
         ppd.FL = dict()
         ppd.FL["FWV"] = int(
