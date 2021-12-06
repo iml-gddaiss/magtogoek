@@ -15,26 +15,60 @@ from mpl_toolkits.axes_grid1 import ImageGrid
 warnings.filterwarnings("ignore", module="matplotlib\..*")
 
 # ESTIMATE THE START and END time
-FONT = {"family": "serif", "color": "darkred", "weight": "normal", "size": 14}
+FONT = {"family": "serif", "color": "darkred", "weight": "normal", "size": 12}
 BINARY_CMAP = plt.get_cmap("viridis_r", 2)
 VEL_CMAP = cmo.balance
 
 
-def plot_polar_velocities(dataset: xr.Dataset, uv=('u','v'),flag_thres: int = 2):
-    """
-    """
-    u = dataset[uv[0]].where(dataset[uv[0]+'_QC'] <= flag_thres).data.flatten()
-    v = dataset[uv[1]].where(dataset[uv[1]+'_QC'] <= flag_thres).data.flatten()
-    vels = np.sqrt(u ** 2 + v ** 2)
-    with np.errstate(divide="ignore", invalid="ignore"):
-        angles = np.rad2deg(np.arctan(v / u))
-    fig, ax = plt.subplots(figsize=(12, 8), subplot_kw={"projection": "polar"})
+def cartesian2northpolar(x, y):
+    """Return the azimut and the radius."""
+    azimut = (np.arctan2(x, y) + 2 * np.pi) % (2 * np.pi)
+    radius = np.hypot(x, y)
+    return azimut, radius
 
-    im = ax.scatter(angles, vels, s=5, alpha=0.3)
-    ax.set_rticks(np.arange(0, 2.2, 0.2))  # Less radial ticks
-    ax.set_rmax(np.nanmax(vels))
-    ax.set_rlabel_position(-22.5)  # Move radial labels away from plotted line
-    ax.grid(True)
+
+def polar_histo(dataset: xr.Dataset, x_vel="u", y_vel="v", flag_thres: int = 2):
+    u = dataset[x_vel].where(dataset[x_vel + "_QC"] <= flag_thres).data.flatten()
+    v = dataset[y_vel].where(dataset[y_vel + "_QC"] <= flag_thres).data.flatten()
+    ii = np.isfinite(u) & np.isfinite(v)
+
+    azimut, radius = cartesian2northpolar(u[ii], v[ii])
+
+    rN, aN = 30, 180
+    r_max, a_max = np.round(np.max(radius), 2) + 0.1, 2 * np.pi
+    rbins, abins = np.linspace(0, r_max, rN), np.linspace(0, a_max, aN)
+
+    return np.histogram2d(azimut, radius, bins=(abins, rbins))
+
+
+def plot_velocity_polar_hist(dataset, nrows=3, ncols=3):
+    naxes = int(nrows * ncols)
+    bin_depths = np.linspace(dataset.depth.min(), dataset.depth.max(), naxes + 1)
+    fig, axes = plt.subplots(
+        figsize=(12, 8),
+        nrows=nrows,
+        ncols=ncols,
+        subplot_kw={"projection": "polar"},
+        constrained_layout=True,
+    )
+    axes = axes.flatten()
+    for index in range(naxes):
+        histo, a_edges, r_edges = polar_histo(
+            dataset.sel(depth=slice(bin_depths[index], bin_depths[index + 1]))
+        )
+        # histo[histo < 1] = np.nan
+        _ = axes[index].pcolormesh(
+            a_edges, r_edges, histo.T, cmap=cmo.amp, shading="auto"
+        )
+        axes[index].set_title(
+            f"{round((bin_depths[index] + bin_depths[index+1])/2,0)} m", fontdict=FONT,
+        )
+        axes[index].grid(True)
+        axes[index].set_theta_zero_location("N")
+        axes[index].set_theta_direction(-1)
+        axes[index].set_rgrids([0.25, 0.5, 0.75, 1.00], angle=55)
+    # axes[index].text(-0.08, 1.1, s="North", fontdict=FONT)
+    # axes[index].text(np.pi / 2 + 0.02, 1.11, s="East", fontdict=FONT)
 
     return fig
 
@@ -57,11 +91,8 @@ def plot_velocity_fields(dataset: xr.Dataset, flag_thres: int = 2):
         vel_da = dataset[var].where(dataset[var + "_QC"] <= flag_thres)
         max = np.round(np.max(vel_da.reduce(np.abs)), 2)
         im = axes[index].pcolormesh(
-            dataset.time,
-            dataset.depth,
-            vel_da,
-            shading="auto",
-            cmap=VEL_CMAP,)
+            dataset.time, dataset.depth, vel_da, shading="auto", cmap=VEL_CMAP,
+        )
         cax = axes[index].cax
         plt.colorbar(im, cax)
         axes[index].cax.set_ylabel(vel_da.attrs["units"], fontdict=FONT)
@@ -81,12 +112,7 @@ def plot_test_fields(dataset):
     fig = plt.figure(figsize=(12, 8))
 
     axes = ImageGrid(
-        fig,
-        111,  # as in plt.subplot(111)
-        nrows_ncols=(3, 3),
-        axes_pad=0.3,
-        share_all=True,
-        aspect=False,
+        fig, 111, nrows_ncols=(3, 3), axes_pad=0.3, share_all=True, aspect=False
     )
 
     # Add data to image grid
@@ -96,22 +122,17 @@ def plot_test_fields(dataset):
             mask = (dataset.binary_mask.astype(int) & 2 ** index).astype(bool)
 
             im = axes[index].pcolormesh(
-                ds.time, ds.depth, mask, cmap=BINARY_CMAP, shading="auto"
+                dataset.time, dataset.depth, mask, cmap=BINARY_CMAP, shading="auto"
             )
             axes[index].set_title(test_name + f": {value}", fontdict=FONT)
-
-        if index != 3:
             axes[index].tick_params(labelleft=False)
-        else:
-            axes[index].set_ylabel("depth [m]", fontdict=FONT)
-        if index != 7:
             axes[index].tick_params(labelbottom=False)
             axes[index].set_xlabel("")
-        else:
-            axes[index].tick_params(rotation=-30)
-            axes[index].set_xlabel("time", fontdict=FONT)
 
-        axes[index].invert_yaxis()
+    axes[-1].invert_yaxis()
+    axes[3].set_ylabel("depth [m]", fontdict=FONT)
+    axes[7].tick_params(rotation=-30)
+    axes[7].set_xlabel("time", fontdict=FONT)
 
     cbar_axe = fig.add_axes([0.15, 0.08, 0.2, 0.005])
     cbar = clb.ColorbarBase(
@@ -126,6 +147,7 @@ if __name__ == "__main__":
     import xarray as xr
 
     nc_file = "/home/jeromejguay/ImlSpace/Projects/magtogoek/test/files/iml6_2017_wh.nc"
+    nc_file = "/home/jeromejguay/ImlSpace/Projects/magtogoek/test/files/iml4_2017_.nc"
     test = [
         "amp",
         "corr",
@@ -141,11 +163,9 @@ if __name__ == "__main__":
     ds.attrs["binary_mask_tests"] = test
     ds.attrs["binary_mask_tests_value"] = [0, 64, 90, 5.0, 5.0, 5.0, 20, 20, None]
 
-    fig_test = plot_test_fields(ds)
-    fig_test.show()
+    #    fig_test = plot_test_fields(ds)
 
-    fig_polar = plot_polar_velocities(ds)
-    fig_polar.show()
+    fig_polar = plot_velocity_polar_hist(ds, 2, 4)
+    #    fig_vel = plot_velocity_fields(ds)
 
-    fig_vel = plot_velocity_fields(ds)
-    fig_vel.show()
+    plt.show()
