@@ -147,7 +147,7 @@ if __name__ == "__main__":
     import xarray as xr
 
     nc_file = "/home/jeromejguay/ImlSpace/Projects/magtogoek/test/files/iml6_2017_wh.nc"
-    nc_file = "/home/jeromejguay/ImlSpace/Projects/magtogoek/test/files/iml4_2017_.nc"
+    # nc_file = "/home/jeromejguay/ImlSpace/Projects/magtogoek/test/files/iml4_2017_sw.nc"
     test = [
         "amp",
         "corr",
