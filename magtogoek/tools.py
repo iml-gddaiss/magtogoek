@@ -13,6 +13,11 @@ def nans(shape: tp.Union[list, tuple, np.ndarray]) -> np.ndarray:
     return np.full(shape, np.nan)
 
 
+def cartesian2northpolar(x, y):
+    """Return the azimut (north clockwise)  and the radius from x, y vector."""
+    return (np.arctan2(x, y) + 2 * np.pi) % (2 * np.pi), np.hypot(x, y)
+
+
 def circular_distance(a1, a2, units="rad"):
     """
     Function circdist usage:

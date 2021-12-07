@@ -383,7 +383,7 @@ class RtiReader:
         return ppd
 
     def read_chunks(self) -> Bunch:
-        """Read and decode chunks over multple process
+        """Read and decode chunks over multiple process
 
         Notes
         -----
