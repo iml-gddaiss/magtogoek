@@ -68,7 +68,11 @@ REPEATED_HEADERS = [
     "history",
     "parameter",
 ]
-
+NC_TIME_ENCODING = {
+    "units": "seconds since 1970-1-1 00:00:00Z",
+    "calendar": "gregorian",
+    "_FillValue": None,
+}
 
 def get_headers_default():
     return dict(
@@ -431,7 +435,11 @@ class Odf:
         dataset = xr.Dataset.from_dataframe(data)
 
         for p in self.parameter:
-            dataset[p].assign_attrs(self.parameter[p])
+            dataset[p].attrs.update(self.parameter[p])
+        if 'SYTM_01' in dataset.coords:
+            [dataset['SYTM_01'].attrs.pop(key) for key in NC_TIME_ENCODING if key in dataset['SYTM_01'].attrs]
+            dataset['SYTM_01'].encoding = NC_TIME_ENCODING
+
 
         history = {}
         for i, h in zip(range(len(self.history)), self.history):
@@ -864,7 +872,7 @@ if __name__ == "__main__":
     ]
 
     odf = Odf().read(path[1] + ".ODF")
-    dataset = odf.to_dataset(dims=["SYTM_01", "DEPH_01"]).isel(
+    dataset = odf.to_dataset(dims=["DEPH_01", "SYTM_01"]).isel(
         SYTM_01=slice(0, 100)
     )
     data = dataset.to_dataframe().reset_index()

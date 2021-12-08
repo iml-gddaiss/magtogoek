@@ -916,17 +916,17 @@ def cut_times(dataset: xr.Dataset,
 def _make_outputs(input_path: str,
                   odf_output: tp.Union[bool, str],
                   netcdf_output: tp.Union[bool, str]) -> tp.Tuple[tp.Union[bool, str], tp.Union[bool, str], str]:
-    '''
+    """
 
     Parameters
     ----------
     odf_output
-    nc_output
+    netcdf_output
 
     Returns
     -------
 
-    '''
+    """
     default_path = Path(input_path).parent
     default_filename = Path(input_path).name
 
