@@ -138,8 +138,8 @@ def get_headers_default():
             ice_thickness=None,
             meteo_comments=[],
         ),
-        instrument=dict(inst_type="", model="", serial_number="", description="", ),
-        quality=dict(quality_date="", quality_tests=[], quality_comments=[], ),
+        instrument=dict(inst_type="", model="", serial_number="", description="",),
+        quality=dict(quality_date="", quality_tests=[], quality_comments=[],),
         record=dict(
             num_calibration=None,
             num_swing=None,
@@ -413,10 +413,12 @@ class Odf:
            Dimensions names. If one of the dimensions is named `SYTM_01`, it will be
            converted to datetime64.
         time :
-            Specify which dimensions is to be converted into datetime64.
+            Specify which variable is to be converted into datetime64. The variable
+            "SYTM_01" will be converted to datetime64 automatically.
         """
-        if time:
-            self.data[time] = pd.to_datetime(self.data[time])
+        if isinstance(time, str) and time != "SYTM_01":
+            if time in self.data:
+                self.data[time] = pd.to_datetime(self.data[time])
 
         if "SYTM_01" in self.data:
             self.data["SYTM_01"] = pd.to_datetime(self.data["SYTM_01"])
@@ -514,12 +516,12 @@ class Odf:
         self.buoy_instrument[name].update(items)
 
     def add_parameter(
-            self,
-            code: str,
-            data: tp.Union[list, np.ndarray],
-            null_value: tp.Union[int, float],
-            items: tp.Dict = None,
-            qc_mask: np.ndarray = None,
+        self,
+        code: str,
+        data: tp.Union[list, np.ndarray],
+        null_value: tp.Union[int, float],
+        items: tp.Dict = None,
+        qc_mask: np.ndarray = None,
     ):
         """Add a the parameter to ODF.parameters and the data to ODF.data.
 
@@ -543,16 +545,16 @@ class Odf:
 
         data = np.asarray(data)
         _null_value = null_value
-        if code == 'SYTM_01':
+        if code == "SYTM_01":
             _null_value = pd.Timestamp(null_value)
         data[~np.isfinite(data)] = _null_value
 
         self.parameter[code] = _get_repeated_headers_default()["parameter"]
         self.parameter[code].update(items)
         self.parameter[code]["code"] = code
-        self.parameter[code]['null_value'] = null_value
+        self.parameter[code]["null_value"] = null_value
         self.data[code] = data
-        self.parameter[code]['number_valid'] = len(self.data[code])
+        self.parameter[code]["number_valid"] = len(self.data[code])
 
         self._compute_parameter_attrs(code, qc_mask)
 
@@ -562,7 +564,7 @@ class Odf:
         """
         mask = np.ones(self.data[parameter].shape).astype(bool)
 
-        if 'QQQQ' not in parameter:
+        if "QQQQ" not in parameter:
             null_value = self.parameter[parameter]["null_value"]
             n_null = (self.data[parameter] == null_value).sum().item()
             self.parameter[parameter]["number_null"] = n_null
@@ -572,14 +574,18 @@ class Odf:
             if qc_mask is not None:
                 mask &= qc_mask
 
-        self.parameter[parameter]["minimum_value"] = self.data[parameter].where(mask).min()
-        self.parameter[parameter]["maximum_value"] = self.data[parameter].where(mask).max()
+        self.parameter[parameter]["minimum_value"] = (
+            self.data[parameter].where(mask).min()
+        )
+        self.parameter[parameter]["maximum_value"] = (
+            self.data[parameter].where(mask).max()
+        )
 
     def from_dataframe(
-            self,
-            dataframe: tp.Type[pd.DataFrame],
-            null_values: tp.Union[int, float, list, tuple, dict],
-            items: None,
+        self,
+        dataframe: tp.Type[pd.DataFrame],
+        null_values: tp.Union[int, float, list, tuple, dict],
+        items: None,
     ):
         """Add data and parameters from a pandas.dataframe. Columns names are used for
         the new parameters code.
@@ -610,7 +616,9 @@ class Odf:
         _null_values = _get_null_values(dataframe.columns, null_values, items)
 
         for code in dataframe.columns:
-            self.add_parameter(code, dataframe[code].values, _null_values[code], items[code])
+            self.add_parameter(
+                code, dataframe[code].values, _null_values[code], items[code]
+            )
 
         self.record = self._make_record()
 
@@ -691,12 +699,12 @@ class Odf:
 
             elif self.data[vd].dtypes == np.dtype("<M8[ns]"):
                 formats[vd] = lambda x, p=padding: (
-                        SPACE + ("'" + odf_time_format(x) + "'").rjust(p, SPACE)
+                    SPACE + ("'" + odf_time_format(x) + "'").rjust(p, SPACE)
                 )
 
             elif self.data[vd].dtypes == np.floating:
                 formats[vd] = lambda x, p=padding, d=decimal_places: (
-                        SPACE + f"{x:.{d}f}".rjust(p, SPACE)
+                    SPACE + f"{x:.{d}f}".rjust(p, SPACE)
                 )
 
         self.data.to_string(
@@ -705,9 +713,7 @@ class Odf:
 
 
 def _get_null_values(
-        codes: list,
-        null_values: tp.Union[int, float, list, tuple],
-        items: dict
+    codes: list, null_values: tp.Union[int, float, list, tuple], items: dict
 ) -> dict:
     _null_values = {}
     """
@@ -725,10 +731,12 @@ def _get_null_values(
     else:
         for key, params_items in items.items():
             if "null_value" in params_items:
-                if not isinstance(params_items['null_value'](int, float)):
+                if not isinstance(params_items["null_value"](int, float)):
                     _null_values[key] = params_items["null_value"]
                 else:
-                    raise ValueError(f"[{key}][`null_values`] must be a `int` or `float`.")
+                    raise ValueError(
+                        f"[{key}][`null_values`] must be a `int` or `float`."
+                    )
             else:
                 raise ValueError(f"[{key}] is missing a `null_values` key and value.")
     return _null_values
@@ -761,12 +769,12 @@ def _format_headers(name: str, header: dict) -> str:
             s += _format_list(value, parent)
         elif isinstance(value, tuple):
             s += (
-                    INDENT
-                    + key.upper()
-                    + " = "
-                    + "".join([f"{v:{12}.{8}f}" for v in value])
-                    + ","
-                    + NEWLINE
+                INDENT
+                + key.upper()
+                + " = "
+                + "".join([f"{v:{12}.{8}f}" for v in value])
+                + ","
+                + NEWLINE
             )
 
         elif not value:
@@ -786,10 +794,10 @@ def _format_list(_list: list, parents: str) -> str:
         for value in _list:
             if isinstance(value, tuple):
                 s += (
-                        parents
-                        + " ".join([f"{v:{12}.{8}f}" for v in value])
-                        + ","
-                        + NEWLINE
+                    parents
+                    + " ".join([f"{v:{12}.{8}f}" for v in value])
+                    + ","
+                    + NEWLINE
                 )
             else:
                 s += parents + "'" + f"{value}'," + NEWLINE
@@ -856,7 +864,7 @@ if __name__ == "__main__":
     ]
 
     odf = Odf().read(path[1] + ".ODF")
-    dataset = odf.to_dataset(dims=["SYTM_01", "DEPH_01"], time="SYTM_01").isel(
+    dataset = odf.to_dataset(dims=["SYTM_01", "DEPH_01"]).isel(
         SYTM_01=slice(0, 100)
     )
     data = dataset.to_dataframe().reset_index()
