@@ -215,10 +215,10 @@ def plot_test_fields(dataset):
 if __name__ == "__main__":
     import xarray as xr
 
-    nc_file = "/home/jeromejguay/ImlSpace/Projects/magtogoek/test/files/iml6_2017_wh.nc"
+    # nc_file = "/home/jeromejguay/ImlSpace/Projects/magtogoek/test/files/iml6_2017_wh.nc"
     # nc_file = "/home/jeromejguay/ImlSpace/Projects/magtogoek/test/files/iml4_2017_sw.nc"
     # nc_file = "/home/jeromejguay/ImlSpace/Data/MPO/iml42020/MADCP_BOUEE2020_RIMOUSKI_553_VEL.nc"
-    # nc_file = "/home/jeromejguay/ImlSpace/Data/MPO/iml42020/iml4_2020_no_mcorr.nc"
+    nc_file = "/home/jeromejguay/ImlSpace/Data/MPO/iml42020/iml4_2020_no_mcorr.nc"
     test = [
         "amp",
         "corr",
@@ -234,8 +234,8 @@ if __name__ == "__main__":
     ds.attrs["binary_mask_tests"] = test
     ds.attrs["binary_mask_tests_value"] = [0, 64, 90, 5.0, 5.0, 5.0, 20, 20, None]
 
-    # fig_test = plot_test_fields(ds)
-    fig_polar = plot_velocity_polar_hist(ds, 2, 3)
+    fig_test = plot_test_fields(ds)
+    # fig_polar = plot_velocity_polar_hist(ds, 2, 3)
     # fig_vel = plot_velocity_fields(ds)
 
     plt.show()
