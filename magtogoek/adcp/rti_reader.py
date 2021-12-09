@@ -168,13 +168,13 @@ class RtiReader:
         """
         if start_index:
             if start_index < 0:
-                raise ValueError("Start index must be positive int")
+                raise ValueError("Start index must be positive integer.")
             else:
                 self.start_index = int(start_index)
 
         if stop_index:
             if stop_index < 0:
-                raise ValueError("Stop index must be positive int")
+                raise ValueError("Stop index must be positive integer.")
             else:
                 self.stop_index = int(stop_index)
 
@@ -182,11 +182,11 @@ class RtiReader:
         self.drop_empty_files()
 
         if len(self.filenames) == 0:
-            raise FilesFormatError("Not RTI ens files")
+            raise ValueError("No file left to read. ")
 
         if self.start_index:
             if np.sum(self.files_ens_count) < self.start_index:
-                raise ValueError("Start_index is greater than the number of ensemble")
+                raise ValueError("Start_index is greater than the number of ensemble.")
         if self.stop_index:
             if np.sum(self.files_ens_count) < self.stop_index:
                 raise ValueError("Stop_index is greater than the number of ensemble")
@@ -383,7 +383,7 @@ class RtiReader:
         return ppd
 
     def read_chunks(self) -> Bunch:
-        """Read and decode chunks over multple process
+        """Read and decode chunks over multiple process
 
         Notes
         -----
