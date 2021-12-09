@@ -514,15 +514,12 @@ def _print_description(group):
            sw : SeaWatch (RTI)
            sw_pd0 : SeaWatch (RTI in RDI pd0 file format)
 
-        quality_control
+        quality control
         ---------------
-           Velocities in any direction are set to NaN if greater than 15 meter
-           per seconds.
-           Failing amplitude, correlation and percentgood, roll, pitch,
-           horizontal/vertical velocities test returns a flag_value of 3.
-           Temperatures outside [-2, 32] Celsius value outside and pressures
-           outside [0, 180] dbar value or depths below sidelobe depth limit
-           have a flag_value of 4.
+           - velocity, amplitude, correlation, percentgood, roll, pitch, 
+             side_lobe.
+           - Temperatures outside [-2, 32] Celsius. 
+           - Pressures outside [0, 180] dbar.           
         """
         )
     if group == "nav":
