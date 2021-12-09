@@ -409,7 +409,7 @@ class Odf:
             f.write(SPACE + "-- DATA --" + NEWLINE)
             self._write_data(buf=f)
 
-    def to_dataset(self, dims: tp.Union[str, tp.List[str]] = None, time: str = None):
+    def to_dataset(self, dims: tp.Union[str, tp.List[str], tp.Tuple[str]] = None, time: str = None):
         """
         Parameters
         ----------
@@ -420,6 +420,9 @@ class Odf:
             Specify which variable is to be converted into datetime64. The variable
             "SYTM_01" will be converted to datetime64 automatically.
         """
+        if isinstance(dims, tuple):
+            dims = list(dims)
+
         if isinstance(time, str) and time != "SYTM_01":
             if time in self.data:
                 self.data[time] = pd.to_datetime(self.data[time])
@@ -427,7 +430,10 @@ class Odf:
         if "SYTM_01" in self.data:
             self.data["SYTM_01"] = pd.to_datetime(self.data["SYTM_01"])
 
-        if dims:
+        if dims is not None:
+            for dim in dims:
+                if dim not in self.data:
+                    dims.remove(dim)
             data = self.data.set_index(dims)
         else:
             data = self.data

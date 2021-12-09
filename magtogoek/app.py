@@ -320,9 +320,12 @@ def navigation(ctx, info, input_files, **options):
         window=options["window"],
     )
 
-@click.command('odf2nc', context_settings=CONTEXT_SETTINGS)
-@click.argument('input_files', metavar="[input_files]", nargs=-1, type=click.Path(exist=True),
-                required=True, help="Name of the odf files to convert")
+@magtogoek.command('odf2nc', context_settings=CONTEXT_SETTINGS)
+@click.argument('input_files',
+                metavar="[input_files]",
+                nargs=-1,
+                type=click.STRING,#Path(exists=True),
+                required=True)
 @click.option(
     "-d",
     "--dims",
@@ -338,20 +341,22 @@ def navigation(ctx, info, input_files, **options):
     default=None,
     help='Name of the variables that need to be converted to datetime64.')
 @click.option('-m', '--merge', is_flag=True, default=False, help='Use the option to merge the output files.')
+@add_options(common_options)
+@click.pass_context
 def odf2nc(ctx, info, input_files, **options):
     from magtogoek.odf_format import Odf
+    from magtogoek.utils import get_files_from_expression
     import xarray as xr
 
+    input_files = get_files_from_expression(input_files)
     datasets = []
     for fn in input_files:
-        datasets.append(Odf.read(fn).to_dataset(dims=options['dims'],time=options['time']))
+        datasets.append(Odf().read(fn).to_dataset(dims=list(options['dims']), time=options['time']))
     if options['merge'] is True:
-        xr.merge(datasets).to_netcdf(Path(input_files[0]).with_suffix('.nc'))
+        xr.merge(datasets).to_netcdf(Path(input_files[0]).with_suffix('.nc'), compat='override')
     else:
         for ds, fn in zip(datasets, input_files):
-            ds.to_netcdf(Path(fn.with_suffix('.nc')))
-
-
+            ds.to_netcdf(Path(fn).with_suffix('.nc'))
 
 
 # ------------------------ #
