@@ -320,6 +320,39 @@ def navigation(ctx, info, input_files, **options):
         window=options["window"],
     )
 
+@click.command('odf2nc', context_settings=CONTEXT_SETTINGS)
+@click.argument('input_files', metavar="[input_files]", nargs=-1, type=click.Path(exist=True),
+                required=True, help="Name of the odf files to convert")
+@click.option(
+    "-d",
+    "--dims",
+    type=click.STRING,
+    multiple=True,
+    default=None,
+    help='Name of the variable to use as dimensions (coordinates).`-d` has to be called for every dimensions.')
+@click.option(
+    '-t',
+    '--time',
+    type=click.STRING,
+    multiple=True,
+    default=None,
+    help='Name of the variables that need to be converted to datetime64.')
+@click.option('-m', '--merge', is_flag=True, default=False, help='Use the option to merge the output files.')
+def odf2nc(ctx, info, input_files, **options):
+    from magtogoek.odf_format import Odf
+    import xarray as xr
+
+    datasets = []
+    for fn in input_files:
+        datasets.append(Odf.read(fn).to_dataset(dims=options['dims'],time=options['time']))
+    if options['merge'] is True:
+        xr.merge(datasets).to_netcdf(Path(input_files[0]).with_suffix('.nc'))
+    else:
+        for ds, fn in zip(datasets, input_files):
+            ds.to_netcdf(Path(fn.with_suffix('.nc')))
+
+
+
 
 # ------------------------ #
 #        Functions         #
