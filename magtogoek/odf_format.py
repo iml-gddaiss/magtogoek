@@ -74,6 +74,7 @@ NC_TIME_ENCODING = {
     "_FillValue": None,
 }
 
+
 def get_headers_default():
     return dict(
         odf=dict(file_specification=""),
@@ -142,8 +143,8 @@ def get_headers_default():
             ice_thickness=None,
             meteo_comments=[],
         ),
-        instrument=dict(inst_type="", model="", serial_number="", description="",),
-        quality=dict(quality_date="", quality_tests=[], quality_comments=[],),
+        instrument=dict(inst_type="", model="", serial_number="", description="", ),
+        quality=dict(quality_date="", quality_tests=[], quality_comments=[], ),
         record=dict(
             num_calibration=None,
             num_swing=None,
@@ -409,7 +410,7 @@ class Odf:
             f.write(SPACE + "-- DATA --" + NEWLINE)
             self._write_data(buf=f)
 
-    def to_dataset(self, dims: tp.Union[str, tp.List[str], tp.Tuple[str]] = None, time: str = None):
+    def to_dataset(self, dims: tp.Union[str, tp.List[str], tp.Tuple[str]] = None, time: str = ''):
         """
         Parameters
         ----------
@@ -423,37 +424,39 @@ class Odf:
         if isinstance(dims, tuple):
             dims = list(dims)
 
-        if isinstance(time, str) and time != "SYTM_01":
+        times = {'SYTM_01'}
+        if time is not None:
+            times.update({time})
+        for t in times:
             if time in self.data:
-                self.data[time] = pd.to_datetime(self.data[time])
-
-        if "SYTM_01" in self.data:
-            self.data["SYTM_01"] = pd.to_datetime(self.data["SYTM_01"])
+                self.data[t] = pd.to_datetime(self.data[t], format="%d-%b-%Y %H:%M:%S.%f")
 
         if dims is not None:
-            for dim in dims:
-                if dim not in self.data:
-                    dims.remove(dim)
-            data = self.data.set_index(dims)
-        else:
-            data = self.data
+            [dims.remove(dim) for dim in dims if dim not in self.data]
 
-        dataset = xr.Dataset.from_dataframe(data)
+        dataset = xr.Dataset.from_dataframe(self.data.set_index(dims))
 
         for p in self.parameter:
             dataset[p].attrs.update(self.parameter[p])
+
+        variables = list(dataset)
+        new_varname = {}
+        for index, variable in enumerate(variables):
+            if "QQQQ" in variable:
+                new_varname[variable] = variables[index - 1].split('_')[0] + "_QC"
+
+        dataset=dataset.rename(new_varname)
+
         if 'SYTM_01' in dataset.coords:
             [dataset['SYTM_01'].attrs.pop(key) for key in NC_TIME_ENCODING if key in dataset['SYTM_01'].attrs]
             dataset['SYTM_01'].encoding = NC_TIME_ENCODING
 
-
         history = {}
-        for i, h in zip(range(len(self.history)), self.history):
-            cd = [self.history[h]["creation_date"]]
-            process = self.history[h]["process"]
-            if not isinstance(process, list):
-                process = [process]
-            history = {f"process_{i}": "\n".join(cd + process)}
+        for i, k in enumerate(self.history):
+            process = self.history[k]["process"]
+            if not isinstance(self.history[k]['process'], list):
+                process = [self.history[k]['process']]
+            history = {f"process_{i}": "\n".join([self.history[k]["creation_date"]] + process)}
 
         dataset.attrs = {
             **self.event,
@@ -530,12 +533,12 @@ class Odf:
         self.buoy_instrument[name].update(items)
 
     def add_parameter(
-        self,
-        code: str,
-        data: tp.Union[list, np.ndarray],
-        null_value: tp.Union[int, float],
-        items: tp.Dict = None,
-        qc_mask: np.ndarray = None,
+            self,
+            code: str,
+            data: tp.Union[list, np.ndarray],
+            null_value: tp.Union[int, float],
+            items: tp.Dict = None,
+            qc_mask: np.ndarray = None,
     ):
         """Add a the parameter to ODF.parameters and the data to ODF.data.
 
@@ -552,6 +555,8 @@ class Odf:
             `null_value` to compute  `number_valid` and `number_null`.
         items :
              dictionary containing the parameters metadata.
+        qc_mask :
+            Boolean mask use to compute min and max values.
 
         """
         if items is None:
@@ -596,10 +601,10 @@ class Odf:
         )
 
     def from_dataframe(
-        self,
-        dataframe: tp.Type[pd.DataFrame],
-        null_values: tp.Union[int, float, list, tuple, dict],
-        items: None,
+            self,
+            dataframe: tp.Type[pd.DataFrame],
+            null_values: tp.Union[int, float, list, tuple, dict],
+            items: None,
     ):
         """Add data and parameters from a pandas.dataframe. Columns names are used for
         the new parameters code.
@@ -713,12 +718,12 @@ class Odf:
 
             elif self.data[vd].dtypes == np.dtype("<M8[ns]"):
                 formats[vd] = lambda x, p=padding: (
-                    SPACE + ("'" + odf_time_format(x) + "'").rjust(p, SPACE)
+                        SPACE + ("'" + odf_time_format(x) + "'").rjust(p, SPACE)
                 )
 
             elif self.data[vd].dtypes == np.floating:
                 formats[vd] = lambda x, p=padding, d=decimal_places: (
-                    SPACE + f"{x:.{d}f}".rjust(p, SPACE)
+                        SPACE + f"{x:.{d}f}".rjust(p, SPACE)
                 )
 
         self.data.to_string(
@@ -727,7 +732,7 @@ class Odf:
 
 
 def _get_null_values(
-    codes: list, null_values: tp.Union[int, float, list, tuple], items: dict
+        codes: list, null_values: tp.Union[int, float, list, tuple], items: dict
 ) -> dict:
     _null_values = {}
     """
@@ -783,12 +788,12 @@ def _format_headers(name: str, header: dict) -> str:
             s += _format_list(value, parent)
         elif isinstance(value, tuple):
             s += (
-                INDENT
-                + key.upper()
-                + " = "
-                + "".join([f"{v:{12}.{8}f}" for v in value])
-                + ","
-                + NEWLINE
+                    INDENT
+                    + key.upper()
+                    + " = "
+                    + "".join([f"{v:{12}.{8}f}" for v in value])
+                    + ","
+                    + NEWLINE
             )
 
         elif not value:
@@ -808,10 +813,10 @@ def _format_list(_list: list, parents: str) -> str:
         for value in _list:
             if isinstance(value, tuple):
                 s += (
-                    parents
-                    + " ".join([f"{v:{12}.{8}f}" for v in value])
-                    + ","
-                    + NEWLINE
+                        parents
+                        + " ".join([f"{v:{12}.{8}f}" for v in value])
+                        + ","
+                        + NEWLINE
                 )
             else:
                 s += parents + "'" + f"{value}'," + NEWLINE
@@ -878,7 +883,5 @@ if __name__ == "__main__":
     ]
 
     odf = Odf().read(path[1] + ".ODF")
-    dataset = odf.to_dataset(dims=["DEPH_01", "SYTM_01"]).isel(
-        SYTM_01=slice(0, 100)
-    )
-    data = dataset.to_dataframe().reset_index()
+    ds = odf.to_dataset(dims=["DEPH_01", "SYTM_01", "Not a dims"], time="SYTM_01")
+    df = ds.isel(SYTM_01=slice(0, 100)).to_dataframe().reset_index()
