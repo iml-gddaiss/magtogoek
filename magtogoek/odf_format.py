@@ -53,6 +53,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import xarray as xr
+from magtogoek.utils import get_files_from_expression
 
 NA_REP = "null"  # There should not be any null value in a odf file.
 SPACE = " "  # single space
@@ -445,7 +446,7 @@ class Odf:
             if "QQQQ" in variable:
                 new_varname[variable] = variables[index - 1].split('_')[0] + "_QC"
 
-        dataset=dataset.rename(new_varname)
+        dataset = dataset.rename(new_varname)
 
         if 'SYTM_01' in dataset.coords:
             [dataset['SYTM_01'].attrs.pop(key) for key in NC_TIME_ENCODING if key in dataset['SYTM_01'].attrs]
@@ -874,6 +875,39 @@ def odf_time_format(time):
     return odf_time
 
 
+def convert_odf_to_nc(
+        input_files: tp.Union[str, tp.Tuple[str], tp.List[str]] = None,
+        output_name: str = None,
+        dims: tp.Union[str, tp.Tuple[str], tp.List[str]] = None,
+        time: str = None,
+        merge: bool = False,
+) -> None:
+    """
+    """
+    input_files = get_files_from_expression(input_files)
+    datasets = []
+    for fn in input_files:
+        datasets.append(Odf().read(fn).to_dataset(dims=list(dims), time=time))
+    if merge is True:
+        output = Path(output_name if output_name is not None else input_files[0]).with_suffix('.nc')
+        try:
+            xr.merge(datasets, compat='override').to_netcdf(output)
+            print(f"Netcdf file made -> {output}")
+        except ValueError:
+            print("Merging failed. Dimensions could be incompatible.")
+            merge = False
+
+    if merge is False:
+        if output_name is not None:
+            outputs = [output_name + '_' + str(i).rjust(2, '0') for i, _ in enumerate(input_files)]
+        else:
+            outputs = input_files
+        for ds, output in zip(datasets, outputs):
+            output = Path(output).with_suffix('.nc')
+            ds.to_netcdf(output)
+            print(f"Netcdf file made -> {output}")
+
+
 if __name__ == "__main__":
     path = [
         "/home/jeromejguay/ImlSpace/Docs/ODF/Format_ODF/Exemples/CTD_BOUEE2019_RIKI_04130218_DN",
@@ -882,6 +916,7 @@ if __name__ == "__main__":
         "/home/jeromejguay/ImlSpace/Docs/ODF/Format_ODF/Exemples/MADCP_BOUEE2019_RIMOUSKI_553_ANC",
     ]
 
-    odf = Odf().read(path[1] + ".ODF")
-    ds = odf.to_dataset(dims=["DEPH_01", "SYTM_01", "Not a dims"], time="SYTM_01")
-    df = ds.isel(SYTM_01=slice(0, 100)).to_dataframe().reset_index()
+    ds_vel = Odf().read(path[1] + ".ODF").to_dataset(dims=["DEPH_01", "SYTM_01"], time="SYTM_01")
+    ds_anc = Odf().read(path[3] + ".ODF").to_dataset(dims=["DEPH_01", "SYTM_01"], time="SYTM_01")
+
+    xr.merge((ds_vel, ds_anc), compat='override')
