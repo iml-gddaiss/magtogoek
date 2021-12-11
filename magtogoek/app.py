@@ -340,7 +340,8 @@ def navigation(ctx, info, input_files, **options):
     type=click.STRING,
     multiple=True,
     default=None,
-    help='Name of the variables that need to be converted to datetime64.')
+    help='Name of the variables that need to be converted to datetime64. SYTM_01 time variable is automatically '
+         'converted.')
 @click.option('-m', '--merge', is_flag=True, default=False, help='Use the option to merge the output files.')
 @click.option('-o', '--output_name', type=click.STRING, default=None)
 @add_options(common_options)
