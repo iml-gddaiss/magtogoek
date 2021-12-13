@@ -35,8 +35,8 @@ Notes
      the platform file. If the bottom data are shit, set the option keep_bt to False.
 
 -`manufacturer` :
-    The manufacturer is automatically added to the dataset by the loader. However, the value given in the platform file will
-    overwrite it.
+    The manufacturer is automatically added to the dataset by the loader. However, the value given in the platform file
+    will overwrite it.
 
 TODO TEST NAVIGATION FILES !
 Note DATA_TYPES: Missing for ship adcp. Set to adcp for now

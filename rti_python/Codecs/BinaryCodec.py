@@ -199,7 +199,7 @@ class BinaryCodec:
         try:
 
             # Decode the ensemble datasets
-            for x in range(Ensemble().MaxNumDataSets):
+            for x in range(Ensemble.MaxNumDataSets):
                 # Check if we are at the end of the payload
                 if (
                     packetPointer
@@ -211,27 +211,27 @@ class BinaryCodec:
                     # Get the dataset info
                     ds_type = Ensemble.GetInt32(
                         packetPointer + (Ensemble.BytesInInt32 * 0),
-                        Ensemble().BytesInInt32,
+                        Ensemble.BytesInInt32,
                         ens,
                     )
                     num_elements = Ensemble.GetInt32(
                         packetPointer + (Ensemble.BytesInInt32 * 1),
-                        Ensemble().BytesInInt32,
+                        Ensemble.BytesInInt32,
                         ens,
                     )
                     element_multiplier = Ensemble.GetInt32(
                         packetPointer + (Ensemble.BytesInInt32 * 2),
-                        Ensemble().BytesInInt32,
+                        Ensemble.BytesInInt32,
                         ens,
                     )
                     image = Ensemble.GetInt32(
                         packetPointer + (Ensemble.BytesInInt32 * 3),
-                        Ensemble().BytesInInt32,
+                        Ensemble.BytesInInt32,
                         ens,
                     )
                     name_len = Ensemble.GetInt32(
                         packetPointer + (Ensemble.BytesInInt32 * 4),
-                        Ensemble().BytesInInt32,
+                        Ensemble.BytesInInt32,
                         ens,
                     )
                     name = str(
