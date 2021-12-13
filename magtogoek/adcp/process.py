@@ -753,8 +753,8 @@ def _apply_magnetic_correction(dataset: xr.Dataset, magnetic_declination: float)
     # heading goes from -180 to 180
     if "heading" in dataset:
         dataset.heading.values = (
-            dataset.heading.data + 180 + magnetic_declination
-        ) % 360 - 180
+                                         dataset.heading.data + 180 + magnetic_declination
+                                 ) % 360 - 180
         l.log(f"Heading transformed to true north.")
 
 
