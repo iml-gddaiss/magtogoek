@@ -44,9 +44,9 @@ from magtogoek.version import VERSION
 LOGO_PATH = resolve_relative_path("files/logo.json", __file__)
 
 
-def _get_config_structure(config: tp.Dict) -> tp.Dict:
+def _get_config_structure(_config: tp.Dict) -> tp.Dict:
     config_struct = dict()
-    for section, items in config.items():
+    for section, items in _config.items():
         for item in items:
             config_struct[item] = section
     return config_struct
@@ -517,53 +517,64 @@ def _print_arguments(group):
 def _print_description(group):
     """print group/command descriptions"""
     if group == "mtgk":
-        click.echo("""FIXME""")
+        click.echo(click.wrap_text(
+            "Magtogoek is a Linux python package and command line application (CLI) for"
+            " processing ocean data. At the moment, only Acoustic Doppler Current Profiler (ADCP)"
+            " data can be processed. This package is developed by the Scientific"
+            " Advice, Information and Support Branch at the Fisheries and Ocean Canada"
+            " Maurice-Lamontagne Institute.",
+            TERMINAL_WIDTH,
+            initial_indent="  "))
     if group == "config":
-        click.echo(
-            """  The config command is used to create `.ini` configuration files or `.json`
-  platform files. Configuration `.ini` files are used to write the desired
-  processing configuration for different types of sensor (adcp, ctd, etc). Once
-  created the configuration file   can be filled in any text editor or via
-  optional arguments. Platform files are used to store platform metadata.""",
-        )
+        click.echo(click.wrap_text(
+            "The config command is used to create `.ini` configuration files or `.json`"
+            " platform files. Configuration `.ini` files are used to write the desired"
+            " processing configuration for different types of sensor (adcp, ctd, etc). Once"
+            " created the configuration file   can be filled in any text editor or via"
+            " optional arguments. Platform files are used to store platform metadata.",
+            TERMINAL_WIDTH,
+            initial_indent="  "
+        ))
     if group == "quick":
         click.echo("""Quick way to process files.""")
     if group == "process":
-        click.echo(
-            """  Command to execute the processing orders from a configuration file. If
-  relative path where used in the configuration file, they are relative to directory
-  where the command is called and not where the configuration file is located."""
-        )
+            click.echo(
+                "Command to execute the processing orders from a configuration file. If"
+                " relative path where used in the configuration file, they are relative to directory"
+                " where the command is called and not where the configuration file is located."
+            )
     if group == "check":
         click.echo(
             """Print some raw files information. Only available for adcp RTI .ENS files."""
         )
     if group == "adcp":
         click.echo(
-            """
-        sonar
-        -----
-           os : OceanSurveyor (RDI)
-           wh : WorkHorse (RDI)
-           sv : SentinelV (RDI)
-           sw : SeaWatch (RTI)
-           sw_pd0 : SeaWatch (RTI in RDI pd0 file format)
-
-        quality control
-        ---------------
-           - velocity, amplitude, correlation, percentgood, roll, pitch, 
-             side_lobe.
-           - Temperatures outside [-2, 32] Celsius. 
-           - Pressures outside [0, 180] dbar.           
-        """
+            "\n"
+            "        sonar\n"
+            "        -----\n"
+            "           os : OceanSurveyor (RDI)\n"
+            "           wh : WorkHorse (RDI)\n"
+            "           sv : SentinelV (RDI)\n"
+            "           sw : SeaWatch (RTI)\n"
+            "           sw_pd0 : SeaWatch (RTI in RDI pd0 file format)\n"
+            "\n"
+            "        quality control\n"
+            "        ---------------\n"
+            "           - velocity, amplitude, correlation, percentgood, roll, pitch, \n"
+            "             side_lobe.\n"
+            "           - Temperatures outside [-2, 32] Celsius. \n"
+            "           - Pressures outside [0, 180] dbar.           \n"
+            "        "
         )
     if group == "nav":
-        click.echo(
-            """ Compute u_ship (eastward velocity), v_ship (northward velocity) and the bearing
-of the input gps data. The GPS input files can be nmea text file, gpx XML files or
-a netcdf files with `lon`, `lat` variables and `time` coordinates. Using the command
-`-w`, an averaging window can be use to smooth the computed navigation data.
-A matplotlib plot is made after each computation."""
+        click.echo(click.wrap_text(
+            " Compute u_ship (eastward velocity), v_ship (northward velocity) and the bearing"
+            " of the input gps data. The GPS input files can be nmea text file, gpx XML files or"
+            " a netcdf files with `lon`, `lat` variables and `time` coordinates. Using the command"
+            " `-w`, an averaging window can be use to smooth the computed navigation data."
+            " A matplotlib plot is made after each computation.",
+            TERMINAL_WIDTH,
+            initial_indent="  ")
         )
 
     if group == "platform":
