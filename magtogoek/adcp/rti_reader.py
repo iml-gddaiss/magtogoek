@@ -408,7 +408,7 @@ class RtiReader:
             "s",
         )
 
-        # sorting the decoded_chunks with the index position then droping the indx.
+        # sorting the decoded_chunks with the index position then dropping the index.
         decoded_chunks.sort()
         decoded_chunks = [data for _, data in decoded_chunks]
 
@@ -445,7 +445,7 @@ class RtiReader:
 
         Notes
         -----
-        Correlation are multipled by 255 to be between 0 and 255 (like RDI).
+        Correlation are multiplied by 255 to be between 0 and 255 (like RDI).
         Pressure is divided by 10. Pascal to decapascal(like RDI).
         """
         ppd = Bunch()

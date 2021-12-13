@@ -114,7 +114,7 @@ class BinaryCodec:
             ens_len = len(ens_data)
 
             # Verify at least the minimum number of bytes are available to verify the ensemble
-            if ens_len <= Ensemble().HeaderSize + Ensemble().ChecksumSize:
+            if ens_len <= Ensemble.HeaderSize + Ensemble.ChecksumSize:
                 return False
 
             # Check Ensemble number
@@ -127,23 +127,23 @@ class BinaryCodec:
             if (
                 ens_len
                 >= ens_start
-                + Ensemble().HeaderSize
+                + Ensemble.HeaderSize
                 + payload_size[0]
-                + Ensemble().ChecksumSize
+                + Ensemble.ChecksumSize
             ):
 
                 # Check checksum
-                checksum_loc = ens_start + Ensemble().HeaderSize + payload_size[0]
+                checksum_loc = ens_start + Ensemble.HeaderSize + payload_size[0]
                 checksum = struct.unpack(
-                    "I", ens_data[checksum_loc : checksum_loc + Ensemble().ChecksumSize]
+                    "I", ens_data[checksum_loc : checksum_loc + Ensemble.ChecksumSize]
                 )
 
                 # Calculate Checksum
                 # Use only the payload for the checksum
                 ens = ens_data[
                     ens_start
-                    + Ensemble().HeaderSize : ens_start
-                    + Ensemble().HeaderSize
+                    + Ensemble.HeaderSize : ens_start
+                    + Ensemble.HeaderSize
                     + payload_size[0]
                 ]
                 calc_checksum = binascii.crc_hqx(ens, 0)
@@ -167,7 +167,6 @@ class BinaryCodec:
             logging.error("Error verifying Ensemble.  " + str(e))
             return False
 
-        return False
 
     @staticmethod
     def decode_data_sets(ens):
@@ -180,7 +179,7 @@ class BinaryCodec:
         :return: Return the decoded ensemble.
         """
         # print(ens)
-        packetPointer = Ensemble().HeaderSize
+        packetPointer = Ensemble.HeaderSize
         type = 0
         numElements = 0
         elementMultiplier = 0
