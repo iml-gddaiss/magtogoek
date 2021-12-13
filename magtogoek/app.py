@@ -440,115 +440,64 @@ def _print_logo(logo_path: str = "files/logo.json", group: str = ""):
 def _print_arguments(group):
     """print group(command) command(arguments)"""
     #    _parent = parent.info_name if parent else ""
-    if group == "mtgk":
-        click.secho(
-            "  config".ljust(20, " ") + "Command to make configuration files",
-            fg="white",
-        )
-        click.secho(
-            "  process".ljust(20, " ")
-            + "Command process data with configuration files",
-            fg="white",
-        )
-        click.secho(
-            "  quick".ljust(20, " ") + "Command to quickly process data files",
-            fg="white",
-        )
-        click.secho(
-            "  check".ljust(20, " ")
-            + "Command to check the information on some file type.",
-            fg="white",
-        )
-        click.secho(
-            "  compute".ljust(20, " ") + "Command to compute certain quantities.",
-            fg="white",
-        )
-    if group == "config":
-        click.secho("  adcp".ljust(20, " ") + "Config file for adcp data. ", fg="white")
-        click.secho(
-            "  platform".ljust(20, " ") + "Creates a platform.json file", fg="white"
-        )
+    messages = {"mtgk": '\n'.join(["  config".ljust(20, " ") + "Command to make configuration files",
+                                   "  process".ljust(20, " ") + "Command to process data with configuration files",
+                                   "  quick".ljust(20, " ") + "Command to quickly process data files",
+                                   "  check".ljust(20, " ") + "Command to check the information on some file type",
+                                   "  compute".ljust(20, " ") + "Command to compute certain quantities"]),
+                "config":
+                    '\n'.join(["  adcp".ljust(20, " ") + "Config file for adcp data. ",
+                               "  platform".ljust(20, " ") + "Creates a platform.json file"]),
+                "quick":
+                    "  adcp".ljust(20, " ") + "Process adcp data.",
 
-    if group == "quick":
-        click.secho("  adcp".ljust(20, " ") + "Process adcp data. ", fg="white")
+                "process": ("  [config_name]".ljust(20, " ")
+                            + "Filename (path/to/file) of the configuration file."),
+                "compute":
+                    "  nav".ljust(20, " ")
+                    + "Command to compute u_ship, v_ship, bearing from gsp data.",
 
-    if group == "process":
-        click.secho(
-            "  [config_name]".ljust(20, " ")
-            + "Filename (path/to/file) of the configuration file.",
-            fg="white",
-        )
+                "nav": (
+                        "  [file_name]".ljust(20, " ")
+                        + "Filename (path/to/file, or expression) of the GPS files."
 
-    if group == "compute":
-        click.secho(
-            "  nav".ljust(20, " ")
-            + "Command to compute u_ship, v_ship, bearing from gsp data.",
-            fg="white",
-        )
+                ),
+                "check": "  rti".ljust(20, " ") + "Print information on the rti .ens files. ",
 
-    if group == "nav":
-        click.secho(
-            "  [file_name]".ljust(20, " ")
-            + "Filename (path/to/file, or expression) of the GPS files.",
-            fg="white",
-        )
-
-    if group == "check":
-        click.secho(
-            "  rti".ljust(20, " ") + "Print information on the rti .ens files. ",
-            fg="white",
-        )
-
-    if group == "adcp":
-        click.secho(
-            "  [config_name]".ljust(20, " ")
-            + "Filename (path/to/file) for the new configuration file.",
-            fg="white",
-        )
-
-    if group == "platform":
-        click.secho(
-            "  [filename]".ljust(20, " ")
-            + "Filename (path/to/file) for the new platform file.",
-            fg="white",
-        )
+                "adcp": "  [config_name]".ljust(20, " ")
+                        + "Filename (path/to/file) for the new configuration file.",
+                "platform": "  [filename]".ljust(20, " ")
+                            + "Filename (path/to/file) for the new platform file.",
+                }
+    if group in messages:
+        click.secho(messages[group], fg="white")
 
 
 def _print_description(group):
     """print group/command descriptions"""
-    if group == "mtgk":
-        click.echo(click.wrap_text(
-            "Magtogoek is a Linux python package and command line application (CLI) for"
-            " processing ocean data. At the moment, only Acoustic Doppler Current Profiler (ADCP)"
-            " data can be processed. This package is developed by the Scientific"
-            " Advice, Information and Support Branch at the Fisheries and Ocean Canada"
-            " Maurice-Lamontagne Institute.",
-            TERMINAL_WIDTH,
-            initial_indent="  "))
-    if group == "config":
-        click.echo(click.wrap_text(
+    messages = {"mtgk": (
+        "Magtogoek is a Linux python package and command line application (CLI) for"
+        " processing ocean data. At the moment, only Acoustic Doppler Current Profiler (ADCP)"
+        " data can be processed. This package is developed by the Scientific"
+        " Advice, Information and Support Branch at the Fisheries and Ocean Canada"
+        " Maurice-Lamontagne Institute."),
+        "config": (
             "The config command is used to create `.ini` configuration files or `.json`"
             " platform files. Configuration `.ini` files are used to write the desired"
             " processing configuration for different types of sensor (adcp, ctd, etc). Once"
             " created the configuration file   can be filled in any text editor or via"
-            " optional arguments. Platform files are used to store platform metadata.",
-            TERMINAL_WIDTH,
-            initial_indent="  "
-        ))
-    if group == "quick":
-        click.echo("""Quick way to process files.""")
-    if group == "process":
-            click.echo(
-                "Command to execute the processing orders from a configuration file. If"
-                " relative path where used in the configuration file, they are relative to directory"
-                " where the command is called and not where the configuration file is located."
-            )
-    if group == "check":
-        click.echo(
-            """Print some raw files information. Only available for adcp RTI .ENS files."""
-        )
-    if group == "adcp":
-        click.echo(
+            " optional arguments. Platform files are used to store platform metadata."
+        ),
+        "quick": "Quick way to process files.",
+        "process": (
+            "Command to execute the processing orders from a configuration file. If"
+            " relative path where used in the configuration file, they are relative to directory"
+            " where the command is called and not where the configuration file is located."
+        ),
+        "check": (
+            "Print some raw files information. Only available for adcp RTI .ENS files."
+        ),
+        "adcp": (
             "\n"
             "        sonar\n"
             "        -----\n"
@@ -565,20 +514,19 @@ def _print_description(group):
             "           - Temperatures outside [-2, 32] Celsius. \n"
             "           - Pressures outside [0, 180] dbar.           \n"
             "        "
-        )
-    if group == "nav":
-        click.echo(click.wrap_text(
+        ),
+        "nav": (
             " Compute u_ship (eastward velocity), v_ship (northward velocity) and the bearing"
             " of the input gps data. The GPS input files can be nmea text file, gpx XML files or"
             " a netcdf files with `lon`, `lat` variables and `time` coordinates. Using the command"
             " `-w`, an averaging window can be use to smooth the computed navigation data."
-            " A matplotlib plot is made after each computation.",
-            TERMINAL_WIDTH,
-            initial_indent="  ")
-        )
-
-    if group == "platform":
-        click.echo("""Creates an empty platform.json file""")
+            " A matplotlib plot is made after each computation."
+        ),
+        "platform": "Creates an empty platform.json file",
+        "odf2nc": "Converts odf files to netcdf",
+    }
+    if group in messages:
+        click.echo(click.wrap_text(messages[group], width=TERMINAL_WIDTH, initial_indent=''))
 
 
 def _print_usage(group, parent):
