@@ -235,7 +235,7 @@ if __name__ == "__main__":
     ds.attrs["binary_mask_tests_value"] = [0, 64, 90, 5.0, 5.0, 5.0, 20, 20, None]
 
     fig_test = plot_test_fields(ds)
-    # fig_polar = plot_velocity_polar_hist(ds, 2, 3)
-    # fig_vel = plot_velocity_fields(ds)
+    fig_polar = plot_velocity_polar_hist(ds, 2, 3)
+    fig_vel = plot_velocity_fields(ds)
 
     plt.show()
