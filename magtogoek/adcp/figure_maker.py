@@ -2,14 +2,12 @@
 author: Jérôme Guay
 date: Nov. 29, 2021
 """
-import sys
-import warnings
 
 import cmocean as cmo
-import matplotlib as mpl
 import matplotlib.colorbar as clb
 import matplotlib.pyplot as plt
 import numpy as np
+import seaborn as sns
 import xarray as xr
 from magtogoek.tools import cartesian2northpolar
 from mpl_toolkits.axes_grid1 import ImageGrid
@@ -234,8 +232,8 @@ if __name__ == "__main__":
     ds.attrs["binary_mask_tests"] = test
     ds.attrs["binary_mask_tests_value"] = [0, 64, 90, 5.0, 5.0, 5.0, 20, 20, None]
 
-    fig_test = plot_test_fields(ds)
-    fig_polar = plot_velocity_polar_hist(ds, 2, 3)
-    fig_vel = plot_velocity_fields(ds)
+    # fig_test = plot_test_fields(ds)
+    # fig_polar = plot_velocity_polar_hist(ds, 2, 3)
+    # fig_vel = plot_velocity_fields(ds)
 
-    plt.show()
+    # plt.show()
