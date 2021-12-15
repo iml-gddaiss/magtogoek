@@ -245,25 +245,6 @@ ADCP_CONFIG = dict(
     },
 )
 
-class Config:
-    paresr: RawConfigParser = None
-    semspr_type: str = None
-
-    def __init__(self, sensor_type: str):
-        self.semspr_type = sensor_type
-        self.parser = RawConfigParser()
-        self.parser.optionxform = str
-
-        for section, options in _get_default_config(sensor_type).items():
-            self.parser.add_section(section)
-            for option, value in options.items():
-                self.parser[section][option] = str(value)
-
-    def update_value(self, new_values: dict = None):
-        for section, options in new_values.items():
-            for option, value in options.items():
-                self.parser[section][option] = "" if value is None else str(value)
-
     def load_config(self, filename: str, updated_params: dict=None):
         self.parser.read(filename)
 
