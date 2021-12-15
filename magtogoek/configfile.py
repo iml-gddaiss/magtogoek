@@ -245,26 +245,6 @@ ADCP_CONFIG = dict(
     },
 )
 
-def load_config(self, filename: str, updated_params: dict=None):
-        self.parser.read(filename)
-
-        self.sensor_type = _get_sensor_type(self.parser)
-
-        _add_config_missing(self.parser, self.sensor_type)
-
-        if updated_params is not None:
-            _update_parser_values(self.parser, updated_params)
-            self._write_configfile(filename)
-
-        config = {}
-        config.update(self.parser._sections)
-
-        _format_config_options(config, Path(filename).parent)
-
-    def _write_configfile(self, filename: str):
-        with open(filename, "w") as f:
-            self.parser.write(f)
-
 
 def make_configfile(filename: str, sensor_type: str, new_values: tp.Dict = None):
     """Make a configfile for the given sensor_type.
