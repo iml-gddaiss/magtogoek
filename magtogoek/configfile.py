@@ -245,9 +245,10 @@ ADCP_CONFIG = dict(
     },
 )
 
+
 class Config:
-    paresr: RawConfigParser = None
-    semspr_type: str = None
+    parser: RawConfigParser = None
+    sensor_type: str = None
 
     def __init__(self, sensor_type: str):
         self.semspr_type = sensor_type

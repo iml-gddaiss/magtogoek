@@ -560,13 +560,13 @@ class RtiReader:
         Parameters
         ----------
         bunches :
-            List of the files bunches to concatenante.
+            List of the files bunches to concatenate.
 
         Raises
         ------
         DepLengthMismatch : (check_mismatch_depth())
-            Bin depth vector lenght mismatch.
-            Lenght, thus values, of the dep vector can change through files.
+            Bin depth vector length mismatch.
+            Length, thus values, of the dep vector can change through files.
             In that case, files need the be processed individually.
 
         """
