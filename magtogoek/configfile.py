@@ -247,8 +247,10 @@ ADCP_CONFIG = dict(
 
 class Config:
     paresr: RawConfigParser = None
+    semspr_type: str = None
 
     def __init__(self, sensor_type: str):
+        self.semspr_type = sensor_type
         self.parser = RawConfigParser()
         self.parser.optionxform = str
 
@@ -262,6 +264,25 @@ class Config:
             for option, value in options.items():
                 self.parser[section][option] = "" if value is None else str(value)
 
+    def load_config(self, filename: str, updated_params: dict=None):
+        self.parser.read(filename)
+
+        self.sensor_type = _get_sensor_type(self.parser)
+
+        _add_config_missing(self.parser, self.sensor_type)
+
+        if updated_params is not None:
+            _update_parser_values(self.parser, updated_params)
+            self._write_configfile(filename)
+
+        config = {}
+        config.update(self.parser._sections)
+
+        _format_config_options(config, Path(filename).parent)
+
+    def _write_configfile(self, filename: str):
+        with open(filename, "w") as f:
+            self.parser.write(f)
 
 
 def make_configfile(filename: str, sensor_type: str, new_values: tp.Dict = None):
