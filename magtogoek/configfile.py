@@ -138,7 +138,6 @@ class ConfigFileError(SystemExit):
             )
 
 
-
 BASE_CONFIG = dict(
     HEADER={
         "made_by": OptionInfos(dtypes=["str"], default=getpass.getuser()),
@@ -246,11 +245,31 @@ ADCP_CONFIG = dict(
     },
 )
 
+class Config:
+    paresr: RawConfigParser = None
+
+    def __init__(self, sensor_type: str):
+        self.parser = RawConfigParser()
+        self.parser.optionxform = str
+
+        for section, options in _get_default_config(sensor_type).items():
+            self.parser.add_section(section)
+            for option, value in options.items():
+                self.parser[section][option] = str(value)
+
+    def update_value(self, new_values: dict = None):
+        for section, options in new_values.items():
+            for option, value in options.items():
+                self.parser[section][option] = "" if value is None else str(value)
+
+
 
 def make_configfile(filename: str, sensor_type: str, new_values: tp.Dict = None):
     """Make a configfile for the given sensor_type.
 
      Uses default values and update/adds it if `new_values` are passed"""
+    parser = RawConfigParser()
+    parser.optionxform = str
 
     # getting the default config as dict
     default_config = _get_default_config(sensor_type)

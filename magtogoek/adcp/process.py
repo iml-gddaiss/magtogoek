@@ -75,7 +75,11 @@ STANDARD_ADCP_GLOBAL_ATTRIBUTES = {
     "sensor_type": "adcp",
     "featureType": "timeSeriesProfile",
 }
-
+DEFAULT_CONFIG_ATTRIBUTES =  {
+            "date_created": pd.Timestamp.now().strftime("%Y-%m-%d"),
+            "publisher_name": getpass.getuser(),
+            "source": "adcp",
+        }
 GLOBAL_ATTRS_TO_DROP = [
     "sensor_type",
     "platform_type",
@@ -176,6 +180,73 @@ DATA_FILL_VALUE = -9999.0
 DATA_ENCODING = {"dtype": "float32", "_FillValue": DATA_FILL_VALUE}
 
 
+class ProcessConfig:
+    sensor_type: str = None
+    platform_type: str = None
+    input_files: str = None
+    platform_file: str = None
+    platform_id: str = None
+    sensor_id: str = None
+    netcdf_output: str = None
+    odf_output: str = None
+    yearbase: int = None
+    adcp_orientation: str = None
+    sonar: str = None
+    navigation_file: str = None
+    leading_trim: tp.Union[int, str] = None
+    trailing_trim: tp.Union[int, str] = None
+    sensor_depth: float = None
+    depth_range: list = None
+    magnetic_declination: float = None
+    keep_bt: bool = None
+    bad_pressure: bool = None
+    start_time: str = None
+    time_step: float = None
+    quality_control: bool = None
+    amplitude_threshold: int = None
+    percentgood_threshold: int = None
+    correlation_threshold: int = None
+    horizontal_velocity_threshold: float = None
+    vertical_velocity_threshold: float = None
+    error_velocity_threshold: float = None
+    sidelobes_correction: bool = None
+    bottom_depth: float = None
+    pitch_threshold: float = None
+    roll_threshold: float = None
+    motion_correction_mode: str = None
+    merge_output_files: bool = None
+    bodc_name: bool = None
+    force_platform_metadata: bool = None
+    drop_percent_good: bool = None
+    drop_correlation: bool = None
+    drop_amplitude: bool = None
+    make_figures: bool = None
+    make_log: bool = None
+    odf_data: str = None
+    metadata: dict = {}
+    platform_metadata: dict = {}
+
+    def __init__(self):
+        self.metadata.update(DEFAULT_CONFIG_ATTRIBUTES)
+        pass
+
+    def load_from_quick(self, params):
+        pass
+
+    def load_from_process(self, config: dict) -> dict:
+        """Split and flattens"""
+
+        for section, options in config.items():
+            if section in CONFIG_GLOBAL_ATTRS_SECTIONS:
+                for option in options:
+                    self.metadata[option] = config[section][option]
+            else:
+                for option in options:
+                    self.__dict__[option] = config[section][option]
+
+        return self.metadata
+
+
 def process_adcp(config: dict):
     """Process adcp data with parameters from a ConfigFile.
 
@@ -233,12 +304,13 @@ def quick_process_adcp(params: tp.Dict):
     _process_adcp_data :
         For the processing workflow."""
 
-    config_attrs = _get_default_config_attrs()
+    config_attrs = {}
+    config_attrs.update(DEFAULT_CONFIG_ATTRIBUTES)
     platform_metadata = _default_platform()
-
     platform_metadata['platform']["platform_type"] = params["platform_type"]
 
     params["force_platform_metadata"] = False
+
     if params["odf_output"] in [1, "true", "True", 't', "T"]:
         params["odf_output"] = True
 
@@ -255,8 +327,9 @@ def _pipe_to_process_adcp_data(
         Looks for `merge_output_files` in the ConfigFile and if False,
     each file in `input_files` is process individually and then call _process_adcp_data.
     """
-
-    if not params["merge_output_files"]:
+    if params["merge_output_files"]:
+        _process_adcp_data(params, platform_metadata, config_attrs)
+    else:
         netcdf_output = params["netcdf_output"]
         input_files = params["input_files"]
         for filename, count in zip(input_files, range(len(input_files))):
@@ -272,8 +345,6 @@ def _pipe_to_process_adcp_data(
             params["input_files"] = [filename]
 
             _process_adcp_data(params, platform_metadata, config_attrs, drop_empty_attrs)
-    else:
-        _process_adcp_data(params, platform_metadata, config_attrs)
 
 
 def _process_adcp_data(
