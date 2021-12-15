@@ -245,7 +245,7 @@ ADCP_CONFIG = dict(
     },
 )
 
-    def load_config(self, filename: str, updated_params: dict=None):
+def load_config(self, filename: str, updated_params: dict=None):
         self.parser.read(filename)
 
         self.sensor_type = _get_sensor_type(self.parser)
