@@ -1,5 +1,5 @@
 import pytest
-from magtogoek.configfile import (ConfigFileError, load_configfile)
+from magtogoek.configfile import (TaskParserError, load_configfile)
 
 
 
@@ -18,6 +18,6 @@ def test_load():
     ],
 )
 def test_ConfigFileError(filename, error):
-    with pytest.raises(ConfigFileError) as exc_info:
+    with pytest.raises(TaskParserError) as exc_info:
         load_configfile(filename)
     assert str(exc_info.value.error) == error

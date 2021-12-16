@@ -223,10 +223,11 @@ class ProcessConfig:
     make_figures: bool = None
     make_log: bool = None
     odf_data: str = None
-    metadata: dict = {}
-    platform_metadata: dict = {}
 
     def __init__(self):
+        self.metadata: dict = {}
+        self.platform_metadata: dict = {}
+
         self.metadata.update(DEFAULT_CONFIG_ATTRIBUTES)
         pass
 

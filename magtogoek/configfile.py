@@ -71,8 +71,25 @@ OptionInfos = namedtuple(
     defaults=[[], None, None, None, None, None, None, None, False, False, False, False, None],
 )
 
+class ParserInfos:
+    def __init__(self):
+        self.section: str = None
+        self.dtypes: list = []
+        self.default: tp.Union[str, float, int, bool] = None
+        self.nargs: int = None
+        self.nargs_min: int = None
+        self.nargs_max: int = None
+        self.choice: list = None
+        self.value_min: tp.Union[int, float] = None
+        self.value_max: tp.Union[int, float] = None
+        self.is_path: bool = False
+        self.is_file: bool = False
+        self.is_time_stamp: bool = False
+        self.is_required: bool = False
+        self.null_value: tp.Union[str, float, int, bool] = False
 
-class ConfigFileError(SystemExit):
+
+class TaskParserError(SystemExit):
     def __init__(self, error, section=None, option=None, option_info=None, value=None):
         self.error = error
         self.section = section
@@ -245,46 +262,54 @@ ADCP_CONFIG = dict(
     },
 )
 
+class TaskParser:
 
-class Config:
-    parser: RawConfigParser = None
-    sensor_type: str = None
-
-    def __init__(self, sensor_type: str):
-        self.semspr_type = sensor_type
-        self.parser = RawConfigParser()
+    def __init__(self):
+        self.parser: RawConfigParser = RawConfigParser()
         self.parser.optionxform = str
+        self._parser_info: dict = {} # parser_info must be an object holding optionsInfos
+        self.filepath: str = None
 
-        for section, options in _get_default_config(sensor_type).items():
+    def _make_parser(self, default: bool):
+        for section, options in self._parser_info.items():
             self.parser.add_section(section)
             for option, value in options.items():
-                self.parser[section][option] = str(value)
+                self.parser[section][option] = str(value) if default is True else ''
 
-    def update_value(self, new_values: dict = None):
-        for section, options in new_values.items():
-            for option, value in options.items():
-                self.parser[section][option] = "" if value is None else str(value)
+    def update_parser_values(self, values: dict = None):
+        for section, options in values.items():
+            if section in self.parser:
+                for option, value in options.items():
+                    self.parser[section][option] = "" if value is None else str(value)
 
-    def load_config(self, filename: str, updated_params: dict=None):
+    def load_config(self, filename: str, updated_params: dict = None):
         self.parser.read(filename)
-
-        self.sensor_type = _get_sensor_type(self.parser)
-
-        _add_config_missing(self.parser, self.sensor_type)
+        self.filepath: str = Path(filename).parent
+        _add_config_missing(self.parser, self._parser_info)
 
         if updated_params is not None:
             _update_parser_values(self.parser, updated_params)
             self._write_configfile(filename)
 
-        config = {}
-        config.update(self.parser._sections)
-
-        _format_config_options(config, Path(filename).parent)
-
     def _write_configfile(self, filename: str):
         with open(filename, "w") as f:
             self.parser.write(f)
 
+    def add_parser_infos(self, parser_info):
+        self._parser_info = parser_info
+
+    @property
+    def config(self):
+        _config = {}
+        _config.update(self.parser._sections)
+        _format_config_options(_config, self.filepath)
+        return _config
+
+def make_config(sensor_type: str, values: dict = None):
+    config = TaskParser()
+    config.add_parser_infos(_get_default_config(sensor_type))
+    config.parser_info =  # function not part os the object but of magtotoek TODO
+    config.update_parser_values(values)
 
 def make_configfile(filename: str, sensor_type: str, new_values: tp.Dict = None):
     """Make a configfile for the given sensor_type.
@@ -362,13 +387,13 @@ def _get_sensor_type(parser: RawConfigParser):
     if parser.has_option("HEADER", "sensor_type"):
         sensor_type = parser["HEADER"]["sensor_type"]
         if not sensor_type:
-            raise ConfigFileError(error="sensor_type")
+            raise TaskParserError(error="sensor_type")
         return sensor_type
     else:
-        raise ConfigFileError(error="sensor_type")
+        raise TaskParserError(error="sensor_type")
 
-
-def _add_config_missing(parser: RawConfigParser, sensor_type):
+######### object TASKPARSER #############
+def _add_config_missing(parser: RawConfigParser, parser_info: dict):
     """Check for missing sections or options compared to the expected parser
 
     - Adds the options or section if needed with empty string as value.
@@ -379,8 +404,7 @@ def _add_config_missing(parser: RawConfigParser, sensor_type):
     to add tons of conditional statements.
 
     """
-    default_config = _get_default_config(sensor_type)
-    for section, options in default_config.items():
+    for section, options in parser_info.items():
         if not parser.has_section(section):
             parser.add_section(section)
         for option in options.keys():
@@ -418,7 +442,7 @@ def _format_config_options(config: tp.Dict, config_path: Path):
                 if not value and value != 0:
                     value = None
                     if option_info.is_required is True:
-                        raise ConfigFileError("required", section, option, option_info, value)
+                        raise TaskParserError("required", section, option, option_info, value)
             if value is not None:
                 value = _format_option(
                     config[section][option], option_info, section, option, config_path
@@ -450,32 +474,32 @@ def _format_option_type(value, option_info, section, option, config_path):
     try:
         value = _format_value_dtypes(value, option_info.dtypes)
     except ValueError:
-        raise ConfigFileError("dtype", section, option, option_info, value)
+        raise TaskParserError("dtype", section, option, option_info, value)
 
     if option_info.value_min or option_info.value_max:
         _check_option_min_max(value, option_info, section, option)
 
     if option_info.choice is not None:
         if value not in option_info.choice:
-            raise ConfigFileError("choice", section, option, option_info, value)
+            raise TaskParserError("choice", section, option, option_info, value)
 
     if option_info.is_path is True and isinstance(value, str):
         value = Path(config_path).joinpath(Path(value)).resolve()
         if not any((value.is_dir(), value.parent.is_dir())):
-            raise ConfigFileError("path", section, option, option_info, value)
+            raise TaskParserError("path", section, option, option_info, value)
         value = str(value)
 
     if option_info.is_file is True:
         value = Path(config_path).joinpath(Path(value)).resolve()
         if not value.is_file():
-            raise ConfigFileError("file", section, option, option_info, value)
+            raise TaskParserError("file", section, option, option_info, value)
         value = str(value)
 
     if option_info.is_time_stamp is True:
         try:
             dateutil.parser.parse(value)
         except dateutil.parser._parser.ParserError:
-            raise ConfigFileError("string_format", section, option, option_info, value)
+            raise TaskParserError("string_format", section, option, option_info, value)
 
     return value
 
@@ -514,29 +538,29 @@ def _get_sequence_from_string(sequence: str) -> tp.List:
 def _check_options_length(value, option_info, section, option):
     if option_info.nargs:
         if len(value) != option_info.nargs:
-            raise ConfigFileError("nargs", section, option, option_info, value)
+            raise TaskParserError("nargs", section, option, option_info, value)
     if option_info.nargs_max:
         if len(value) > option_info.nargs_max:
-            raise ConfigFileError("nargs", section, option, option_info, value)
+            raise TaskParserError("nargs", section, option, option_info, value)
     if option_info.nargs_min:
         if len(value) < option_info.nargs_min:
-            raise ConfigFileError("nargs", section, option, option_info, value)
+            raise TaskParserError("nargs", section, option, option_info, value)
 
 
 def _check_option_min_max(value, option_info, section, option):
     if option_info.value_max is not None:
         if value > option_info.value_max:
-            raise ConfigFileError("range", section, option, option_info, value)
+            raise TaskParserError("range", section, option, option_info, value)
     if option_info.value_min is not None:
         if value < option_info.value_min:
-            raise ConfigFileError("range", section, option, option_info, value)
+            raise TaskParserError("range", section, option, option_info, value)
 
 
 def _get_config_info(sensor_type: str):
     if sensor_type == "adcp":
         config_info = {**BASE_CONFIG, **ADCP_CONFIG}
     else:
-        raise ConfigFileError(error="sensor_type")
+        raise TaskParserError(error="sensor_type")
 
     return config_info
 
