@@ -50,7 +50,7 @@ REFERENCE = "https://github.com/JeromeJGuay/magtogoek"
 TRUE_VALUES = ["True", "true", "1", "On", "on"]
 FALSE_VALUES = ["False", "False", "0", "Off", "off", ""]
 SENSOR_TYPES = ["adcp"]
-
+VALID_DTYPES = ['str', 'int', 'float', 'bool']
 OptionInfos = namedtuple(
     "option_infos",
     (
@@ -70,23 +70,6 @@ OptionInfos = namedtuple(
     ),
     defaults=[[], None, None, None, None, None, None, None, False, False, False, False, None],
 )
-
-class ParserInfos:
-    def __init__(self):
-        self.section: str = None
-        self.dtypes: list = []
-        self.default: tp.Union[str, float, int, bool] = None
-        self.nargs: int = None
-        self.nargs_min: int = None
-        self.nargs_max: int = None
-        self.choice: list = None
-        self.value_min: tp.Union[int, float] = None
-        self.value_max: tp.Union[int, float] = None
-        self.is_path: bool = False
-        self.is_file: bool = False
-        self.is_time_stamp: bool = False
-        self.is_required: bool = False
-        self.null_value: tp.Union[str, float, int, bool] = False
 
 
 class TaskParserError(SystemExit):
@@ -154,6 +137,112 @@ class TaskParserError(SystemExit):
                 f"`{self.section}/{self.option}` requires a value. None were given."
             )
 
+class ParserInfos:
+    def __init__(self,
+                 dtypes: tp.List[str] = None,
+                 default: tp.Union[str, float, int, bool] = None,
+                 nargs: int = None,
+                 nargs_min: int = None,
+                 nargs_max: int = None,
+                 choice: list = None,
+                 value_min: tp.Union[int, float] = None,
+                 value_max: tp.Union[int, float] = None,
+                 is_path: bool = False,
+                 is_file: bool = False,
+                 is_time_stamp: bool = False,
+                 is_required: bool = False,
+                 null_value: tp.Union[str, float, int, bool] = False):
+        if dtypes is not None:
+            if not isinstance(dtypes, list):
+                raise ValueError(f'dtypes expected a list of string.')
+            for e in dtypes:
+                if e not in VALID_DTYPES:
+                    raise ValueError(f'{e} is not a valid dtype. dtypes must be one of {VALID_DTYPES}.')
+        if choice is not None:
+            if not isinstance(choice, list):
+                raise ValueError(f'choice expected a list of string.')
+        if value_min is not None and value_max is not None:
+            if value_min > value_max:
+                raise ValueError('value_max must be greater than value_min.')
+        if nargs is not None and any((nargs_min is not None, nargs_max is not None)):
+            raise ValueError('nargs parameter cannot be used with nargs_min or nargs_max.')
+        object.__setattr__(self, 'dtypes', dtypes)
+        object.__setattr__(self, 'default', default)
+        object.__setattr__(self, 'nargs', nargs)
+        object.__setattr__(self, 'nargs_min',nargs_min)
+        object.__setattr__(self, 'nargs_max',nargs_max)
+        object.__setattr__(self, 'choice',choice)
+        object.__setattr__(self, 'value_min',value_min)
+        object.__setattr__(self, 'value_max',value_max)
+        object.__setattr__(self, 'is_path', is_path)
+        object.__setattr__(self, 'is_file', is_file)
+        object.__setattr__(self, 'is_time_stamp', is_time_stamp)
+        object.__setattr__(self, 'is_required', is_required)
+        object.__setattr__(self, 'null_value', null_value)
+
+    def __setattr__(self, name, value):
+        raise AttributeError("ParserInfos attributes cannot be modify.")
+
+    def __delattr__(self, name):
+        raise AttributeError("ParserInfos attributes cannot be deleted.")
+
+    def __repr__(self):
+        return repr(str(self.__dict__))
+
+
+class TaskParser:
+
+    def __init__(self):
+        self.parser: RawConfigParser = RawConfigParser()
+        self.parser.optionxform = str
+        self._parser_info: dict = {} # parser_info must be an object holding optionsInfos
+        self._filepath: str = None
+
+    def add_option(
+            self, section: str = None, option: str = None, dtypes: tp.List[str] = None,
+            default: tp.Union[str, float, int, bool] = None, nargs: int = None, nargs_min: int = None,
+            nargs_max: int = None, choice: list = None, value_min: tp.Union[int, float] = None,
+            value_max: tp.Union[int, float] = None, is_path: bool = False, is_file: bool = False,
+            is_time_stamp: bool = False, is_required: bool = False,
+            null_value: tp.Union[str, float, int, bool] = False
+    ):
+        if section not in self._parser_info:
+            self._parser_info[section] = {}
+        self._parser_info[section][option] = OptionInfos(
+            dtypes, default, nargs, nargs_min, nargs_max, choice,
+            value_min, value_max, is_path, is_file, is_time_stamp,
+            is_required, null_value
+        )
+
+    def make_parser(self, default: bool):
+        for section, options in self._parser_info.items():
+            self.parser.add_section(section)
+            for option, value in options.items():
+                self.parser[section][option] = str(value) if default is True else ''
+
+    def read(self, filename: str, new_values_dict: dict = None):
+        self.parser.read(filename)
+        _add_config_missing(self.parser, self._parser_info)
+
+        if new_values_dict is not None:
+            self._update_parser_values(new_values_dict)
+
+    def _update_parser_values(self, values_dict: dict = None):
+        for section, options in values_dict.items():
+            if section in self.parser:
+                for option, value in options.items():
+                    self.parser[section][option] = "" if value is None else str(value)
+
+    def _write_configfile(self, filename: str):
+        with open(filename, "w") as f:
+            self.parser.write(f)
+
+    @property
+    def config(self):
+        _config = {}
+        _config.update(self.parser._sections)
+        _format_config_options(_config, self.filepath)
+        return _config
 
 BASE_CONFIG = dict(
     HEADER={
@@ -261,55 +350,12 @@ ADCP_CONFIG = dict(
         "make_log": OptionInfos(dtypes=["bool"], default=True),
     },
 )
+#def make_config(sensor_type: str, values: dict = None):
+#    config = TaskParser()
+#    config.add_parser_infos(_get_default_config(sensor_type))
+#    config.parser_info = # function not part os the object but of magtotoek TODO
+#    config.update_parser_values(values)
 
-class TaskParser:
-
-    def __init__(self):
-        self.parser: RawConfigParser = RawConfigParser()
-        self.parser.optionxform = str
-        self._parser_info: dict = {} # parser_info must be an object holding optionsInfos
-        self.filepath: str = None
-
-    def _make_parser(self, default: bool):
-        for section, options in self._parser_info.items():
-            self.parser.add_section(section)
-            for option, value in options.items():
-                self.parser[section][option] = str(value) if default is True else ''
-
-    def update_parser_values(self, values: dict = None):
-        for section, options in values.items():
-            if section in self.parser:
-                for option, value in options.items():
-                    self.parser[section][option] = "" if value is None else str(value)
-
-    def load_config(self, filename: str, updated_params: dict = None):
-        self.parser.read(filename)
-        self.filepath: str = Path(filename).parent
-        _add_config_missing(self.parser, self._parser_info)
-
-        if updated_params is not None:
-            _update_parser_values(self.parser, updated_params)
-            self._write_configfile(filename)
-
-    def _write_configfile(self, filename: str):
-        with open(filename, "w") as f:
-            self.parser.write(f)
-
-    def add_parser_infos(self, parser_info):
-        self._parser_info = parser_info
-
-    @property
-    def config(self):
-        _config = {}
-        _config.update(self.parser._sections)
-        _format_config_options(_config, self.filepath)
-        return _config
-
-def make_config(sensor_type: str, values: dict = None):
-    config = TaskParser()
-    config.add_parser_infos(_get_default_config(sensor_type))
-    config.parser_info =  # function not part os the object but of magtotoek TODO
-    config.update_parser_values(values)
 
 def make_configfile(filename: str, sensor_type: str, new_values: tp.Dict = None):
     """Make a configfile for the given sensor_type.
@@ -391,6 +437,7 @@ def _get_sensor_type(parser: RawConfigParser):
         return sensor_type
     else:
         raise TaskParserError(error="sensor_type")
+
 
 ######### object TASKPARSER #############
 def _add_config_missing(parser: RawConfigParser, parser_info: dict):
