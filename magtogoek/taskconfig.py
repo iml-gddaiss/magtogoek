@@ -424,3 +424,98 @@ def _check_option_min_max(value, option_info, section, option):
     if option_info.value_min is not None:
         if value < option_info.value_min:
             raise TaskParserError("range", section, option, option_info, value)
+
+if __name__ == "__main__":
+    from datetime import datetime
+    REFERENCE = "TODO"
+
+    parser = TaskParser()
+    parser.add_option('HEADER', "made_by",dtypes=["str"], default=getpass.getuser())
+    parser.add_option('HEADER', "last_updated", dtypes=["str"], default=datetime.now().strftime("%Y-%m-%d"))
+    parser.add_option('HEADER', "sensor_type", dtypes=["str"], default="", is_required=True)
+    parser.add_option('HEADER', "platform_type", dtypes=["str"], default="", choice=["buoy", "mooring", "ship"])
+
+    parser.add_option('INPUT',  "input_files", dtypes=["str"], default="", nargs_min=1, is_file=True, is_required=True)
+    parser.add_option('INPUT',"platform_file", dtypes=["str"], default="", is_file=True)
+    parser.add_option('INPUT',"platform_id", dtypes=["str"], default="")
+    parser.add_option('INPUT',"sensor_id", dtypes=["str"], default="")
+
+    parser.add_option('OUTPUT',"netcdf_output", dtypes=["str", "bool"], default="", is_path=True)
+    parser.add_option('OUTPUT',"odf_output", dtypes=["str", "bool"], default="", is_path=True)
+
+    parser.add_option('NETCDF_CF',"Conventions", dtypes=["str"], default="CF 1.8")
+    parser.add_option('NETCDF_CF',"title", dtypes=["str"], default="")
+    parser.add_option('NETCDF_CF',"institution", dtypes=["str"], default="")
+    parser.add_option('NETCDF_CF',"summary", dtypes=["str"], default="")
+    parser.add_option('NETCDF_CF',"references", dtypes=["str"], default=REFERENCE)
+    parser.add_option('NETCDF_CF',"comments", dtypes=["str"], default="")
+    parser.add_option('NETCDF_CF',"naming_authority", dtypes=["str"], default="BODC, SDC, CF, MEDS")
+    parser.add_option('NETCDF_CF',"source", dtypes=["str"], default="")
+
+    parser.add_option('PROJECT', "project", dtypes=["str"], default=""),
+    parser.add_option('PROJECT',"sea_name", dtypes=["str"], default="")
+    parser.add_option('PROJECT',"sea_code", dtypes=["str"], default="")
+
+
+    parser.add_option('CRUISE',"country_institute_code", dtypes=["str"], default="")
+    parser.add_option('CRUISE',"cruise_number", dtypes=["str"], default="", null_value="")
+    parser.add_option('CRUISE',"cruise_name", dtypes=["str"], default="")
+    parser.add_option('CRUISE',"cruise_description", dtypes=["str"], default="")
+    parser.add_option('CRUISE',"organization", dtypes=["str"], default="")
+    parser.add_option('CRUISE',"chief_scientist", dtypes=["str"], default="")
+    parser.add_option('CRUISE',"start_date", dtypes=["str"], default="")
+    parser.add_option('CRUISE',"end_date", dtypes=["str"], default="")
+    parser.add_option('CRUISE',"event_number", dtypes=["str"], default="", null_value="")
+    parser.add_option('CRUISE',"event_qualifier1", dtypes=["str"], default="", null_value="")
+    parser.add_option('CRUISE',"event_comments", dtypes=["str"], default="")
+
+    parser.add_option("GLOBAL_ATTRIBUTES","date_created", dtypes=["str"], default="")
+    parser.add_option("GLOBAL_ATTRIBUTES","cdm_data_type", dtypes=["str"], default="")
+    parser.add_option("GLOBAL_ATTRIBUTES","country_code", dtypes=["str"], default="")
+    parser.add_option("GLOBAL_ATTRIBUTES","publisher_email", dtypes=["str"], default="")
+    parser.add_option("GLOBAL_ATTRIBUTES","creator_type", dtypes=["str"], default="")
+    parser.add_option("GLOBAL_ATTRIBUTES","publisher_name", dtypes=["str"], default="")
+    parser.add_option("GLOBAL_ATTRIBUTES","keywords", dtypes=["str"], default="")
+    parser.add_option("GLOBAL_ATTRIBUTES","keywords_vocabulary", dtypes=["str"], default="")
+    parser.add_option("GLOBAL_ATTRIBUTES","standard_name_vocabulary", dtypes=["str"], default="CF v.52")
+    parser.add_option("GLOBAL_ATTRIBUTES","acknowledgment", dtypes=["str"], default="")
+
+    section = "ADCP_PROCESSING"
+    parser.add_option(section, "yearbase", dtypes=["int"], default="", is_required=True)
+    parser.add_option(section, "adcp_orientation", dtypes=["str"], choice=["up", "down"])
+    parser.add_option(section, "sonar", dtypes=["str"], choice=["wh", "sv", "os", "sw", "sw_pd0"], is_required=True)
+    parser.add_option(section, "navigation_file", dtypes=["str"], default="", is_file=True)
+    parser.add_option(section, "leading_trim", dtypes=["str"], default="")
+    parser.add_option(section, "trailing_trim", dtypes=["str"], default="")
+    parser.add_option(section, "sensor_depth", dtypes=["float"], default="")
+    parser.add_option(section, "depth_range", dtypes=["float"], default="()", nargs_min=0, nargs_max=2)
+    parser.add_option(section, "bad_pressure", dtypes=["bool"], default=False)
+    parser.add_option(section, "magnetic_declination", dtypes=["float"], default="")
+    parser.add_option(section, "keep_bt", dtypes=["bool"], default=True)
+    parser.add_option(section, "start_time", dtypes=["str"], default="")
+    parser.add_option(section, "time_step", dtypes=["float"], default="")
+
+    section = "ADCP_QUALITY_CONTROL"
+    parser.add_option(section, "quality_control", dtypes=["bool"], default=True)
+    parser.add_option(section, "amplitude_threshold", dtypes=["int"], default=0, value_min=0, value_max=255)
+    parser.add_option(section, "percentgood_threshold", dtypes=["int"], default=64, value_min=0, value_max=100)
+    parser.add_option(section,"correlation_threshold", dtypes=["int"], default=90, value_min=0, value_max=255)
+    parser.add_option(section,"horizontal_velocity_threshold", dtypes=["float"], default=5)
+    parser.add_option(section,"vertical_velocity_threshold", dtypes=["float"], default=5)
+    parser.add_option(section,"error_velocity_threshold", dtypes=["float"], default=5)
+    parser.add_option(section,"sidelobes_correction", dtypes=["bool"], default=True)
+    parser.add_option(section,"bottom_depth", dtypes=["float"])
+    parser.add_option(section,"pitch_threshold", dtypes=["int"], default=20, value_min=0, value_max=180)
+    parser.add_option(section,"roll_threshold", dtypes=["int"], default=20, value_min=0, value_max=180)
+    parser.add_option(section,"motion_correction_mode", dtypes=["str"], default="bt", choice=["bt", "nav", "off"])
+
+    section = "ADCP_OUTPUT"
+    parser.add_option(section, "merge_output_files", dtypes=["bool"], default=True)
+    parser.add_option(section, "bodc_name", dtypes=["bool"], default=True)
+    parser.add_option(section,"force_platform_metadata", dtypes=["bool"], default=False)
+    parser.add_option(section,"drop_percent_good", dtypes=["bool"], default=True)
+    parser.add_option(section,"drop_correlation", dtypes=["bool"], default=True)
+    parser.add_option(section,"drop_amplitude", dtypes=["bool"], default=True)
+    parser.add_option(section,"odf_data" dtypes=["str"], default="both", choice=["vel", "anc", "both"])
+    parser.add_option(section,"make_figures", dtypes=["bool"], default=True)
+    parser.add_option(section,"make_log", dtypes=["bool"], default=True)
