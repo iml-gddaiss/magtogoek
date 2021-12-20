@@ -3,6 +3,7 @@ December 18, 2021
 Made by JeromeJGuay
 """
 
+import getpass
 import typing as tp
 from configparser import RawConfigParser
 from pathlib import Path
@@ -16,7 +17,7 @@ VALID_DTYPES = ["str", "int", "float", "bool"]
 
 
 class TaskParserError(SystemExit):
-    def __init__(self, error, section=None, option=None, option_info=None, value=None):
+    def __init__(self, error: str, section=None, option=None, option_info=None, value=None):
         self.error = error
         self.section = section
         self.option = option
@@ -78,6 +79,8 @@ class TaskParserError(SystemExit):
 
 
 class OptionInfos:
+    section: str = None
+    option: str = None
     dtypes: tp.List[str] = None
     default: tp.Union[str, float, int, bool] = None
     nargs: int = None
@@ -94,6 +97,8 @@ class OptionInfos:
 
     def __init__(
             self,
+            section: str = None,
+            option: str = None,
             dtypes: tp.List[str] = None,
             default: tp.Union[str, float, int, bool] = None,
             nargs: int = None,
@@ -108,7 +113,8 @@ class OptionInfos:
             is_required: bool = False,
             null_value: tp.Union[str, float, int, bool] = False,
     ):
-
+        object.__setattr__(self, "section", section)
+        object.__setattr__(self, "option", option)
         object.__setattr__(self, "dtypes", dtypes)
         object.__setattr__(self, "default", default)
         object.__setattr__(self, "nargs", nargs)
@@ -166,6 +172,16 @@ class OptionInfos:
 
 
 class TaskParser:
+    """
+    parser.load(input_filename) -> dictionary with formatted values.
+    parser.write(output_filename) -> writes a .ini file.
+    parser.write_from_dict(output_filename, dictionary) -> format and write from a dictionary
+    parser.as_dict(empty=True) -> dictionary empty values. @property
+    parser.as_dict -> dictionary default value. @property
+    parser.parser -> rawconfigparser. @property
+    parser.format_parser_dict(dictionary) -> formatted dictionary parser.
+    parser.format_option(value, section, option) -> formatted value.
+    """
     def __init__(self):
         self._parser_info: tp.Dict[str, tp.Dict[str, OptionInfos]] = {}
 
@@ -185,11 +201,13 @@ class TaskParser:
             is_file: bool = False,
             is_time_stamp: bool = False,
             is_required: bool = False,
-            null_value: tp.Union[str, float, int, bool] = False,
-    ):
+            null_value: tp.Union[str, float, int, bool] = None,
+    ) -> object:
         if section not in self._parser_info:
             self._parser_info[section] = {}
         self._parser_info[section][option] = OptionInfos(
+            section,
+            option,
             dtypes,
             default,
             nargs,
@@ -222,14 +240,24 @@ class TaskParser:
         parser_dict = self.parser._sections
         return parser_dict
 
-    def format_parser_dict(self, parser_dict: dict, new_values_dict: dict = None, filename: str = None):
+    def format_parser_dict(
+            self, parser_dict: dict, new_values_dict: dict = None, file_path: str = None
+    ):
         _add_missing_options(parser_dict, self._parser_info)
 
         if new_values_dict is not None:
             _update_parser_values(parser_dict, new_values_dict)
 
-        _format_config_options(config=parser_dict, config_info=self._parser_info,
-                               config_path=filename)  # NEW NAME NEEDED
+        _format_parser_options(
+            parser_dict=parser_dict, parser_info=self._parser_info, file_path=file_path
+        )  # NEW NAME NEEDED
+
+    def format_option(self, value, section: str, option: str):
+        if section not in self._parser_info:
+            raise ValueError(f"{section} section has no option {option}")
+        if option not in self._parser_info[section]:
+            raise ValueError(f"{section} section has no option {option}")
+        return _format_option(value, self._parser_info[section][option])
 
     def load(self, filename: str, new_values_dict: dict = None):
         parser = _rawconfigparser()
@@ -273,9 +301,7 @@ def _update_parser_values(parser: dict, values_dict: dict = None):
         return parser
 
 
-def _add_missing_options(
-        parser_dict: dict, parser_info: tp.Dict[str, tp.Dict[str, OptionInfos]],
-):
+def _add_missing_options(parser_dict: dict, parser_info: tp.Dict[str, tp.Dict[str, OptionInfos]]):
     for section, options in parser_info.items():
         if not section in parser_dict:
             parser_dict[section] = {}
@@ -283,12 +309,11 @@ def _add_missing_options(
             if option not in parser_dict[section]:
                 parser_dict[section][option] = None
                 if parser_info[section][option].null_value is not None:
-                    parser_dict[section][option] = parser_info[section][
-                        option
-                    ].null_value
+                    parser_dict[section][option] = parser_info[section][option].null_value
 
 
-def _format_config_options(config: tp.Dict, config_info, config_path: Path = None):
+def _format_parser_options(parser_dict: dict, parser_info: tp.Dict[str, tp.Dict[str, OptionInfos]],
+                           file_path: str = None):
     """Format config options for processing.
 
     - Convert the sensor specific configuration parameters values to the right
@@ -302,74 +327,70 @@ def _format_config_options(config: tp.Dict, config_info, config_path: Path = Non
         length, value, choice,  etc.
 
     """
-    for section, options in config_info.items():
+    for section, options in parser_info.items():
         for option in options:
-            option_info = config_info[section][option]
-            value = config[section][option]
+            option_info = parser_info[section][option]
+            value = parser_dict[section][option]
             if "bool" not in option_info.dtypes:
                 if not value and value != 0:
                     value = None
                     if option_info.is_required is True:
-                        raise TaskParserError(
-                            "required", section, option, option_info, value
-                        )
+                        raise TaskParserError("required", option_info, value)
             if value is not None:
-                value = _format_option(
-                    config[section][option], option_info, section, option, config_path
-                )
+                value = _format_option(parser_dict[section][option], option_info, file_path)
             elif option_info.null_value is not None:
                 value = option_info.null_value
-            config[section][option] = value
+            parser_dict[section][option] = value
 
 
-def _format_option(value, option_info, section, option, config_path):
+def _format_option(value, option_info: OptionInfos, file_path: str = None):
     if option_info.nargs or option_info.nargs_min or option_info.nargs_max:
         value = _get_sequence_from_string(value)
-        _check_options_length(value, option_info, section, option)
+        _check_options_length(value, option_info)
         for i, _value in enumerate(value):
-            value[i] = _format_option_type(
-                _value, option_info, section, option, config_path
-            )
+            value[i] = _format_option_type(_value, option_info, file_path)
     else:
-        value = _format_option_type(value, option_info, section, option, config_path)
+        value = _format_option_type(value, option_info, file_path)
 
     return value
 
 
-def _format_option_type(value, option_info, section, option, config_path):
+def _format_option_type(value, option_info: OptionInfos, file_path: str = None):
     """Format option to the right dtypes.
     - Checks if value is outside option_info.min_value and option_info.max_value.
     - Check if values is within the option_info.choice."""
-
     try:
         value = _format_value_dtypes(value, option_info.dtypes)
     except ValueError:
-        raise TaskParserError("dtype", section, option, option_info, value)
+        raise TaskParserError("dtype", option_info, value)
 
     if option_info.value_min or option_info.value_max:
-        _check_option_min_max(value, option_info, section, option)
+        _check_option_min_max(value, option_info)
 
     if option_info.choice is not None:
         if value not in option_info.choice:
-            raise TaskParserError("choice", section, option, option_info, value)
+            raise TaskParserError("choice", option_info, value)
 
     if option_info.is_path is True and isinstance(value, str):
-        value = Path(config_path).joinpath(Path(value)).resolve()
+        value = Path(file_path).joinpath(Path(value)).resolve()
         if not any((value.is_dir(), value.parent.is_dir())):
-            raise TaskParserError("path", section, option, option_info, value)
+            raise TaskParserError("path", option_info, value)
         value = str(value)
 
     if option_info.is_file is True:
-        value = Path(config_path).joinpath(Path(value)).resolve()
+        if file_path is not None:
+            value = Path(file_path).joinpath(Path(value)).resolve()
+        else:
+            value = Path(value)
         if not value.is_file():
-            raise TaskParserError("file", section, option, option_info, value)
+            raise TaskParserError("file", option_info, value)
         value = str(value)
 
     if option_info.is_time_stamp is True:
         try:
             dateutil.parser.parse(value)
         except dateutil.parser._parser.ParserError:
-            raise TaskParserError("string_format", section, option, option_info, value)
+            raise TaskParserError("string_format", option_info, value)
 
     return value
 
@@ -405,80 +426,88 @@ def _get_sequence_from_string(sequence: str) -> tp.List:
     return list(filter(None, sequence.split(",")))
 
 
-def _check_options_length(value, option_info, section, option):
+def _check_options_length(value, option_info: OptionInfos):
     if option_info.nargs:
         if len(value) != option_info.nargs:
-            raise TaskParserError("nargs", section, option, option_info, value)
+            raise TaskParserError("nargs", option_info, value)
     if option_info.nargs_max:
         if len(value) > option_info.nargs_max:
-            raise TaskParserError("nargs", section, option, option_info, value)
+            raise TaskParserError("nargs", option_info, value)
     if option_info.nargs_min:
         if len(value) < option_info.nargs_min:
-            raise TaskParserError("nargs", section, option, option_info, value)
+            raise TaskParserError("nargs", option_info, value)
 
 
-def _check_option_min_max(value, option_info, section, option):
+def _check_option_min_max(value, option_info: OptionInfos):
     if option_info.value_max is not None:
         if value > option_info.value_max:
-            raise TaskParserError("range", section, option, option_info, value)
+            raise TaskParserError("range", option_info, value)
     if option_info.value_min is not None:
         if value < option_info.value_min:
-            raise TaskParserError("range", section, option, option_info, value)
+            raise TaskParserError("range", option_info, value)
 
-if __name__ == "__main__":
+
+def main():
     from datetime import datetime
     REFERENCE = "TODO"
 
     parser = TaskParser()
-    parser.add_option('HEADER', "made_by",dtypes=["str"], default=getpass.getuser())
-    parser.add_option('HEADER', "last_updated", dtypes=["str"], default=datetime.now().strftime("%Y-%m-%d"))
-    parser.add_option('HEADER', "sensor_type", dtypes=["str"], default="", is_required=True)
-    parser.add_option('HEADER', "platform_type", dtypes=["str"], default="", choice=["buoy", "mooring", "ship"])
 
-    parser.add_option('INPUT',  "input_files", dtypes=["str"], default="", nargs_min=1, is_file=True, is_required=True)
-    parser.add_option('INPUT',"platform_file", dtypes=["str"], default="", is_file=True)
-    parser.add_option('INPUT',"platform_id", dtypes=["str"], default="")
-    parser.add_option('INPUT',"sensor_id", dtypes=["str"], default="")
+    section = "HEADER"
+    parser.add_option(section, "made_by", dtypes=["str"], default=getpass.getuser())
+    parser.add_option(section, "last_updated", dtypes=["str"], default=datetime.now().strftime("%Y-%m-%d"))
+    parser.add_option(section, "sensor_type", dtypes=["str"], default="", is_required=True, choice=["adcp"])
+    parser.add_option(section, "platform_type", dtypes=["str"], default="", choice=["buoy", "mooring", "ship"])
 
-    parser.add_option('OUTPUT',"netcdf_output", dtypes=["str", "bool"], default="", is_path=True)
-    parser.add_option('OUTPUT',"odf_output", dtypes=["str", "bool"], default="", is_path=True)
+    section = "INPUT"
+    parser.add_option(section, "input_files", dtypes=["str"], default="", nargs_min=1, is_file=True, is_required=True)
+    parser.add_option(section, "platform_file", dtypes=["str"], default="", is_file=True)
+    parser.add_option(section, "platform_id", dtypes=["str"], default="")
+    parser.add_option(section, "sensor_id", dtypes=["str"], default="")
 
-    parser.add_option('NETCDF_CF',"Conventions", dtypes=["str"], default="CF 1.8")
-    parser.add_option('NETCDF_CF',"title", dtypes=["str"], default="")
-    parser.add_option('NETCDF_CF',"institution", dtypes=["str"], default="")
-    parser.add_option('NETCDF_CF',"summary", dtypes=["str"], default="")
-    parser.add_option('NETCDF_CF',"references", dtypes=["str"], default=REFERENCE)
-    parser.add_option('NETCDF_CF',"comments", dtypes=["str"], default="")
-    parser.add_option('NETCDF_CF',"naming_authority", dtypes=["str"], default="BODC, SDC, CF, MEDS")
-    parser.add_option('NETCDF_CF',"source", dtypes=["str"], default="")
+    section = "OUTPUT"
+    parser.add_option(section, "netcdf_output", dtypes=["str", "bool"], default="", is_path=True)
+    parser.add_option(section, "odf_output", dtypes=["str", "bool"], default="", is_path=True)
 
-    parser.add_option('PROJECT', "project", dtypes=["str"], default=""),
-    parser.add_option('PROJECT',"sea_name", dtypes=["str"], default="")
-    parser.add_option('PROJECT',"sea_code", dtypes=["str"], default="")
+    section = "NETCDF_CF"
+    parser.add_option(section, "Conventions", dtypes=["str"], default="CF 1.8")
+    parser.add_option(section, "title", dtypes=["str"], default="")
+    parser.add_option(section, "institution", dtypes=["str"], default="")
+    parser.add_option(section, "summary", dtypes=["str"], default="")
+    parser.add_option(section, "references", dtypes=["str"], default=REFERENCE)
+    parser.add_option(section, "comments", dtypes=["str"], default="")
+    parser.add_option(section, "naming_authority", dtypes=["str"], default="BODC, SDC, CF, MEDS")
+    parser.add_option(section, "source", dtypes=["str"], default="")
 
+    section = "PROJECT"
+    parser.add_option(section, "project", dtypes=["str"], default=""),
+    parser.add_option(section, "sea_name", dtypes=["str"], default="")
+    parser.add_option(section, "sea_code", dtypes=["str"], default="")
 
-    parser.add_option('CRUISE',"country_institute_code", dtypes=["str"], default="")
-    parser.add_option('CRUISE',"cruise_number", dtypes=["str"], default="", null_value="")
-    parser.add_option('CRUISE',"cruise_name", dtypes=["str"], default="")
-    parser.add_option('CRUISE',"cruise_description", dtypes=["str"], default="")
-    parser.add_option('CRUISE',"organization", dtypes=["str"], default="")
-    parser.add_option('CRUISE',"chief_scientist", dtypes=["str"], default="")
-    parser.add_option('CRUISE',"start_date", dtypes=["str"], default="")
-    parser.add_option('CRUISE',"end_date", dtypes=["str"], default="")
-    parser.add_option('CRUISE',"event_number", dtypes=["str"], default="", null_value="")
-    parser.add_option('CRUISE',"event_qualifier1", dtypes=["str"], default="", null_value="")
-    parser.add_option('CRUISE',"event_comments", dtypes=["str"], default="")
+    section = "section"
+    parser.add_option("section", "country_institute_code", dtypes=["str"], default="")
+    parser.add_option("section", "cruise_number", dtypes=["str"], default="", null_value="")
+    parser.add_option(section, "cruise_name", dtypes=["str"], default="")
+    parser.add_option(section, "cruise_description", dtypes=["str"], default="")
+    parser.add_option(section, "organization", dtypes=["str"], default="")
+    parser.add_option(section, "chief_scientist", dtypes=["str"], default="")
+    parser.add_option(section, "start_date", dtypes=["str"], default="")
+    parser.add_option(section, "end_date", dtypes=["str"], default="")
+    parser.add_option(section, "event_number", dtypes=["str"], default="", null_value="")
+    parser.add_option(section, "event_qualifier1", dtypes=["str"], default="", null_value="")
+    parser.add_option(section, "event_comments", dtypes=["str"], default="")
 
-    parser.add_option("GLOBAL_ATTRIBUTES","date_created", dtypes=["str"], default="")
-    parser.add_option("GLOBAL_ATTRIBUTES","cdm_data_type", dtypes=["str"], default="")
-    parser.add_option("GLOBAL_ATTRIBUTES","country_code", dtypes=["str"], default="")
-    parser.add_option("GLOBAL_ATTRIBUTES","publisher_email", dtypes=["str"], default="")
-    parser.add_option("GLOBAL_ATTRIBUTES","creator_type", dtypes=["str"], default="")
-    parser.add_option("GLOBAL_ATTRIBUTES","publisher_name", dtypes=["str"], default="")
-    parser.add_option("GLOBAL_ATTRIBUTES","keywords", dtypes=["str"], default="")
-    parser.add_option("GLOBAL_ATTRIBUTES","keywords_vocabulary", dtypes=["str"], default="")
-    parser.add_option("GLOBAL_ATTRIBUTES","standard_name_vocabulary", dtypes=["str"], default="CF v.52")
-    parser.add_option("GLOBAL_ATTRIBUTES","acknowledgment", dtypes=["str"], default="")
+    section = "GLOBAL_ATTRIBUTES"
+    parser.add_option(section, "date_created", dtypes=["str"], default="")
+    parser.add_option(section, "cdm_data_type", dtypes=["str"], default="")
+    parser.add_option(section, "country_code", dtypes=["str"], default="")
+    parser.add_option(section, "publisher_email", dtypes=["str"], default="")
+    parser.add_option(section, "creator_type", dtypes=["str"], default="")
+    parser.add_option(section, "publisher_name", dtypes=["str"], default="")
+    parser.add_option(section, "keywords", dtypes=["str"], default="")
+    parser.add_option(section, "keywords_vocabulary", dtypes=["str"], default="")
+    parser.add_option(section, "standard_name_vocabulary", dtypes=["str"], default="CF v.52")
+    parser.add_option(section, "acknowledgment", dtypes=["str"], default="")
 
     section = "ADCP_PROCESSING"
     parser.add_option(section, "yearbase", dtypes=["int"], default="", is_required=True)
@@ -499,23 +528,33 @@ if __name__ == "__main__":
     parser.add_option(section, "quality_control", dtypes=["bool"], default=True)
     parser.add_option(section, "amplitude_threshold", dtypes=["int"], default=0, value_min=0, value_max=255)
     parser.add_option(section, "percentgood_threshold", dtypes=["int"], default=64, value_min=0, value_max=100)
-    parser.add_option(section,"correlation_threshold", dtypes=["int"], default=90, value_min=0, value_max=255)
-    parser.add_option(section,"horizontal_velocity_threshold", dtypes=["float"], default=5)
-    parser.add_option(section,"vertical_velocity_threshold", dtypes=["float"], default=5)
-    parser.add_option(section,"error_velocity_threshold", dtypes=["float"], default=5)
-    parser.add_option(section,"sidelobes_correction", dtypes=["bool"], default=True)
-    parser.add_option(section,"bottom_depth", dtypes=["float"])
-    parser.add_option(section,"pitch_threshold", dtypes=["int"], default=20, value_min=0, value_max=180)
-    parser.add_option(section,"roll_threshold", dtypes=["int"], default=20, value_min=0, value_max=180)
-    parser.add_option(section,"motion_correction_mode", dtypes=["str"], default="bt", choice=["bt", "nav", "off"])
+    parser.add_option(section, "correlation_threshold", dtypes=["int"], default=90, value_min=0, value_max=255)
+    parser.add_option(section, "horizontal_velocity_threshold", dtypes=["float"], default=5)
+    parser.add_option(section, "vertical_velocity_threshold", dtypes=["float"], default=5)
+    parser.add_option(section, "error_velocity_threshold", dtypes=["float"], default=5)
+    parser.add_option(section, "sidelobes_correction", dtypes=["bool"], default=True)
+    parser.add_option(section, "bottom_depth", dtypes=["float"])
+    parser.add_option(section, "pitch_threshold", dtypes=["int"], default=20, value_min=0, value_max=180, )
+    parser.add_option(section, "roll_threshold", dtypes=["int"], default=20, value_min=0, value_max=180)
+    parser.add_option(section, "motion_correction_mode", dtypes=["str"], default="bt", choice=["bt", "nav", "off"])
 
     section = "ADCP_OUTPUT"
     parser.add_option(section, "merge_output_files", dtypes=["bool"], default=True)
     parser.add_option(section, "bodc_name", dtypes=["bool"], default=True)
-    parser.add_option(section,"force_platform_metadata", dtypes=["bool"], default=False)
-    parser.add_option(section,"drop_percent_good", dtypes=["bool"], default=True)
-    parser.add_option(section,"drop_correlation", dtypes=["bool"], default=True)
-    parser.add_option(section,"drop_amplitude", dtypes=["bool"], default=True)
-    parser.add_option(section,"odf_data" dtypes=["str"], default="both", choice=["vel", "anc", "both"])
-    parser.add_option(section,"make_figures", dtypes=["bool"], default=True)
-    parser.add_option(section,"make_log", dtypes=["bool"], default=True)
+    parser.add_option(section, "force_platform_metadata", dtypes=["bool"], default=False)
+    parser.add_option(section, "drop_percent_good", dtypes=["bool"], default=True)
+    parser.add_option(section, "drop_correlation", dtypes=["bool"], default=True)
+    parser.add_option(section, "drop_amplitude", dtypes=["bool"], default=True)
+    parser.add_option(section, "odf_data", dtypes=["str"], default="both", choice=["vel", "anc", "both"])
+    parser.add_option(section, "make_figures", dtypes=["bool"], default=True)
+    parser.add_option(section, "make_log", dtypes=["bool"], default=True)
+
+    d = parser.as_dict
+
+    d["HEADER"]["sensor_type"] = "adcp"
+    d["INPUT"]["input_files"] = "taskconfig.py"
+    d["ADCP_PROCESSING"]["yearbase"] = 2018
+    d["ADCP_PROCESSING"]["sonar"] = "wh"
+
+if __name__ == "__main__":
+    main()
