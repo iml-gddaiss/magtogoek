@@ -4,7 +4,8 @@ Made by JeromeJGuay
 """
 
 import getpass
-import typing as tp
+import sys
+from typing import List, Union, Dict, Optional
 from configparser import RawConfigParser
 from pathlib import Path
 
@@ -15,103 +16,43 @@ TRUE_VALUES = ["True", "true", "1", "On", "on"]
 FALSE_VALUES = ["False", "False", "0", "Off", "off", ""]
 VALID_DTYPES = ["str", "int", "float", "bool"]
 
-
-class TaskParserError(SystemExit):
-    def __init__(self, error: str, section=None, option=None, option_info=None, value=None):
-        self.error = error
-        self.section = section
-        self.option = option
-        if option_info is None:
-            option_info = OptionInfos()
-        self.option_info = option_info
-        self.value = value
-        self.msg = ""
-
-        self._get_error_message()
-        click.secho("ConfigFileError", fg="red", bold=True)
-        print(self.msg)
-        print("Exiting magtogoek")
-
-    def _get_error_message(self):
-        if self.error == "dtype":
-            self.msg = f"`{self.section}/{self.option}` expected a `{' or '.join(self.option_info.dtypes)}` but received `{self.value}`."
-        if self.error == "nargs":
-            self.msg = f"`{self.section}/{self.option}` expected "
-            if self.option_info.nargs:
-                self.msg = f"`{self.option_info.nargs}` "
-            else:
-                if self.option_info.nargs_min is not None:
-                    self.msg += f"a minimum of `{self.option_info.nargs_min}` "
-                    if self.option_info.nargs_max:
-                        self.msg += "and "
-                if self.option_info.nargs_max:
-                    self.msg += f"a maximum of `{self.option_info.nargs_max}` "
-            self.msg += f"values, but received `{len(self.value)}`."
-        if self.error == "range":
-            self.msg = f"`{self.section}/{self.option}` expected a value "
-            if self.option_info.value_min is not None:
-                self.msg += f">= than `{self.option_info.value_min}` "
-                if self.option_info.value_max:
-                    self.msg += "and "
-            if self.option_info.value_max:
-                self.msg += f"<= than `{self.option_info.value_max}` "
-            self.msg += f", but received a value of `{self.value}`."
-        if self.error == "choice":
-            self.msg = f"`{self.section}/{self.option}` expected a value in `{self.option_info.choice}` but received `{self.value}`. "
-        if self.error == "string_format":
-            self.msg = f"`{self.section}/{self.option}` is an invalid datetime format. Use `YYYY-MM-DDThh:mm:ss.ssss`"
-        if self.error == "path":
-            self.msg = (
-                f"`{self.section}/{self.option}` path or path/to/file does not exist."
-            )
-        if self.error == "file":
-            self.msg = (
-                f"`{self.section}/{self.option}` file {self.value} does not exist."
-            )
-        if "bool" in self.option_info.dtypes:
-            self.msg += (
-                f"\nBoolean have to be express with {TRUE_VALUES} or {FALSE_VALUES}."
-            )
-        if self.error == "required":
-            self.msg = (
-                f"`{self.section}/{self.option}` requires a value. None were given."
-            )
+StrIntFloatBool = Union[str, int, float, bool]
 
 
 class OptionInfos:
     section: str = None
     option: str = None
-    dtypes: tp.List[str] = None
-    default: tp.Union[str, float, int, bool] = None
-    nargs: int = None
-    nargs_min: int = None
-    nargs_max: int = None
-    choice: list = None
-    value_min: tp.Union[int, float] = None
-    value_max: tp.Union[int, float] = None
+    dtypes: List[str] = None
+    default: Optional[Union[StrIntFloatBool, List[StrIntFloatBool]]] = None
+    nargs: Optional[int] = None
+    nargs_min: Optional[int] = None
+    nargs_max: Optional[int] = None
+    choice: Optional[List[StrIntFloatBool]] = None
+    value_min: Optional[Union[int, float]] = None
+    value_max: Optional[Union[int, float]] = None
     is_path: bool = False
     is_file: bool = False
     is_time_stamp: bool = False
     is_required: bool = False
-    null_value: tp.Union[str, float, int, bool] = False
+    null_value: Union[StrIntFloatBool, List[StrIntFloatBool]] = None
 
     def __init__(
             self,
-            section: str = None,
-            option: str = None,
-            dtypes: tp.List[str] = None,
-            default: tp.Union[str, float, int, bool] = None,
+            section: str,
+            option: str,
+            dtypes: Union[str, List[str]] = 'str',
+            default: Union[StrIntFloatBool, List[StrIntFloatBool]] = None,
             nargs: int = None,
             nargs_min: int = None,
             nargs_max: int = None,
             choice: list = None,
-            value_min: tp.Union[int, float] = None,
-            value_max: tp.Union[int, float] = None,
+            value_min: Union[int, float] = None,
+            value_max: Union[int, float] = None,
             is_path: bool = False,
             is_file: bool = False,
             is_time_stamp: bool = False,
             is_required: bool = False,
-            null_value: tp.Union[str, float, int, bool] = False,
+            null_value: Union[StrIntFloatBool, List[StrIntFloatBool]] = None,
     ):
         object.__setattr__(self, "section", section)
         object.__setattr__(self, "option", option)
@@ -141,7 +82,7 @@ class OptionInfos:
         raise AttributeError("ParserInfos attributes cannot be deleted.")
 
     def __repr__(self):
-        return str(self.__dict__).replace(",", ",\n")
+        return 'OptionInfos(\n' + str(self.__dict__).replace(",", ",\n").replace('{', '').replace('}', '') + '\n)'
 
     def _list_check(self):
         for option in ("dtypes", "choice"):
@@ -162,86 +103,141 @@ class OptionInfos:
             if self.value_min > self.value_max:
                 raise ValueError("value_max must be greater than value_min.")
 
+    def _nargs_min_max_check(self):
+        if self.nargs_min is not None and self.nargs_max is not None:
+            if self.nargs_min > self.nargs_max:
+                raise ValueError("value_max must be greater than value_min.")
+
     def _nargs_check(self):
-        if self.nargs is not None and any(
-                (self.nargs_min is not None, self.nargs_max is not None)
-        ):
+        if self.nargs is not None and any((self.nargs_min is not None, self.nargs_max is not None)):
             raise ValueError(
                 "nargs parameter cannot be used with nargs_min or nargs_max."
             )
+
+
+class TaskParserError(SystemExit):
+    def __init__(self, error: str, option_info: OptionInfos, value=None):
+        self.error = error
+        self.section = option_info.section
+        self.option = option_info.option
+        if option_info is None:
+            option_info = OptionInfos()
+        self.option_info = option_info
+        self.value = value
+        self.msg = ""
+
+        self._get_error_message()
+        click.secho("TaskParserError", fg="red", bold=True)
+        print(self.msg)
+        sys.exit()
+
+    def _get_error_message(self):
+        if self.error == "dtype":
+            self.msg = f"`{self.section}/{self.option}` expected a `{' or '.join(self.option_info.dtypes)}` but " \
+                       f"received `{self.value}`. "
+        if self.error == "nargs":
+            self.msg = f"`{self.section}/{self.option}` expected "
+            if self.option_info.nargs:
+                self.msg = f"`{self.option_info.nargs}` "
+            else:
+                if self.option_info.nargs_min is not None:
+                    self.msg += f"a minimum of `{self.option_info.nargs_min}` "
+                    if self.option_info.nargs_max:
+                        self.msg += "and "
+                if self.option_info.nargs_max:
+                    self.msg += f"a maximum of `{self.option_info.nargs_max}` "
+            self.msg += f"values, but received `{len(self.value)}`."
+        if self.error == "range":
+            self.msg = f"`{self.section}/{self.option}` expected a value "
+            if self.option_info.value_min is not None:
+                self.msg += f">= than `{self.option_info.value_min}` "
+                if self.option_info.value_max:
+                    self.msg += "and "
+            if self.option_info.value_max:
+                self.msg += f"<= than `{self.option_info.value_max}` "
+            self.msg += f", but received a value of `{self.value}`."
+        if self.error == "choice":
+            self.msg = f"`{self.section}/{self.option}` expected a value in `{self.option_info.choice}` but received `{self.value}`. "
+        if self.error == "string_format":
+            self.msg = f"`{self.section}/{self.option}` is an invalid datetime format. Use `YYYY-MM-DDThh:mm:ss.ssss`"
+        if self.error == "path":
+            self.msg = f"`{self.section}/{self.option}` path or path/to/file does not exist."
+        if self.error == "file":
+            self.msg = f"`{self.section}/{self.option}` file {self.value} does not exist."
+        if "bool" in self.option_info.dtypes:
+            self.msg += f"\nBoolean have to be express with {TRUE_VALUES} or {FALSE_VALUES}."
+        if self.error == "required":
+            self.msg = f"`{self.section}/{self.option}` requires a value. None were given."
+
+
+ParserInfos = Dict[str, Dict[str, OptionInfos]]
 
 
 class TaskParser:
     """
     parser.load(input_filename) -> dictionary with formatted values.
     parser.write(output_filename) -> writes a .ini file.
-    parser.write_from_dict(output_filename, dictionary) -> format and write from a dictionary
-    parser.as_dict(empty=True) -> dictionary empty values. @property
-    parser.as_dict -> dictionary default value. @property
-    parser.parser -> rawconfigparser. @property
+    parser.write_from_dict(output_filename, dictionary) -> format and write from a dictionary.
+    parser.as_dict(empty=True) -> dictionary empty values.
+    parser.as_dict -> dictionary default value.
+    parser.parser -> rawconfigparser.
     parser.format_parser_dict(dictionary) -> formatted dictionary parser.
     parser.format_option(value, section, option) -> formatted value.
     """
+
     def __init__(self):
-        self._parser_info: tp.Dict[str, tp.Dict[str, OptionInfos]] = {}
+        self._parser_info: ParserInfos = {}
+
+    @property
+    def sections(self):
+        return list(self._parser_info)
+
+    def options(self, section: str):
+        if section in self.sections:
+            return list(self._parser_info[section])
+        raise ValueError(f'{section} section does not exist.')
 
     def add_option(
             self,
-            section: str = None,
-            option: str = None,
-            dtypes: tp.List[str] = None,
-            default: tp.Union[str, float, int, bool] = None,
+            section: str,
+            option: str,
+            dtypes: Union[str, List[str]] = 'str',
+            default: Union[StrIntFloatBool, List[StrIntFloatBool]] = None,
             nargs: int = None,
             nargs_min: int = None,
             nargs_max: int = None,
             choice: list = None,
-            value_min: tp.Union[int, float] = None,
-            value_max: tp.Union[int, float] = None,
+            value_min: Union[int, float] = None,
+            value_max: Union[int, float] = None,
             is_path: bool = False,
             is_file: bool = False,
             is_time_stamp: bool = False,
             is_required: bool = False,
-            null_value: tp.Union[str, float, int, bool] = None,
-    ) -> object:
+            null_value: Union[StrIntFloatBool, List[StrIntFloatBool]] = None
+    ):
         if section not in self._parser_info:
             self._parser_info[section] = {}
         self._parser_info[section][option] = OptionInfos(
-            section,
-            option,
-            dtypes,
-            default,
-            nargs,
-            nargs_min,
-            nargs_max,
-            choice,
-            value_min,
-            value_max,
-            is_path,
-            is_file,
-            is_time_stamp,
-            is_required,
-            null_value,
+            section, option, dtypes, default, nargs, nargs_min, nargs_max,
+            choice, value_min, value_max, is_path, is_file, is_time_stamp, is_required, null_value
         )
 
-    @property
-    def parser(self, empty: bool = False):
+    def parser(self, with_default: bool = True) -> RawConfigParser:
         parser = _rawconfigparser()
         for section, options in self._parser_info.items():
             parser.add_section(section)
             for option, value in options.items():
-                if empty is True or value.default is None:
+                if with_default is False or value.default is None:
                     parser[section][option] = ""
                 else:
                     parser[section][option] = str(value.default)
         return parser
 
-    @property
-    def as_dict(self):
-        parser_dict = self.parser._sections
-        return parser_dict
+    def as_dict(self, with_default: bool = True):
+        return self.parser(with_default)._sections
 
     def format_parser_dict(
-            self, parser_dict: dict, new_values_dict: dict = None, file_path: str = None
+            self, parser_dict: dict, new_values_dict: Optional[dict] = None, file_path: Optional[str] = None
     ):
         _add_missing_options(parser_dict, self._parser_info)
 
@@ -249,17 +245,18 @@ class TaskParser:
             _update_parser_values(parser_dict, new_values_dict)
 
         _format_parser_options(
-            parser_dict=parser_dict, parser_info=self._parser_info, file_path=file_path
+            parser_dict=parser_dict, parser_infos=self._parser_info, file_path=file_path
         )  # NEW NAME NEEDED
 
     def format_option(self, value, section: str, option: str):
+        value = str(value)
         if section not in self._parser_info:
             raise ValueError(f"{section} section has no option {option}")
         if option not in self._parser_info[section]:
             raise ValueError(f"{section} section has no option {option}")
         return _format_option(value, self._parser_info[section][option])
 
-    def load(self, filename: str, new_values_dict: dict = None):
+    def load(self, filename: str, new_values_dict: Optional[dict] = None):
         parser = _rawconfigparser()
         parser.read(filename)
         parser_dict = parser._sections
@@ -293,7 +290,7 @@ def _rawconfigparser():
     return parser
 
 
-def _update_parser_values(parser: dict, values_dict: dict = None):
+def _update_parser_values(parser: dict, values_dict: Optional[dict] = None):
     for section, options in values_dict.items():
         if section in parser:
             for option, value in options.items():
@@ -301,19 +298,18 @@ def _update_parser_values(parser: dict, values_dict: dict = None):
         return parser
 
 
-def _add_missing_options(parser_dict: dict, parser_info: tp.Dict[str, tp.Dict[str, OptionInfos]]):
-    for section, options in parser_info.items():
+def _add_missing_options(parser_dict: dict, parser_infos: ParserInfos):
+    for section, options in parser_infos.items():
         if not section in parser_dict:
             parser_dict[section] = {}
         for option in options.keys():
             if option not in parser_dict[section]:
                 parser_dict[section][option] = None
-                if parser_info[section][option].null_value is not None:
-                    parser_dict[section][option] = parser_info[section][option].null_value
+                if parser_infos[section][option].null_value is not None:
+                    parser_dict[section][option] = parser_infos[section][option].null_value
 
 
-def _format_parser_options(parser_dict: dict, parser_info: tp.Dict[str, tp.Dict[str, OptionInfos]],
-                           file_path: str = None):
+def _format_parser_options(parser_dict: dict, parser_infos: ParserInfos, file_path: Optional[str] = None):
     """Format config options for processing.
 
     - Convert the sensor specific configuration parameters values to the right
@@ -327,9 +323,9 @@ def _format_parser_options(parser_dict: dict, parser_info: tp.Dict[str, tp.Dict[
         length, value, choice,  etc.
 
     """
-    for section, options in parser_info.items():
+    for section, options in parser_infos.items():
         for option in options:
-            option_info = parser_info[section][option]
+            option_info = parser_infos[section][option]
             value = parser_dict[section][option]
             if "bool" not in option_info.dtypes:
                 if not value and value != 0:
@@ -343,7 +339,7 @@ def _format_parser_options(parser_dict: dict, parser_info: tp.Dict[str, tp.Dict[
             parser_dict[section][option] = value
 
 
-def _format_option(value, option_info: OptionInfos, file_path: str = None):
+def _format_option(value: str, option_info: OptionInfos, file_path: Optional[str] = None):
     if option_info.nargs or option_info.nargs_min or option_info.nargs_max:
         value = _get_sequence_from_string(value)
         _check_options_length(value, option_info)
@@ -355,7 +351,7 @@ def _format_option(value, option_info: OptionInfos, file_path: str = None):
     return value
 
 
-def _format_option_type(value, option_info: OptionInfos, file_path: str = None):
+def _format_option_type(value: str, option_info: OptionInfos, file_path: Optional[str] = None):
     """Format option to the right dtypes.
     - Checks if value is outside option_info.min_value and option_info.max_value.
     - Check if values is within the option_info.choice."""
@@ -395,9 +391,9 @@ def _format_option_type(value, option_info: OptionInfos, file_path: str = None):
     return value
 
 
-def _format_value_dtypes(value: str, dtypes: str) -> tp.Union[bool, int, float, str]:
+def _format_value_dtypes(value: str, dtypes: List[str]) -> StrIntFloatBool:
     if "bool" in dtypes:
-        if value in TRUE_VALUES + FALSE_VALUES:
+        if value in TRUE_VALUES or value in FALSE_VALUES:
             return value in TRUE_VALUES
     if "int" in dtypes:
         return int(float(value))
@@ -410,7 +406,7 @@ def _format_value_dtypes(value: str, dtypes: str) -> tp.Union[bool, int, float, 
     raise ValueError
 
 
-def _get_sequence_from_string(sequence: str) -> tp.List:
+def _get_sequence_from_string(sequence: str) -> List:
     """Decode string containing a sequence of value.
 
     The sequence can be between brackets, parenthesis or nothing
@@ -426,7 +422,7 @@ def _get_sequence_from_string(sequence: str) -> tp.List:
     return list(filter(None, sequence.split(",")))
 
 
-def _check_options_length(value, option_info: OptionInfos):
+def _check_options_length(value: StrIntFloatBool, option_info: OptionInfos):
     if option_info.nargs:
         if len(value) != option_info.nargs:
             raise TaskParserError("nargs", option_info, value)
@@ -438,7 +434,7 @@ def _check_options_length(value, option_info: OptionInfos):
             raise TaskParserError("nargs", option_info, value)
 
 
-def _check_option_min_max(value, option_info: OptionInfos):
+def _check_option_min_max(value: StrIntFloatBool, option_info: OptionInfos) -> StrIntFloatBool:
     if option_info.value_max is not None:
         if value > option_info.value_max:
             raise TaskParserError("range", option_info, value)
@@ -484,9 +480,9 @@ def main():
     parser.add_option(section, "sea_name", dtypes=["str"], default="")
     parser.add_option(section, "sea_code", dtypes=["str"], default="")
 
-    section = "section"
-    parser.add_option("section", "country_institute_code", dtypes=["str"], default="")
-    parser.add_option("section", "cruise_number", dtypes=["str"], default="", null_value="")
+    section = "CRUISE"
+    parser.add_option(section, "country_institute_code", dtypes=["str"], default="")
+    parser.add_option(section, "cruise_number", dtypes=["str"], default="", null_value="")
     parser.add_option(section, "cruise_name", dtypes=["str"], default="")
     parser.add_option(section, "cruise_description", dtypes=["str"], default="")
     parser.add_option(section, "organization", dtypes=["str"], default="")
@@ -549,12 +545,16 @@ def main():
     parser.add_option(section, "make_figures", dtypes=["bool"], default=True)
     parser.add_option(section, "make_log", dtypes=["bool"], default=True)
 
-    d = parser.as_dict
+    return parser
 
-    d["HEADER"]["sensor_type"] = "adcp"
-    d["INPUT"]["input_files"] = "taskconfig.py"
-    d["ADCP_PROCESSING"]["yearbase"] = 2018
-    d["ADCP_PROCESSING"]["sonar"] = "wh"
 
 if __name__ == "__main__":
-    main()
+    parser = main()
+    d = parser.as_dict
+
+    # d["HEADER"]["sensor_type"] = "adcp"
+    # d["INPUT"]["input_files"] = "taskconfig.py"
+    # d["ADCP_PROCESSING"]["yearbase"] = 2018
+    # d["ADCP_PROCESSING"]["sonar"] = "wh"
+
+    parser.format_parser_dict(d)
