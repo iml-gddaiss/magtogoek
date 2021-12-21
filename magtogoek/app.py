@@ -28,7 +28,7 @@ from subprocess import run as subp_run
 import click
 
 from magtogoek.app_options import adcp_options, add_options
-from magtogoek.configfile import BASE_CONFIG, ADCP_CONFIG
+from magtogoek.configfile import _get_taskparser
 from magtogoek.utils import is_valid_filename, json2dict, resolve_relative_path
 from magtogoek.version import VERSION
 
@@ -52,8 +52,8 @@ def _get_config_structure(_config: tp.Dict) -> tp.Dict:
     return config_struct
 
 
-BASE_CONFIG_STRUCT = _get_config_structure(BASE_CONFIG)
-ADCP_CONFIG_STRUCT = _get_config_structure(ADCP_CONFIG)
+BASE_CONFIG_STRUCT = _get_config_structure(_get_taskparser().as_dict())
+ADCP_CONFIG_STRUCT = _get_config_structure(_get_taskparser().as_dict())
 
 OPTIONS_NAME_TRANSLATOR = dict(
     adcp=dict(
