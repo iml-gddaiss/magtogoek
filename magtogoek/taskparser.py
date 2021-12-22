@@ -120,25 +120,20 @@ class OptionInfos:
 
 
 class TaskParserError(SystemExit):
-    def __init__(self, error: str, option_info: OptionInfos, value=None):
+    def __init__(self, error: str, option_info: OptionInfos, value: ListStrIntFloatBool='None'):
         self.error = error
         self.section = option_info.section
         self.option = option_info.option
-        if option_info is None:
-            option_info = OptionInfos()
         self.option_info = option_info
-        self.value = value
-        self.msg = ""
-
+        self.value: ListStrIntFloatBool = value
+        self.msg: str = ""
         self._get_error_message()
-        click.secho("TaskParserError", fg="red", bold=True)
-        print(self.msg)
-        sys.exit()
+        super().__init__(click.style("TaskParserError", fg="red", bold=True) +"\n"+ self.msg)
 
     def _get_error_message(self):
-        if self.error == "dtype":
+        if self.error == "dtypes":
             self.msg = f"`{self.section}/{self.option}` expected a `{' or '.join(self.option_info.dtypes)}` but " \
-                       f"received `{self.value}`. "
+                       f"received `{self.value}`."
         if self.error == "nargs":
             self.msg = f"`{self.section}/{self.option}` expected "
             if self.option_info.nargs:
@@ -401,7 +396,7 @@ def _format_option_type(value: str, option_info: OptionInfos, file_path: Optiona
     try:
         value = _format_value_dtypes(value, option_info.dtypes)
     except ValueError:
-        raise TaskParserError("dtype", option_info, value)
+        raise TaskParserError("dtypes", option_info, value)
 
     if option_info.value_min or option_info.value_max:
         _check_option_min_max(value, option_info)

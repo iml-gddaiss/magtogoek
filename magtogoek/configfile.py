@@ -1,6 +1,6 @@
 """
 *** NOTE NOT UP TO DATE ***
-author: Jérôme Guay
+author: JérômeJGuay
 date: March 4, 2021
 
 This make_configparser is called by magtogoek_command.py
