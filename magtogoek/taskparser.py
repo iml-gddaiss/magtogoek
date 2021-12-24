@@ -4,11 +4,10 @@ Made by JeromeJGuay
 """
 
 import getpass
-import sys
 from typing import List, Union, Dict, Optional
 from configparser import RawConfigParser
 from pathlib import Path
-
+from datetime import timezone
 import click
 import dateutil.parser
 
@@ -422,8 +421,8 @@ def _format_option_type(value: str, option_info: OptionInfos, file_path: Optiona
 
     if option_info.is_time_stamp is True:
         try:
-            dateutil.parser.parse(value)
-        except dateutil.parser._parser.ParserError:
+            value = dateutil.parser.parse(value).astimezone(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.f')[:-2]
+        except dateutil.parser.ParserError:
             raise TaskParserError("string_format", option_info, value)
 
     return value
