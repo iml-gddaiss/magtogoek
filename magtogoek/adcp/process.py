@@ -88,6 +88,7 @@ GLOBAL_ATTRS_TO_DROP = [
     "xducer_depth",
     "sonar",
     "variables_gen_name",
+    "bodc_name"
 ]
 CONFIG_GLOBAL_ATTRS_SECTIONS = ["NETCDF_CF", "PROJECT", "CRUISE", "GLOBAL_ATTRIBUTES"]
 PLATFORM_TYPES = ["buoy", "mooring", "ship"]
@@ -479,6 +480,7 @@ def _process_adcp_data(
     # -------------------- #
     # VARIABLES ATTRIBUTES #
     # -------------------- #
+    dataset.attrs['bodc_name'] = params["bodc_name"]
     dataset.attrs["VAR_TO_ADD_SENSOR_TYPE"] = VAR_TO_ADD_SENSOR_TYPE
     dataset.attrs["P01_CODES"] = {
         **P01_VEL_CODES[platform_type],
@@ -487,9 +489,7 @@ def _process_adcp_data(
     dataset.attrs['variables_gen_name'] = [var for var in dataset.variables]
 
     l.section("Variables attributes")
-    dataset = format_variables_names_and_attributes(
-        dataset, use_bodc_codes=params["bodc_name"]
-    )
+    dataset = format_variables_names_and_attributes(dataset)
 
     dataset["time"].assign_attrs(TIME_ATTRS)
 
@@ -529,7 +529,6 @@ def _process_adcp_data(
                 dataset=dataset,
                 platform_metadata=platform_metadata,
                 config_attrs=config_attrs,
-                bodc_name=params['bodc_name'],
                 event_qualifier2=qualifier,
                 output_path=odf_path,
             )
@@ -702,9 +701,7 @@ def _set_xducer_depth_as_sensor_depth(dataset: xr.Dataset):
         dataset.attrs["sensor_depth"] = dataset.attrs["xducer_depth"]
 
     if "xducer_depth" in dataset:
-        dataset.attrs["sensor_depth"] = np.round(
-            np.median(dataset["xducer_depth"].data), 2
-        )
+        dataset.attrs["sensor_depth"] = np.round(np.median(dataset["xducer_depth"].data), 2)
 
 
 def _set_platform_metadata(
@@ -898,7 +895,7 @@ def _format_data_encoding(dataset: xr.Dataset):
 
 
 def _drop_bottom_track(dataset: xr.Dataset) -> xr.Dataset:
-    "Drop `bt_u`, `bt_v`, `bt_w`, `bt_e`, `bt_depth`"
+    """Drop `bt_u`, `bt_v`, `bt_w`, `bt_e`, `bt_depth`"""
     for var in ["bt_u", "bt_v", "bt_w", "bt_e", "bt_depth"]:
         if var in dataset:
             dataset = dataset.drop_vars([var])
@@ -952,17 +949,17 @@ def cut_bin_depths(
 
 
 def cut_times(dataset: xr.Dataset,
-              start_time: str = None,
-              end_time: str = None) -> xr.Dataset:
+              start_time: pd.Timestamp = None,
+              end_time: pd.Timestamp = None) -> xr.Dataset:
     """
     Return a dataset with time cut if they are not outside the dataset time span.
 
     Parameters
     ----------
     dataset
-    start_time :
+    start_time:
         minimum time to be included in the dataset.
-    end_time
+    end_time:
         maximum time to be included in the dataset.
     Returns
     -------
@@ -971,10 +968,10 @@ def cut_times(dataset: xr.Dataset,
     """
     out_off_bound_time = False
     if start_time is not None:
-        if start_time > dataset.time.max():
+        if start_time.to_datetime64() > dataset.time.max():
             out_off_bound_time = True
     if end_time is not None:
-        if end_time < dataset.time.min():
+        if end_time.to_datetime64() < dataset.time.min():
             out_off_bound_time = True
     if out_off_bound_time is True:
         l.warning("Trimming datetimes out of bounds. Time slicing aborted.")
