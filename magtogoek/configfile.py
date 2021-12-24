@@ -47,8 +47,8 @@ import click
 import dateutil.parser
 
 REFERENCE = "https://github.com/JeromeJGuay/magtogoek"
-TRUE_VALUES = ["True", "true", "1", "On", "on"]
-FALSE_VALUES = ["False", "False", "0", "Off", "off", ""]
+TRUE_VALUES = ["True", "true", "T", "t", "On", "on"]
+FALSE_VALUES = ["False", "False", "F", "f", "Off", "off", ""]
 SENSOR_TYPES = ["adcp"]
 
 OptionInfos = namedtuple(
@@ -208,8 +208,8 @@ ADCP_CONFIG = dict(
         "adcp_orientation": OptionInfos(dtypes=["str"], choice=["up", "down"]),
         "sonar": OptionInfos(dtypes=["str"], choice=["wh", "sv", "os", "sw", "sw_pd0"], is_required=True),
         "navigation_file": OptionInfos(dtypes=["str"], default="", is_file=True),
-        "leading_trim": OptionInfos(dtypes=["str"], default=""),
-        "trailing_trim": OptionInfos(dtypes=["str"], default=""),
+        "leading_trim": OptionInfos(dtypes=["str", "int"], default="", is_time_stamp=True),
+        "trailing_trim": OptionInfos(dtypes=["str", "int"], default="", is_time_stamp=True),
         "sensor_depth": OptionInfos(dtypes=["float"], default=""),
         "depth_range": OptionInfos(dtypes=["float"], default="()", nargs_min=0, nargs_max=2),
         "bad_pressure": OptionInfos(dtypes=["bool"], default=False),
@@ -384,7 +384,7 @@ def _format_config_options(config: tp.Dict, config_path: Path):
                     config[section][option], option_info, section, option, config_path
                 )
             elif option_info.null_value is not None:
-                    value = option_info.null_value
+                value = option_info.null_value
             config[section][option] = value
 
 
@@ -405,52 +405,61 @@ def _format_option(value, option_info, section, option, config_path):
 def _format_option_type(value, option_info, section, option, config_path):
     """Format option to the right dtypes.
     - Checks if value is outside option_info.min_value and option_info.max_value.
-    - Check if values is within the option_info.choice."""
+    - Check if values is within the option_info.choice.
+    NOTE TODO: some must be mutually exclusive. Will be fixed in TaskParser update
+    """
 
     try:
         value = _format_value_dtypes(value, option_info.dtypes)
     except ValueError:
         raise ConfigFileError("dtype", section, option, option_info, value)
 
-    if option_info.value_min or option_info.value_max:
-        _check_option_min_max(value, option_info, section, option)
-
     if option_info.choice is not None:
         if value not in option_info.choice:
             raise ConfigFileError("choice", section, option, option_info, value)
 
-    if option_info.is_path is True and isinstance(value, str):
-        value = Path(config_path).joinpath(Path(value)).resolve()
-        if not any((value.is_dir(), value.parent.is_dir())):
-            raise ConfigFileError("path", section, option, option_info, value)
-        value = str(value)
+    if isinstance(value, str):
+        if option_info.is_path is True:
+            value = Path(config_path).joinpath(Path(value)).resolve()
+            if not any((value.is_dir(), value.parent.is_dir())):
+                raise ConfigFileError("path", section, option, option_info, value)
+            value = str(value)
 
-    if option_info.is_file is True:
-        value = Path(config_path).joinpath(Path(value)).resolve()
-        if not value.is_file():
-            raise ConfigFileError("file", section, option, option_info, value)
-        value = str(value)
+        if option_info.is_file is True:
+            value = Path(config_path).joinpath(Path(value)).resolve()
+            if not value.is_file():
+                raise ConfigFileError("file", section, option, option_info, value)
+            value = str(value)
 
-    if option_info.is_time_stamp is True:
-        try:
-            value = dateutil.parser.parse(value).astimezone(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.f')[:-2]
-        except dateutil.parser.ParserError:
-            raise ConfigFileError("string_format", section, option, option_info, value)
+        if option_info.is_time_stamp is True:
+            try:
+                value = dateutil.parser.parse(value).astimezone(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.f')[:-2]
+            except dateutil.parser.ParserError:
+                raise ConfigFileError("string_format", section, option, option_info, value)
+
+    if isinstance(value, (int,float)):
+        if option_info.value_min or option_info.value_max:
+            _check_option_min_max(value, option_info, section, option)
 
     return value
 
 
 def _format_value_dtypes(value: str, dtypes: str) -> tp.Union[bool, int, float, str]:
+    value = _remove_quotes(value)
+
+    if "int" in dtypes or 'float' in dtypes:
+        try:
+            float_value = float(value)
+            int_or_float = int(float_value)
+            if 'float' in dtypes and float_value != int_or_float:
+                int_or_float = float_value
+            return int_or_float
+        except ValueError:
+            pass
     if "bool" in dtypes:
-        if value in TRUE_VALUES + FALSE_VALUES:
+        if value in [*TRUE_VALUES, *FALSE_VALUES]:
             return value in TRUE_VALUES
-    if "int" in dtypes:
-        return int(float(value))
-    if "float" in dtypes:
-        return float(value)
-    if "str" in dtypes:
-        for quotes in ["'", '"']:
-            value = value.strip(quotes)
+    if 'str' in dtypes:
         return value
     raise ValueError
 
@@ -469,6 +478,13 @@ def _get_sequence_from_string(sequence: str) -> tp.List:
         sequence = sequence.replace(sep, ",")
 
     return list(filter(None, sequence.split(",")))
+
+
+def _remove_quotes(value:str)->str:
+    """Remove any redundant quotes around the string."""
+    for quotes in ["'", '"']:
+        value = value.strip(quotes)
+    return value
 
 
 def _check_options_length(value, option_info, section, option):

@@ -515,9 +515,9 @@ def _process_adcp_data(
     # ----------- #
     # ODF OUTPUTS #
     # ----------- #
-    netcdf_path, odf_path, log_path = _make_outputs(params['input_files'][0],
-                                                    params['odf_output'],
-                                                    params['netcdf_output'])
+    netcdf_path, odf_path, log_path = _outputs_path_handler(params['input_files'][0],
+                                                            params['odf_output'],
+                                                            params['netcdf_output'])
 
     l.section("Output")
     if odf_path:
@@ -835,7 +835,7 @@ def _get_datetime_and_count(trim_arg: str):
 
     Returns:
     --------
-    datetime:
+    Timestamp:
         None or pandas.Timestamp
     count:
         None or int
@@ -981,9 +981,9 @@ def cut_times(dataset: xr.Dataset,
     return dataset
 
 
-def _make_outputs(input_path: str,
-                  odf_output: tp.Union[bool, str],
-                  netcdf_output: tp.Union[bool, str]) -> tp.Tuple[tp.Union[bool, str], tp.Union[bool, str], str]:
+def _outputs_path_handler(input_path: str,
+                          odf_output: tp.Union[bool, str],
+                          netcdf_output: tp.Union[bool, str]) -> tp.Tuple[tp.Union[bool, str], tp.Union[bool, str], str]:
     """
 
     Parameters
