@@ -190,7 +190,9 @@ class TaskParser:
 
     @property
     def parser_infos(self):
-        return {**self._parser_infos}
+        """Return a 2 layers deep copy of self._parser_infos.
+        Point to the same immutable objects."""
+        return dict((zip(self._parser_infos.keys(), map(lambda x: {**x}, self._parser_infos.values()))))
 
     @property
     def sections(self):
@@ -448,11 +450,13 @@ def _format_value_dtypes(value: str, dtypes: List[str]) -> StrIntFloatBool:
         return value
     raise ValueError
 
+
 def _remove_quotes(value: str)->str:
     """Remove any redundant quotes around the string."""
     for quotes in ["'", '"']:
         value = value.strip(quotes)
     return value
+
 
 def _get_sequence_from_string(sequence: str) -> List:
     """Decode string containing a sequence of value.
