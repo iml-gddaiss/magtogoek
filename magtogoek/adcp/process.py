@@ -968,10 +968,10 @@ def cut_times(dataset: xr.Dataset,
     """
     out_off_bound_time = False
     if start_time is not None:
-        if start_time.to_datetime64() > dataset.time.max():
+        if start_time > dataset.time.max():
             out_off_bound_time = True
     if end_time is not None:
-        if end_time.to_datetime64() < dataset.time.min():
+        if end_time < dataset.time.min():
             out_off_bound_time = True
     if out_off_bound_time is True:
         l.warning("Trimming datetimes out of bounds. Time slicing aborted.")
