@@ -40,7 +40,7 @@ import sys
 import typing as tp
 from collections import namedtuple
 from configparser import RawConfigParser
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import click
@@ -433,8 +433,8 @@ def _format_option_type(value, option_info, section, option, config_path):
 
     if option_info.is_time_stamp is True:
         try:
-            dateutil.parser.parse(value)
-        except dateutil.parser._parser.ParserError:
+            value = dateutil.parser.parse(value).astimezone(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.f')[:-2]
+        except dateutil.parser.ParserError:
             raise ConfigFileError("string_format", section, option, option_info, value)
 
     return value
