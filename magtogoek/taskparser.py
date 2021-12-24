@@ -397,51 +397,62 @@ def _format_option_type(value: str, option_info: OptionInfos, file_path: Optiona
     except ValueError:
         raise TaskParserError("dtypes", option_info, value)
 
-    if option_info.value_min or option_info.value_max:
-        _check_option_min_max(value, option_info)
-
     if option_info.choice is not None:
         if value not in option_info.choice:
             raise TaskParserError("choice", option_info, value)
 
-    if option_info.is_path is True and isinstance(value, str):
-        value = Path(file_path).joinpath(Path(value)).resolve()
-        if not any((value.is_dir(), value.parent.is_dir())):
-            raise TaskParserError("path", option_info, value)
-        value = str(value)
-
-    if option_info.is_file is True:
-        if file_path is not None:
+    if isinstance(value, str):
+        if option_info.is_path is True and isinstance(value, str):
             value = Path(file_path).joinpath(Path(value)).resolve()
-        else:
-            value = Path(value)
-        if not value.is_file():
-            raise TaskParserError("file", option_info, value)
-        value = str(value)
+            if not any((value.is_dir(), value.parent.is_dir())):
+                raise TaskParserError("path", option_info, value)
+            value = str(value)
 
-    if option_info.is_time_stamp is True:
-        try:
-            value = dateutil.parser.parse(value).astimezone(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.f')[:-2]
-        except dateutil.parser.ParserError:
-            raise TaskParserError("string_format", option_info, value)
+        if option_info.is_file is True:
+            if file_path is not None:
+                value = Path(file_path).joinpath(Path(value)).resolve()
+            else:
+                value = Path(value)
+            if not value.is_file():
+                raise TaskParserError("file", option_info, value)
+            value = str(value)
+
+        if option_info.is_time_stamp is True:
+            try:
+                value = dateutil.parser.parse(value).astimezone(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.f')[:-2]
+            except dateutil.parser.ParserError:
+                raise TaskParserError("string_format", option_info, value)
+
+    if isinstance(value, (int, float)):
+        if option_info.value_min or option_info.value_max:
+            _check_option_min_max(value, option_info)
 
     return value
 
 
 def _format_value_dtypes(value: str, dtypes: List[str]) -> StrIntFloatBool:
+    value = _remove_quotes(value)
+    if "int" in dtypes or 'float' in dtypes:
+        try:
+            float_value = float(value)
+            int_or_float = int(float_value)
+            if 'float' in dtypes and float_value != int_or_float:
+                int_or_float = float_value
+            return int_or_float
+        except ValueError:
+            pass
     if "bool" in dtypes:
-        if value in TRUE_VALUES or value in FALSE_VALUES:
+        if value in [*TRUE_VALUES, *FALSE_VALUES]:
             return value in TRUE_VALUES
-    if "int" in dtypes:
-        return int(float(value))
-    if "float" in dtypes:
-        return float(value)
-    if "str" in dtypes:
-        for quotes in ["'", '"']:
-            value = value.strip(quotes)
+    if 'str' in dtypes:
         return value
     raise ValueError
 
+def _remove_quotes(value: str)->str:
+    """Remove any redundant quotes around the string."""
+    for quotes in ["'", '"']:
+        value = value.strip(quotes)
+    return value
 
 def _get_sequence_from_string(sequence: str) -> List:
     """Decode string containing a sequence of value.
