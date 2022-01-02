@@ -353,7 +353,7 @@ def _format_parser_options(parser_dict: dict, parser_infos: ParserInfos, file_pa
 
     - Convert the sensor specific configuration parameters values to the right
     data type, skipping `None` value set previously.
-    - Boolean `True` entry have to be in ['True','true','1'] else, it considered `False`.
+    - Boolean `True` entry have to be in ['True','true','1', 'On,'on'] else, it considered `False`.
 
     Raises
     ------
