@@ -88,7 +88,7 @@ class OptionInfos:
         return 'OptionInfos(\n' + str(self.__dict__).replace(",", ",\n").replace('{', '').replace('}', '') + '\n)'
 
     def _list_check(self):
-        for option in ("dtypes", "choice"):
+        for option in ("choice"):
             if self.__dict__[option] is not None:
                 if not isinstance(self.__dict__[option], list):
                     raise ValueError(f"{option} argument expected a list.")
@@ -119,7 +119,7 @@ class OptionInfos:
 
 
 class TaskParserError(SystemExit):
-    def __init__(self, error: str, option_info: OptionInfos, value: ListStrIntFloatBool='None'):
+    def __init__(self, error: str, option_info: OptionInfos, value: ListStrIntFloatBool='None'): #TODO is this correct ?
         self.error = error
         self.section = option_info.section
         self.option = option_info.option
