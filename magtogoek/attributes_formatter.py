@@ -89,7 +89,7 @@ def format_variables_names_and_attributes(dataset: xr.Dataset) -> xr.Dataset:
 
     _add_sdn_and_cf_var_attrs(dataset, json2dict(STATIC_ATTRIBUTES_ABSOLUTE_FILE_PATH))
 
-    if dataset.attrs['bodc_name'] is True:
+    if dataset.attrs['bodc_name'] is not True:
         dataset = _convert_variables_names(dataset, convert_back_to_generic=True)
     else:
         dataset = dataset.rename(
