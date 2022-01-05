@@ -237,7 +237,7 @@ def load_adcp_binary(
         if abs(depth_difference) > 0:
             l.log(
                 [
-                    f"The difference between the raw file sensor depth and the user"
+                    f"The difference between the raw file sensor depth and the user "
                     f"provided `sensor_depth` ({sensor_depth} m) is {depth_difference} m",
                 ]
             )
@@ -373,7 +373,7 @@ def load_adcp_binary(
     # ------------------ #
 
     # For `wh`, `sv` and `sw` XducerDepth varies over times but is constant for `os`.
-    if sonar != "os":
+    if sonar != "os" and len(np.unique(xducer_depth)) > 1:
         dataset["xducer_depth"] = (["time"], np.asarray(xducer_depth))
 
     # --------------------------- #
