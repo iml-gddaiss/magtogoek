@@ -486,7 +486,7 @@ def _process_adcp_data(
         **P01_VEL_CODES[platform_type],
         **P01_CODES,
     }
-    dataset.attrs['variables_gen_name'] = [var for var in dataset.variables]
+    dataset.attrs['variables_gen_name'] = [var for var in dataset.variables] # For Odf outputs
 
     l.section("Variables attributes")
     dataset = format_variables_names_and_attributes(dataset)

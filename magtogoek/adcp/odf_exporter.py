@@ -155,7 +155,7 @@ def _set_event_header_geospatials(odf: Odf, dataset: xr.Dataset) -> None:
             odf.event['max_depth'] = dataset[dataset.attrs['P01_CODES']['xducer_depth']].values.max()
         else:
             odf.event['min_depth'] = dataset.attrs['sensor_depth']
-            odf.event['min_depth'] = dataset.attrs['sensor_depth']
+            odf.event['max_depth'] = dataset.attrs['sensor_depth']
     else:
         odf.event['min_depth'] = dataset.depth.values.min()
         odf.event['max_depth'] = dataset.depth.values.max()
@@ -394,11 +394,9 @@ def _make_parameter_headers(odf, dataset, variables: List[str]):
         Dataset to which add the navigation data.
     variables:
        variables to put in the ODF.
-    bodc_name:
-        If True, map from the generic to the BODC p01 variables names.
     Notes
     -----
-    The variable order is important in the variables list.
+    The variable order in the ODF will be the same as in the variables list parameter.
     """
 
     parameters_metadata = {}
@@ -407,7 +405,7 @@ def _make_parameter_headers(odf, dataset, variables: List[str]):
 
     for var in variables:
         dataset_variable_name = var
-        if dataset.attrs['bodc_name'] is True and not var in ('time', 'depth'):
+        if dataset.attrs['bodc_name'] is True and var not in ('time', 'depth'):
             dataset_variable_name = dataset.attrs["P01_CODES"][var]
         if dataset_variable_name in dataset.variables:
             parameters_metadata[dataset_variable_name] = PARAMETERS_METADATA[var]
