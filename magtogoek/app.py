@@ -28,7 +28,7 @@ from subprocess import run as subp_run
 import click
 
 from magtogoek.app_options import adcp_options, add_options
-from magtogoek.configfile import _get_taskparser
+#from magtogoek.configfile import _get_taskparser
 from magtogoek.utils import is_valid_filename, json2dict, resolve_relative_path
 from magtogoek.version import VERSION
 
@@ -44,16 +44,16 @@ from magtogoek.version import VERSION
 LOGO_PATH = resolve_relative_path("files/logo.json", __file__)
 
 
-def _get_config_structure(_config: tp.Dict) -> tp.Dict:
-    config_struct = dict()
-    for section, items in _config.items():
-        for item in items:
-            config_struct[item] = section
-    return config_struct
+#def _get_config_structure(_config: tp.Dict) -> tp.Dict:
+#    config_struct = dict()
+#    for section, items in _config.items():
+#        for item in items:
+#            config_struct[item] = section
+#    return config_struct
 
 
-BASE_CONFIG_STRUCT = _get_config_structure(_get_taskparser().as_dict())
-ADCP_CONFIG_STRUCT = _get_config_structure(_get_taskparser().as_dict())
+#BASE_CONFIG_STRUCT = _get_config_structure(_get_taskparser().as_dict())
+#ADCP_CONFIG_STRUCT = _get_config_structure(_get_taskparser('adcp').as_dict())
 
 OPTIONS_NAME_TRANSLATOR = dict(
     adcp=dict(
@@ -202,19 +202,12 @@ def config_adcp(
     from magtogoek.configfile import make_configfile
 
     _print_passed_options(options)
-
-    # check if a file already exists and format the `.ini` extension.
     config_name = is_valid_filename(config_name, ext=".ini")
-
-    new_config_values = _format_options_for_configfile("adcp", options)
-
-    make_configfile(filename=config_name, sensor_type="adcp", new_values=new_config_values)
-
-    click.echo(
-        click.style(
-            f"Config file created for adcp processing -> {config_name}", bold=True
-        )
+    make_configfile(
+        filename=config_name, sensor_type="adcp", new_values_dict=_format_options_to_config_dict("adcp", options)
     )
+
+    click.secho(f"Config file created for adcp processing -> {config_name}", bold=True)
 
 
 # --------------------------- #
@@ -359,40 +352,43 @@ def odf2nc(ctx, info, input_files, output_name, **options):
 # ------------------------ #
 #        Functions         #
 # ------------------------ #
-def _format_options_for_configfile(sensor_type, options):
+def _format_options_to_config_dict(sensor_type, options):
     """format options into the  configfile structure"""
+    from magtogoek.configfile import _get_taskparser
     options = _convert_options_names(sensor_type, options)
 
-    configfile_struct = {}
-    if sensor_type == "adcp":
-        configfile_struct = {**BASE_CONFIG_STRUCT, **ADCP_CONFIG_STRUCT}
-        if not options["bottom_depth"]:
-            options["bottom_depth"] = ""
+    configparser = _get_taskparser(sensor_type=sensor_type).as_dict()
+    config_struct = _get_configparser_structure(configparser)
+
+    for option, value in options.items():
+        if value is not None:
+            configparser[config_struct[option]][option] = value
+
+    return configparser
+
+
+def _convert_options_names(sensor_type, options):
+    """Translate options name.
+    Translate options names from the command names to the parameters name used by magtogoek.
+    Splits the `platform` option into plarform_file, platform_id, sensor_id."""
+
+    for key, item in OPTIONS_NAME_TRANSLATOR[sensor_type].items():
+        options[key] = options.pop(item)
+
     options["platform_file"] = options["platform"][0]
     options["platform_id"] = options["platform"][1]
     options["sensor_id"] = options["platform"][2]
     del options["platform"]
 
-    new_config_values = dict()
-    for section in set(configfile_struct.values()):
-        new_config_values[section] = dict()
-
-    for option, value in options.items():
-        if value is not None:
-            new_config_values[configfile_struct[option]][option] = value
-
-    return new_config_values
-
-
-def _convert_options_names(sensor_type, options):
-    """Translate options name.
-    Translate options names from the command names to
-    the parameters name used by magtogoek."""
-
-    for key, item in OPTIONS_NAME_TRANSLATOR[sensor_type].items():
-        options[key] = options.pop(item)
-
     return options
+
+
+def _get_configparser_structure(configparser: tp.Dict) -> tp.Dict:
+    parser_struct = dict()
+    for section, items in configparser.items():
+        for item in items:
+            parser_struct[item] = section
+    return parser_struct
 
 
 def _print_passed_options(ctx_params: tp.Dict):

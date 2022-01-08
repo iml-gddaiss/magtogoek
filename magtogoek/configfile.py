@@ -37,10 +37,12 @@ VALID_SENSOR_TYPES = ['ADCP']
 
 def make_configfile(filename: str, sensor_type: str, new_values_dict: Optional[ParserDict] = None):
     """Make a configfile for the given sensor_type."""
-
+    if new_values_dict is None:
+        new_values_dict = {}
+    new_values_dict['HEADER']['sensor_type']=sensor_type
     tparser = _get_taskparser(sensor_type)
 
-    tparser.write(filename=filename, new_values_dict=new_values_dict)
+    tparser.write_from_dict(filename=filename, parser_dict=tparser.as_dict(), format_options=False)
 
 
 def load_configfile(filename: str, new_values_dict: ParserDict = None) -> dict:
@@ -114,8 +116,8 @@ def _get_taskparser(sensor_type: Optional[str] = None):
     tparser.add_option(section, "cruise_description", dtypes=["str"], default="")
     tparser.add_option(section, "organization", dtypes=["str"], default="")
     tparser.add_option(section, "chief_scientist", dtypes=["str"], default="")
-    tparser.add_option(section, "start_date", dtypes=["str"], default="")
-    tparser.add_option(section, "end_date", dtypes=["str"], default="")
+    tparser.add_option(section, "start_date", dtypes=["str"], default="", is_time_stamp=True)
+    tparser.add_option(section, "end_date", dtypes=["str"], default="", is_time_stamp=True)
     tparser.add_option(section, "event_number", dtypes=["str"], default="", null_value="")
     tparser.add_option(section, "event_qualifier1", dtypes=["str"], default="", null_value="")
     tparser.add_option(section, "event_comments", dtypes=["str"], default="")
@@ -138,14 +140,14 @@ def _get_taskparser(sensor_type: Optional[str] = None):
         tparser.add_option(section, "adcp_orientation", dtypes=["str"], choice=["up", "down"])
         tparser.add_option(section, "sonar", dtypes=["str"], choice=["wh", "sv", "os", "sw", "sw_pd0"], is_required=True)
         tparser.add_option(section, "navigation_file", dtypes=["str"], default="", is_file=True)
-        tparser.add_option(section, "leading_trim", dtypes=["str"], default="")
-        tparser.add_option(section, "trailing_trim", dtypes=["str"], default="")
+        tparser.add_option(section, "leading_trim", dtypes=["int", "str"], default="", is_time_stamp=True)
+        tparser.add_option(section, "trailing_trim", dtypes=["int", "str"], default="", is_time_stamp=True)
         tparser.add_option(section, "sensor_depth", dtypes=["float"], default="")
         tparser.add_option(section, "depth_range", dtypes=["float"], default="()", nargs_min=0, nargs_max=2)
         tparser.add_option(section, "bad_pressure", dtypes=["bool"], default=False)
         tparser.add_option(section, "magnetic_declination", dtypes=["float"], default="")
         tparser.add_option(section, "keep_bt", dtypes=["bool"], default=True)
-        tparser.add_option(section, "start_time", dtypes=["str"], default="")
+        tparser.add_option(section, "start_time", dtypes=["str"], default="", is_time_stamp=True)
         tparser.add_option(section, "time_step", dtypes=["float"], default="")
 
         section = "ADCP_QUALITY_CONTROL"

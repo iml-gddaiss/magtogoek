@@ -11,8 +11,8 @@ from datetime import timezone
 import click
 import dateutil.parser
 
-TRUE_VALUES = ["True", "true", "1", "On", "on"]
-FALSE_VALUES = ["False", "False", "0", "Off", "off", ""]
+TRUE_VALUES = ["True", "true", "On", "on"]
+FALSE_VALUES = ["False", "False", "Off", "off", ""]
 VALID_DTYPES = ["str", "int", "float", "bool"]
 
 StrIntFloatBool = Union[str, int, float, bool]
@@ -88,7 +88,7 @@ class OptionInfos:
         return 'OptionInfos(\n' + str(self.__dict__).replace(",", ",\n").replace('{', '').replace('}', '') + '\n)'
 
     def _list_check(self):
-        for option in ("choice"):
+        for option in ["choice"]:
             if self.__dict__[option] is not None:
                 if not isinstance(self.__dict__[option], list):
                     raise ValueError(f"{option} argument expected a list.")
@@ -119,7 +119,8 @@ class OptionInfos:
 
 
 class TaskParserError(SystemExit):
-    def __init__(self, error: str, option_info: OptionInfos, value: ListStrIntFloatBool='None'): #TODO is this correct ?
+    def __init__(self, error: str, option_info: OptionInfos,
+                 value: ListStrIntFloatBool = 'None'):
         self.error = error
         self.section = option_info.section
         self.option = option_info.option
@@ -127,7 +128,7 @@ class TaskParserError(SystemExit):
         self.value: ListStrIntFloatBool = value
         self.msg: str = ""
         self._get_error_message()
-        super().__init__(click.style("TaskParserError", fg="red", bold=True) +"\n"+ self.msg)
+        super().__init__(click.style("TaskParserError", fg="red", bold=True) + "\n" + self.msg)
 
     def _get_error_message(self):
         if self.error == "dtypes":
@@ -155,7 +156,7 @@ class TaskParserError(SystemExit):
                 self.msg += f"<= than `{self.option_info.value_max}` "
             self.msg += f", but received a value of `{self.value}`."
         if self.error == "choice":
-            self.msg = f"`{self.section}/{self.option}` expected a value in `{self.option_info.choice}` but received `{self.value}`. "
+            self.msg = f"`{self.section}/{self.option}` expected a value in `{self.option_info.choice}` but received `{self.value}`."
         if self.error == "string_format":
             self.msg = f"`{self.section}/{self.option}` is an invalid datetime format. Use `YYYY-MM-DDThh:mm:ss.ssss`"
         if self.error == "path":
@@ -240,20 +241,42 @@ class TaskParser:
 
         return parser
 
-    def as_dict(self, with_default: bool = True)-> ParserDict:
+    def as_dict(self, with_default: bool = True) -> ParserDict:
         return self.parser(with_default)._sections
 
     def format_parser_dict(
-            self, parser_dict: dict, add_missing: bool = True, new_values_dict: Optional[dict] = None,
+            self, parser_dict: dict,
+            add_missing: bool = True,
+            new_values_dict: Optional[dict] = None,
+            format_options: bool = True,
             file_path: Optional[str] = None
     ):
-        if add_missing is True:
-            _add_missing_options(parser_dict, self._parser_infos)
+        """
 
+        Parameters
+        ----------
+        parser_dict
+        add_missing :
+            If True, missing will be added to the output with null value.
+        new_values_dict :
+            Dictionary of the same structure of the parser with new values.
+        format_options :
+           If True, the loaded config options will be formatted.
+        file_path :
+            Absolute path to the configfile to replace relative path by absolute path.
+
+        Returns
+        -------
+
+        """
         if new_values_dict is not None:
             _update_parser_values(parser_dict, new_values_dict)
 
-        _format_parser_options(parser_dict=parser_dict, parser_infos=self._parser_infos, file_path=file_path)
+        if format_options is True:
+            _format_parser_options(parser_dict=parser_dict, parser_infos=self._parser_infos, file_path=file_path)
+
+        if add_missing is True:
+            _add_missing_options(parser_dict, self._parser_infos)
 
     def format_option(self, value, section: str, option: str) -> ListStrIntFloatBool:
         value = str(value)
@@ -263,48 +286,37 @@ class TaskParser:
             raise ValueError(f"{section} section has no option {option}")
         return _format_option(value, self._parser_infos[section][option])
 
-    def load(self, filename: str, add_missing: bool = True, new_values_dict: Optional[dict] = None) -> ParserDict:
+    def load(self, filename: str,
+             add_missing: bool = True,
+             new_values_dict: Optional[dict] = None,
+             format_options: bool = True) -> ParserDict:
+        """...
+
+        Parameters
+        ----------
+        filename :
+            path/to/file to load.
+        add_missing :
+            If True, missing will be added to the output with null value.
+        new_values_dict :
+            Dictionary of the same structure of the parser with new values.
+        format_options :
+           If True, the loaded config options will be formatted.
+
+        Returns
+        -------
+        Dictionary of the loaded config file.
+
+        """
+        file_path = str(Path(filename).absolute().parent)
+
         parser = _rawconfigparser()
         parser.read(filename)
         parser_dict = parser._sections
 
-        file_path = str(Path(filename).absolute().parent)
-
-        self.format_parser_dict(parser_dict, add_missing, new_values_dict, file_path)
+        self.format_parser_dict(parser_dict, add_missing, new_values_dict, format_options, file_path)
 
         return parser_dict
-
-    def write_from_dict(self, filename: str, parser_dict: ParserDict,
-                        add_missing: bool = True,
-                        new_values_dict: Optional[ParserDict] = None):
-        """
-
-        Parameters
-        ----------
-        filename:
-            path/to/filename
-        parser_dict:
-            from the methode Parser.
-        add_missing:
-            If True, adds the missing option with empty fields.
-        new_values_dict:
-            dictionary with the same structure as the parser. New value to use.
-
-        """
-        parser = _rawconfigparser()
-        for section, options in parser_dict.items():
-            parser.add_section(section)
-            for option, value in options.items():
-                if value is None:
-                    parser[section][option] = ""
-                else:
-                    parser[section][option] = str(value)
-
-        parser_dict = parser._sections
-        self.format_parser_dict(parser_dict, add_missing=add_missing, new_values_dict=new_values_dict)
-
-        with open(filename, "w") as f:
-            parser.write(Path(f).with_suffix('.ini'))
 
     def write(self, filename: str, new_values_dict: Optional[ParserDict] = None):
         """
@@ -320,7 +332,47 @@ class TaskParser:
             with open(filename, "w") as f:
                 self.parser.write(Path(f).with_suffix('.ini'))
         else:
-            self.write_from_dict(filename, parser_dict=self.parser(), add_missing=False, new_values_dict=new_values_dict)
+            self.write_from_dict(filename,
+                                 parser_dict=self.as_dict(),
+                                 add_missing=False,
+                                 new_values_dict=new_values_dict)
+
+    def write_from_dict(self, filename: str, parser_dict: ParserDict,
+                        add_missing: bool = True,
+                        new_values_dict: Optional[ParserDict] = None,
+                        format_options: bool = True,
+                        ):
+        """
+
+        Parameters
+        ----------
+        filename:
+            path/to/filename
+        parser_dict:
+            from the methode Parser.
+        add_missing:
+            If True, adds the missing option with empty fields.
+        new_values_dict:
+            dictionary with the same structure as the parser. New values to use.
+        format_options :
+           If True, the loaded config options will be formatted.
+
+        """
+        parser = _rawconfigparser()
+        for section, options in parser_dict.items():
+            parser.add_section(section)
+            for option, value in options.items():
+                if value is None:
+                    parser[section][option] = ""
+                else:
+                    parser[section][option] = str(value)
+
+        parser_dict = parser._sections
+        self.format_parser_dict(parser_dict, add_missing=add_missing, new_values_dict=new_values_dict,
+                                format_options=format_options)
+
+        with open(Path(filename).with_suffix('.ini'), "w") as f:
+            parser.write(f)
 
 
 def _rawconfigparser():
@@ -338,6 +390,13 @@ def _update_parser_values(parser: dict, values_dict: Optional[dict] = None):
 
 
 def _add_missing_options(parser_dict: dict, parser_infos: ParserInfos):
+    """Check for missing sections or options compared to the expected parser
+       - Adds the options or section if needed with empty string as value.
+       Notes
+       -----
+       This prevents missing key error later in the processing without needing
+       to add tons of conditional statements.
+       """
     for section, options in parser_infos.items():
         if section not in parser_dict:
             parser_dict[section] = {}
@@ -362,20 +421,20 @@ def _format_parser_options(parser_dict: dict, parser_infos: ParserInfos, file_pa
         length, value, choice,  etc.
 
     """
+    # TODO test
     for section, options in parser_infos.items():
-        for option in options:
-            option_info = parser_infos[section][option]
-            value = parser_dict[section][option]
-            if "bool" not in option_info.dtypes:
-                if not value and value != 0:
-                    value = None
-                    if option_info.is_required is True:
-                        raise TaskParserError("required", option_info, value)
-            if value is not None:
-                value = _format_option(parser_dict[section][option], option_info, file_path)
-            elif option_info.null_value is not None:
-                value = option_info.null_value
-            parser_dict[section][option] = value
+        if section in parser_dict:
+            for option in options:
+                if option in parser_dict[section]:
+                    option_info = parser_infos[section][option]
+                    value = parser_dict[section][option]
+                    if "bool" not in option_info.dtypes and value == "":
+                        value = option_info.null_value
+                        if option_info.is_required is True:
+                            raise TaskParserError("required", option_info, value)
+                    else:
+                        value = _format_option(parser_dict[section][option], option_info, file_path)
+                    parser_dict[section][option] = value
 
 
 def _format_option(value: str, option_info: OptionInfos, file_path: Optional[str] = None):
@@ -425,9 +484,8 @@ def _format_option_type(value: str, option_info: OptionInfos, file_path: Optiona
             except dateutil.parser.ParserError:
                 raise TaskParserError("string_format", option_info, value)
 
-    if isinstance(value, (int, float)):
-        if option_info.value_min or option_info.value_max:
-            _check_option_min_max(value, option_info)
+    if isinstance(value, (int, float)) and (option_info.value_min or option_info.value_max):
+        _check_option_min_max(value, option_info)
 
     return value
 
@@ -451,7 +509,7 @@ def _format_value_dtypes(value: str, dtypes: List[str]) -> StrIntFloatBool:
     raise ValueError
 
 
-def _remove_quotes(value: str)->str:
+def _remove_quotes(value: str) -> str:
     """Remove any redundant quotes around the string."""
     for quotes in ["'", '"']:
         value = value.strip(quotes)
@@ -539,8 +597,8 @@ def main():
     parser.add_option(section, "cruise_description", dtypes=["str"], default="")
     parser.add_option(section, "organization", dtypes=["str"], default="")
     parser.add_option(section, "chief_scientist", dtypes=["str"], default="")
-    parser.add_option(section, "start_date", dtypes=["str"], default="")
-    parser.add_option(section, "end_date", dtypes=["str"], default="")
+    parser.add_option(section, "start_date", dtypes=["str"], default="", is_time_stamp=True)
+    parser.add_option(section, "end_date", dtypes=["str"], default="", is_time_stamp=True)
     parser.add_option(section, "event_number", dtypes=["str"], default="", null_value="")
     parser.add_option(section, "event_qualifier1", dtypes=["str"], default="", null_value="")
     parser.add_option(section, "event_comments", dtypes=["str"], default="")
@@ -562,14 +620,14 @@ def main():
     parser.add_option(section, "adcp_orientation", dtypes=["str"], choice=["up", "down"])
     parser.add_option(section, "sonar", dtypes=["str"], choice=["wh", "sv", "os", "sw", "sw_pd0"], is_required=True)
     parser.add_option(section, "navigation_file", dtypes=["str"], default="", is_file=True)
-    parser.add_option(section, "leading_trim", dtypes=["str"], default="")
-    parser.add_option(section, "trailing_trim", dtypes=["str"], default="")
+    parser.add_option(section, "leading_trim", dtypes=["int", "str"], default="", is_time_stamp=True)
+    parser.add_option(section, "trailing_trim", dtypes=["int", "str"], default="", is_time_stamp=True)
     parser.add_option(section, "sensor_depth", dtypes=["float"], default="")
     parser.add_option(section, "depth_range", dtypes=["float"], default="()", nargs_min=0, nargs_max=2)
     parser.add_option(section, "bad_pressure", dtypes=["bool"], default=False)
     parser.add_option(section, "magnetic_declination", dtypes=["float"], default="")
     parser.add_option(section, "keep_bt", dtypes=["bool"], default=True)
-    parser.add_option(section, "start_time", dtypes=["str"], default="")
+    parser.add_option(section, "start_time", dtypes=["str"], default="", is_time_stamp=True)
     parser.add_option(section, "time_step", dtypes=["float"], default="")
 
     section = "ADCP_QUALITY_CONTROL"
@@ -601,12 +659,12 @@ def main():
 
 
 if __name__ == "__main__":
-    parser = main()
-    d = parser.as_dict()
+    _parser = main()
+    d = _parser.as_dict()
 
     # d["HEADER"]["sensor_type"] = "adcp"
     # d["INPUT"]["input_files"] = "taskparser.py"
     # d["ADCP_PROCESSING"]["yearbase"] = 2018
     # d["ADCP_PROCESSING"]["sonar"] = "wh"
 
-    parser.format_parser_dict(d)
+    _parser.format_parser_dict(d)
