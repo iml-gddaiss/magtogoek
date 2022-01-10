@@ -229,12 +229,10 @@ class ProcessConfig:
         self.platform_metadata: dict = {}
 
         self.metadata.update(DEFAULT_CONFIG_ATTRIBUTES)
-        pass
 
-    def load_from_quick(self, params):
-        pass
 
-    def load_from_process(self, config: dict) -> dict:
+
+    def load_from_config(self, config: dict) -> dict:
         """Split and flattens"""
 
         for section, options in config.items():
@@ -245,7 +243,20 @@ class ProcessConfig:
                 for option in options:
                     self.__dict__[option] = config[section][option]
 
-        return self.metadata
+        self._load_platform()
+
+    def _load_platform(self):
+        #TODO TEST
+        platform_metadata = _default_platform()
+        if self.platform_file:
+            if Path(self.platform_file).is_file():
+                platform_metadata = _load_platform(self.platform_file, self.platform_id, self.sensor_id)
+            else:
+                l.warning(f"platform_file, {self.platform_file}, not found")
+        else:
+            if self.platform_type:
+                platform_metadata["platform"]['platform_type'] = self.platform_type
+        self.platform_metadata = platform_metadata
 
 
 def process_adcp(config: dict):
@@ -269,55 +280,58 @@ def process_adcp(config: dict):
         For the processing workflow.
 
     """
-    params, config_attrs = _get_config(config)
+    #TODO TEST
+    #params, config_attrs = _get_config(config)
+    pconfig = ProcessConfig()
+    pconfig.load_from_config(config)
 
-    params["input_files"] = format_str2list(params["input_files"])
+    pconfig.input_files = format_str2list(pconfig.input_files)
 
-    if len(params["input_files"]) == 0:
+    if len(pconfig.input_files) == 0:
         raise ValueError("No adcp file was provided in the configfile.")
 
-    platform_metadata = _default_platform()
-    if params["platform_file"]:
-        if Path(params["platform_file"]).is_file():
-            platform_metadata = _load_platform(params)
-        else:
-            l.warning(f"platform_file, {params['platform_file']}, not found")
-    else:
-        if params["platform_type"]:
-            platform_metadata["platform"]['platform_type'] = params["platform_type"]
-    _pipe_to_process_adcp_data(params, platform_metadata, config_attrs)
+    #platform_metadata = _default_platform()
+    #if params["platform_file"]:
+    #    if Path(params["platform_file"]).is_file():
+    #        platform_metadata = _load_platform(params)
+    #    else:
+    #        l.warning(f"platform_file, {params['platform_file']}, not found")
+    #else:
+    #    if params["platform_type"]:
+    #        platform_metadata["platform"]['platform_type'] = params["platform_type"]
+    _pipe_to_process_adcp_data(pconfig.__dict__, pconfig.platform_metadata, pconfig.metadata)
 
 
-def quick_process_adcp(params: tp.Dict):
-    """Process adcp data with quick_process options(params).
+#def quick_process_adcp(params: tp.Dict):
+#    """Process adcp data with quick_process options(params).
 
-    Pipes the params to _to_process_adcp_data which in turn pipes
-    it to _process_adcp_data.
+#    Pipes the params to _to_process_adcp_data which in turn pipes
+#    it to _process_adcp_data.
+#
+#    Notes
+#    -----
+#    missing `platform_type` :
+#        If the platform_type cannot be found, the function automatically default to
+#        `mooring` to set the correct BODC P01 parameter codes.
+#
+#    See Also
+#    --------
+#    _process_adcp_data :
+#        For the processing workflow."""
 
-    Notes
-    -----
-    missing `platform_type` :
-        If the platform_type cannot be found, the function automatically default to
-        `mooring` to set the correct BODC P01 parameter codes.
+#    config_attrs = {}
+#    config_attrs.update(DEFAULT_CONFIG_ATTRIBUTES)
+#    platform_metadata = _default_platform()
+#    platform_metadata['platform']["platform_type"] = params["platform_type"]
 
-    See Also
-    --------
-    _process_adcp_data :
-        For the processing workflow."""
+#   params["force_platform_metadata"] = False
 
-    config_attrs = {}
-    config_attrs.update(DEFAULT_CONFIG_ATTRIBUTES)
-    platform_metadata = _default_platform()
-    platform_metadata['platform']["platform_type"] = params["platform_type"]
+#    if params["odf_output"] in [1, "true", "True", 't', "T"]:
+#        params["odf_output"] = True
 
-    params["force_platform_metadata"] = False
-
-    if params["odf_output"] in [1, "true", "True", 't', "T"]:
-        params["odf_output"] = True
-
-    _pipe_to_process_adcp_data(
-        params, platform_metadata, config_attrs, drop_empty_attrs=True
-    )
+#    _pipe_to_process_adcp_data(
+#        params, platform_metadata, config_attrs, drop_empty_attrs=True
+#    )
 
 
 def _pipe_to_process_adcp_data(
@@ -637,7 +651,7 @@ def _get_default_config_attrs():
     }
 
 
-def _load_platform(params: dict) -> tp.Dict:
+def _load_platform(platform_file: str, platform_id: str, sensor_id: str) -> tp.Dict:
     """load sensor metadata into dict
 
     Returns a `flat` dictionary with all the parents metadata
@@ -646,27 +660,27 @@ def _load_platform(params: dict) -> tp.Dict:
 
     """
     platform_metadata = _default_platform()
-    json_dict = json2dict(params["platform_file"])
-    if params["platform_id"] in json_dict:
-        platform_metadata['platform'].update(json_dict[params["platform_id"]])
+    json_dict = json2dict(platform_file)
+    if platform_id in json_dict:
+        platform_metadata['platform'].update(json_dict[platform_id])
         if 'buoy_specs' in platform_metadata['platform']:
             platform_metadata['buoy_specs'].update(platform_metadata['platform'].pop('buoy_specs'))
         if 'sensors' in platform_metadata['platform']:
             platform_metadata['sensors'].update(platform_metadata['platform'].pop('sensors'))
-            if params["sensor_id"] in platform_metadata["sensors"]:
-                platform_metadata['adcp_id'] = params["sensor_id"]
-                platform_metadata['adcp'].update(platform_metadata["sensors"].pop(params["sensor_id"]))
+            if sensor_id in platform_metadata["sensors"]:
+                platform_metadata['adcp_id'] = sensor_id
+                platform_metadata['adcp'].update(platform_metadata["sensors"].pop(sensor_id))
             else:
                 l.warning(
-                    f"{params['sensor_id']} not found in the {params['platform_id']}['sensor'] section "
+                    f"{sensor_id} not found in the {platform_id}['sensor'] section "
                     f"of the platform file."
                 )
         else:
             l.warning(
-                f"sensors section missing in the {params['platform_id']} section of the platform file."
+                f"sensors section missing in the {platform_id} section of the platform file."
             )
     else:
-        l.warning(f"{params['platform_id']} not found in platform file.")
+        l.warning(f"{platform_id} not found in platform file.")
 
     return platform_metadata
 
