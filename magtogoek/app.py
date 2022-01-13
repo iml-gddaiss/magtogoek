@@ -235,9 +235,9 @@ def quick_adcp(
     options = {**{"input_files": input_files, "yearbase": yearbase, "sonar": sonar}, **options}
     _print_passed_options(options)
 
-    configuration = cli_options_to_config('adcp', options)
+    configuration = cli_options_to_config('adcp', options, cwd=str(Path().cwd()))
 
-    process_adcp(configuration)
+    process_adcp(configuration, drop_empty_attrs=True)
 
 
 # --------------------------- #

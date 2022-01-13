@@ -1,7 +1,7 @@
 import pytest
 import xarray as xr
 from magtogoek.adcp.odf_exporter import make_odf
-from magtogoek.adcp.process import _default_platform
+from magtogoek.adcp.process import _default_platform_metadata
 from magtogoek.utils import json2dict
 
 DATASET = xr.open_dataset("data/netcdf_test_files/test_netcdf.nc")
@@ -18,7 +18,7 @@ P01_TO_GENERIC_NAME = {
 DATASET.attrs['P01_CODES'] = P01_TO_GENERIC_NAME
 DATASET.attrs['variables_gen_name'] = [DATASET[var].attrs['generic_name'] for var in DATASET.variables]
 
-PLATFORM_METADATA = _default_platform()
+PLATFORM_METADATA = _default_platform_metadata()
 PLATFORM_METADATA['platform'].update(
     {
         "platform_name": "platform_name_test",

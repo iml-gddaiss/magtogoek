@@ -62,7 +62,7 @@ def write_configfile(filename: str, sensor_type: str, cli_options: Optional[dict
         _convert_options_names(sensor_type, cli_options)
         new_values_dict = _format_options_to_config_dict(sensor_type, cli_options)
 
-    tparser = _get_taskparser(sensor_type)
+    tparser = get_config_taskparser(sensor_type)
     tparser.write_from_dict(filename=filename,
                             parser_dict=tparser.as_dict(),
                             format_options=False,
@@ -84,7 +84,7 @@ def load_configfile(filename: str, new_values_dict: ParserDict = None) -> dict:
         raise FileNotFoundError(f"{filename} not found")
 
     sensor_type = _get_sensor_type(filename)
-    tparser = _get_taskparser(sensor_type)
+    tparser = get_config_taskparser(sensor_type)
 
     config = tparser.load(filename, add_missing=True, new_values_dict=new_values_dict)
 
@@ -94,7 +94,7 @@ def load_configfile(filename: str, new_values_dict: ParserDict = None) -> dict:
     return config, sensor_type
 
 
-def cli_options_to_config(sensor_type: str, options: dict)->ParserDict:
+def cli_options_to_config(sensor_type: str, options: dict, cwd: str)->ParserDict:
     """
 
     Parameters
@@ -102,15 +102,17 @@ def cli_options_to_config(sensor_type: str, options: dict)->ParserDict:
     sensor_type :
     options :
         command line options.
+    cwd :
+       current working directory.
     """
-    tparser = _get_taskparser(sensor_type)
+    tparser = get_config_taskparser(sensor_type)
     config = _format_options_to_config_dict(sensor_type, options)
-    tparser.format_parser_dict(parser_dict=config, add_missing=True, format_options=True)
+    tparser.format_parser_dict(parser_dict=config, add_missing=True, format_options=True, file_path=cwd)
     return config
 
 
 def _get_sensor_type(filename):
-    tparser = _get_taskparser()
+    tparser = get_config_taskparser()
     return tparser.load(filename)["HEADER"]["sensor_type"]
 
 
@@ -118,7 +120,7 @@ def _format_options_to_config_dict(sensor_type: str, options: dict):
     """format options into the  configfile structure"""
     _convert_options_names(sensor_type, options)
 
-    config = _get_taskparser(sensor_type=sensor_type).as_dict()
+    config = get_config_taskparser(sensor_type=sensor_type).as_dict()
     config_struct = _get_configparser_structure(config)
 
     for option, value in options.items():
@@ -143,7 +145,7 @@ def _get_configparser_structure(configparser: Dict) -> Dict:
     return parser_struct
 
 
-def _get_taskparser(sensor_type: Optional[str] = None):
+def get_config_taskparser(sensor_type: Optional[str] = None):
     tparser = TaskParser()
 
     section = "HEADER"
