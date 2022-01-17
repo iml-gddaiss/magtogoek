@@ -239,17 +239,16 @@ class ProcessConfig:
         if config_dict is not None:
             self._load_config_dict(config_dict)
 
-        self._get_platform_metadata()
-        self.platform_type = self.platform_metadata["platform"]['platform_type']
-
         if isinstance(self.input_files, str):
-            format_str2list(self.input_files)
+            self.input_files = format_str2list(self.input_files)
 
         if len(self.input_files) == 0:
             raise ValueError("No adcp file was provided in the configfile.")
 
-        if not self.odf_output and not self.netcdf_output:
-            self.netcdf_output = True
+        self._get_platform_metadata()
+        self.platform_type = self.platform_metadata["platform"]['platform_type']
+
+        _figure_out_the_outputs(self)
 
     def _load_config_dict(self, config: dict) -> dict:
         """Split and flattens"""
@@ -460,8 +459,6 @@ def _process_adcp_data(pconfig: ProcessConfig):
     # ----------- #
     # ODF OUTPUTS #
     # ----------- #
-    _figure_out_the_outputs(pconfig)
-
     l.section("Output")
     if pconfig.odf_output is True:
         if pconfig.odf_data is None:
@@ -878,50 +875,66 @@ def _load_platform(platform_file: str, platform_id: str, sensor_id: str) -> tp.D
 
 
 def _figure_out_the_outputs(pconfig: ProcessConfig) -> tp.Tuple[tp.Union[bool, str], tp.Union[bool, str], str]:
-    """
-    Returns
-    -------
-    netcdf_path
-    odf_path
-    log_path
-
+    """ Figure out the outputs to make and their path.
     """
 
     input_path = pconfig.input_files[0]
     default_path = Path(input_path).parent
     default_filename = Path(input_path).name
 
+    # Default to netcdf output is none was selected
+    if not pconfig.odf_output and not pconfig.netcdf_output:
+        pconfig.netcdf_output = True
+
+    # NETCDF
     if isinstance(pconfig.netcdf_output, bool):
         if pconfig.netcdf_output is True:
-            pconfig.netcdf_path = default_path.joinpath(default_filename)
+            pconfig.netcdf_path = str(default_path.joinpath(default_filename))
+
     elif isinstance(pconfig.netcdf_output, str):
-        pconfig.netcdf_output = True
         _netcdf_output = Path(pconfig.netcdf_output)
-        if Path(_netcdf_output.name) == _netcdf_output: # got a filename
-            pconfig.netcdf_path = default_path.joinpath(_netcdf_output).resolve()
-        elif _netcdf_output.absolute().is_dir(): # got a path
+        pconfig.netcdf_output = True
+        # got a filename
+        if Path(_netcdf_output.name) == _netcdf_output:
+            pconfig.netcdf_path = default_path.joinpath(_netcdf_output)
+        # got a path
+        elif _netcdf_output.absolute().is_dir():
             pconfig.netcdf_path = _netcdf_output.joinpath(default_filename)
             default_path = _netcdf_output
-        elif _netcdf_output.absolute().parent.is_dir(): # got a path and a filename
+        # got a path and a filename
+        elif _netcdf_output.absolute().parent.is_dir():
             pconfig.netcdf_path = _netcdf_output
             default_path = pconfig.netcdf_path.parent
             default_filename = pconfig.netcdf_path.name
-        pconfig.netcdf_path = str(pconfig.netcdf_path)
+        # Path to file doesn't exist
+        else:
+            raise ValueError(f'Path or path to {_netcdf_output} does not exists.')
+        pconfig.netcdf_path = str(pconfig.netcdf_path.resolve())
 
+    # ODF
     if isinstance(pconfig.odf_output, bool):
         if pconfig.odf_output is True:
-            pconfig.odf_path = default_path
+            pconfig.odf_path = str(default_path)
     elif isinstance(pconfig.odf_output, str):
-        pconfig.odf_output = True
         _odf_output = Path(pconfig.odf_output)
-        if Path(_odf_output.name) == pconfig.odf_output: # got filename
-            pconfig.odf_path = default_path.joinpath(pconfig.odf_output).resolve()
-        elif (_odf_output.absolute().is_dir() # got a path (odf_maker will make the filename)
-            or _odf_output.absolute().parent.is_dir()): #got a path and a filename
-            pconfig.odf_path = pconfig.odf_output
-        if pconfig.netcdf_output is False: # no nc output was made. Thus the ODF path is now the default path.
-            default_path = pconfig.odf_path.parent
-            default_filename = pconfig.odf_path.stem
-        pconfig.odf_path = str(pconfig.odf_path)
+        pconfig.odf_output = True
+        # got filename
+        if Path(_odf_output.name) == _odf_output:
+            pconfig.odf_path = default_path.joinpath(_odf_output)
+        # got a path (odf_maker will make the filename)
+        # or got a path and a filename
+        elif (_odf_output.absolute().is_dir()
+              or _odf_output.absolute().parent.is_dir()):
+            pconfig.odf_path = _odf_output
+        else:
+            raise ValueError(f'Path or path to {_odf_output} does not exists.')
 
-    pconfig.log_path = str(default_path.joinpath(default_filename))
+        pconfig.odf_path = str(pconfig.odf_path.resolve())
+
+    # If no nc output was made. Thus the ODF path is now the default path.
+    if pconfig.netcdf_output is False:
+        default_path = Path(pconfig.odf_path).parent
+        default_filename = Path(pconfig.odf_path).name
+
+    # LOG
+    pconfig.log_path = str(default_path.joinpath(default_filename).resolve())
