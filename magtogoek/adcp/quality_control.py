@@ -577,6 +577,17 @@ def pressure_test(dataset: xr.Dataset):
     return np.bitwise_or(dataset.pres > MAX_PRESSURE, dataset.pres < MIN_PRESSURE).data
 
 
+def percent_of_good_values(dataset: xr.Dataset):  # TODO TEST
+    vel = {}
+    for v in ["u", "v", "w"]:
+        vel["u"] = (
+            np.sum(dataset[v + "_QC"] == 1) + np.sum(dataset[v + "_QC"] == 2)
+        ) / (len(dataset.depth) * len(dataset.tim))
+    l.log(
+        f"Percent of value with flags of 1 or 2 u = {vel['u']}, v = {vel['v']}, w = {vel['w']}"
+    )
+
+
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
     from magtogoek.adcp.loader import load_adcp_binary
