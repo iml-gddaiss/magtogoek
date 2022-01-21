@@ -21,10 +21,7 @@ import pynmea2
 import xarray as xr
 import matplotlib.pyplot as plt
 from magtogoek.tools import get_gps_bearing, vincenty
-from magtogoek.utils import Logger, get_files_from_expression
-
-l = Logger(level=0)
-
+from magtogoek.utils import get_files_from_expression
 
 FILE_FORMATS = [".log", ".gpx", ".nc"]
 GPS_VARIABLES_NAME = ["lon", "lat", "time"]

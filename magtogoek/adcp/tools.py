@@ -3,47 +3,10 @@ Set of functions and objects used for adcp processing
 """
 import typing as tp
 from datetime import datetime
-from pathlib import Path
 
-import click
 import numpy as np
 from nptyping import NDArray
 from pandas import Timestamp, to_datetime
-
-
-def rotate_2d_vector(
-    X: NDArray, Y: NDArray, angle: float
-) -> tp.Tuple[NDArray, NDArray]:
-    """Rotates the X and Y component of the velocities anti-clockwise.
-
-    [X_r]  = [cos(angle), -sin(angle)][X]
-    [Y_r]  = [sin(angle),  cos(angle)][Y]
-
-    Parameters
-    ----------
-    X:
-       Velocity components of velocities along X
-
-    Y:
-       Velocity components of velocities along Y
-
-    angle:
-        Angle of rotation in decimal degree
-
-    Returns
-    -------
-    X_r :
-        Rotated velocity components along X_r.
-    Y_r :
-        Rotated velocity components along Y_r.
-    """
-
-    angle_rad = np.deg2rad(angle)
-
-    X_r = np.cos(angle_rad) * X - np.sin(angle_rad) * Y
-    Y_r = np.sin(angle_rad) * X + np.cos(angle_rad) * Y
-
-    return X_r, Y_r
 
 
 def dday_to_datetime64(dday: np.ndarray, yearbase: int) -> tp.Tuple[NDArray, NDArray]:

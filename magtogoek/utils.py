@@ -209,6 +209,7 @@ def json2dict(json_file: tp.Union[str, Path]):
         dictionary = json.load(f)
     return dictionary
 
+
 def resolve_relative_path(relative_path, current_path):
     """ """
     return Path(current_path).resolve().parent.joinpath(relative_path).resolve()

@@ -59,12 +59,13 @@ from magtogoek.adcp.loader import load_adcp_binary
 from magtogoek.adcp.odf_exporter import make_odf
 from magtogoek.adcp.quality_control import (adcp_quality_control,
                                             no_adcp_quality_control)
-from magtogoek.adcp.tools import rotate_2d_vector
+from magtogoek.tools import rotate_2d_vector
 from magtogoek.attributes_formatter import (
     compute_global_attrs, format_variables_names_and_attributes)
 from magtogoek.navigation import load_navigation
 from magtogoek.platforms import _add_platform
 from magtogoek.utils import Logger, format_str2list, json2dict
+from magtogoek.adcp.figure_maker import make_adcp_figure
 
 l = Logger(level=0)
 
@@ -443,6 +444,13 @@ def _process_adcp_data(
         dataset, use_bodc_codes=params["bodc_name"]
     )
 
+    # ------------ #
+    # MAKE FIGURES #
+    # ------------ #
+
+    if params["make_figures"]:
+        make_adcp_figure(dataset, flag_thres=2)
+
     dataset["time"].assign_attrs(TIME_ATTRS)
 
     l.log("Variables attributes added.")
@@ -488,12 +496,6 @@ def _process_adcp_data(
                 output_path=odf_path,
             )
 
-    # ------------ #
-    # MAKE FIGURES #
-    # ------------ #
-
-    if params["make_figures"]:
-        pass
 
     # ------------------------------------ #
     # FORMATTING DATASET FOR NETCDF OUTPUT #
@@ -898,7 +900,7 @@ def cut_bin_depths(
         if not isinstance(depth_range, (list, tuple)):
             if depth_range > dataset.depth.max():
                 l.log(
-                    "depth_range value is greater than the maximum bin depth. Depth slicing aborded."
+                    "depth_range value is greater than the maximum bin depth. Depth slicing aborted."
                 )
             else:
                 dataset = dataset.sel(depth=slice(depth_range, None))
