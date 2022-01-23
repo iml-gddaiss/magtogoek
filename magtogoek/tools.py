@@ -10,21 +10,25 @@ from nptyping import NDArray
 from pygeodesy.ellipsoidalVincenty import LatLon
 
 
-def flag_data(dataset: xr.Dataset, var: str, flag_thres: int = 2):
+def flag_data(dataset: xr.Dataset, var: str, flag_thres: int = 2, ancillary_variables: str = None):
     """
 
     Parameters
     ----------
     dataset :
         The variable `var` must be in the dataset along with `var+'_QC'`.
-    var
-    flag_thres
+    var :
+    ancillary_variables :
+    flag_thres :
 
     Returns
     -------
 
     """
-    return dataset[var].where(dataset[var + "_QC"].data <= flag_thres).data
+    if ancillary_variables is None:
+        ancillary_variables = dataset[var].attrs["ancillary_variables"]
+
+    return dataset[var].where(dataset[ancillary_variables].data <= flag_thres).data
 
 
 def round_up(x:float, scale:float=1):

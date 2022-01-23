@@ -124,7 +124,7 @@ def process(info, config_file):
     # command is already able to take updated_params options and update de configfile.
     # The same options (or nearly all the same )as for adcp_config could be use.
     from configparser import ParsingError
-
+    from magtogoek.adcp.process import process_adcp
     from magtogoek.configfile import load_configfile
 
     try:
@@ -134,8 +134,6 @@ def process(info, config_file):
         sys.exit()
 
     if configuration["HEADER"]["sensor_type"] == "adcp":
-        from magtogoek.adcp.process import process_adcp
-
         process_adcp(configuration)
 
 
@@ -166,6 +164,12 @@ def compute(info):
     """Command to compute certain quantities."""
 
 
+@magtogoek.group("plot", context_settings=CONTEXT_SETTINGS)
+@add_options(common_options)
+def plot(info):
+    """Command to make plot from nc data."""
+
+
 # --------------------------- #
 #       config command        #
 # --------------------------- #
@@ -184,14 +188,8 @@ def config_platform(ctx, info, filename):
 @config.command("adcp")
 @add_options(common_options)
 @click.argument("config_name", metavar="[config_name]", type=str)
-@click.option(
-    "-T",
-    "--platform",
-    type=(click.Path(exists=True), str, str),
-    help="platform_file, platform_id, sensor_id",
-    default=(None, None, None),
-    nargs=3,
-)
+@click.option("-T", "--platform", type=(click.Path(exists=True), str, str),
+    help="platform_file, platform_id, sensor_id", default=(None, None, None), nargs=3)
 @add_options(adcp_options())
 @click.pass_context
 def config_adcp(
@@ -210,11 +208,7 @@ def config_adcp(
 
     make_configfile(filename=config_name, sensor_type="adcp", new_values=new_config_values)
 
-    click.echo(
-        click.style(
-            f"Config file created for adcp processing -> {config_name}", bold=True
-        )
-    )
+    click.echo(click.style(f"Config file created for adcp processing -> {config_name}", bold=True))
 
 
 # --------------------------- #
@@ -222,47 +216,24 @@ def config_adcp(
 # --------------------------- #
 @quick.command("adcp")
 @add_options(common_options)
-@click.argument(
-    "input_files",
-    metavar="[input_files]",
-    nargs=-1,
-    type=click.Path(exists=True),
-    required=True,
-)
+@click.argument("input_files", metavar="[input_files]", nargs=-1, type=click.Path(exists=True), required=True)
 @add_options(adcp_options(input_files=False, sonar=False, yearbase=False))
 @click.option(
-    "-s",
-    "--sonar",
-    type=click.Choice(["wh", "sv", "os", "sw", "sw_pd0"]),
+    "-s", "--sonar", type=click.Choice(["wh", "sv", "os", "sw", "sw_pd0"]),
     help="String designating type of adcp. This  is fed to CODAS Multiread or switches to the magtogoek RTIReader.",
     required=True,
 )
-@click.option(
-    "-y",
-    "--yearbase",
-    type=click.INT,
-    help="""year when the adcp sampling started. ex: `1970`""",
-    required=True,
-)
-@click.option(
-    "-T",
-    "--platform_type",
-    type=click.Choice(["buoy", "mooring", "ship"]),
-    help="Used for Proper BODC variables names",
-    default="buoy",
-)
+@click.option("-y", "--yearbase",type=click.INT,
+              help="""year when the adcp sampling started. ex: `1970`""", required=True)
+@click.option("-T", "--platform_type", type=click.Choice(["buoy", "mooring", "ship"]),
+              help="Used for Proper BODC variables names", default="buoy")
 @click.pass_context
-def quick_adcp(
-        ctx, info, input_files, sonar, yearbase, **options,
-):
+def quick_adcp(ctx, info, input_files, sonar, yearbase, **options):
     """Command to make an quickly process adcp files. The [OPTIONS] can be added
     before or after the [inputs_files]."""
     from magtogoek.adcp.process import quick_process_adcp
 
-    options = {
-        **{"input_files": input_files, "yearbase": yearbase, "sonar": sonar},
-        **options,
-    }
+    options = {**{"input_files": input_files, "yearbase": yearbase, "sonar": sonar}, **options}
     _print_passed_options(options)
 
     params = _convert_options_names("adcp", options)
@@ -275,13 +246,7 @@ def quick_adcp(
 # --------------------------- #
 @check.command("rti")
 @add_options(common_options)
-@click.argument(
-    "input_files",
-    metavar="[input_files]",
-    nargs=-1,
-    type=click.Path(exists=True),
-    required=True,
-)
+@click.argument("input_files", metavar="[input_files]", nargs=-1, type=click.Path(exists=True), required=True)
 @click.pass_context
 def check_rti(ctx, info, input_files, **options):
     """Prints info about RTI .ENS files."""
@@ -292,23 +257,9 @@ def check_rti(ctx, info, input_files, **options):
 
 @compute.command("nav", context_settings=CONTEXT_SETTINGS)
 @add_options(common_options)
-@click.argument(
-    "input_files",
-    metavar="[input_files]",
-    nargs=-1,
-    type=click.Path(exists=True),
-    required=True,
-)
-@click.option(
-    "-o",
-    "--output-name",
-    type=click.STRING,
-    default=None,
-    help="Name for the output file.",
-)
-@click.option(
-    "-w", "--window", type=click.INT, default=1, help="Length of the averaging window.",
-)
+@click.argument("input_files", metavar="[input_files]", nargs=-1, type=click.Path(exists=True), required=True)
+@click.option("-o", "--output-name", type=click.STRING, default=None, help="Name for the output file.")
+@click.option("-w", "--window", type=click.INT, default=1, help="Length of the averaging window.")
 @click.pass_context
 def navigation(ctx, info, input_files, **options):
     """Command to compute u_ship, v_ship, bearing from gsp data."""
@@ -319,6 +270,22 @@ def navigation(ctx, info, input_files, **options):
         output_name=options["output_name"],
         window=options["window"],
     )
+
+
+# ------------------------ #
+#        plot commands     #
+# ------------------------ #
+@plot.command("adcp", context_settings=CONTEXT_SETTINGS)
+@add_options(common_options)
+@click.argument("input_file", metavar="[input_files]", nargs=1, type=click.Path(exists=True), required=True)
+@click.option("-t", "--flag-thres", help="""Set threshold value for flagging""", default=2, show_default=True)
+@click.pass_context
+def plot_adcp(ctx, info, input_file, **options):
+    """Command to compute u_ship, v_ship, bearing from gsp data."""
+    import xarray as xr
+    from magtogoek.adcp.figure_maker import make_adcp_figure
+    dataset = xr.open_dataset(input_file)
+    make_adcp_figure(dataset, flag_thres=options['flag_thres'])
 
 
 # ------------------------ #

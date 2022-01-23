@@ -376,7 +376,7 @@ def _format_config_options(config: tp.Dict, config_path: Path):
                     config[section][option], option_info, section, option, config_path
                 )
             elif option_info.null_value is not None:
-                    value = option_info.null_value
+                value = option_info.null_value
             config[section][option] = value
 
 

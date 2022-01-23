@@ -124,7 +124,7 @@ def format_str2list(filenames: tp.Union[str, tp.List[str]]) -> tp.List[str]:
     return filenames
 
 
-def get_files_from_expression(filenames: tp.Union[str, tp.List[str]]) -> tp.List[str]:
+def get_files_from_expression(filenames: tp.Union[str, tp.List[str]]) -> tp.List[str]: # TODO tester
     """Get existing files from expression.
 
     Returns a list of existing files.
@@ -142,6 +142,12 @@ def get_files_from_expression(filenames: tp.Union[str, tp.List[str]]) -> tp.List
             filenames = sorted(map(str, p.parent.glob(p.name)))
             if len(filenames) == 0:
                 raise FileNotFoundError(f"Expression `{p}` does not match any files.")
+
+    else:
+        _filenames = []
+        for filename in filenames:
+            _filenames += get_files_from_expression(filename)
+        filenames = _filenames
 
     return sorted(filenames)
 

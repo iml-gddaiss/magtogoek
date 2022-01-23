@@ -78,7 +78,7 @@ STANDARD_ADCP_GLOBAL_ATTRIBUTES = {
     "featureType": "timeSeriesProfile",
 }
 VARIABLES_TO_DROP = [
-    #    "binary_mask"
+    "binary_mask"
 ]
 GLOBAL_ATTRS_TO_DROP = [
     "sensor_type",
@@ -495,7 +495,6 @@ def _process_adcp_data(
                 event_qualifier2=qualifier,
                 output_path=odf_path,
             )
-
 
     # ------------------------------------ #
     # FORMATTING DATASET FOR NETCDF OUTPUT #

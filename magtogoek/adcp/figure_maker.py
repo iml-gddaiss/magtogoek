@@ -4,10 +4,16 @@ date: Nov. 29, 2021
 
 
 This modules contains the essential figure to do a visual inspection of the data.
+
+
+# Use ancillary_variables for QC. modify on the flag data function tools.
 """
 
+import matplotlib
+matplotlib.use('Qt5Agg')
+
 from itertools import cycle
-from typing import List, Union
+from typing import List, Union, Dict
 
 import cmocean as cmo
 import matplotlib.colorbar as clb
@@ -23,6 +29,15 @@ FONT = {"family": "serif", "color": "darkred", "weight": "normal", "size": 12}
 BINARY_CMAP = plt.get_cmap("viridis_r", 2)
 VEL_CMAP = cmo.cm.balance
 plt.style.use("seaborn-dark-palette")
+
+GEO_VAR = ["heading", "roll_", "pitch", "lon", "lat"]
+ANC_VAR = ["xducer_depth", "temperature", "pres"]
+BT_UVW_VAR = ["bt_u", "bt_v", "bt_w"]
+UVW_VAR = ["u", "v", "w"]
+
+
+def map_varname(varnames: List[str], varname_map: Dict)->List[str]:
+    return [varname_map[varname] if (varname in varname_map) else varname for varname in varnames]
 
 
 def get_extent(dataset: xr.Dataset) -> List:
@@ -42,7 +57,8 @@ def make_adcp_figure(dataset: xr.Dataset, single: bool = False, flag_thres=2):
     dataset
     single :
         If True, figures are plotted one at a time.
-    flag_thres
+    flag_thres :
+        Value with QC flag of `flag_thres` or lower will be plotted ([0, ..., flag_thres])
 
     Returns
     -------
@@ -51,35 +67,46 @@ def make_adcp_figure(dataset: xr.Dataset, single: bool = False, flag_thres=2):
 
     figs = []
 
-    figs.append(plot_vel_series(dataset, dataset.depth.data[0:3], flag_thres=flag_thres))
+    varname_map = {}
+    for var in dataset:
+        if 'generic_name' in dataset[var].attrs:
+            varname_map[dataset[var].attrs['generic_name']] = var
 
-    figs.append(plot_pearson_corr(dataset, flag_thres=flag_thres))
+    geo_var = map_varname(GEO_VAR, varname_map)
+    anc_var = map_varname(ANC_VAR, varname_map)
+    bt_uvw_var = map_varname(BT_UVW_VAR, varname_map)
+    uvw_var = map_varname(UVW_VAR, varname_map)
 
-    figs.append(plot_geospatial(dataset))
+    figs.append(plot_sensor_data(dataset, varnames=geo_var))
 
-    figs.append(plot_anc(dataset))
+    figs.append(plot_sensor_data(dataset, varnames=anc_var))
 
-    if all(v in dataset for v in ["bt_u", "bt_v", "bt_w"]):
-        figs.append(plot_bt_vel(dataset))
+    if all(v in dataset for v in bt_uvw_var):
+        figs.append(plot_bt_vel(dataset, uvw=bt_uvw_var))
 
-    if "binary_mask_tests" in dataset.attrs:
+    figs.append(plot_vel_series(dataset, depths=dataset.depth.data[0:3], uvw=uvw_var, flag_thres=flag_thres))
+
+    figs.append(plot_pearson_corr(dataset, uvw=uvw_var, flag_thres=flag_thres))
+
+    figs.append(plot_velocity_polar_hist(dataset, nrows=2, ncols=3, uv=uvw_var[:2], flag_thres=flag_thres))
+
+    figs.append(plot_velocity_fields(dataset, uvw=uvw_var, flag_thres=flag_thres))
+
+    if "binary_mask" in dataset:
         figs.append(plot_test_fields(dataset))
-
-    figs.append(plot_velocity_polar_hist(dataset, 2, 3, flag_thres=flag_thres))
-
-    figs.append(plot_velocity_fields(dataset, flag_thres=flag_thres))
 
     if single is True:
         for count, fig in enumerate(figs):
             fig.show()
             input(f"({count + 1}/{len(figs)}) Press [enter] to plot the next figure.\033[1A \033[9C")
+
     plt.show()
 
 
 def plot_velocity_polar_hist(dataset: xr.Dataset, nrows: int = 3, ncols: int = 3,
-                             x_vel: str = "u", y_vel: str = "v", flag_thres: int = 2):
+                             uv: List[str] = ("u", "v"),  flag_thres: int = 2):
     naxes = int(nrows * ncols)
-    r_max = np.nanmax(np.hypot(flag_data(dataset, x_vel, flag_thres), flag_data(dataset, y_vel, flag_thres)))
+    r_max = np.nanmax(np.hypot(flag_data(dataset, var=uv[0], flag_thres=flag_thres), flag_data(dataset, var=uv[1], flag_thres=flag_thres)))
     r_max = round_up(r_max, 0.2)
     r_ticks = np.round(np.linspace(0, r_max, 6), 2)[1:]
 
@@ -92,7 +119,7 @@ def plot_velocity_polar_hist(dataset: xr.Dataset, nrows: int = 3, ncols: int = 3
     for index in range(naxes):
         histo, a_edges, r_edges = polar_histo(
             dataset.sel(depth=slice(bin_depths[index], bin_depths[index + 1])),
-            x_vel, y_vel, r_max)
+            uv[0], uv[1], r_max)
         histo[histo < 1] = np.nan
         if np.isfinite(histo).any():
             histo /= np.nanmax(histo)
@@ -124,11 +151,11 @@ def plot_velocity_polar_hist(dataset: xr.Dataset, nrows: int = 3, ncols: int = 3
     return fig
 
 
-def plot_velocity_fields(dataset: xr.Dataset, flag_thres: int = 2):
+def plot_velocity_fields(dataset: xr.Dataset, uvw: List[str] = ("u", "v", "w"), flag_thres: int = 2):
     fig, axes = plt.subplots(
         figsize=(12, 8), nrows=3, ncols=1, sharex=True, sharey=True,
     )
-    for var, axe in zip(["u", "v", "w"], axes):
+    for var, axe in zip(uvw, axes):
         vel_da = dataset[var].where(dataset[var + "_QC"] <= flag_thres)
         vmax = round_up(np.max(np.abs(vel_da)), 0.1)
         extent = get_extent(dataset)
@@ -159,7 +186,7 @@ def plot_test_fields(dataset: xr.Dataset):
         value = dataset.attrs["binary_mask_tests_values"][index]
         if value is not None:
             mask = (dataset.binary_mask.astype(int) & 2 ** index).astype(bool)
-            axes[index].imshow(mask, aspect="auto", cmap=BINARY_CMAP, extent=extent,interpolation='none',)
+            axes[index].imshow(mask, aspect="auto", cmap=BINARY_CMAP, extent=extent, interpolation='none', )
             axes[index].xaxis_date()
             axes[index].set_title(test_name + f": {value}", fontdict=FONT)
         axes[index].tick_params(labelleft=False, labelbottom=False)
@@ -179,13 +206,14 @@ def plot_test_fields(dataset: xr.Dataset):
     return fig
 
 
-def plot_vel_series(dataset: xr.Dataset, depths: Union[float, List[float]], flag_thres: int = 2):
+def plot_vel_series(dataset: xr.Dataset, depths: Union[float, List[float]],
+                    uvw: List[str] = ("u", "v", "w"), flag_thres: int = 2):
     fig, axes = plt.subplots(figsize=(12, 8), nrows=3, ncols=1, sharex=True, sharey=True)
     axes[0].tick_params(labelbottom=False)
     axes[1].tick_params(labelbottom=False)
 
     colors = plt.cm.viridis(np.linspace(0, 1, len(depths)))
-    for var, ax in zip(["u", "v", "w"], axes):
+    for var, ax in zip(uvw, axes):
         da = dataset[var].where(dataset[var + "_QC"] <= flag_thres)
         clines = cycle(["solid", "dotted", "dashed", "dashdotted"])
         for depth, c in zip(depths, colors):
@@ -197,15 +225,14 @@ def plot_vel_series(dataset: xr.Dataset, depths: Union[float, List[float]], flag
     return fig
 
 
-def plot_pearson_corr(dataset, flag_thres: int = 2):
-    vel = ["u", "v", "w"]
-    corr = {v: [] for v in vel}
-    for var in vel:
+def plot_pearson_corr(dataset: xr.Dataset, uvw: List[str] = ("u", "v", "w"), flag_thres: int = 2):
+    corr = {v: [] for v in uvw}
+    for var in uvw:
         da = dataset[var].where(dataset[var + "_QC"] <= flag_thres)
         for d in range(dataset.dims["depth"] - 2):
             corr[var].append(xr.corr(da[d], da[d + 2], "time"))
     fig, axe = plt.subplots(figsize=(6, 8))
-    for var in vel:
+    for var in uvw:
         axe.plot(corr[var], dataset.depth[:-2], label=var)
     axe.invert_yaxis()
     axe.set_ylabel("depth [m]", fontdict=FONT)
@@ -215,13 +242,21 @@ def plot_pearson_corr(dataset, flag_thres: int = 2):
     return fig
 
 
-def plot_geospatial(dataset):
-    _gs_var = ["xducer_depth", "heading", "roll_", "pitch", "lon", "lat"]
-    gs_var = [v for v in _gs_var if v in dataset.variables]
-    fig, axes = plt.subplots(figsize=(12, 8), nrows=len(gs_var), ncols=1, sharex=True, squeeze=False)
+def plot_sensor_data(dataset: xr.Dataset, flag_thres: int = 2, varnames: List[str] = None):
+    if varnames is None:
+        varnames = ["xducer_depth", "temperature", "pres", "heading", "roll_", "pitch", "lon", "lat"]
+    else:
+        if not isinstance(varnames, list):
+            varnames = [varnames]
+    varnames = [var for var in varnames if var in dataset.variables]
+    fig, axes = plt.subplots(figsize=(12, 8), nrows=len(varnames), ncols=1, sharex=True, squeeze=False)
     axes = axes.flatten()
-    for var, ax in zip(gs_var, axes):
-        ax.plot(dataset.time, dataset[var])
+    for var, ax in zip(varnames, axes):
+        da = dataset[var]
+        if 'ancillary_variables' in dataset[var].attrs:
+            if dataset[var].attrs['ancillary_variables'] in dataset:
+                da=flag_data(dataset, var=var, flag_thres=flag_thres)
+        ax.plot(dataset.time, da)
         ax.set_ylabel(f"{var}\n[{dataset[var].units}]", fontdict=FONT)
         ax.tick_params(labelbottom=False)
     axes[-1].tick_params(labelbottom=True)
@@ -230,26 +265,11 @@ def plot_geospatial(dataset):
     return fig
 
 
-def plot_anc(dataset, flag_thres: int = 2):
-    _anc_var = ["temperature", "pres"]
-    anc_var = [var for var in _anc_var if var in dataset.variables]
-    fig, axes = plt.subplots(figsize=(12, 8), nrows=len(anc_var), ncols=1, sharex=True, squeeze=False)
-    axes = axes.flatten()
-    for var, ax in zip(anc_var, axes):
-        ax.plot(dataset.time, flag_data(dataset, var, flag_thres=flag_thres))
-        ax.set_ylabel(f"{var}\n[{dataset[var].units}]", fontdict=FONT)
-        ax.tick_params(labelbottom=False)
-    axes[-1].tick_params(labelbottom=True)
-    axes[-1].set_xlabel("time", fontdict=FONT)
-
-    return fig
-
-
-def plot_bt_vel(dataset: xr.Dataset):
+def plot_bt_vel(dataset: xr.Dataset, uvw: List[str] = ("bt_u", "bt_v", "bt_w")):
     fig, axes = plt.subplots(figsize=(12, 8), nrows=3, ncols=1, sharex=True, sharey=True)
     axes[0].tick_params(labelbottom=False)
     axes[1].tick_params(labelbottom=False)
-    for var, ax in zip(["bt_u", "bt_v", "bt_w"], axes):
+    for var, ax in zip(uvw, axes):
         ax.plot(dataset.time, dataset[var])
         ax.set_ylabel(f"{var}\n[{dataset[var].units}]", fontdict=FONT)
     axes[2].set_xlabel("time", fontdict=FONT)
@@ -262,9 +282,9 @@ if __name__ == "__main__":
 
     # nc_file = "/home/jeromejguay/ImlSpace/Projects/magtogoek/test/files/iml6_2017_wh.nc"
     # nc_file = "/home/jeromejguay/ImlSpace/Projects/magtogoek/test/files/iml4_2017_sw.nc"
-    # nc_file = "/home/jeromejguay/ImlSpace/Data/MPO/iml42020/MADCP_BOUEE2020_RIMOUSKI_553_VEL.nc"
+    nc_file = "/home/jeromejguay/ImlSpace/Data/MPO/iml42020/MADCP_BOUEE2020_RIMOUSKI_553_VEL.nc"
     # nc_file = "/home/jeromejguay/ImlSpace/Data/MPO/iml42020/iml4_2020_no_mcorr.nc"
-    nc_file = "/home/jeromejguay/ImlSpace/Data/IML-4 (PMZA-RIKI)/2021-IML4-ADCP-24418/iml4adcp2021.nc"
+    # nc_file = "/home/jeromejguay/ImlSpace/Data/IML-4 (PMZA-RIKI)/2021-IML4-ADCP-24418/iml4adcp2021.nc"
 
     test = [
         "amp",
@@ -277,8 +297,8 @@ if __name__ == "__main__":
         "pitch",
         "sidelobe",
     ]
-    dataset = xr.open_dataset(nc_file)
-    dataset.attrs["binary_mask_tests"] = test
-    dataset.attrs["binary_mask_tests_values"] = [0, 64, 90, 5.0, 5.0, 5.0, 20, 20, None]
+    _dataset = xr.open_dataset(nc_file)
+    _dataset.attrs["binary_mask_tests"] = test
+    _dataset.attrs["binary_mask_tests_values"] = [0, 64, 90, 5.0, 5.0, 5.0, 20, 20, None]
 
-    make_adcp_figure(dataset, single=False)
+    make_adcp_figure(_dataset, single=False)
