@@ -36,8 +36,8 @@ BT_UVW_VAR = ["bt_u", "bt_v", "bt_w"]
 UVW_VAR = ["u", "v", "w"]
 
 
-def map_varname(varnames: List[str], varname_map: Dict)->List[str]:
-    return [varname_map[varname] if (varname in varname_map) else varname for varname in varnames]
+def map_varname(varnames: List[str], varname_map: Dict) -> List[str]:
+    return [varname_map[varname] for varname in varnames if (varname in varname_map)]
 
 
 def get_extent(dataset: xr.Dataset) -> List:
@@ -51,6 +51,8 @@ def get_extent(dataset: xr.Dataset) -> List:
 
 def make_adcp_figure(dataset: xr.Dataset, single: bool = False, flag_thres=2):
     """
+
+    Looks for 'ancillary_variables' attributes on variables for QC flagging.
 
     Parameters
     ----------
@@ -73,24 +75,30 @@ def make_adcp_figure(dataset: xr.Dataset, single: bool = False, flag_thres=2):
             varname_map[dataset[var].attrs['generic_name']] = var
 
     geo_var = map_varname(GEO_VAR, varname_map)
+    if len(geo_var) > 0:
+        figs.append(plot_sensor_data(dataset, varnames=geo_var))
+
     anc_var = map_varname(ANC_VAR, varname_map)
+    if len(anc_var) > 0:
+        figs.append(plot_sensor_data(dataset, varnames=anc_var))
+
     bt_uvw_var = map_varname(BT_UVW_VAR, varname_map)
-    uvw_var = map_varname(UVW_VAR, varname_map)
-
-    figs.append(plot_sensor_data(dataset, varnames=geo_var))
-
-    figs.append(plot_sensor_data(dataset, varnames=anc_var))
-
-    if all(v in dataset for v in bt_uvw_var):
+    if len(bt_uvw_var) > 0 and all(v in dataset for v in bt_uvw_var):
         figs.append(plot_bt_vel(dataset, uvw=bt_uvw_var))
 
-    figs.append(plot_vel_series(dataset, depths=dataset.depth.data[0:3], uvw=uvw_var, flag_thres=flag_thres))
+    uvw_var = map_varname(UVW_VAR, varname_map)
+    if len(uvw_var) > 0:
+        depths = dataset.depth.data[0:3]
+        if dataset.attrs['orientation'] == "up":
+            depths = dataset.depth.data[-3:]
 
-    figs.append(plot_pearson_corr(dataset, uvw=uvw_var, flag_thres=flag_thres))
+        figs.append(plot_vel_series(dataset, depths=depths, uvw=uvw_var, flag_thres=flag_thres))
 
-    figs.append(plot_velocity_polar_hist(dataset, nrows=2, ncols=3, uv=uvw_var[:2], flag_thres=flag_thres))
+        figs.append(plot_pearson_corr(dataset, uvw=uvw_var, flag_thres=flag_thres))
 
-    figs.append(plot_velocity_fields(dataset, uvw=uvw_var, flag_thres=flag_thres))
+        figs.append(plot_velocity_polar_hist(dataset, nrows=2, ncols=3, uv=uvw_var[:2], flag_thres=flag_thres))
+
+        figs.append(plot_velocity_fields(dataset, uvw=uvw_var, flag_thres=flag_thres))
 
     if "binary_mask" in dataset:
         figs.append(plot_test_fields(dataset))
@@ -106,7 +114,10 @@ def make_adcp_figure(dataset: xr.Dataset, single: bool = False, flag_thres=2):
 def plot_velocity_polar_hist(dataset: xr.Dataset, nrows: int = 3, ncols: int = 3,
                              uv: List[str] = ("u", "v"),  flag_thres: int = 2):
     naxes = int(nrows * ncols)
-    r_max = np.nanmax(np.hypot(flag_data(dataset, var=uv[0], flag_thres=flag_thres), flag_data(dataset, var=uv[1], flag_thres=flag_thres)))
+    r_max = np.nanmax(np.hypot(
+        flag_data(dataset, var=uv[0], flag_thres=flag_thres).data,
+        flag_data(dataset, var=uv[1], flag_thres=flag_thres).data
+    ))
     r_max = round_up(r_max, 0.2)
     r_ticks = np.round(np.linspace(0, r_max, 6), 2)[1:]
 
@@ -156,7 +167,7 @@ def plot_velocity_fields(dataset: xr.Dataset, uvw: List[str] = ("u", "v", "w"), 
         figsize=(12, 8), nrows=3, ncols=1, sharex=True, sharey=True,
     )
     for var, axe in zip(uvw, axes):
-        vel_da = dataset[var].where(dataset[var + "_QC"] <= flag_thres)
+        vel_da = flag_data(dataset=dataset, var=var, flag_thres=flag_thres)
         vmax = round_up(np.max(np.abs(vel_da)), 0.1)
         extent = get_extent(dataset)
         im = axe.imshow(
@@ -214,7 +225,7 @@ def plot_vel_series(dataset: xr.Dataset, depths: Union[float, List[float]],
 
     colors = plt.cm.viridis(np.linspace(0, 1, len(depths)))
     for var, ax in zip(uvw, axes):
-        da = dataset[var].where(dataset[var + "_QC"] <= flag_thres)
+        da = flag_data(dataset=dataset, var=var, flag_thres=flag_thres)
         clines = cycle(["solid", "dotted", "dashed", "dashdotted"])
         for depth, c in zip(depths, colors):
             ax.plot(dataset.time, da.sel(depth=depth), linestyle=next(clines), c=c, label=str(depth) + " m")
@@ -228,7 +239,7 @@ def plot_vel_series(dataset: xr.Dataset, depths: Union[float, List[float]],
 def plot_pearson_corr(dataset: xr.Dataset, uvw: List[str] = ("u", "v", "w"), flag_thres: int = 2):
     corr = {v: [] for v in uvw}
     for var in uvw:
-        da = dataset[var].where(dataset[var + "_QC"] <= flag_thres)
+        da = flag_data(dataset=dataset, var=var)
         for d in range(dataset.dims["depth"] - 2):
             corr[var].append(xr.corr(da[d], da[d + 2], "time"))
     fig, axe = plt.subplots(figsize=(6, 8))
@@ -242,12 +253,7 @@ def plot_pearson_corr(dataset: xr.Dataset, uvw: List[str] = ("u", "v", "w"), fla
     return fig
 
 
-def plot_sensor_data(dataset: xr.Dataset, flag_thres: int = 2, varnames: List[str] = None):
-    if varnames is None:
-        varnames = ["xducer_depth", "temperature", "pres", "heading", "roll_", "pitch", "lon", "lat"]
-    else:
-        if not isinstance(varnames, list):
-            varnames = [varnames]
+def plot_sensor_data(dataset: xr.Dataset, varnames: List[str], flag_thres: int = 2):
     varnames = [var for var in varnames if var in dataset.variables]
     fig, axes = plt.subplots(figsize=(12, 8), nrows=len(varnames), ncols=1, sharex=True, squeeze=False)
     axes = axes.flatten()

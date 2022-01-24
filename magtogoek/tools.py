@@ -28,10 +28,10 @@ def flag_data(dataset: xr.Dataset, var: str, flag_thres: int = 2, ancillary_vari
     if ancillary_variables is None:
         ancillary_variables = dataset[var].attrs["ancillary_variables"]
 
-    return dataset[var].where(dataset[ancillary_variables].data <= flag_thres).data
+    return dataset[var].where(dataset[ancillary_variables].data <= flag_thres)
 
 
-def round_up(x:float, scale:float=1):
+def round_up(x: float, scale: float=1):
     return np.ceil(np.asarray(x) * 1 / scale) * scale
 
 
@@ -41,8 +41,8 @@ def nans(shape: tp.Union[list, tuple, np.ndarray]) -> np.ndarray:
 
 
 def polar_histo(dataset: xr.Dataset, x_vel: str, y_vel: str, r_max: float):
-    u = flag_data(dataset, x_vel).flatten()
-    v = flag_data(dataset, y_vel).flatten()
+    u = flag_data(dataset, x_vel).data.flatten()
+    v = flag_data(dataset, y_vel).data.flatten()
     ii = np.isfinite(u) & np.isfinite(v)
 
     azimut, radius = cartesian2northpolar(u[ii], v[ii])

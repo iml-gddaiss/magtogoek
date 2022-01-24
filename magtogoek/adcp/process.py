@@ -986,9 +986,6 @@ def cut_bin_depths(
 def cut_times(
     dataset: xr.Dataset, start_time: str = None, end_time: str = None
 ) -> xr.Dataset:
-def cut_times(dataset: xr.Dataset,
-              start_time: pd.Timestamp = None,
-              end_time: pd.Timestamp = None) -> xr.Dataset:
     """
     Return a dataset with time cut if they are not outside the dataset time span.
 
