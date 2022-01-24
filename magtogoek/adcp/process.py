@@ -35,8 +35,8 @@ Notes
      the platform file. If the bottom data are shit, set the option keep_bt to False.
 
 -`manufacturer` :
-    The manufacturer is automatically added to the dataset by the loader. However, the value given in the platform file will
-    overwrite it.
+    The manufacturer is automatically added to the dataset by the loader. However, the value given in the platform file
+    will overwrite it.
 
 TODO TEST NAVIGATION FILES !
 Note DATA_TYPES: Missing for ship adcp. Set to adcp for now
@@ -77,6 +77,11 @@ STANDARD_ADCP_GLOBAL_ATTRIBUTES = {
     "sensor_type": "adcp",
     "featureType": "timeSeriesProfile",
 }
+DEFAULT_CONFIG_ATTRIBUTES =  {
+            "date_created": pd.Timestamp.now().strftime("%Y-%m-%d"),
+            "publisher_name": getpass.getuser(),
+            "source": "adcp",
+        }
 VARIABLES_TO_DROP = [
     "binary_mask"
 ]
@@ -90,6 +95,7 @@ GLOBAL_ATTRS_TO_DROP = [
     "variables_gen_name",
     "binary_mask_tests",
     "binary_mask_tests_values",
+    "bodc_name"
 ]
 CONFIG_GLOBAL_ATTRS_SECTIONS = ["NETCDF_CF", "PROJECT", "CRUISE", "GLOBAL_ATTRIBUTES"]
 PLATFORM_TYPES = ["buoy", "mooring", "ship"]
@@ -182,6 +188,73 @@ DATA_FILL_VALUE = -9999.0
 DATA_ENCODING = {"dtype": "float32", "_FillValue": DATA_FILL_VALUE}
 
 
+class ProcessConfig:
+    sensor_type: str = None
+    platform_type: str = None
+    input_files: str = None
+    platform_file: str = None
+    platform_id: str = None
+    sensor_id: str = None
+    netcdf_output: str = None
+    odf_output: str = None
+    yearbase: int = None
+    adcp_orientation: str = None
+    sonar: str = None
+    navigation_file: str = None
+    leading_trim: tp.Union[int, str] = None
+    trailing_trim: tp.Union[int, str] = None
+    sensor_depth: float = None
+    depth_range: list = None
+    magnetic_declination: float = None
+    keep_bt: bool = None
+    bad_pressure: bool = None
+    start_time: str = None
+    time_step: float = None
+    quality_control: bool = None
+    amplitude_threshold: int = None
+    percentgood_threshold: int = None
+    correlation_threshold: int = None
+    horizontal_velocity_threshold: float = None
+    vertical_velocity_threshold: float = None
+    error_velocity_threshold: float = None
+    sidelobes_correction: bool = None
+    bottom_depth: float = None
+    pitch_threshold: float = None
+    roll_threshold: float = None
+    motion_correction_mode: str = None
+    merge_output_files: bool = None
+    bodc_name: bool = None
+    force_platform_metadata: bool = None
+    drop_percent_good: bool = None
+    drop_correlation: bool = None
+    drop_amplitude: bool = None
+    make_figures: bool = None
+    make_log: bool = None
+    odf_data: str = None
+    metadata: dict = {}
+    platform_metadata: dict = {}
+
+    def __init__(self):
+        self.metadata.update(DEFAULT_CONFIG_ATTRIBUTES)
+        pass
+
+    def load_from_quick(self, params):
+        pass
+
+    def load_from_process(self, config: dict) -> dict:
+        """Split and flattens"""
+
+        for section, options in config.items():
+            if section in CONFIG_GLOBAL_ATTRS_SECTIONS:
+                for option in options:
+                    self.metadata[option] = config[section][option]
+            else:
+                for option in options:
+                    self.__dict__[option] = config[section][option]
+
+        return self.metadata
+
+
 def process_adcp(config: dict):
     """Process adcp data with parameters from a ConfigFile.
 
@@ -239,12 +312,14 @@ def quick_process_adcp(params: tp.Dict):
     _process_adcp_data :
         For the processing workflow."""
 
-    config_attrs = _get_default_config_attrs()
+    config_attrs = {}
+    config_attrs.update(DEFAULT_CONFIG_ATTRIBUTES)
     platform_metadata = _default_platform()
 
-    platform_metadata["platform"]["platform_type"] = params["platform_type"]
+    platform_metadata['platform']["platform_type"] = params["platform_type"]
 
     params["force_platform_metadata"] = False
+
     if params["odf_output"] in [1, "true", "True", "t", "T"]:
         params["odf_output"] = True
 
@@ -261,8 +336,9 @@ def _pipe_to_process_adcp_data(
         Looks for `merge_output_files` in the ConfigFile and if False,
     each file in `input_files` is process individually and then call _process_adcp_data.
     """
-
-    if not params["merge_output_files"]:
+    if params["merge_output_files"]:
+        _process_adcp_data(params, platform_metadata, config_attrs)
+    else:
         netcdf_output = params["netcdf_output"]
         input_files = params["input_files"]
         for filename, count in zip(input_files, range(len(input_files))):
@@ -272,20 +348,12 @@ def _pipe_to_process_adcp_data(
                 else:
                     params["netcdf_output"] = Path(netcdf_output).absolute().resolve()
                     if params["netcdf_output"].is_dir():
-                        params["netcdf_output"] = str(
-                            params["netcdf_output"].joinpath(filename)
-                        )
+                        params["netcdf_output"] = str(params["netcdf_output"].joinpath(filename))
                     else:
-                        params["netcdf_output"] = (
-                            str(params["netcdf_output"].with_suffix("")) + f"_{count}"
-                        )
+                        params["netcdf_output"] = str(params["netcdf_output"].with_suffix("")) + f"_{count}"
             params["input_files"] = [filename]
 
-            _process_adcp_data(
-                params, platform_metadata, config_attrs, drop_empty_attrs
-            )
-    else:
-        _process_adcp_data(params, platform_metadata, config_attrs)
+            _process_adcp_data(params, platform_metadata, config_attrs, drop_empty_attrs)
 
 
 def _process_adcp_data(
@@ -367,9 +435,7 @@ def _process_adcp_data(
     _set_xducer_depth_as_sensor_depth(dataset)
 
     # setting Metadata from the platform_file
-    _set_platform_metadata(
-        dataset, platform_metadata, "adcp", params["force_platform_metadata"]
-    )
+    _set_platform_metadata(dataset, platform_metadata, 'adcp', params["force_platform_metadata"])
 
     # setting Metadata from the config_files
     dataset = dataset.assign_attrs(config_attrs)
@@ -383,28 +449,18 @@ def _process_adcp_data(
 
     l.section("Data transformation")
 
-    if dataset.attrs["magnetic_declination"] is not None:
-        l.log(
-            f"Magnetic declination found in the raw file: {dataset.attrs['magnetic_declination']} degree east."
-        )
+    if dataset.attrs['magnetic_declination'] is not None:
+        l.log(f"Magnetic declination found in the raw file: {dataset.attrs['magnetic_declination']} degree east.")
     else:
         l.log(f"No magnetic declination found in the raw file.")
     if params["magnetic_declination"]:
         angle = params["magnetic_declination"]
         if dataset.attrs["magnetic_declination"]:
-            angle = round(
-                (
-                    params["magnetic_declination"]
-                    - dataset.attrs["magnetic_declination"]
-                ),
-                4,
-            )
+            angle = round((params["magnetic_declination"] - dataset.attrs["magnetic_declination"]), 4)
             l.log(f"An additional correction of {angle} degree east was applied.")
         _apply_magnetic_correction(dataset, angle)
         dataset.attrs["magnetic_declination"] = params["magnetic_declination"]
-        l.log(
-            f"Absolute magnetic declination: {dataset.attrs['magnetic_declination']} degree east."
-        )
+        l.log(f"Absolute magnetic declination: {dataset.attrs['magnetic_declination']} degree east.")
 
     # --------------- #
     # QUALITY CONTROL #
@@ -432,17 +488,16 @@ def _process_adcp_data(
     # -------------------- #
     # VARIABLES ATTRIBUTES #
     # -------------------- #
+    dataset.attrs['bodc_name'] = params["bodc_name"]
     dataset.attrs["VAR_TO_ADD_SENSOR_TYPE"] = VAR_TO_ADD_SENSOR_TYPE
     dataset.attrs["P01_CODES"] = {
         **P01_VEL_CODES[platform_type],
         **P01_CODES,
     }
-    dataset.attrs["variables_gen_name"] = [var for var in dataset.variables]
+    dataset.attrs["variables_gen_name"] = [var for var in dataset.variables] # For Odf outputs
 
     l.section("Variables attributes")
-    dataset = format_variables_names_and_attributes(
-        dataset, use_bodc_codes=params["bodc_name"]
-    )
+    dataset = format_variables_names_and_attributes(dataset)
 
     # ------------ #
     # MAKE FIGURES #
@@ -475,17 +530,15 @@ def _process_adcp_data(
     # ----------- #
     # ODF OUTPUTS #
     # ----------- #
-    netcdf_path, odf_path, log_path = _make_outputs(
+    netcdf_path, odf_path, log_path = _outputs_path_handler(
         params["input_files"][0], params["odf_output"], params["netcdf_output"]
     )
 
     l.section("Output")
     if odf_path:
-        if params["odf_data"] is None:
-            params["odf_data"] = "both"
-        odf_data = {"both": ["VEL", "ANC"], "vel": ["VEL"], "anc": ["ANC"]}[
-            params["odf_data"]
-        ]
+        if params['odf_data'] is None:
+            params['odf_data'] = 'both'
+        odf_data = {'both': ['VEL', 'ANC'], 'vel': ['VEL'], 'anc': ['ANC']}[params['odf_data']]
         for qualifier in odf_data:
             _ = make_odf(
                 dataset=dataset,
@@ -674,9 +727,7 @@ def _set_xducer_depth_as_sensor_depth(dataset: xr.Dataset):
         dataset.attrs["sensor_depth"] = dataset.attrs["xducer_depth"]
 
     if "xducer_depth" in dataset:
-        dataset.attrs["sensor_depth"] = np.round(
-            np.median(dataset["xducer_depth"].data), 2
-        )
+        dataset.attrs["sensor_depth"] = np.round(np.median(dataset["xducer_depth"].data), 2)
 
 
 def _set_platform_metadata(
@@ -774,7 +825,13 @@ def _quality_control(dataset: xr.Dataset, params: tp.Dict):
 def _apply_magnetic_correction(dataset: xr.Dataset, magnetic_declination: float):
     """Transform velocities and heading to true north and east.
 
-    Rotates velocities and heading by the given `magnetic_declination` angle.
+    Rotates velocities vector clockwise by `magnetic_declination` angle effectively
+    rotating the frame fo reference by the `magnetic_declination` anti-clockwise.
+    Corrects the heading with the `magnetic_declination`:
+
+    Equation for the heading: (heading + 180 + magnetic_declination) % 360 - 180
+        [-180, 180[ -> [0, 360[ -> [MD, 360+MD[
+        -> [MD, 360+MD[ -> [0, 360[ -> [-180, 180[
 
     Parameters
     ----------
@@ -785,20 +842,20 @@ def _apply_magnetic_correction(dataset: xr.Dataset, magnetic_declination: float)
     """
 
     dataset.u.values, dataset.v.values = rotate_2d_vector(
-        dataset.u, dataset.v, magnetic_declination
+        dataset.u, dataset.v, -magnetic_declination
     )
     l.log(f"Velocities transformed to true north and true east.")
     if all(v in dataset for v in ["bt_u", "bt_v"]):
         dataset.bt_u.values, dataset.bt_v.values = rotate_2d_vector(
-            dataset.bt_u, dataset.bt_v, magnetic_declination
+            dataset.bt_u, dataset.bt_v, -magnetic_declination
         )
         l.log(f"Bottom velocities transformed to true north and true east.")
 
     # heading goes from -180 to 180
     if "heading" in dataset:
         dataset.heading.values = (
-            dataset.heading.data + 360 + magnetic_declination
-        ) % 360 - 180
+                                         dataset.heading.data + 180 + magnetic_declination
+                                 ) % 360 - 180
         l.log(f"Heading transformed to true north.")
 
 
@@ -811,7 +868,7 @@ def _get_datetime_and_count(trim_arg: str):
 
     Returns:
     --------
-    datetime:
+    Timestamp:
         None or pandas.Timestamp
     count:
         None or int
@@ -871,7 +928,7 @@ def _format_data_encoding(dataset: xr.Dataset):
 
 
 def _drop_bottom_track(dataset: xr.Dataset) -> xr.Dataset:
-    "Drop `bt_u`, `bt_v`, `bt_w`, `bt_e`, `bt_depth`"
+    """Drop `bt_u`, `bt_v`, `bt_w`, `bt_e`, `bt_depth`"""
     for var in ["bt_u", "bt_v", "bt_w", "bt_e", "bt_depth"]:
         if var in dataset:
             dataset = dataset.drop_vars([var])
@@ -929,15 +986,18 @@ def cut_bin_depths(
 def cut_times(
     dataset: xr.Dataset, start_time: str = None, end_time: str = None
 ) -> xr.Dataset:
+def cut_times(dataset: xr.Dataset,
+              start_time: pd.Timestamp = None,
+              end_time: pd.Timestamp = None) -> xr.Dataset:
     """
     Return a dataset with time cut if they are not outside the dataset time span.
 
     Parameters
     ----------
     dataset
-    start_time :
+    start_time:
         minimum time to be included in the dataset.
-    end_time
+    end_time:
         maximum time to be included in the dataset.
     Returns
     -------
@@ -959,15 +1019,15 @@ def cut_times(
     return dataset
 
 
-def _make_outputs(
-    input_path: str, odf_output: tp.Union[bool, str], netcdf_output: tp.Union[bool, str]
-) -> tp.Tuple[tp.Union[bool, str], tp.Union[bool, str], str]:
+def _outputs_path_handler(input_path: str,
+                          odf_output: tp.Union[bool, str],
+                          netcdf_output: tp.Union[bool, str]) -> tp.Tuple[tp.Union[bool, str], tp.Union[bool, str], str]:
     """
 
     Parameters
     ----------
     odf_output
-    nc_output
+    netcdf_output
 
     Returns
     -------

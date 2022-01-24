@@ -7,7 +7,7 @@ Notes
 -----
    Tests return `True` where cells fail a test.
 
-   - Cells that haven't fail any test are given a flag value of `2` (probably_good_value).
+   - Cells that haven't fail any test are given a flag value of `1` (probably_good_value).
    - Velocities in any direction are set to NaN if greater than 15 meters per second gets a 4.
    - Failing amplitude, correlation, percentgood, roll, pitch, side_lobe, horizontal
    velocity or vertical velocity test returns a flag_value of `3` (probably_bad_value)
@@ -162,7 +162,6 @@ def adcp_quality_control(
        Tests return `True` where cells fail a test.
 
        - Cells that haven't fail any test are given a flag value of `2` (probably_good_value).
-       - Velocities in any direction are set to NaN if greater than 15 meters per second gets a 4.
        - Failing amplitude, correlation, percentgood, roll, pitch, side_lobe, horizontal
        velocity or vertical velocity test returns a flag_value of `3` (probably_bad_value)
        for the corresponding velocity cells.

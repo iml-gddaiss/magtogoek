@@ -53,6 +53,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import xarray as xr
+from magtogoek.utils import get_files_from_expression
 
 NA_REP = "null"  # There should not be any null value in a odf file.
 SPACE = " "  # single space
@@ -68,6 +69,11 @@ REPEATED_HEADERS = [
     "history",
     "parameter",
 ]
+NC_TIME_ENCODING = {
+    "units": "seconds since 1970-1-1 00:00:00Z",
+    "calendar": "gregorian",
+    "_FillValue": None,
+}
 
 
 def get_headers_default():
@@ -405,40 +411,53 @@ class Odf:
             f.write(SPACE + "-- DATA --" + NEWLINE)
             self._write_data(buf=f)
 
-    def to_dataset(self, dims: tp.Union[str, tp.List[str]] = None, time: str = None):
+    def to_dataset(self, dims: tp.Union[str, tp.List[str], tp.Tuple[str]] = None, time: str = ''):
         """
         Parameters
         ----------
         dims :
-           Dimensions names. If one of the dimensions is named `STYM_01`, it will be
+           Dimensions names. If one of the dimensions is named `SYTM_01`, it will be
            converted to datetime64.
         time :
-            Specify which dimensions is to be converted into datetime64.
+            Specify which variable is to be converted into datetime64. The variable
+            "SYTM_01" will be converted to datetime64 automatically.
         """
-        if isinstance(time, str) and time != "SYTM_01":
+        if isinstance(dims, tuple):
+            dims = list(dims)
+
+        times = {'SYTM_01'}
+        if time is not None:
+            times.update({time})
+        for t in times:
             if time in self.data:
-                self.data[time] = pd.to_datetime(self.data[time])
+                self.data[t] = pd.to_datetime(self.data[t], format="%d-%b-%Y %H:%M:%S.%f")
 
-        if "SYTM_01" in self.data:
-            self.data["SYTM_01"] = pd.to_datetime(self.data["SYTM_01"])
+        if dims is not None:
+            [dims.remove(dim) for dim in dims if dim not in self.data]
 
-        if dims:
-            data = self.data.set_index(dims)
-        else:
-            data = self.data
-
-        dataset = xr.Dataset.from_dataframe(data)
+        dataset = xr.Dataset.from_dataframe(self.data.set_index(dims))
 
         for p in self.parameter:
-            dataset[p].assign_attrs(self.parameter[p])
+            dataset[p].attrs.update(self.parameter[p])
+
+        variables = list(dataset)
+        new_varname = {}
+        for index, variable in enumerate(variables):
+            if "QQQQ" in variable:
+                new_varname[variable] = variables[index - 1].split('_')[0] + "_QC"
+
+        dataset = dataset.rename(new_varname)
+
+        if 'SYTM_01' in dataset.coords:
+            [dataset['SYTM_01'].attrs.pop(key) for key in NC_TIME_ENCODING if key in dataset['SYTM_01'].attrs]
+            dataset['SYTM_01'].encoding = NC_TIME_ENCODING
 
         history = {}
-        for i, h in zip(range(len(self.history)), self.history):
-            cd = [self.history[h]["creation_date"]]
-            process = self.history[h]["process"]
-            if not isinstance(process, list):
-                process = [process]
-            history = {f"process_{i}": "\n".join(cd + process)}
+        for i, k in enumerate(self.history):
+            process = self.history[k]["process"]
+            if not isinstance(self.history[k]['process'], list):
+                process = [self.history[k]['process']]
+            history = {f"process_{i}": "\n".join([self.history[k]["creation_date"]] + process)}
 
         dataset.attrs = {
             **self.event,
@@ -537,6 +556,8 @@ class Odf:
             `null_value` to compute  `number_valid` and `number_null`.
         items :
              dictionary containing the parameters metadata.
+        qc_mask :
+            Boolean mask use to compute min and max values.
 
         """
         if items is None:
@@ -544,7 +565,7 @@ class Odf:
 
         data = np.asarray(data)
         _null_value = null_value
-        if code == "STYM_01":
+        if code == "SYTM_01":
             _null_value = pd.Timestamp(null_value)
         data[~np.isfinite(data)] = _null_value
 
@@ -554,21 +575,24 @@ class Odf:
         self.parameter[code]["null_value"] = null_value
         self.data[code] = data
         self.parameter[code]["number_valid"] = len(self.data[code])
-        if not "QQQQ" in code:
-            self._compute_parameter_attrs(code, qc_mask)
+
+        self._compute_parameter_attrs(code, qc_mask)
 
     def _compute_parameter_attrs(self, parameter: str, qc_mask: np.ndarray = None):
         """Compute `number_valid`, `number_null`, `minimum_value` and `maximum_value` from
         the data and the "null_value" in `parameter[parameter]`.
         """
-        null_value = self.parameter[parameter]["null_value"]
-        n_null = (self.data[parameter] == null_value).sum().item()
-        self.parameter[parameter]["number_null"] = n_null
-        self.parameter[parameter]["number_valid"] -= n_null
+        mask = np.ones(self.data[parameter].shape).astype(bool)
 
-        mask = (self.data[parameter] != null_value).values
-        if qc_mask is not None:
-            mask &= qc_mask
+        if "QQQQ" not in parameter:
+            null_value = self.parameter[parameter]["null_value"]
+            n_null = (self.data[parameter] == null_value).sum().item()
+            self.parameter[parameter]["number_null"] = n_null
+            self.parameter[parameter]["number_valid"] -= n_null
+
+            mask = (self.data[parameter] != null_value).values
+            if qc_mask is not None:
+                mask &= qc_mask
 
         self.parameter[parameter]["minimum_value"] = (
             self.data[parameter].where(mask).min()
@@ -774,7 +798,7 @@ def _format_headers(name: str, header: dict) -> str:
             )
 
         elif not value:
-            s += INDENT + key.upper() + " = " + "," + NEWLINE
+            s += INDENT + key.upper() + " = ''" + "," + NEWLINE
         else:
             print("Could not format", name, key, value, type(value))
 
@@ -851,6 +875,39 @@ def odf_time_format(time):
     return odf_time
 
 
+def convert_odf_to_nc(
+        input_files: tp.Union[str, tp.Tuple[str], tp.List[str]] = None,
+        output_name: str = None,
+        dims: tp.Union[str, tp.Tuple[str], tp.List[str]] = None,
+        time: str = None,
+        merge: bool = False,
+) -> None:
+    """
+    """
+    input_files = get_files_from_expression(input_files)
+    datasets = []
+    for fn in input_files:
+        datasets.append(Odf().read(fn).to_dataset(dims=list(dims), time=time))
+    if merge is True:
+        output = Path(output_name if output_name is not None else input_files[0]).with_suffix('.nc')
+        try:
+            xr.merge(datasets, compat='override').to_netcdf(output)
+            print(f"Netcdf file made -> {output}")
+        except ValueError:
+            print("Merging failed. Dimensions could be incompatible.")
+            merge = False
+
+    if merge is False:
+        if output_name is not None:
+            outputs = [output_name + '_' + str(i).rjust(2, '0') for i, _ in enumerate(input_files)]
+        else:
+            outputs = input_files
+        for ds, output in zip(datasets, outputs):
+            output = Path(output).with_suffix('.nc')
+            ds.to_netcdf(output)
+            print(f"Netcdf file made -> {output}")
+
+
 if __name__ == "__main__":
     path = [
         "/home/jeromejguay/ImlSpace/Docs/ODF/Format_ODF/Exemples/CTD_BOUEE2019_RIKI_04130218_DN",
@@ -859,8 +916,7 @@ if __name__ == "__main__":
         "/home/jeromejguay/ImlSpace/Docs/ODF/Format_ODF/Exemples/MADCP_BOUEE2019_RIMOUSKI_553_ANC",
     ]
 
-    odf = Odf().read(path[1] + ".ODF")
-    dataset = odf.to_dataset(dims=["SYTM_01", "DEPH_01"], time="SYTM_01").isel(
-        SYTM_01=slice(0, 100)
-    )
-    data = dataset.to_dataframe().reset_index()
+    ds_vel = Odf().read(path[1] + ".ODF").to_dataset(dims=["DEPH_01", "SYTM_01"], time="SYTM_01")
+    ds_anc = Odf().read(path[3] + ".ODF").to_dataset(dims=["DEPH_01", "SYTM_01"], time="SYTM_01")
+
+    xr.merge((ds_vel, ds_anc), compat='override')
