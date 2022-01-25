@@ -129,7 +129,7 @@ def process(info, config_file):
 
     try:
         configuration = load_configfile(config_file)
-    except ParsingError:
+    except (ParsingError, UnicodeDecodeError):
         print("Failed to open the given configfile.\n mtgk process aborted.")
         sys.exit()
 

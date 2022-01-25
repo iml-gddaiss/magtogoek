@@ -544,7 +544,6 @@ def _process_adcp_data(
                 dataset=dataset,
                 platform_metadata=platform_metadata,
                 config_attrs=config_attrs,
-                bodc_name=params["bodc_name"],
                 event_qualifier2=qualifier,
                 output_path=odf_path,
             )
