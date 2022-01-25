@@ -49,7 +49,7 @@ def get_extent(dataset: xr.Dataset) -> List:
     ]
 
 
-def make_adcp_figure(dataset: xr.Dataset, single: bool = False, flag_thres=2):
+def make_adcp_figure(dataset: xr.Dataset, single: bool = False, flag_thres=2, vel_only:bool = False):
     """
 
     Looks for 'ancillary_variables' attributes on variables for QC flagging.
@@ -74,27 +74,27 @@ def make_adcp_figure(dataset: xr.Dataset, single: bool = False, flag_thres=2):
         if 'generic_name' in dataset[var].attrs:
             varname_map[dataset[var].attrs['generic_name']] = var
 
-    geo_var = map_varname(GEO_VAR, varname_map)
-    if len(geo_var) > 0:
-        figs.append(plot_sensor_data(dataset, varnames=geo_var))
+    if vel_only is False:
+        geo_var = map_varname(GEO_VAR, varname_map)
+        if len(geo_var) > 0:
+            figs.append(plot_sensor_data(dataset, varnames=geo_var))
 
-    anc_var = map_varname(ANC_VAR, varname_map)
-    if len(anc_var) > 0:
-        figs.append(plot_sensor_data(dataset, varnames=anc_var))
+        anc_var = map_varname(ANC_VAR, varname_map)
+        if len(anc_var) > 0:
+            figs.append(plot_sensor_data(dataset, varnames=anc_var))
 
-    bt_uvw_var = map_varname(BT_UVW_VAR, varname_map)
-    if len(bt_uvw_var) > 0 and all(v in dataset for v in bt_uvw_var):
-        figs.append(plot_bt_vel(dataset, uvw=bt_uvw_var))
+        bt_uvw_var = map_varname(BT_UVW_VAR, varname_map)
+        if len(bt_uvw_var) > 0 and all(v in dataset for v in bt_uvw_var):
+            figs.append(plot_bt_vel(dataset, uvw=bt_uvw_var))
 
     uvw_var = map_varname(UVW_VAR, varname_map)
     if len(uvw_var) > 0:
-        depths = dataset.depth.data[0:3]
-        if dataset.attrs['orientation'] == "up":
-            depths = dataset.depth.data[-3:]
-
-        figs.append(plot_vel_series(dataset, depths=depths, uvw=uvw_var, flag_thres=flag_thres))
-
-        figs.append(plot_pearson_corr(dataset, uvw=uvw_var, flag_thres=flag_thres))
+        if vel_only is False:
+            depths = dataset.depth.data[0:3]
+            if dataset.attrs['orientation'] == "up":
+                depths = dataset.depth.data[-3:]
+            figs.append(plot_vel_series(dataset, depths=depths, uvw=uvw_var, flag_thres=flag_thres))
+            figs.append(plot_pearson_corr(dataset, uvw=uvw_var, flag_thres=flag_thres))
 
         figs.append(plot_velocity_polar_hist(dataset, nrows=2, ncols=3, uv=uvw_var[:2], flag_thres=flag_thres))
 

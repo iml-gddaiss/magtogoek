@@ -326,7 +326,11 @@ def adcp_quality_control(
             dataset[var].attrs["flag_reference"] = FLAG_REFERENCE
 
     dataset.attrs["quality_comments"] = l.logbook[len("[Quality Control]"):]
+
     l.log(f"Quality Control was carried out with {l.w_count} warnings")
+    percent_good_vel = (np.sum(vel_flags == 1) + np.sum(vel_flags == 2)) / (len(dataset.depth) * len(dataset.time))
+    l.log(f"{round(percent_good_vel,2)}% of the velocities have a flag of 1 or 2.")
+
     dataset.attrs["logbook"] += l.logbook
 
     dataset.attrs["flags_reference"] = FLAG_REFERENCE
@@ -574,17 +578,6 @@ def temperature_test(dataset: xr.Dataset):
 def pressure_test(dataset: xr.Dataset):
     """FIXME"""
     return np.bitwise_or(dataset.pres > MAX_PRESSURE, dataset.pres < MIN_PRESSURE).data
-
-
-def percent_of_good_values(dataset: xr.Dataset):  # TODO TEST
-    vel = {}
-    for v in ["u", "v", "w"]:
-        vel["u"] = (
-            np.sum(dataset[v + "_QC"] == 1) + np.sum(dataset[v + "_QC"] == 2)
-        ) / (len(dataset.depth) * len(dataset.tim))
-    l.log(
-        f"Percent of value with flags of 1 or 2 u = {vel['u']}, v = {vel['v']}, w = {vel['w']}"
-    )
 
 
 if __name__ == "__main__":

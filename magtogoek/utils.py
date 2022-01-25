@@ -5,6 +5,7 @@ import json
 import typing as tp
 from datetime import datetime
 from pathlib import Path
+from collections import abc
 
 import click
 
@@ -114,14 +115,12 @@ class Logger:
         return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
-def format_str2list(filenames: tp.Union[str, tp.List[str]]) -> tp.List[str]:
-    """ If not str1 -> [str1].
-    Returns
-    -------
+def ensure_list_format(value: tp.Union[str, int, float, tp.List[tp.Union[str, int, float]]]) -> tp.List[str]:
     """
-    if isinstance(filenames, str):
-        filenames = [filenames]
-    return filenames
+    """
+    if not isinstance(value, (list, set, tuple)):
+        value = [value]
+    return value
 
 
 def get_files_from_expression(filenames: tp.Union[str, tp.List[str]]) -> tp.List[str]: # TODO tester

@@ -269,13 +269,13 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
             default=True,
         ),
         click.option(
-            "--mk-log/--no-mk-log",
+            "--mk-log/--no-log",
             help="""Make an output log of the processing.""",
             default=True,
             show_default=True,
         ),
         click.option(
-            "--mk-fig/--no-mk-fig",
+            "--mk-fig/--no-fig",
             help="""Make figures to inspect the data.""",
             default=True,
             show_default=True,

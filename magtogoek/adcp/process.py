@@ -64,8 +64,8 @@ from magtogoek.attributes_formatter import (
     compute_global_attrs, format_variables_names_and_attributes)
 from magtogoek.navigation import load_navigation
 from magtogoek.platforms import _add_platform
-from magtogoek.utils import Logger, format_str2list, json2dict
-from magtogoek.adcp.figure_maker import make_adcp_figure
+from magtogoek.utils import Logger, ensure_list_format, json2dict
+from magtogoek.adcp.adcp_plots import make_adcp_figure
 
 l = Logger(level=0)
 
@@ -278,7 +278,7 @@ def process_adcp(config: dict):
     """
     params, config_attrs = _get_config(config)
 
-    params["input_files"] = format_str2list(params["input_files"])
+    params["input_files"] = ensure_list_format(params["input_files"])
 
     if len(params["input_files"]) == 0:
         raise ValueError("No adcp file was provided in the configfile.")

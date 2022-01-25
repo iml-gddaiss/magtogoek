@@ -117,14 +117,17 @@ def magtogoek(info):
 @magtogoek.command("process")
 @add_options(common_options)
 @click.argument("config_file", metavar="[config_file]", type=click.Path(exists=True))
-def process(info, config_file):
+@click.option("--mk-fig/--no-fig",
+              type=bool,
+              help="""Make figures to inspect the data. Use to overwrite the value in the config_file""",
+              default=None)
+def process(info, config_file, **options):
     """Process data by reading configfile"""
     # NOTE This could be update as a group with sensor specific command.
     # Doing so would allow the user to pass config options. The load_configfile
     # command is already able to take updated_params options and update de configfile.
     # The same options (or nearly all the same) as for adcp_config could be use.
     from configparser import ParsingError
-    from magtogoek.adcp.process import process_adcp
     from magtogoek.configfile import load_configfile
 
     try:
@@ -132,8 +135,11 @@ def process(info, config_file):
     except (ParsingError, UnicodeDecodeError):
         print("Failed to open the given configfile.\n mtgk process aborted.")
         sys.exit()
+    if options['mk_fig'] is not None:
+        configuration['ADCP_OUTPUT']["make_figures"] = options['mk_fig']
 
     if configuration["HEADER"]["sensor_type"] == "adcp":
+        from magtogoek.adcp.process import process_adcp
         process_adcp(configuration)
 
 
@@ -314,13 +320,14 @@ def odf2nc(ctx, info, input_files, output_name, **options):
 @add_options(common_options)
 @click.argument("input_file", metavar="[input_files]", nargs=1, type=click.Path(exists=True), required=True)
 @click.option("-t", "--flag-thres", help="""Set threshold value for flagging""", default=2, show_default=True)
+@click.option("-v", "--vel-only",help="""Only plots 2D velocity fields and polar histogram.""", is_flag=True, default=False)
 @click.pass_context
 def plot_adcp(ctx, info, input_file, **options):
     """Command to compute u_ship, v_ship, bearing from gsp data."""
     import xarray as xr
-    from magtogoek.adcp.figure_maker import make_adcp_figure
+    from magtogoek.adcp.adcp_plots import make_adcp_figure
     dataset = xr.open_dataset(input_file)
-    make_adcp_figure(dataset, flag_thres=options['flag_thres'])
+    make_adcp_figure(dataset, flag_thres=options['flag_thres'], vel_only=options["vel_only"])
 
 
 # ------------------------ #
@@ -480,7 +487,14 @@ def _print_description(group):
             "             side_lobe.\n"
             "           - Temperatures outside [-2, 32] Celsius. \n"
             "           - Pressures outside [0, 180] dbar.           \n"
-            "        "
+            ""
+            "\n"
+            "        plots\n"
+            "        -----\n"
+            "           - 2D velocity fields (u,v), time-series,\n"
+            "           - Polar Histogram of the Velocities amplitude and direction,\n"
+            "           - Pearson Correlation of velocity for consecutive bins,\n"
+            "       "
         ),
         "nav": (
             " Compute u_ship (eastward velocity), v_ship (northward velocity) and the bearing"
