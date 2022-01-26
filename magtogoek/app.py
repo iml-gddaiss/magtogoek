@@ -65,6 +65,7 @@ OPTIONS_NAME_TRANSLATOR = dict(
         drop_amplitude="drop_amp",
         make_figures="mk_fig",
         make_log="mk_log",
+        odf_data="odf_dtype"
     )
 )
 CONTEXT_SETTINGS = dict(
@@ -89,7 +90,7 @@ def _print_info(ctx, callback, info_called):
             click.secho("\nCommands:", fg="red")
         else:
             click.secho("\nArguments:", fg="red")
-        _print_arguments(ctx.info_name)
+        _print_arguments(ctx.info_name, ctx.parent)
         click.secho("\nOptions", fg="red")
         click.echo("  Use  -h/--help to show the options")
         click.echo("\n")
@@ -195,7 +196,7 @@ def config_platform(ctx, info, filename):
 @add_options(common_options)
 @click.argument("config_name", metavar="[config_name]", type=str)
 @click.option("-T", "--platform", type=(click.Path(exists=True), str, str),
-    help="platform_file, platform_id, sensor_id", default=(None, None, None), nargs=3)
+              help="platform_file, platform_id, sensor_id", default=(None, None, None), nargs=3)
 @add_options(adcp_options())
 @click.pass_context
 def config_adcp(
@@ -229,7 +230,7 @@ def config_adcp(
     help="String designating type of adcp. This  is fed to CODAS Multiread or switches to the magtogoek RTIReader.",
     required=True,
 )
-@click.option("-y", "--yearbase",type=click.INT,
+@click.option("-y", "--yearbase", type=click.INT,
               help="""year when the adcp sampling started. ex: `1970`""", required=True)
 @click.option("-T", "--platform_type", type=click.Choice(["buoy", "mooring", "ship"]),
               help="Used for Proper BODC variables names", default="buoy")
@@ -320,7 +321,8 @@ def odf2nc(ctx, info, input_files, output_name, **options):
 @add_options(common_options)
 @click.argument("input_file", metavar="[input_files]", nargs=1, type=click.Path(exists=True), required=True)
 @click.option("-t", "--flag-thres", help="""Set threshold value for flagging""", default=2, show_default=True)
-@click.option("-v", "--vel-only",help="""Only plots 2D velocity fields and polar histogram.""", is_flag=True, default=False)
+@click.option("-v", "--vel-only", help="""Only plots 2D velocity fields and polar histogram.""", is_flag=True,
+              default=False)
 @click.pass_context
 def plot_adcp(ctx, info, input_file, **options):
     """Command to compute u_ship, v_ship, bearing from gsp data."""
@@ -411,9 +413,9 @@ def _print_logo(logo_path: str = "files/logo.json", group: str = ""):
     click.echo(click.style("=" * TERMINAL_WIDTH, fg="white", bold=True))
 
 
-def _print_arguments(group):
+def _print_arguments(group, parent):
     """print group(command) command(arguments)"""
-    #    _parent = parent.info_name if parent else ""
+    _parent = parent.info_name if parent else ""
     messages = {"mtgk": '\n'.join(["  config".ljust(20, " ") + "Command to make configuration files",
                                    "  process".ljust(20, " ") + "Command to process data with configuration files",
                                    "  quick".ljust(20, " ") + "Command to quickly process data files",
@@ -472,29 +474,27 @@ def _print_description(group):
             "Print some raw files information. Only available for adcp RTI .ENS files."
         ),
         "adcp": (
-            "\n"
-            "        sonar\n"
-            "        -----\n"
-            "           os : OceanSurveyor (RDI)\n"
-            "           wh : WorkHorse (RDI)\n"
-            "           sv : SentinelV (RDI)\n"
-            "           sw : SeaWatch (RTI)\n"
-            "           sw_pd0 : SeaWatch (RTI in RDI pd0 file format)\n"
-            "\n"
-            "        quality control\n"
-            "        ---------------\n"
-            "           - velocity, amplitude, correlation, percentgood, roll, pitch, \n"
-            "             side_lobe.\n"
-            "           - Temperatures outside [-2, 32] Celsius. \n"
-            "           - Pressures outside [0, 180] dbar.           \n"
-            ""
-            "\n"
-            "        plots\n"
-            "        -----\n"
-            "           - 2D velocity fields (u,v), time-series,\n"
-            "           - Polar Histogram of the Velocities amplitude and direction,\n"
-            "           - Pearson Correlation of velocity for consecutive bins,\n"
-            "       "
+                "\n"
+                "        sonar\n"
+                "        -----\n"
+                "           os : OceanSurveyor (RDI)\n"
+                "           wh : WorkHorse (RDI)\n"
+                "           sv : SentinelV (RDI)\n"
+                "           sw : SeaWatch (RTI)\n"
+                "           sw_pd0 : SeaWatch (RTI in RDI pd0 file format)\n"
+                "\n"
+                "        quality control\n"
+                "        ---------------\n"
+                "           - velocity, amplitude, correlation, percentgood, roll, pitch, \n"
+                "             side_lobe.\n"
+                "           - Temperatures outside [-2, 32] Celsius. \n"
+                "           - Pressures outside [0, 180] dbar.\n"
+                "\n"
+                "        plots\n"
+                "        -----\n"
+                "           - 2D velocity fields (u,v), time-series,\n"
+                "           - Polar Histogram of the Velocities amplitude and direction,\n"
+                "           - Pearson Correlation of velocity for consecutive bins,\n"
         ),
         "nav": (
             " Compute u_ship (eastward velocity), v_ship (northward velocity) and the bearing"
@@ -507,7 +507,10 @@ def _print_description(group):
         "odf2nc": "Converts odf files to netcdf",
     }
     if group in messages:
-        click.echo(click.wrap_text(messages[group], width=TERMINAL_WIDTH, initial_indent=''))
+        if "\n" in messages[group]:
+            click.echo(messages[group])
+        else:
+            click.echo(click.wrap_text(messages[group], width=TERMINAL_WIDTH, initial_indent=''))
 
 
 def _print_usage(group, parent):

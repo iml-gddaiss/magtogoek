@@ -43,6 +43,9 @@ IML flags meaning : (Basically the same)
    * 5: value_was_modified
    * 9: value_missing
 
+TODO:
+   - Add a test with the pearson correlation
+
 """
 import typing as tp
 

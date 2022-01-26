@@ -311,5 +311,13 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
             nargs=1,
             default=None,
         ),
+        click.option(
+            "--odf_dtype",
+            type=click.Choice(['both', 'vel', 'anc']),
+            help="Type of ODF file to output.",
+            nargs=1,
+            default='both',
+            show_default=True,
+        ),
     ]
     return options
