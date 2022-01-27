@@ -125,6 +125,7 @@ def adcp_quality_control(
     motion_correction_mode: str = "",
     sidelobes_correction: bool = False,
     bottom_depth: float = None,
+    bad_pressure: bool = False
 ):
     """
     Perform ADCP quality control.
@@ -160,6 +161,9 @@ def adcp_quality_control(
         contamination. Set to either "dep" or "bt" or None.
     bottom_depth :
         If not `None`, this depth used for removing side lobe contamination.
+    bad_pressure:
+        If True, XducerDepth is set to 0 or to `sensor_depth` if provided.
+
     Notes
     -----
        Tests return `True` where cells fail a test.
@@ -274,7 +278,7 @@ def adcp_quality_control(
             binary_mask[sidelobe_flag] += 2 ** 8
             binary_mask_tests_value[8] = sidelobes_correction
 
-    if "pres" in dataset:
+    if "pres" in dataset and bad_pressure is False:
         l.log(f"Good pressure range {MIN_PRESSURE} to {MAX_PRESSURE} dbar")
         pressure_QC = np.ones(dataset.pres.shape)
         pressure_flags = pressure_test(dataset)

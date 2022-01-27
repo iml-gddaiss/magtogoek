@@ -818,6 +818,7 @@ def _quality_control(dataset: xr.Dataset, params: tp.Dict):
         motion_correction_mode=params["motion_correction_mode"],
         sidelobes_correction=params["sidelobes_correction"],
         bottom_depth=params["bottom_depth"],
+        bad_pressure=params["bad_pressure"]
     )
 
 
