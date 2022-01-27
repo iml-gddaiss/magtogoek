@@ -332,7 +332,7 @@ def adcp_quality_control(
 
     l.log(f"Quality Control was carried out with {l.w_count} warnings")
     percent_good_vel = (np.sum(vel_flags == 1) + np.sum(vel_flags == 2)) / (len(dataset.depth) * len(dataset.time))
-    l.log(f"{round(percent_good_vel,2)}% of the velocities have a flag of 1 or 2.")
+    l.log(f"{round(percent_good_vel * 100, 2)}% of the velocities have a flag of 1 or 2.")
 
     dataset.attrs["logbook"] += l.logbook
 
