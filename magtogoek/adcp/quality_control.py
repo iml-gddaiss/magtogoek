@@ -530,7 +530,7 @@ def sidelobe_test(dataset: xr.Dataset, bottom_depth: float = None):
     Downward equation:
         bin_depth + 0.5*bin_size > XducerDepth + (bottom_depth - XducerDepth)*cos(beam_angle)
     Upward equation:
-        bin_depth + 0.5*bin_size < XducerDepth*( 1 - cos(beam_angle))
+        bin_depth - 0.5*bin_size < XducerDepth*( 1 - cos(beam_angle))
 
     Parameters
     ----------
