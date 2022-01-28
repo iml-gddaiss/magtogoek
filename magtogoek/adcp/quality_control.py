@@ -278,17 +278,23 @@ def adcp_quality_control(
             binary_mask[sidelobe_flag] += 2 ** 8
             binary_mask_tests_value[8] = sidelobes_correction
 
-    if "pres" in dataset and bad_pressure is False:
-        l.log(f"Good pressure range {MIN_PRESSURE} to {MAX_PRESSURE} dbar")
-        pressure_QC = np.ones(dataset.pres.shape)
-        pressure_flags = pressure_test(dataset)
-        pressure_QC[pressure_flags] = 4
-        dataset["pres_QC"] = (["time"], pressure_QC)
-        vel_flags[np.tile(pressure_flags, dataset.depth.shape + (1,))] = 3
-        dataset["pres_QC"].attrs[
-            "quality_test"
-        ] = f"pressure_threshold: less than {MIN_PRESSURE} dbar and greater than {MAX_PRESSURE} dbar"
-        vel_qc_test.append(dataset["pres_QC"].attrs["quality_test"])
+    if "pres" in dataset:
+        dataset["pres_QC"] = (["time"], np.ones(dataset.pres.shape))
+        if bad_pressure is True:
+            l.log("Flag as bad (4) by the user.")
+            dataset["pres_QC"].values *= 4
+            dataset["pres_QC"].attrs[
+                "quality_test"] = "Flag as bad (4) by the user."
+        else:
+            l.log(f"Good pressure range {MIN_PRESSURE} to {MAX_PRESSURE} dbar")
+            pressure_flags = pressure_test(dataset)
+            dataset["pres_QC"].values[pressure_flags] = 4
+            dataset["pres_QC"].attrs["quality_test"] = (
+                f"pressure_threshold: less than {MIN_PRESSURE} dbar and greater than {MAX_PRESSURE} dbar"
+            )
+
+            vel_flags[np.tile(pressure_flags, dataset.depth.shape + (1,))] = 3
+            vel_qc_test.append(dataset["pres_QC"].attrs["quality_test"])
 
     if "temperature" in dataset:
         l.log(f"Good temperature range {MIN_TEMPERATURE} to {MAX_TEMPERATURE} celsius")
@@ -534,11 +540,7 @@ def sidelobe_test(dataset: xr.Dataset, bottom_depth: float = None):
     """
     if dataset.attrs["beam_angle"] and dataset.attrs["orientation"]:
         angle_cos = np.cos(np.radians(dataset.attrs["beam_angle"]))
-        depth_array = (
-            np.tile(dataset.depth.data, dataset.time.shape + (1,))
-            + dataset.attrs["bin_size_m"] / 2
-        )
-
+        depth_array = np.tile(dataset.depth.data, dataset.time.shape + (1,))
         if "xducer_depth" in dataset.attrs:
             xducer_depth = np.tile(dataset.attrs["xducer_depth"], dataset.time.shape)
         elif "xducer_depth" in dataset:
@@ -559,11 +561,11 @@ def sidelobe_test(dataset: xr.Dataset, bottom_depth: float = None):
                 return False
 
             max_depth = xducer_depth + (bottom_depth - xducer_depth) * angle_cos
-            return depth_array.T > max_depth
+            return depth_array.T + dataset.attrs["bin_size_m"] / 2 > max_depth
 
         elif dataset.attrs["orientation"] == "up":
             min_depth = xducer_depth * (1 - angle_cos)
-            return depth_array.T < min_depth.T
+            return depth_array.T - dataset.attrs["bin_size_m"] / 2 < min_depth.T
 
         else:
             l.warning(

@@ -610,14 +610,15 @@ def _load_adcp_data(params: tp.Dict) -> xr.Dataset:
 
     l.log(
         (
-            f"Bins count : {len(dataset.depth.data)}, "
+            f"Bin count : {len(dataset.depth.data)}, "
             + f"Min depth : {np.round(dataset.depth.min().data, 3)} m, "
-            + f"Max depth : {np.round(dataset.depth.max().data, 3)} m"
+            + f"Max depth : {np.round(dataset.depth.max().data, 3)} m, "
+            + f"Bin size : {dataset.attrs['bin_size_m']} m"
         )
     )
     l.log(
         (
-            f"Ensembles count : {len(dataset.time.data)}, "
+            f"Ensemble count : {len(dataset.time.data)}, "
             + f"Start time : {np.datetime_as_string(dataset.time.min().data, unit='s')}, "
             + f"End time : {np.datetime_as_string(dataset.time.max().data, unit='s')}"
         )

@@ -218,17 +218,18 @@ def load_adcp_binary(
     # ----------------------------------------------------------- #
     # Convert depth relative to the ADCP to depth below surface   #
     # ----------------------------------------------------------- #
-    if bad_pressure:
-        l.log("XducerDepth were discarded by the user.")
-        if sensor_depth:
-            data.XducerDepth[:] = sensor_depth
-            l.log(f"XducerDepth set to {sensor_depth} m.")
-        else:
-            data.XducerDepth[:] = 0
-            l.log("XducerDepth set to 0 m.")
 
     average_xducer_depth = np.round(np.median(data.XducerDepth), 3)
     l.log(f"Sensor depth (XducerDepth) in raw file : {average_xducer_depth} m")
+    if bad_pressure:
+        l.log("XducerDepth were discarded by the user.")
+        if sensor_depth:
+            average_xducer_depth = sensor_depth
+            l.log(f"XducerDepth set to {sensor_depth} m.")
+        else:
+            average_xducer_depth = 0
+            l.log("XducerDepth set to 0 m.")
+        data.XducerDepth[:] = average_xducer_depth
     xducer_depth = data.XducerDepth
 
     depth_difference = 0
