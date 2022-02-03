@@ -43,7 +43,6 @@ from magtogoek.version import VERSION
 
 LOGO_PATH = resolve_relative_path("files/logo.json", __file__)
 
-
 def _get_config_structure(_config: tp.Dict) -> tp.Dict:
     config_struct = dict()
     for section, items in _config.items():
