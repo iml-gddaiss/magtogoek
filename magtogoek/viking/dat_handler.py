@@ -24,7 +24,6 @@
 DATA_TEST = """
 [NOM],PMZA-RIKI,110000,240521,8.3.1,000018C0D36B,00.3,00.0,48 39.71N,068 34.90W
 [COMP],000DA1B4,FFC58202,-4.634,88.61,0.654,27.98,11.14,24.94
-[OCR],----------------------------------------------------------------
 [Triplet],BBFL2W-1688	05/24/21	10:59:03	700	1376	2.786E-03	695	190	1.066E+00	460	85	3.454E+00
 [Par_digi],110100,240521,SATPRS1093,30.415,510.646,-1.7,5.7,11.0,162
 [SUNA],SATSLC1363,2021144,10.999906,16.47,0.2307,0.7115,0.9167,0.00,0.000445
@@ -44,13 +43,21 @@ DATA_TEST = """
 [MO],D21027179068450254073423262786-31066+03454+00510##########795190660601214429000804000517537004000E3FFBB0022001400,000
 [FIN]
 """
-from typing import List, Tuple, Dict
 
-TAGS = ["NOM", "COMP", "[Triplet]"," [Par_digi]", "[SUNA]", "[GPS]", "[CTD]", "[RDI]", "[WAVE_M]", "[WXT520]",
-        "[WXT520]", "[WXT520]", "[WXT520]", "[WMT700]", "[WpH]", "[Debit]", "[p1]", "[VEMCO]", "[MO]", "[FIN]"]
+OCR_TEST = """[OCR],29,220916
+D,32,7FF61F47,7FF96AAD,80019C5D,7FF8EEBB,7FF0B2E5,7FFB045E,7FFC0AF4,6CEF2E,5058B5,560C72,516F8D,78A870,48660F,9B89F3,7FF61F00,7FF96AC0,80019C40,7FF8EF00,7FF0B300,7FFB03C0,7FFC0A80
+W,12,7FED43A9,7FF5BCC5,8005D91A,8015D956,7FFCD34E,7FF14B6D,7FFC38AC,29BF350,FA9F3A,9ABAD1,1B610D7,3DD6947,CF5AC95,1635C01,7FED4540,7FF5BD00,8005D900,8015D780,7FFCD6C0,7FF13EC0,7FFC3780"""
 
+import struct
+from typing import List, Tuple, Dict, Union
+from math import atan2, sqrt, pi, asin, acos
+import numpy as np
+
+TAGS = ["NOM", "COMP", "OCR", "[Triplet]","[Par_digi]", "[SUNA]", "GPS", "[CTD]", "[RDI]", "[WAVE_M]", "[WXT520]",
+        "[WXT520]", "[WXT520]", "[WXT520]", "[WMT700]", "[WpH]", "[Debit]", "[p1]", "[VEMCO]", "MO", "[FIN]"]
 
 def main():
+    _decode_OCR(OCR_TEST.split(','), 21)
     return decode_transmitted_data(DATA_TEST)
 
 
@@ -74,6 +81,12 @@ def decode_transmitted_data(data_received: str, century: int=21):
             decoded_data["NOM"] = _decode_NOM(line, century=century)
         if line[0] == "[COMP]":
             decoded_data["COMP"] = _decode_COMP(line)
+        #if line[0] == "[OCR]":
+        #    decoded_data["OCR"] = _decode_OCR(line, century=century)
+        if line[0] == "[GPS]":
+            decoded_data["GPS"] = _decode_GPS(line, century=century)
+        if line[0] == "[MO]":
+            decoded_data["MO"] = _decode_MO(line)
 
     return decoded_data
 
@@ -83,36 +96,60 @@ def _decode_NOM(data: List[str], century: int):
     [NOM],PMZA-RIKI,110000,240521,8.3.1,000018C0D36B,00.3,00.0,48 39.71N,068 34.90W
     Possible 11th tag 0 or 1 for absence or presence of water in Controller case.
     """
-
-
     time = str(century - 1) + data[3][4:6] + "-" + data[3][2:4] + "-" + data[3][0:2] \
                   + "T" + data[2][0:2] + ":" + data[2][2:4] + ":" + data[2][4:6]
     latitude = data[8].split(' ')
     longitude = data[9].split(' ')
-    latitude = {'S': -1, 'N': 1}[latitude[1][-1]] * int(latitude[0]) + round(float(latitude[1][:-1]) / 60, 4)
-    longitude = {'W': -1, 'E': 1}[longitude[1][-1]] * int(longitude[0]) + round(float(longitude[1][:-1]) / 60, 4)
+    latitude = {'S': -1, 'N': 1}[latitude[1][-1]] * int(latitude[0]) + round(float(latitude[1][:-1]) / 60, 2)
+    longitude = {'W': -1, 'E': 1}[longitude[1][-1]] * int(longitude[0]) + round(float(longitude[1][:-1]) / 60, 2)
     water_in_case = None
     if len(data) > 10:
         water_in_case = int(data[10])
 
     return {'buoy_name': data[1], 'time': time,
-           'firmware': data[4], 'controller_sn': data[5],
-           'pc_data_flash': data[6], 'pc_winch_flash': data[7],
-           'latitude': latitude, 'longitude': longitude,
+            'firmware': data[4], 'controller_sn': data[5],
+            'pc_data_flash': data[6], 'pc_winch_flash': data[7],
+            'latitude_N': latitude, 'longitude_E': longitude,
             'water_in_case': water_in_case}
 
 
 def _decode_COMP(data: str):
-    """ 000DA1B4,FFC58202 -> 167
-    -4.634,88.61,0.654,27.98,11.14,24.94 -> -4.6, 9.4, 0.7, 5.3, 11.1, 5.0
-    averaged of the reading ?"""
-    return {'tot_sin_head': int(data[1], 16), 'tot_cos_head':int(data[2],16), 'averaged_pitch':float(data[3]),
-            'std_pitch':float(data[4]), 'averaged_roll':float(data[5]), 'std_roll':float(data[6]),
-            'averaged_tilt':float(data[7]), 'std_tilt':float(data[8])}
+    """
+    [COMP],000DA1B4,FFC58202,-4.634,88.61,0.654,27.98,11.14,24.94
+    """
+    heading = np.round(atan2(
+        struct.unpack('>i', bytes.fromhex(data[1]))[0],
+        struct.unpack('>i', bytes.fromhex(data[2]))[0]) / pi * 180, 2)
+    return {'heading': heading, 'pitch':float(data[3]), 'roll': float(data[5]), 'tilt': float(data[7]),
+            'pitch_std': round(sqrt(float(data[4])),2),  'roll_std': round(sqrt(float(data[6])),2),
+            'tilt_std': round(sqrt(float(data[8])),2)}
 
 
-def _decode_OCR(data: str):
-    pass
+def _decode_OCR(data: str, century: int):
+    """
+    FIXME
+    Note, check if there is any \n in this string
+    [OCR],29,220916
+    D,32,7FF61F47,7FF96AAD,80019C5D,7FF8EEBB,7FF0B2E5,7FFB045E,7FFC0AF4,6CEF2E,5058B5,560C72,516F8D,78A870,48660F,9B89F3,7FF61F00,7FF96AC0,80019C40,7FF8EF00,7FF0B300,7FFB03C0,7FFC0A80
+    W,12,7FED43A9,7FF5BCC5,8005D91A,8015D956,7FFCD34E,7FF14B6D,7FFC38AC,29BF350,FA9F3A,9ABAD1,1B610D7,3DD6947,CF5AC95,1635C01,7FED4540,7FF5BD00,8005D900,8015D780,7FFCD6C0,7FF13EC0,7FFC3780
+
+    NOTES
+    -----
+    Bytes are missing for some value. Pad with leading zero ?
+
+    """
+    _data = []
+    for segment in data:
+        _data+=segment.split('\n')
+    hours = _data[1].rjust(6,'0')
+    time = str(century - 1) + _data[2][4:6] + "-" + _data[2][2:4] + "-" + _data[2][0:2] \
+           + "T" + hours[0:2] + ":" + hours[2:4] + ":" + hours[4:6]
+    dry_sn = _data[4]
+    wet_sn = _data[27]
+    dry_values = struct.unpack('>'+21*'f', bytes.fromhex(''.join([v.rjust(8,'0') for v in _data[5:26]])))
+    wet_values =struct.unpack('>'+21*'f', bytes.fromhex(''.join([v.rjust(8,'0') for v in _data[28:]])))
+
+    return {'time': time, 'dry_sn': dry_sn, 'wet_sn': wet_sn, 'dry_values': dry_values, 'wet_values': wet_values}
 
 
 def _decode_Triplet(data: str):
@@ -123,8 +160,29 @@ def _decode_Par_digi(data: str):
     pass
 
 
-def _decode_GPS(data: str):
-    pass
+def _decode_GPS(data: str, century: int):
+    """[GPS], 110132, A, 4839.7541, N, 06834.8903, W, 003.7, 004.4, 240521, 017.5, W, * 7B
+    0 GPRMC:
+    1 time : (utc) hhmmss.ss
+    2 A/V : Position status. A = Data valid, V = Data invalid.
+    3 lat : DDmm.mmmm
+    4 N/S :
+    5 lon : DDmm.mmmm
+    6 E/W :
+    7 speed : Knots, x.x
+    8 true course:  x.x True degree
+    9 date: ddmmyy
+    10 variation, magnetic x.x
+    11 E/W, mode + checksum : ((A)utonomous, (D)ifferential, (E)stimated, (M)anual input, (N) data not valid.
+
+"""
+    latitude = {'S': -1, 'N': 1}[data[4]]*int(data[3][:-7]) + round(float(data[3][-7:]) / 60, 2)
+    longitude = {'W': -1, 'E': 1}[data[6]] * int(data[5][:-7]) + round(float(data[5][-7:]) / 60, 2)
+    time = str(century - 1) + data[9][4:6] + "-" + data[9][2:4] + "-" + data[9][0:2] \
+                  + "T" + data[1][0:2] + ":" + data[1][2:4] + ":" + data[1][4:6]
+    variation = {'W': -1, 'E': 1}[data[11][0]] * float(data[10])
+    return {'latitude_N': latitude, 'longitude': longitude,'speed': float(data[7]),
+            'time': time, 'course': float(data[8]), 'variation_E': variation}
 
 
 def _decode_CTD(data: str):
@@ -166,7 +224,6 @@ def _decode_CO2_W(data: str):
 def _decode_CO2_A(data: str):
     pass
 
-
 def _decode_Debit(data: str):
     pass
 
@@ -176,11 +233,17 @@ def _decode_p1(data: str):
 
 
 def _decode_MO(data: str):
-    pass
+    #84:87 Buoy Compass ture namely with comp. magnetic deflection made on board.
+    return {'buoy_compass_true': data[1][-27:-19]}
 
 
 def _decode_W(data: str):
     pass
+
+
+def comp_heading(TSH: str, TCH: str, _format='>i'):
+    return atan2(struct.unpack(_format, bytes.fromhex(TSH))[0],
+                 struct.unpack(_format, bytes.fromhex(TCH))[0]) / pi * 180
 
 
 data = main()
