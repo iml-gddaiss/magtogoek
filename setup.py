@@ -17,9 +17,10 @@ setup(
     url="https://github.com/JeromeJGuay/magtogoek",
     install_requires=[
         "numpy >=1.20.0, <1.22.2",
-        "dask",
         "xarray",
         "pandas",
+        "dask",
+        "back",
         "datetime",
         "netCDF4",
         "scipy",
