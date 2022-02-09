@@ -1,4 +1,6 @@
-# Magtogoek 
+!!! Important: Use the develop branch. !!!
+======================================
+# Magtogoek
 *Name origin: Magtogoek is Algonquin for the Saint-Lawrence River which mean "the path that walks".*
 ## Description
 Magtogoek is a Linux python package and command line application (CLI) for processing ocean data. 
@@ -54,7 +56,7 @@ Use the command `conda active [env-name]` to change between anaconda environment
 Both `mercurial` and `git` must be installed to install `Magtogoek`. 
 
 ### Install via `pip`
-`First make sure you are in the desired python environment.
+First make sure you are in the desired python environment.
 ```shell
 pip install git+https://github.com/JeromeJGuay/magtogoek
 ```
