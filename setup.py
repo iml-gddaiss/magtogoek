@@ -34,7 +34,7 @@ setup(
         "pygeodesy",
         "crc16",
         "gpxpy",
-        "cmocean"
+        "cmocean",
         "pycurrents @ hg+https://currents.soest.hawaii.edu/hgstage/pycurrents",
     ],
     packages=find_packages(),
