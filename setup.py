@@ -16,7 +16,7 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/JeromeJGuay/magtogoek",
     install_requires=[
-        "numpy >=1.22.0, <1.22.2",
+        "numpy >=1.20.0, <1.22.2",
         "dask",
         "xarray",
         "pandas",
