@@ -22,6 +22,7 @@
 """
 
 DATA_TEST = """
+
 [NOM],PMZA-RIKI,110000,240521,8.3.1,000018C0D36B,00.3,00.0,48 39.71N,068 34.90W
 [COMP],000DA1B4,FFC58202,-4.634,88.61,0.654,27.98,11.14,24.94
 [Triplet],BBFL2W-1688	05/24/21	10:59:03	700	1376	2.786E-03	695	190	1.066E+00	460	85	3.454E+00
@@ -42,11 +43,14 @@ DATA_TEST = """
 [VEMCO],No answer
 [MO],D21027179068450254073423262786-31066+03454+00510##########795190660601214429000804000517537004000E3FFBB0022001400,000
 [FIN]
+
 """
 
 OCR_TEST = """[OCR],29,220916
 D,32,7FF61F47,7FF96AAD,80019C5D,7FF8EEBB,7FF0B2E5,7FFB045E,7FFC0AF4,6CEF2E,5058B5,560C72,516F8D,78A870,48660F,9B89F3,7FF61F00,7FF96AC0,80019C40,7FF8EF00,7FF0B300,7FFB03C0,7FFC0A80
 W,12,7FED43A9,7FF5BCC5,8005D91A,8015D956,7FFCD34E,7FF14B6D,7FFC38AC,29BF350,FA9F3A,9ABAD1,1B610D7,3DD6947,CF5AC95,1635C01,7FED4540,7FF5BD00,8005D900,8015D780,7FFCD6C0,7FF13EC0,7FFC3780"""
+
+DATA_BLOCK_END_TAG = '[\FIN\]'
 
 import struct
 from typing import List, Tuple, Dict, Union
@@ -75,7 +79,16 @@ def decode_transmitted_data(data_received: str, century: int=21):
     -------
 
     """
-    data = [line.split(',') for line in data_received.splitlines()]
+
+    block_start_index = 0
+    block_end_index = 0
+    iter_data = re.finditer(DATA_BLOCK_END_TAG, data)
+
+    next(iter_data).span[1]
+
+
+    re.split(r'(\[.*\])', data_received)
+    data = [line.split(',') for line in data_received.splitlines()] #FIXME shoud split on tag
     decoded_data = dict().fromkeys(TAGS)
     for line in data:
         if line[0] == "[NOM]":
@@ -273,6 +286,8 @@ def _decode_WXT520(data: str):
     """[WXT520],Ta=6.8C,Ua=45.0P,Pa=1025.4H"""
     """[WXT520],Rc=0.00M,Rd=0s,Ri=0.0M,Hc=0.0M,Hd=0s,Hi=0.0M"""
     """[WXT520],Th=7.6C,Vh=14.1#,Vs=14.4V,Vr=3.503V"""
+    regex = r'([A-z]+)=(\d+(?:\.\d+)?)'
+    match = re.findall(regex, ','.join(data))
     pass
 
 
