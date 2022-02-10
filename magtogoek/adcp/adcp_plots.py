@@ -244,7 +244,10 @@ def plot_pearson_corr(dataset: xr.Dataset, uvw: List[str] = ("u", "v", "w"), fla
     for var in uvw:
         da = flag_data(dataset=dataset, var=var)
         for d in range(dataset.dims["depth"] - 2):
-            corr[var].append(xr.corr(da[d], da[d + 2], "time"))
+            if np.isfinite(da[d]).any() and np.isfinite(da[d + 2]).any():
+                corr[var].append(xr.corr(da[d], da[d + 2], "time"))
+            else:
+                corr[var].append(np.nan)
     fig, axe = plt.subplots(figsize=(6, 8))
     for var in uvw:
         axe.plot(corr[var], dataset.depth[:-2], label=var)

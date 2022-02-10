@@ -23,7 +23,7 @@ setup(
         "back",
         "datetime",
         "netCDF4",
-        "scipy",
+        "scipy == 1.7",
         "matplotlib == 3.5",
         "typing",
         "nptyping",
