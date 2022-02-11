@@ -43,7 +43,7 @@ If `base` does not show up try this:
 Next, we create a Anaconda environment where we can use magtogoek without any dependency or version issues.
 To do so run:
 ```shell
-    $ conda create -n mtgk python=3 matplotlib scipy numpy pandas xarray 
+    $ conda create -n mtgk python=3.8 numpy 
     $ conda activate mtgk 
 ```
 Now the terminal command line should look like
