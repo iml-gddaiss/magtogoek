@@ -8,11 +8,6 @@ This modules contains the essential figure to do a visual inspection of the data
 
 # Use ancillary_variables for QC. modify on the flag data function tools.
 """
-
-#import matplotlib
-#matplotlib.use('Qt5Agg')
-
-
 from itertools import cycle
 from typing import List, Union, Dict
 
