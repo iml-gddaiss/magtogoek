@@ -3,7 +3,6 @@
 
 * Command to add.
 ** navigation command.
-*** Add Navigation loadable from csv file maybe ?
    -n nc_filename
    -c csv_filename
    -o output netcdf4 file name
@@ -21,13 +20,9 @@
 ** Platform files.
    + Make use of a single platform file that can be modify by the user.
      
-* Missing
-** Make figure while processing
-   + ...
-
-   + Only for directional quantities (u,v, adcp ?)
-   + mtgk rotate NETCDF_FILES ANGLE -o [output_files]
-   + Rotate data clockwise and adds u, v are then not East and North anymore.
+** Make a .magtogoek.conf for default vaules
+** add a headless feature to plots + save command instead of plotting.
+** A a RDI check.
       
 
 * Verification
