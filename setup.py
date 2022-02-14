@@ -37,7 +37,7 @@ setup(
         "cmocean~=2.0",
         "obsub==0.2",
         "crc16==0.1.1",
-        "pyqt5"
+        "pyqt5",
         "pycurrents @ hg+https://currents.soest.hawaii.edu/hgstage/pycurrents",
     ],
     packages=find_packages(),
