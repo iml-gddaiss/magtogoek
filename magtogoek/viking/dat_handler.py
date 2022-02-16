@@ -7,7 +7,6 @@ The Buoy Data
 -------------
 [NOM]: Buoy information
     'PMZA-RIKI,110000,240521,8.3.1,000018C0D36B,00.3,00.0,48 39.71N,068 34.90W'
-    Possible 11th tag 0 or 1 for absence or presence of water in Controller case.
 [COMP]: Compass data
     '000DA1B4,FFC58202,-4.634,88.61,0.654,27.98,11.14,24.94'
 [OCR]: Radiance, Irradiance
@@ -18,7 +17,9 @@ The Buoy Data
     '110100,240521,SATPRS1093,30.415,510.646,-1.7,5.7,11.0,162'
 [SUNA]: Near surface Nitrate concentration
     'SATSLC1363,2021145,12.000192,7.63,0.1068,0.2978,0.2471,0.00,0.000160'
-    (3) uMol, (4) mgN/L, (5) absorbance at 254.31 nm, (6) absorbance at 350.16 nm,
+    (0) Model/serial          (1) YearDdays     (2) Hours of day
+    (3) uMol,                 (4) mgN/L,        (5) absorbance 254.31 nm,
+    (6) absorbance 350.16 nm, (7) bromide mg/L, (8) spectrum average,
 [GPS]: GPS
     '110132,A,4839.7541,N,06834.8903,W,003.7,004.4,240521,017.5,W,*7B'
     (0) GPRMC:
@@ -44,11 +45,11 @@ The Buoy Data
 [RDI]: Teledyne ADCP. Near surface velocities (6 meter deep ?)
     '110000,240521,E3FFBB0022001400'
 [WAVE_M]: Waves (Multi-Électronique sensor)
+    date, hour, wave period, averaged wave height, averaged wave height (1/3 period, highest waves), max height.
     '2021/05/24,10:45:00,6.61,0.60,0.48,1.29'
-    Notes:
-        THE 5 ELEMENTS IS NOT MENTIONED IN THE DESCRIPTION Will guess period, averaged, min, max
 [WAVE_S]: Waves (Seaview sensor)
-    '$PSVSW,165.15,0.251,8.041,72.285,3.376,0.319,2.272,0.438,2.250,2017-02-24,20:52:15,90*71'
+    NMEA str, Heading, average height, dominant period, wave direction, Hmax, Hmax2, Pmax. angR, angP, date time, index*chk
+    '$PSVSW,201.63,1.239,8.695,266.983,1.811,1.575,9.668,3.039,11.004,2021-09-21 00:28:51,2048*76'
 [WXT520]: Meteo Conditions
     'Dn=163D,Dm=181D,Dx=192D,Sn=18.0K,Sm=22.7K,Sx=28.0K'
     'Rc=0.00M,Rd=0s,Ri=0.0M,Hc=0.0M,Hd=0s,Hi=0.0M'
@@ -74,9 +75,10 @@ The Buoy Data
 [wPH]: Surface (water) pH.
     'SEAFET02138,2021-05-24T11:01:26,1266,0000,7.9519,7.9825,-0.892024,-0.938712,7.4124,3.4,7.6'
     sample_number, error_flag, PH_ext, PH_int, ph_ext_volt, ph_ext_volt, pH_temperature, relative_humidity, internal_temperature
-[CO2_A]: CO2 in Air
-    Measurement type,Year,Month,Day,Hour,Minute,Second,Zero A/D,Current A/D. (A / D : analogue device ?. unist-> counts)
-    CO2_ppm,IRGA temperature,Humidity_mbar,Humidity sensor temperature,Cell gas pressure_mbar,Battery voltage
+[CO2_A]: CO2 in Air. (A/D : analogue device ?. units-> counts)
+    Measurement type,Year,Month,Day,Hour,Minute,Second,Zero A/D,Current A/D.
+    CO2_ppm,IRGA temperature,Humidity_mbar,Humidity sensor temperature,Gas stream pressure_mbar,
+    Las could be `Battery voltage` or `IRGA temperature sensor`.
     'W M,2021,05,25,11,51,24,55544,52106,448.94,40.00,10.70,13.40,1000,12.3'
 [CO2_W]: Near surface CO2 in Water
     See CO2_A
@@ -86,6 +88,10 @@ The Buoy Data
     1 Pulse = 0.0926 m -> 1 Pulse over 60s -> 0.001543 m/s
 [p0] ou [p1]: Power
     (not used)
+[VEMCO] Acoustic receiver
+     Date       Time    ,Protocal, Serial number
+    '2018-05-05 04:27:35,A69-1602,46179'
+
 [MO]: Short string of the data
     (not used)
 
@@ -151,25 +157,28 @@ def read_raw(filenames, century=21) -> dict:
             data_received = f.read()
             decode_transmitted_data(data_received=data_received, decoded_data=decoded_data, century=century)
 
-    compact_data = dict()
+    return _compact_data(decoded_data)
+
+
+def _compact_data(decoded_data: dict) -> dict:
+    compacted_data = dict()
     for tag, value in decoded_data.items():
         if len(value) == 0:
-            continue
+            compacted_data[tag] = None
         else:
-            compact_data[tag] = {key: [] for key in value[0].keys()}
+            compacted_data[tag] = {key: [] for key in value[0].keys()}
             for data_sequence in value:
                 if data_sequence is not None:
                     for key in data_sequence.keys():
-                        compact_data[tag][key].append(data_sequence[key])
-
-    return compact_data
+                        compacted_data[tag][key].append(data_sequence[key])
+    return compacted_data
 
 
 def decode_transmitted_data(data_received: str, decoded_data: dict = None, century: int = 21) -> dict:
     if decoded_data is None:
         decoded_data = {key: [] for key in TAGS}
     for data_block in DATA_BLOCK_REGEX.finditer(data_received):
-        decoded_data['WXT520'].append(dict())
+        wxt520 = dict()
         for data_sequence in DATA_TAG_REGEX.finditer(data_block.group(1)):
             tag = data_sequence.group(1)
             data = data_sequence.group(2)
@@ -198,7 +207,7 @@ def decode_transmitted_data(data_received: str, decoded_data: dict = None, centu
             elif tag == "WAVE_S":
                 decoded_data["WAVE_S"].append(_decode_WAVE_M(data))
             elif tag == "WXT520":
-                decoded_data["WXT520"].append({**decoded_data["WXT520"][-1], **_decode_WXT520(data)})
+                wxt520 = {**wxt520, **_decode_WXT520(data)}
             elif tag == "WMT700":
                 decoded_data["WMT700"].append(_decode_WMT700(data))
             elif tag == "WpH":
@@ -209,6 +218,9 @@ def decode_transmitted_data(data_received: str, decoded_data: dict = None, centu
                 decoded_data["CO2_A"].append(_decode_CO2_A(data))
             elif tag == "Debit":
                 decoded_data["Debit"].append(_decode_Debit(data))
+
+        if bool(wxt520.keys()) is True:
+            decoded_data["WXT520"].append(wxt520)
 
     return decoded_data
 
@@ -221,11 +233,6 @@ def _decode_NOM(data: str, century: int) -> dict:
         latitude = {'S': -1, 'N': 1}[_lat[1][-1]] * (int(_lat[0]) + round(float(_lat[1][:-1]) / 60, 2)),
         _lon = data[8].split(' ')
         longitude = {'W': -1, 'E': 1}[_lon[1][-1]] * (int(_lon[0]) + round(float(_lon[1][:-1]) / 60, 2))
-
-    water_in_case = None
-    if len(data) > 9:
-        water_in_case = _safe_int(data[9])
-
     return {'buoy_name': data[0],
             'time': _make_timestamp(str(century - 1) + data[2][4:6], data[2][2:4], data[2][0:2],
                                     data[1][0:2], data[1][2:4], data[1][4:6]),
@@ -234,8 +241,7 @@ def _decode_NOM(data: str, century: int) -> dict:
             'pc_data_flash': data[5],
             'pc_winch_flash': data[6],
             'latitude_N': latitude,
-            'longitude_E': longitude,
-            'water_in_case': water_in_case}
+            'longitude_E': longitude}
 
 
 def _decode_COMP(data: str) -> dict:
@@ -283,13 +289,19 @@ def _decode_Par_digi(data: str, century: int) -> dict:
 def _decode_SUNA(data: str) -> dict:
     data = data.replace(' ', '').split(',')
     model_number, serial_number = re.match(r".*?([A-z]+)([0-9]+)", data[0]).groups()
-    return {"time": datetime(2021, 1, 1) + timedelta(days=145),
+    time=None
+    if '#' not in data[1]+data[2]:
+        time = (datetime(int(data[1][0:4]), 1, 1)
+                + timedelta(days=int(data[1][4:]), hours=float(data[2]))).strftime('%y-%m-%dT%H:%M:%S')
+    return {"time": time,
             "model_number": model_number,
             "serial_number": serial_number,
             "uMol": _safe_float(data[3]),
             "mgNL": _safe_float(data[4]),
             "absorbance_254_31": _safe_float(data[5]),
-            "absorbance_350_16": _safe_float(data[6])}
+            "absorbance_350_16": _safe_float(data[6]),
+            "bromide_mgL": _safe_float(data[7]),
+            "spectrum_average": _safe_float(data[8])}
 
 
 def _decode_GPS(data: str, century: int) -> dict:
@@ -353,26 +365,26 @@ def _decode_WAVE_M(data: str) -> dict:
         return None
     return {'time': data[0].replace('/', '-') + 'T' + data[1],
             "period": _safe_float(data[2]),
-            "averaged_height": _safe_float(data[3]),
-            "minimal_height": _safe_float(data[4]),
+            "average_height": _safe_float(data[3]),
+            "significant_height": _safe_float(data[4]),
             "maximal_height": _safe_float(data[5])}
 
 
 def _decode_WAVE_S(data: str) -> dict:
     data = data.strip('\n').split(',')
-    time = data[11] + 'T' + data[12]
-    return {'time': time,
+    time = data[10].replace(' ', 'T')
+    "NMEA,Heading,Average height,Dominant period,Wave direction,Hmax,Hmax2,Pmax,AngR,AngP,Date Time,Index*chk"
+    return {'time': data[10].replace(' ', 'T'),
             'heading': _safe_float(data[1]),
-            'direction': _safe_float(data[2]),
-            'average': _safe_float(data[3]),
-            'height': _safe_float(data[4]),
-            'period': _safe_float(data[5]),
-            'maximal_height': _safe_float(data[6]),
-            'maximal_height_2': _safe_float(data[7]),
-            'Pmax': _safe_float(data[8]),
-            'roll': _safe_float(data[9]),
-            'pitch': _safe_float(data[10]),
-            'index_checksum': data[13]}
+            'average_height': _safe_float(data[2]),
+            'dominant_period': _safe_float(data[3]),
+            'wave_direction': _safe_float(data[4]),
+            'Hmax': _safe_float(data[5]),
+            'Hmax2': _safe_float(data[6]),
+            'pmax': _safe_float(data[7]),
+            'roll': _safe_float(data[8]),
+            'pitch': _safe_float(data[9]),
+            'index_checksum': data[11]}
 
 
 def _decode_WXT520(data: str) -> dict:
@@ -441,9 +453,17 @@ def _decode_CO2_A(data: str) -> dict:
 
 def _decode_Debit(data: str) -> dict:
     if "#" in data:
-        return None
+        return {'flow_mas': None}
     else:
         return {'flow_ms': round(int(data.strip('\n'), 16) * 0.001543, 2)}
+
+def _decode_VEMCO(data: str) ->dict:
+    if "No answer" in data:
+        return None
+    data = data.replace('\n','').split(',')
+    return {'time': data[0].replace(' ', 'T'),
+            'protocol':data[1],
+            'serial_number':data[2]}
 
 
 # Not currenly used
