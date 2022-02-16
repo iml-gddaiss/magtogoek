@@ -95,6 +95,16 @@ The Buoy Data
 [MO]: Short string of the data
     (not used)
 
+WHICH-YOYO-CTD
+--------------
+    When you received the information of the Mini-Winch at the end of the tags [MO] the file WCH is generate, namely
+
+    <buoy name>_WCH_<date>.dat
+
+    #1 Date GPS
+    #2 Hour GPS
+    #3 The message received of the Mini-Winch controller. It can be text if it begins with [W]94> you got the data received by the CTD when it was at it lowest; or the temperature (°C), Conductivity (S/m), Pressure (decibars), salinity (PSU).
+
 Data That Need Processing
 -------------------------
     WpH
@@ -160,20 +170,6 @@ def read_raw(filenames, century=21) -> dict:
     return _compact_data(decoded_data)
 
 
-def _compact_data(decoded_data: dict) -> dict:
-    compacted_data = dict()
-    for tag, value in decoded_data.items():
-        if len(value) == 0:
-            compacted_data[tag] = None
-        else:
-            compacted_data[tag] = {key: [] for key in value[0].keys()}
-            for data_sequence in value:
-                if data_sequence is not None:
-                    for key in data_sequence.keys():
-                        compacted_data[tag][key].append(data_sequence[key])
-    return compacted_data
-
-
 def decode_transmitted_data(data_received: str, decoded_data: dict = None, century: int = 21) -> dict:
     if decoded_data is None:
         decoded_data = {key: [] for key in TAGS}
@@ -225,12 +221,26 @@ def decode_transmitted_data(data_received: str, decoded_data: dict = None, centu
     return decoded_data
 
 
+def _compact_data(decoded_data: dict) -> dict:
+    compacted_data = dict()
+    for tag, value in decoded_data.items():
+        if len(value) == 0:
+            compacted_data[tag] = None
+        else:
+            compacted_data[tag] = {key: [] for key in value[0].keys()}
+            for data_sequence in value:
+                if data_sequence is not None:
+                    for key in data_sequence.keys():
+                        compacted_data[tag][key].append(data_sequence[key])
+    return compacted_data
+
+
 def _decode_NOM(data: str, century: int) -> dict:
     data = data.strip('\n').split(',')
     latitude, longitude = None, None
     if "#" not in data[7]:
         _lat = data[7].split(' ')
-        latitude = {'S': -1, 'N': 1}[_lat[1][-1]] * (int(_lat[0]) + round(float(_lat[1][:-1]) / 60, 2)),
+        latitude = {'S': -1, 'N': 1}[_lat[1][-1]] * (int(_lat[0]) + round(float(_lat[1][:-1]) / 60, 2))
         _lon = data[8].split(' ')
         longitude = {'W': -1, 'E': 1}[_lon[1][-1]] * (int(_lon[0]) + round(float(_lon[1][:-1]) / 60, 2))
     return {'buoy_name': data[0],
@@ -238,8 +248,8 @@ def _decode_NOM(data: str, century: int) -> dict:
                                     data[1][0:2], data[1][2:4], data[1][4:6]),
             'firmware': data[3],
             'controller_sn': data[4],
-            'pc_data_flash': data[5],
-            'pc_winch_flash': data[6],
+            #'pc_data_flash': data[5],
+            #'pc_winch_flash': data[6],
             'latitude_N': latitude,
             'longitude_E': longitude}
 
@@ -282,8 +292,8 @@ def _decode_Par_digi(data: str, century: int) -> dict:
             'PAR': _safe_float(data[4]),
             'pitch': _safe_float(data[5]),
             'roll': _safe_float(data[6]),
-            'intern_temperature': _safe_float(data[7]),
-            'checksum': _safe_int(data[8])}
+            'intern_temperature': _safe_float(data[7]),}
+            #'checksum': _safe_int(data[8])}
 
 
 def _decode_SUNA(data: str) -> dict:
@@ -306,15 +316,14 @@ def _decode_SUNA(data: str) -> dict:
 
 def _decode_GPS(data: str, century: int) -> dict:
     data = data.strip('\n').split(',')
-
     return {'time': _make_timestamp(str(century - 1) + data[8][4:6], data[8][2:4], data[8][0:2],
                                     data[0][0:2], data[0][2:4], data[0][4:6]),
             'latitude_N': {'S': -1, 'N': 1}[data[3]] * (int(data[2][:-7]) + round(float(data[2][-7:]) / 60, 2)),
             'longitude_E': {'W': -1, 'E': 1}[data[5]] * (int(data[4][:-7]) + round(float(data[4][-7:]) / 60, 2)),
             'speed': _safe_float(data[6]),
             'course': _safe_float(data[7]),
-            'variation_E': {'W': -1, 'E': 1}[data[10][0]] * float(data[9]),
-            'checksum': _safe_int(data[8])}
+            'variation_E': {'W': -1, 'E': 1}[data[10][0]] * float(data[9]),}
+            #'checksum': _safe_int(data[8])}
 
 
 def _decode_CTD(data: str) -> dict:
@@ -357,9 +366,6 @@ def _decode_RDI(data: str, century: int):
 
 
 def _decode_WAVE_M(data: str) -> dict:
-    """
-    FIXME THE 5 ELEMENTS IS NOT MENTIONED IN THE DESCRIPTION Will guess period, averaged, min, max
-    """
     data = data.strip('\n').split(',')
     if "#" in data[0]:
         return None
@@ -373,7 +379,6 @@ def _decode_WAVE_M(data: str) -> dict:
 def _decode_WAVE_S(data: str) -> dict:
     data = data.strip('\n').split(',')
     time = data[10].replace(' ', 'T')
-    "NMEA,Heading,Average height,Dominant period,Wave direction,Hmax,Hmax2,Pmax,AngR,AngP,Date Time,Index*chk"
     return {'time': data[10].replace(' ', 'T'),
             'heading': _safe_float(data[1]),
             'average_height': _safe_float(data[2]),
@@ -383,8 +388,8 @@ def _decode_WAVE_S(data: str) -> dict:
             'Hmax2': _safe_float(data[6]),
             'pmax': _safe_float(data[7]),
             'roll': _safe_float(data[8]),
-            'pitch': _safe_float(data[9]),
-            'index_checksum': data[11]}
+            'pitch': _safe_float(data[9]),}
+            #'index_checksum': data[11]}
 
 
 def _decode_WXT520(data: str) -> dict:
@@ -418,8 +423,8 @@ def _decode_WpH(data: str) -> dict:
             'error_flag': data[3],
             'ext_ph': _safe_float(data[4]),
             'int_ph': _safe_float(data[5]),
-            'ext_volt': _safe_float(data[6]),
-            'int_volt': _safe_float(data[7]),
+            #'ext_volt': _safe_float(data[6]),
+            #'int_volt': _safe_float(data[7]),
             'ph_temperature': _safe_float(data[8]),
             'rel_humidity': _safe_float(data[9]),
             'int_temperature': _safe_float(data[10])}
@@ -434,8 +439,8 @@ def _decode_CO2_W(data: str) -> dict:
             "irga_temperature": _safe_float(data[9]),
             "humidity_mbar": _safe_float(data[10]),
             "humidity_sensor_temperature": _safe_float(data[11]),
-            "cell_gas_pressure_mar": _safe_float(data[12]),
-            "battery_volt": _safe_float(data[12])}
+            "cell_gas_pressure_mar": _safe_float(data[12]),}
+            #"battery_volt": _safe_float(data[12])}
 
 
 def _decode_CO2_A(data: str) -> dict:
@@ -447,8 +452,8 @@ def _decode_CO2_A(data: str) -> dict:
             'irga_temperature': _safe_float(data[9]),
             'humidity_mbar': _safe_float(data[10]),
             'humidity_sensor_temperature': _safe_float(data[11]),
-            "cell_gas_pressure_mar": _safe_float(data[12]),
-            "battery_volt": _safe_float(data[12])}
+            "cell_gas_pressure_mar": _safe_float(data[12]),}
+            #"battery_volt": _safe_float(data[12])}
 
 
 def _decode_Debit(data: str) -> dict:
