@@ -51,8 +51,8 @@ The Buoy Data
     '$PSVSW,165.15,0.251,8.041,72.285,3.376,0.319,2.272,0.438,2.250,2017-02-24,20:52:15,90*71'
 [WXT520]: Meteo Conditions
     'Dn=163D,Dm=181D,Dx=192D,Sn=18.0K,Sm=22.7K,Sx=28.0K'
-    'Ta=6.8C,Ua=45.0P,Pa=1025.4H'
     'Rc=0.00M,Rd=0s,Ri=0.0M,Hc=0.0M,Hd=0s,Hi=0.0M'
+    'Ta=6.8C,Ua=45.0P,Pa=1025.4H'
     'Th=7.6C,Vh=14.1#,Vs=14.4V,Vr=3.503V'
     Dn = minimal wind direction
     Dm = average wind direction
@@ -144,13 +144,25 @@ def _make_timestamp(Y: str, M: str, D: str, h: str, m: str, s: str) -> str:
 
 
 def read_raw(filenames, century=21) -> dict:
-    filenames = get_files_from_expression(filenames)
+    filenames = get_files_from_expression(filenames)[:20]
     decoded_data = {key: [] for key in TAGS}
     for _file in filenames:
         with open(_file) as f:
             data_received = f.read()
             decode_transmitted_data(data_received=data_received, decoded_data=decoded_data, century=century)
-    return decoded_data
+
+    compact_data = dict()
+    for tag, value in decoded_data.items():
+        if len(value) == 0:
+            continue
+        else:
+            compact_data[tag] = {key: [] for key in value[0].keys()}
+            for data_sequence in value:
+                if data_sequence is not None:
+                    for key in data_sequence.keys():
+                        compact_data[tag][key].append(data_sequence[key])
+
+    return compact_data
 
 
 def decode_transmitted_data(data_received: str, decoded_data: dict = None, century: int = 21) -> dict:
@@ -364,13 +376,24 @@ def _decode_WAVE_S(data: str) -> dict:
 
 
 def _decode_WXT520(data: str) -> dict:
+    keys = ['Dn', 'Dm', 'Dx', 'Sn', 'Sm', 'Sx',
+            'Rc', 'Rd', 'Ri', 'Hc', 'Hd', 'Hi',
+            'Ta', 'Ua', 'Pa',
+            'Th', 'Vh', 'Vs', 'Vr']
     regex = r'([A-z]+)=(\d+(?:\.\d+)?)'
-    return {key: _safe_float(value) for key, value in re.findall(regex, data.strip('\n'))}
+    decoded_data = dict().fromkeys(keys)
+    for key, value in re.findall(regex, data.strip('\n')):
+        decoded_data[key] = _safe_float(value)
+    return decoded_data
 
 
 def _decode_WMT700(data: str) -> dict:
+    keys = ['Dn', 'Dm', 'Dx', 'Sn', 'Sm', 'Sx']
     regex = r'([A-z]+)=(\d+(?:\.\d+)?)'
-    return {key: _safe_float(value) for key, value in re.findall(regex, data.strip('\n'))}
+    decoded_data = dict().fromkeys(keys)
+    for key, value in re.findall(regex, data.strip('\n')):
+        decoded_data[key] = _safe_float(value)
+    return decoded_data
 
 
 def _decode_WpH(data: str) -> dict:
