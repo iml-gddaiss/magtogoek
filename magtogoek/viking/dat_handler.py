@@ -120,57 +120,111 @@ Notes
 """
 
 import struct
+import pandas as pd
 from typing import List, Tuple, Dict, Union
 from math import atan2, sqrt, pi
 from datetime import datetime, timedelta
 import re
 from magtogoek.utils import get_files_from_expression
 
-TAGS = ["NOM", "COMP", "Triplet", "Par_digi", "SUNA", "GPS", "CTD", "CTDO", "RTI", "RDI", "WAVE_M", "WXT520", "WMT700",
-        "WpH", "CO2_W", "CO2_A", "Debit"]  # "OCR", "VEMCO", "MO", "FIN"]
+import matplotlib
+import matplotlib.pyplot as plt
+
+matplotlib.use('Qt5Agg')
+
+TAGS = ["NOM", "COMP", "Triplet", "Par_digi", "SUNA", "GPS",
+        "CTD", "CTDO", "RTI", "RDI", "WAVE_M", "WAVE_S", "WXT520",
+        "WMT700", "WpH", "CO2_W", "CO2_A", "Debit", "VEMCO"]  # "OCR", "MO", "FIN"]
 
 DATA_BLOCK_REGEX = re.compile(r"(\[NOM].+?)\[FIN]", re.DOTALL)
 DATA_TAG_REGEX = re.compile(rf"\[({'|'.join(TAGS)})],?((?:(?!\[).)*)", re.DOTALL)
 
 
+class VikingReader():
+    def __init__(self):
+        self.nom: dict = dict().fromkeys(
+            ['time', 'buoy_name', 'firmware', 'controller_sn', 'latitude_N', 'longitude_E'])
+        self.comp: dict = dict().fromkeys(['heading', 'pitch', 'roll', 'tilt', 'pitch_std', 'roll_std', 'tilt_std'])
+        self.triplet: dict = dict().fromkeys(['time', 'model_number', 'serial_number', 'wavelengths', 'gross_value',
+                                               'calculated_value'])
+        self.par_digi: dict = dict().fromkeys(
+            ['time', 'model_number', 'serial_number', 'timer_s', 'PAR', 'pitch', 'roll',
+             'intern_temperature'])
+        self.suna: dict = dict().fromkeys(["time", "model_number", "serial_number", "uMol", "mgNL", "absorbance_254_31",
+                                           "absorbance_350_16", "bromide_mgL", "spectrum_average"])
+        self.gps: dict = dict().fromkeys(['time', 'latitude_N', 'longitude_E', 'speed', 'course', 'variation_E'])
+        self.ctd: dict = dict().fromkeys(['temperature', 'conductivity', 'salinity', 'density'])
+        self.ctdo: dict = dict().fromkeys(['temperature', 'conductivity', 'oxygen', 'salinity'])
+        self.rti: dict = dict().fromkeys(['bin', 'position_cm', 'beam_vel_mms', 'enu_mms', 'corr_pc', 'amp_dB',
+                                          'bt_beam_vel_mms', 'bt_enu_mms', 'bt_corr_pc', 'bt_amp_dB'])
+        self.rdi: dict = {'time': None,
+                          'enu_mms': None}
+        self.wave_m: dict = dict().fromkeys(
+            ['time', "period", "average_height", "significant_height", "maximal_height"])
+        self.wave_s: dict = dict().fromkeys(['time', 'heading', 'average_height', 'dominant_period', 'wave_direction',
+                                             'Hmax', 'Hmax2', 'pmax', 'roll', 'pitch'])
+        self.wxt520: dict = dict().fromkeys(['Dn', 'Dm', 'Dx', 'Sn', 'Sm', 'Sx',
+                                             'Rc', 'Rd', 'Ri', 'Hc', 'Hd', 'Hi',
+                                             'Ta', 'Ua', 'Pa',
+                                             'Th', 'Vh', 'Vs', 'Vr'])
+        self.wmt700: dict = dict().fromkeys(['Dn', 'Dm', 'Dx', 'Sn', 'Sm', 'Sx'])
+        self.wph: dict = dict().fromkeys(['time', 'model', 'serial_number', 'sample_number', 'error_flag',
+                                          'ext_ph', 'int_ph', 'ph_temperature', 'rel_humidity', 'int_temperature'])
+        self.co2_w: dict = dict().fromkeys(
+            ["time", "auto-zero", "current", "co2_ppm", "irga_temperature", "humidity_mbar",
+             "humidity_sensor_temperature", "cell_gas_pressure_mar"])
+        self.co2_a: dict = dict().fromkeys(
+            ['time', 'auto-zero', 'current', "co2_ppm", 'irga_temperature', 'humidity_mbar',
+             'humidity_sensor_temperature', "cell_gas_pressure_mar"])
+        self.debit: dict = {'flow_ms': None}
+        self.vemco: dict = dict().fromkeys(['time', 'protocol', 'serial_number'])
+
+    @property
+    def tags(self):
+        return ['nom', 'comp', 'triplet', 'par_digi', 'suna', 'gps', 'ctd', 'ctdo', 'rti', 'rdi',
+                'wave_m', 'wave_s', 'wxt520', 'wmt700', 'wph', 'co2_w', 'co2_a', 'debit', 'vemco']
+
+    def read_raw(self, filenames, century=21) -> dict:
+        filenames = get_files_from_expression(filenames)
+        decoded_data = {key: [] for key in self.tags}
+        for _file in filenames:
+            with open(_file) as f:
+                data_received = f.read()
+                _decode_transmitted_data(data_received=data_received, decoded_data=decoded_data, century=century)
+
+        self._compact_data(decoded_data)
+
+        return self
+
+    def _compact_data(self, decoded_data: dict) -> dict:
+        for tag, value in decoded_data.items():
+            if len(value) == 0:
+                self.__dict__[tag] = None
+            else:
+                self.__dict__[tag] = {key: [] for key in self.__dict__[tag].keys()}
+                for data_sequence in value:
+                    if data_sequence is None:
+                        for key, value in self.__dict__[tag].items():
+                            value.append(None)
+                    else:
+                        for key, value in self.__dict__[tag].items():
+                            value.append(data_sequence[key])
+
 def main():
     m = multiple_test()
+    #[(tag, [len(value) for value in m.__dict__[tag].values()]) for tag in m.tags if m.__dict__[tag] is not None]
     return m
 
 
 def single_test():
-    return read_raw('/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat')
+    return VikingReader().read_raw('/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat')
 
 
 def multiple_test():
-    return read_raw('/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_[0-9]*.dat')
+    return VikingReader().read_raw('/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_[0-9]*.dat')
 
 
-def _safe_float(value: str) -> Union[float, None]:
-    return None if '#' in value else float(value)
-
-
-def _safe_int(value: str) -> Union[int, None]:
-    return None if '#' in value else int(value)
-
-
-def _make_timestamp(Y: str, M: str, D: str, h: str, m: str, s: str) -> str:
-    time = Y + "-" + M + "-" + D + "T" + h + ":" + m + ":" + s
-    return None if "#" in time else time
-
-
-def read_raw(filenames, century=21) -> dict:
-    filenames = get_files_from_expression(filenames)[:20]
-    decoded_data = {key: [] for key in TAGS}
-    for _file in filenames:
-        with open(_file) as f:
-            data_received = f.read()
-            decode_transmitted_data(data_received=data_received, decoded_data=decoded_data, century=century)
-
-    return _compact_data(decoded_data)
-
-
-def decode_transmitted_data(data_received: str, decoded_data: dict = None, century: int = 21) -> dict:
+def _decode_transmitted_data(data_received: str, decoded_data: dict = None, century: int = 21) -> dict:
     if decoded_data is None:
         decoded_data = {key: [] for key in TAGS}
     for data_block in DATA_BLOCK_REGEX.finditer(data_received):
@@ -178,61 +232,49 @@ def decode_transmitted_data(data_received: str, decoded_data: dict = None, centu
         for data_sequence in DATA_TAG_REGEX.finditer(data_block.group(1)):
             tag = data_sequence.group(1)
             data = data_sequence.group(2)
+            stamp = {'buoy_time': None, 'buoy_name': None}
             if tag == "NOM":
-                decoded_data["NOM"].append(_decode_NOM(data, century=century))
+                decoded_data["nom"].append(_decode_NOM(data, century=century))
+                stamp.update({'buoy_time': decoded_data["nom"]['time'], 'buoy_name': decoded_data["nom"]['buoy_name']})
             elif tag == "COMP":
-                decoded_data["COMP"].append(_decode_COMP(data))
+                decoded_data["comp"].append(_decode_COMP(data).update(stamp))
             elif tag == "Triplet":
-                decoded_data["Triplet"].append(_decode_Triplet(data, century=century))
+                decoded_data["triplet"].append(_decode_Triplet(data, century=century).update(stamp))
             elif tag == "Par_digi":
-                decoded_data["Par_digi"].append(_decode_Par_digi(data, century=century))
+                decoded_data["par_digi"].append(_decode_Par_digi(data, century=century).update(stamp))
             elif tag == "SUNA":
-                decoded_data['SUNA'].append(_decode_SUNA(data))
+                decoded_data['suna'].append(_decode_SUNA(data).update(stamp))
             elif tag == "GPS":
-                decoded_data["GPS"].append(_decode_GPS(data, century=century))
+                decoded_data["gps"].append(_decode_GPS(data, century=century).update(stamp))
             elif tag == "CTD":
-                decoded_data["CTD"].append(_decode_CTD(data))
+                decoded_data["ctd"].append(_decode_CTD(data).update(stamp))
             elif tag == "CTDO":
-                decoded_data["CTDO"].append(_decode_CTDO(data))
+                decoded_data["ctdo"].append(_decode_CTDO(data).update(stamp))
             elif tag == "RTI":
-                decoded_data["RTI"].append(_decode_RTI(data))
+                decoded_data["rti"].append(_decode_RTI(data).update(stamp))
             elif tag == "RDI":
-                decoded_data["RDI"].append(_decode_RDI(data, century=century))
+                decoded_data["rdi"].append(_decode_RDI(data, century=century).update(stamp))
             elif tag == "WAVE_M":
-                decoded_data["WAVE_M"].append(_decode_WAVE_M(data))
+                decoded_data["wave_m"].append(_decode_WAVE_M(data).update(stamp))
             elif tag == "WAVE_S":
-                decoded_data["WAVE_S"].append(_decode_WAVE_M(data))
+                decoded_data["wave_s"].append(_decode_WAVE_S(data).update(stamp))
             elif tag == "WXT520":
-                wxt520 = {**wxt520, **_decode_WXT520(data)}
+                wxt520 = wxt520.update(_decode_WXT520(data))
             elif tag == "WMT700":
-                decoded_data["WMT700"].append(_decode_WMT700(data))
+                decoded_data["wmt700"].append(_decode_WMT700(data).update(stamp))
             elif tag == "WpH":
-                decoded_data["WpH"].append(_decode_WpH(data))
+                decoded_data["wph"].append(_decode_WpH(data).update(stamp))
             elif tag == "CO2_W":
-                decoded_data["CO2_W"].append(_decode_CO2_W(data))
+                decoded_data["co2_w"].append(_decode_CO2_W(data).update(stamp))
             elif tag == "CO2_A":
-                decoded_data["CO2_A"].append(_decode_CO2_A(data))
+                decoded_data["co2_a"].append(_decode_CO2_A(data).update(stamp))
             elif tag == "Debit":
-                decoded_data["Debit"].append(_decode_Debit(data))
+                decoded_data["debit"].append(_decode_Debit(data).update(stamp))
 
         if bool(wxt520.keys()) is True:
-            decoded_data["WXT520"].append(wxt520)
+            decoded_data["wxt520"].append(wxt520.update(stamp))
 
     return decoded_data
-
-
-def _compact_data(decoded_data: dict) -> dict:
-    compacted_data = dict()
-    for tag, value in decoded_data.items():
-        if len(value) == 0:
-            compacted_data[tag] = None
-        else:
-            compacted_data[tag] = {key: [] for key in value[0].keys()}
-            for data_sequence in value:
-                if data_sequence is not None:
-                    for key in data_sequence.keys():
-                        compacted_data[tag][key].append(data_sequence[key])
-    return compacted_data
 
 
 def _decode_NOM(data: str, century: int) -> dict:
@@ -248,8 +290,8 @@ def _decode_NOM(data: str, century: int) -> dict:
                                     data[1][0:2], data[1][2:4], data[1][4:6]),
             'firmware': data[3],
             'controller_sn': data[4],
-            #'pc_data_flash': data[5],
-            #'pc_winch_flash': data[6],
+            # 'pc_data_flash': data[5],
+            # 'pc_winch_flash': data[6],
             'latitude_N': latitude,
             'longitude_E': longitude}
 
@@ -292,15 +334,14 @@ def _decode_Par_digi(data: str, century: int) -> dict:
             'PAR': _safe_float(data[4]),
             'pitch': _safe_float(data[5]),
             'roll': _safe_float(data[6]),
-            'intern_temperature': _safe_float(data[7]),}
-            #'checksum': _safe_int(data[8])}
+            'intern_temperature': _safe_float(data[7]), }
 
 
 def _decode_SUNA(data: str) -> dict:
     data = data.replace(' ', '').split(',')
     model_number, serial_number = re.match(r".*?([A-z]+)([0-9]+)", data[0]).groups()
-    time=None
-    if '#' not in data[1]+data[2]:
+    time = None
+    if '#' not in data[1] + data[2]:
         time = (datetime(int(data[1][0:4]), 1, 1)
                 + timedelta(days=int(data[1][4:]), hours=float(data[2]))).strftime('%y-%m-%dT%H:%M:%S')
     return {"time": time,
@@ -322,8 +363,8 @@ def _decode_GPS(data: str, century: int) -> dict:
             'longitude_E': {'W': -1, 'E': 1}[data[5]] * (int(data[4][:-7]) + round(float(data[4][-7:]) / 60, 2)),
             'speed': _safe_float(data[6]),
             'course': _safe_float(data[7]),
-            'variation_E': {'W': -1, 'E': 1}[data[10][0]] * float(data[9]),}
-            #'checksum': _safe_int(data[8])}
+            'variation_E': {'W': -1, 'E': 1}[data[10][0]] * float(data[9]), }
+    # 'checksum': _safe_int(data[8])}
 
 
 def _decode_CTD(data: str) -> dict:
@@ -388,8 +429,7 @@ def _decode_WAVE_S(data: str) -> dict:
             'Hmax2': _safe_float(data[6]),
             'pmax': _safe_float(data[7]),
             'roll': _safe_float(data[8]),
-            'pitch': _safe_float(data[9]),}
-            #'index_checksum': data[11]}
+            'pitch': _safe_float(data[9])}
 
 
 def _decode_WXT520(data: str) -> dict:
@@ -423,8 +463,8 @@ def _decode_WpH(data: str) -> dict:
             'error_flag': data[3],
             'ext_ph': _safe_float(data[4]),
             'int_ph': _safe_float(data[5]),
-            #'ext_volt': _safe_float(data[6]),
-            #'int_volt': _safe_float(data[7]),
+            # 'ext_volt': _safe_float(data[6]),
+            # 'int_volt': _safe_float(data[7]),
             'ph_temperature': _safe_float(data[8]),
             'rel_humidity': _safe_float(data[9]),
             'int_temperature': _safe_float(data[10])}
@@ -439,8 +479,7 @@ def _decode_CO2_W(data: str) -> dict:
             "irga_temperature": _safe_float(data[9]),
             "humidity_mbar": _safe_float(data[10]),
             "humidity_sensor_temperature": _safe_float(data[11]),
-            "cell_gas_pressure_mar": _safe_float(data[12]),}
-            #"battery_volt": _safe_float(data[12])}
+            "cell_gas_pressure_mar": _safe_float(data[12])}
 
 
 def _decode_CO2_A(data: str) -> dict:
@@ -452,8 +491,7 @@ def _decode_CO2_A(data: str) -> dict:
             'irga_temperature': _safe_float(data[9]),
             'humidity_mbar': _safe_float(data[10]),
             'humidity_sensor_temperature': _safe_float(data[11]),
-            "cell_gas_pressure_mar": _safe_float(data[12]),}
-            #"battery_volt": _safe_float(data[12])}
+            "cell_gas_pressure_mar": _safe_float(data[12])}
 
 
 def _decode_Debit(data: str) -> dict:
@@ -462,14 +500,27 @@ def _decode_Debit(data: str) -> dict:
     else:
         return {'flow_ms': round(int(data.strip('\n'), 16) * 0.001543, 2)}
 
-def _decode_VEMCO(data: str) ->dict:
+
+def _decode_VEMCO(data: str) -> dict:
     if "No answer" in data:
         return None
-    data = data.replace('\n','').split(',')
+    data = data.replace('\n', '').split(',')
     return {'time': data[0].replace(' ', 'T'),
-            'protocol':data[1],
-            'serial_number':data[2]}
+            'protocol': data[1],
+            'serial_number': data[2]}
 
+
+def _safe_float(value: str) -> Union[float, None]:
+    return None if '#' in value else float(value)
+
+
+def _safe_int(value: str) -> Union[int, None]:
+    return None if '#' in value else int(value)
+
+
+def _make_timestamp(Y: str, M: str, D: str, h: str, m: str, s: str) -> str:
+    time = Y + "-" + M + "-" + D + "T" + h + ":" + m + ":" + s
+    return None if "#" in time else time
 
 # Not currenly used
 # def _decode_OCR(data: str, century: int):
