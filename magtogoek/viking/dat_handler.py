@@ -117,10 +117,16 @@ Notes
     [OCR],29,220916
     D,32,7FF61F47,7FF96AAD,80019C5D,7FF8EEBB,7FF0B2E5,7FFB045E,7FFC0AF4,6CEF2E,5058B5,560C72,516F8D,78A870,48660F,9B89F3,7FF61F00,7FF96AC0,80019C40,7FF8EF00,7FF0B300,7FFB03C0,7FFC0A80
     W,12,7FED43A9,7FF5BCC5,8005D91A,8015D956,7FFCD34E,7FF14B6D,7FFC38AC,29BF350,FA9F3A,9ABAD1,1B610D7,3DD6947,CF5AC95,1635C01,7FED4540,7FF5BD00,8005D900,8015D780,7FFCD6C0,7FF13EC0,7FFC3780
+
+TODO
+----
+    Get CTD-YOYO winch files.
+    Reshape adcp data and others.
 """
 
 import struct
 import pandas as pd
+import numpy as np
 from typing import List, Tuple, Dict, Union
 from math import atan2, sqrt, pi
 from datetime import datetime, timedelta
@@ -168,6 +174,7 @@ VEMCO_KEYS = ['time', 'protocol', 'serial_number']
 
 
 class VikingData():
+    """Object to store Viking data. """
     def __init__(self, buoy_name: str, firmware: str, controller_sn: str):
         self.buoy_name: str = buoy_name
         self.firmware: str = firmware
@@ -215,23 +222,34 @@ data: (length: {len(self)})
         return ['comp', 'triplet', 'par_digi', 'suna', 'gps', 'ctd', 'ctdo', 'rti', 'rdi',
                 'wave_m', 'wave_s', 'wxt520', 'wmt700', 'wph', 'co2_w', 'co2_a', 'debit', 'vemco']
 
-    def _squeeze_empty(self):
+    def _squeeze_data(self):
         for tag in self.tags:
-            print(type(value) for value in self.__dict__[tag].())
+            uniques_values = set()
+            [uniques_values.update(value) for value in self.__dict__[tag].values()]
+            if len(uniques_values) == 1:
+                self.__dict__[tag] = None
+
+    def _reshape_data(self):
+       """adcp, waves ?"""
+       rti = ['beam_vel_mms', 'enu_mms', 'corr_pc', 'amp_dB', 'bt_beam_vel_mms', 'bt_enu_mms', 'bt_corr_pc', 'bt_amp_dB']
+       rdi = ['enu_mms']
+       wave = [""]
 
 
 class VikingReader():
+    """Use to read RAW dat files from viking buoy.
+    The data are puts in VikingData object and are accessible as attributes."""
     def __init__(self):
-        self.buoys: Dict[VikingData] = None
+        self._buoys_data: Dict[str: VikingData] = {}
 
     def __repr__(self):
         repr = f"""{self.__class__} 
-buoys: """
-        for buoy, viking_data in self.buoys.items():
+buoys:\n"""
+        for buoy, viking_data in self._buoys_data.items():
             repr += f"  {buoy}: (length = {len(viking_data)})\n"
         return repr
 
-    def read_raw(self, filenames, century=21) -> dict:
+    def read_raw(self, filenames, century=21):
         filenames = get_files_from_expression(filenames)
         decoded_data = []
         for _filename in filenames:
@@ -239,21 +257,27 @@ buoys: """
                 data_received = f.read()
                 decoded_data += _decode_transmitted_data(data_received=data_received, century=century)
 
-        buoys = set([(block['buoy_name'], block['firmware'], block['controller_sn']) for block in decoded_data])
-        self.buoys = {buoy[0]: VikingData(*buoy) for buoy in buoys}
-        self._compact_data(decoded_data)
+        self._make_viking_data(decoded_data)
 
         return self
 
-    def _compact_data(self, decoded_data: dict) -> dict:
+    def _make_viking_data(self, decoded_data: dict):
+
+        buoys = set([(block['buoy_name'], block['firmware'], block['controller_sn']) for block in decoded_data])
+
+        for buoy in buoys:
+            self._buoys_data[buoy[0]] = VikingData(*buoy)
+            self.__setattr__(buoy[0], self._buoys_data[buoy[0]])
+
         tags = ['comp', 'triplet', 'par_digi', 'suna', 'gps', 'ctd', 'ctdo', 'rti', 'rdi',
                 'wave_m', 'wave_s', 'wxt520', 'wmt700', 'wph', 'co2_w', 'co2_a', 'debit', 'vemco']
-        for data_block in decoded_data:
-            buoy_data = self.buoys[data_block['buoy_name']]
 
-            buoy_data.time = data_block['time']
-            buoy_data.latitude = data_block['latitude_N']
-            buoy_data.longitude = data_block['longitude_E']
+        for data_block in decoded_data:
+            buoy_data = self._buoys_data[data_block['buoy_name']]
+
+            buoy_data.time.append(data_block['time'])
+            buoy_data.latitude.append(data_block['latitude_N'])
+            buoy_data.longitude.append(data_block['longitude_E'])
 
             for tag in tags:
                 tag_data = buoy_data.__dict__[tag]
@@ -264,16 +288,15 @@ buoys: """
                     for key, value in tag_data.items():
                         value.append(data_block[tag][key])
 
-        for viking_data in self.buoys.values():
-            viking_data._squeeze_empty()
-
-
-
+        viking_data: VikingData
+        for viking_data in self._buoys_data.values():
+            viking_data._squeeze_data()
 
 
 def main():
-    m = multiple_test()
+    #m = multiple_test()
     # [(tag, [len(value) for value in m.__dict__[tag].values()]) for tag in m.tags if m.__dict__[tag] is not None]
+    m = single_test()
     return m
 
 
@@ -347,7 +370,7 @@ def _decode_NOM(data: str, century: int) -> dict:
         latitude = {'S': -1, 'N': 1}[_lat[1][-1]] * (int(_lat[0]) + round(float(_lat[1][:-1]) / 60, 2))
         _lon = data[8].split(' ')
         longitude = {'W': -1, 'E': 1}[_lon[1][-1]] * (int(_lon[0]) + round(float(_lon[1][:-1]) / 60, 2))
-    return {'buoy_name': data[0],
+    return {'buoy_name': data[0].lower().replace(' ', '_').replace('-', '_'),
             'time': _make_timestamp(str(century - 1) + data[2][4:6], data[2][2:4], data[2][0:2],
                                     data[1][0:2], data[1][2:4], data[1][4:6]),
             'firmware': data[3],
@@ -380,9 +403,9 @@ def _decode_Triplet(data: str, century: int) -> dict:
     return {'time': _make_timestamp(str(century - 1) + date[2], date[0], date[1], hours[0], hours[1], hours[2]),
             'model_number': ids[0],
             'serial_number': ids[1],
-            'wavelengths': list(map(_safe_int, [data[3], data[6], data[9]])),
-            'gross_value': list(map(_safe_float, [data[4], data[7], data[10]])),
-            'calculated_value': list(map(_safe_float, [data[5], data[8], data[11]]))}
+            'wavelengths': tuple(map(_safe_int, [data[3], data[6], data[9]])),
+            'gross_value': tuple(map(_safe_float, [data[4], data[7], data[10]])),
+            'calculated_value': tuple(map(_safe_float, [data[5], data[8], data[11]]))}
 
 
 def _decode_Par_digi(data: str, century: int) -> dict:
@@ -451,21 +474,21 @@ def _decode_RTI(data: str) -> dict:
     data = data.replace('\n', ',').split(',')
     return {'bin': data[0],
             'position_cm': data[1],
-            'beam_vel_mms': list(map(_safe_int, data[2:6])),
-            'enu_mms': list(map(_safe_int, data[6:10])),
-            'corr_pc': list(map(_safe_int, data[10:14])),
-            'amp_dB': list(map(_safe_int, data[14:18])),
-            'bt_beam_vel_mms': list(map(_safe_int, data[19:23])),
-            'bt_enu_mms': list(map(_safe_int, data[23:27])),
-            'bt_corr_pc': list(map(_safe_int, data[27:31])),
-            'bt_amp_dB': list(map(_safe_int, data[31:35]))}
+            'beam_vel_mms': tuple(map(_safe_int, data[2:6])),
+            'enu_mms': tuple(map(_safe_int, data[6:10])),
+            'corr_pc': tuple(map(_safe_int, data[10:14])),
+            'amp_dB': tuple(map(_safe_int, data[14:18])),
+            'bt_beam_vel_mms': tuple(map(_safe_int, data[19:23])),
+            'bt_enu_mms': tuple(map(_safe_int, data[23:27])),
+            'bt_corr_pc': tuple(map(_safe_int, data[27:31])),
+            'bt_amp_dB': tuple(map(_safe_int, data[31:35]))}
 
 
 def _decode_RDI(data: str, century: int):
     data = data.strip('\n').split(',')
     return {'time': _make_timestamp(str(century - 1) + data[1][4:6], data[1][2:4], data[1][0:2],
                                     data[0][0:2], data[0][2:4], data[0][4:6]),
-            'enu_mms': list(struct.unpack('hhhh', bytes.fromhex(data[2])))}
+            'enu_mms': tuple(struct.unpack('hhhh', bytes.fromhex(data[2])))}
 
 
 def _decode_WAVE_M(data: str) -> dict:
