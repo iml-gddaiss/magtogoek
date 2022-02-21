@@ -139,80 +139,141 @@ TAGS = ["NOM", "COMP", "Triplet", "Par_digi", "SUNA", "GPS",
 DATA_BLOCK_REGEX = re.compile(r"(\[NOM].+?)\[FIN]", re.DOTALL)
 DATA_TAG_REGEX = re.compile(rf"\[({'|'.join(TAGS)})],?((?:(?!\[).)*)", re.DOTALL)
 
+NOM_KEYS = ['time', 'latitude_N', 'longitude_E']
+COMP_KEYS = ['heading', 'pitch', 'roll', 'tilt', 'pitch_std', 'roll_std', 'tilt_std']
+TRIPLET_KEYS = ['time', 'model_number', 'serial_number', 'wavelengths', 'gross_value', 'calculated_value']
+PAR_DIGI_KEYS = ['time', 'model_number', 'serial_number', 'timer_s', 'PAR', 'pitch', 'roll', 'intern_temperature']
+SUNA_KEYS = ["time", "model_number", "serial_number", "uMol", "mgNL", "absorbance_254_31",
+             "absorbance_350_16", "bromide_mgL", "spectrum_average"]
+GPS_KEYS = ['time', 'latitude_N', 'longitude_E', 'speed', 'course', 'variation_E']
+CTD_KEYS = ['temperature', 'conductivity', 'salinity', 'density']
+CTDO_KEYS = ['temperature', 'conductivity', 'oxygen', 'salinity']
+RTI_KEYS = ['bin', 'position_cm', 'beam_vel_mms', 'enu_mms', 'corr_pc', 'amp_dB',
+            'bt_beam_vel_mms', 'bt_enu_mms', 'bt_corr_pc', 'bt_amp_dB']
+RDI_KEYS = ['time', 'enu_mms']
+WAVE_M_KEYS = ['time', "period", "average_height", "significant_height", "maximal_height"]
+WAVE_S_KEYS = ['time', 'heading', 'average_height', 'dominant_period', 'wave_direction',
+               'Hmax', 'Hmax2', 'pmax', 'roll', 'pitch']
+WXT520_KEYS = ['Dn', 'Dm', 'Dx', 'Sn', 'Sm', 'Sx', 'Rc', 'Rd', 'Ri', 'Hc', 'Hd', 'Hi',
+               'Ta', 'Ua', 'Pa', 'Th', 'Vh', 'Vs', 'Vr']
+WMT700_KEYS = ['Dn', 'Dm', 'Dx', 'Sn', 'Sm', 'Sx']
+WPH_KEYS = ['time', 'model', 'serial_number', 'sample_number', 'error_flag',
+            'ext_ph', 'int_ph', 'ph_temperature', 'rel_humidity', 'int_temperature']
+CO2_W_KEYS = ["time", "auto-zero", "current", "co2_ppm", "irga_temperature", "humidity_mbar",
+              "humidity_sensor_temperature", "cell_gas_pressure_mar"]
+CO2_A_KEYS = ['time', 'auto-zero', 'current', "co2_ppm", 'irga_temperature', 'humidity_mbar',
+              'humidity_sensor_temperature', "cell_gas_pressure_mar"]
+DEBIT_KEYS = ['flow_ms']
+VEMCO_KEYS = ['time', 'protocol', 'serial_number']
 
-class VikingReader():
-    def __init__(self):
-        self.nom: dict = dict().fromkeys(
-            ['time', 'buoy_name', 'firmware', 'controller_sn', 'latitude_N', 'longitude_E'])
-        self.comp: dict = dict().fromkeys(['heading', 'pitch', 'roll', 'tilt', 'pitch_std', 'roll_std', 'tilt_std'])
-        self.triplet: dict = dict().fromkeys(['time', 'model_number', 'serial_number', 'wavelengths', 'gross_value',
-                                               'calculated_value'])
-        self.par_digi: dict = dict().fromkeys(
-            ['time', 'model_number', 'serial_number', 'timer_s', 'PAR', 'pitch', 'roll',
-             'intern_temperature'])
-        self.suna: dict = dict().fromkeys(["time", "model_number", "serial_number", "uMol", "mgNL", "absorbance_254_31",
-                                           "absorbance_350_16", "bromide_mgL", "spectrum_average"])
-        self.gps: dict = dict().fromkeys(['time', 'latitude_N', 'longitude_E', 'speed', 'course', 'variation_E'])
-        self.ctd: dict = dict().fromkeys(['temperature', 'conductivity', 'salinity', 'density'])
-        self.ctdo: dict = dict().fromkeys(['temperature', 'conductivity', 'oxygen', 'salinity'])
-        self.rti: dict = dict().fromkeys(['bin', 'position_cm', 'beam_vel_mms', 'enu_mms', 'corr_pc', 'amp_dB',
-                                          'bt_beam_vel_mms', 'bt_enu_mms', 'bt_corr_pc', 'bt_amp_dB'])
-        self.rdi: dict = {'time': None,
-                          'enu_mms': None}
-        self.wave_m: dict = dict().fromkeys(
-            ['time', "period", "average_height", "significant_height", "maximal_height"])
-        self.wave_s: dict = dict().fromkeys(['time', 'heading', 'average_height', 'dominant_period', 'wave_direction',
-                                             'Hmax', 'Hmax2', 'pmax', 'roll', 'pitch'])
-        self.wxt520: dict = dict().fromkeys(['Dn', 'Dm', 'Dx', 'Sn', 'Sm', 'Sx',
-                                             'Rc', 'Rd', 'Ri', 'Hc', 'Hd', 'Hi',
-                                             'Ta', 'Ua', 'Pa',
-                                             'Th', 'Vh', 'Vs', 'Vr'])
-        self.wmt700: dict = dict().fromkeys(['Dn', 'Dm', 'Dx', 'Sn', 'Sm', 'Sx'])
-        self.wph: dict = dict().fromkeys(['time', 'model', 'serial_number', 'sample_number', 'error_flag',
-                                          'ext_ph', 'int_ph', 'ph_temperature', 'rel_humidity', 'int_temperature'])
-        self.co2_w: dict = dict().fromkeys(
-            ["time", "auto-zero", "current", "co2_ppm", "irga_temperature", "humidity_mbar",
-             "humidity_sensor_temperature", "cell_gas_pressure_mar"])
-        self.co2_a: dict = dict().fromkeys(
-            ['time', 'auto-zero', 'current', "co2_ppm", 'irga_temperature', 'humidity_mbar',
-             'humidity_sensor_temperature', "cell_gas_pressure_mar"])
-        self.debit: dict = {'flow_ms': None}
-        self.vemco: dict = dict().fromkeys(['time', 'protocol', 'serial_number'])
+
+class VikingData():
+    def __init__(self, buoy_name: str, firmware: str, controller_sn: str):
+        self.buoy_name: str = buoy_name
+        self.firmware: str = firmware
+        self.controller_sn: str = controller_sn
+
+        self.time = []
+        self.latitude = []
+        self.longitude = []
+        self.comp = {key: [] for key in COMP_KEYS}
+        self.triplet = {key: [] for key in TRIPLET_KEYS}
+        self.par_digi = {key: [] for key in PAR_DIGI_KEYS}
+        self.suna = {key: [] for key in SUNA_KEYS}
+        self.gps = {key: [] for key in GPS_KEYS}
+        self.ctd = {key: [] for key in CTD_KEYS}
+        self.ctdo = {key: [] for key in CTDO_KEYS}
+        self.rti = {key: [] for key in RTI_KEYS}
+        self.rdi = {key: [] for key in RDI_KEYS}
+        self.wave_m = {key: [] for key in WAVE_M_KEYS}
+        self.wave_s = {key: [] for key in WAVE_S_KEYS}
+        self.wxt520 = {key: [] for key in WXT520_KEYS}
+        self.wmt700 = {key: [] for key in WMT700_KEYS}
+        self.wph = {key: [] for key in WPH_KEYS}
+        self.co2_w = {key: [] for key in CO2_W_KEYS}
+        self.co2_a = {key: [] for key in CO2_A_KEYS}
+        self.debit = {key: [] for key in DEBIT_KEYS}
+        self.vemco = {key: [] for key in VEMCO_KEYS}
+
+    def __repr__(self):
+        repr = f"""{self.__class__} 
+buoy_name: {self.buoy_name}
+firmware: {self.firmware}
+controller_sn: {self.controller_sn}
+data: (length: {len(self)})  
+"""
+        for tag in self.tags:
+            if self.__dict__[tag] is not None:
+                repr+=f"  {tag}: (" + ", ".join(list(self.__dict__[tag].keys())) + ")\n"
+        return repr
+
+    def __len__(self):
+        return len(self.time)
 
     @property
     def tags(self):
-        return ['nom', 'comp', 'triplet', 'par_digi', 'suna', 'gps', 'ctd', 'ctdo', 'rti', 'rdi',
+        return ['comp', 'triplet', 'par_digi', 'suna', 'gps', 'ctd', 'ctdo', 'rti', 'rdi',
                 'wave_m', 'wave_s', 'wxt520', 'wmt700', 'wph', 'co2_w', 'co2_a', 'debit', 'vemco']
+
+    def _squeeze_empty(self):
+        for tag in self.tags:
+            print(type(value) for value in self.__dict__[tag].())
+
+
+class VikingReader():
+    def __init__(self):
+        self.buoys: Dict[VikingData] = None
+
+    def __repr__(self):
+        repr = f"""{self.__class__} 
+buoys: """
+        for buoy, viking_data in self.buoys.items():
+            repr += f"  {buoy}: (length = {len(viking_data)})\n"
+        return repr
 
     def read_raw(self, filenames, century=21) -> dict:
         filenames = get_files_from_expression(filenames)
-        decoded_data = {key: [] for key in self.tags}
-        for _file in filenames:
-            with open(_file) as f:
+        decoded_data = []
+        for _filename in filenames:
+            with open(_filename) as f:
                 data_received = f.read()
-                _decode_transmitted_data(data_received=data_received, decoded_data=decoded_data, century=century)
+                decoded_data += _decode_transmitted_data(data_received=data_received, century=century)
 
+        buoys = set([(block['buoy_name'], block['firmware'], block['controller_sn']) for block in decoded_data])
+        self.buoys = {buoy[0]: VikingData(*buoy) for buoy in buoys}
         self._compact_data(decoded_data)
 
         return self
 
     def _compact_data(self, decoded_data: dict) -> dict:
-        for tag, value in decoded_data.items():
-            if len(value) == 0:
-                self.__dict__[tag] = None
-            else:
-                self.__dict__[tag] = {key: [] for key in self.__dict__[tag].keys()}
-                for data_sequence in value:
-                    if data_sequence is None:
-                        for key, value in self.__dict__[tag].items():
-                            value.append(None)
-                    else:
-                        for key, value in self.__dict__[tag].items():
-                            value.append(data_sequence[key])
+        tags = ['comp', 'triplet', 'par_digi', 'suna', 'gps', 'ctd', 'ctdo', 'rti', 'rdi',
+                'wave_m', 'wave_s', 'wxt520', 'wmt700', 'wph', 'co2_w', 'co2_a', 'debit', 'vemco']
+        for data_block in decoded_data:
+            buoy_data = self.buoys[data_block['buoy_name']]
+
+            buoy_data.time = data_block['time']
+            buoy_data.latitude = data_block['latitude_N']
+            buoy_data.longitude = data_block['longitude_E']
+
+            for tag in tags:
+                tag_data = buoy_data.__dict__[tag]
+                if data_block[tag] is None:
+                    for key, value in tag_data.items():
+                        value.append('NA')
+                else:
+                    for key, value in tag_data.items():
+                        value.append(data_block[tag][key])
+
+        for viking_data in self.buoys.values():
+            viking_data._squeeze_empty()
+
+
+
+
 
 def main():
     m = multiple_test()
-    #[(tag, [len(value) for value in m.__dict__[tag].values()]) for tag in m.tags if m.__dict__[tag] is not None]
+    # [(tag, [len(value) for value in m.__dict__[tag].values()]) for tag in m.tags if m.__dict__[tag] is not None]
     return m
 
 
@@ -224,55 +285,56 @@ def multiple_test():
     return VikingReader().read_raw('/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_[0-9]*.dat')
 
 
-def _decode_transmitted_data(data_received: str, decoded_data: dict = None, century: int = 21) -> dict:
-    if decoded_data is None:
-        decoded_data = {key: [] for key in TAGS}
+def _decode_transmitted_data(data_received: str, century: int = 21) -> dict:
+    decoded_data = []
+    tag_key = ['comp', 'triplet', 'par_digi', 'suna', 'gps', 'ctd', 'ctdo', 'rti', 'rdi',
+               'wave_m', 'wave_s', 'wxt520', 'wmt700', 'wph', 'co2_w', 'co2_a', 'debit', 'vemco']
     for data_block in DATA_BLOCK_REGEX.finditer(data_received):
         wxt520 = dict()
+        decoded_block = dict().fromkeys(tag_key)
         for data_sequence in DATA_TAG_REGEX.finditer(data_block.group(1)):
             tag = data_sequence.group(1)
             data = data_sequence.group(2)
-            stamp = {'buoy_time': None, 'buoy_name': None}
             if tag == "NOM":
-                decoded_data["nom"].append(_decode_NOM(data, century=century))
-                stamp.update({'buoy_time': decoded_data["nom"]['time'], 'buoy_name': decoded_data["nom"]['buoy_name']})
+                decoded_block.update(_decode_NOM(data, century=century))
             elif tag == "COMP":
-                decoded_data["comp"].append(_decode_COMP(data).update(stamp))
+                decoded_block["comp"] = _decode_COMP(data)
             elif tag == "Triplet":
-                decoded_data["triplet"].append(_decode_Triplet(data, century=century).update(stamp))
+                decoded_block["triplet"] = _decode_Triplet(data, century=century)
             elif tag == "Par_digi":
-                decoded_data["par_digi"].append(_decode_Par_digi(data, century=century).update(stamp))
+                decoded_block["par_digi"] = _decode_Par_digi(data, century=century)
             elif tag == "SUNA":
-                decoded_data['suna'].append(_decode_SUNA(data).update(stamp))
+                decoded_block['suna'] =_decode_SUNA(data)
             elif tag == "GPS":
-                decoded_data["gps"].append(_decode_GPS(data, century=century).update(stamp))
+                decoded_block["gps"] = _decode_GPS(data, century=century)
             elif tag == "CTD":
-                decoded_data["ctd"].append(_decode_CTD(data).update(stamp))
+                decoded_block["ctd"] = _decode_CTD(data)
             elif tag == "CTDO":
-                decoded_data["ctdo"].append(_decode_CTDO(data).update(stamp))
+                decoded_block["ctdo"] = _decode_CTDO(data)
             elif tag == "RTI":
-                decoded_data["rti"].append(_decode_RTI(data).update(stamp))
+                decoded_block["rti"] = _decode_RTI(data)
             elif tag == "RDI":
-                decoded_data["rdi"].append(_decode_RDI(data, century=century).update(stamp))
+                decoded_block["rdi"] = _decode_RDI(data, century=century)
             elif tag == "WAVE_M":
-                decoded_data["wave_m"].append(_decode_WAVE_M(data).update(stamp))
+                decoded_block["wave_m"] = _decode_WAVE_M(data)
             elif tag == "WAVE_S":
-                decoded_data["wave_s"].append(_decode_WAVE_S(data).update(stamp))
+                decoded_block["wave_s"] = _decode_WAVE_S(data)
             elif tag == "WXT520":
-                wxt520 = wxt520.update(_decode_WXT520(data))
+                wxt520.update(_decode_WXT520(data))
             elif tag == "WMT700":
-                decoded_data["wmt700"].append(_decode_WMT700(data).update(stamp))
+                decoded_block["wmt700"] = _decode_WMT700(data)
             elif tag == "WpH":
-                decoded_data["wph"].append(_decode_WpH(data).update(stamp))
+                decoded_block["wph"] = _decode_WpH(data)
             elif tag == "CO2_W":
-                decoded_data["co2_w"].append(_decode_CO2_W(data).update(stamp))
+                decoded_block["co2_w"] = _decode_CO2_W(data)
             elif tag == "CO2_A":
-                decoded_data["co2_a"].append(_decode_CO2_A(data).update(stamp))
+                decoded_block["co2_a"] = _decode_CO2_A(data)
             elif tag == "Debit":
-                decoded_data["debit"].append(_decode_Debit(data).update(stamp))
+                decoded_block["debit"] = _decode_Debit(data)
 
         if bool(wxt520.keys()) is True:
-            decoded_data["wxt520"].append(wxt520.update(stamp))
+            decoded_block["wxt520"] = wxt520
+        decoded_data.append(decoded_block)
 
     return decoded_data
 
