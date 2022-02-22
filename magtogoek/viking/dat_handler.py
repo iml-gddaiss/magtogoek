@@ -92,18 +92,43 @@ The Buoy Data
      Date       Time    ,Protocal, Serial number
     '2018-05-05 04:27:35,A69-1602,46179'
 
-[MO]: Short string of the data
-    (not used)
+[MO]: Short string. Not Used
+    '942+03272+00360##########799290270601014514000902010401417310###73000502F9FF0300,000,[W]A forced start yoyo was sent'
+    Used to get information about the winch (ctd-yoyo) that is a [W] tag within the short string.
 
-WHICH-YOYO-CTD
---------------
-    When you received the information of the Mini-Winch at the end of the tags [MO] the file WCH is generate, namely
+    [W]Not in time slot
+    -Indicate that we’re not inside the time slot designed to do a MiniWinch mission.
+    [W]Too soon after a power-up
+    -Indicate that the Buoy Controller just restart and there wasn’t a MiniWinch mission since.
+    [W]A start yoyo was sent
+    -Indicate that a MiniWinch mission command was send.
+    [W]A yoyo mission is in progress
+    -Indicate that a MiniWinch mission is still running
+    [W]94>  2.6149,  2.57904,   95.000,  28.2356
+    -Indicate that a MiniWinch mission ended normally and contains the string received by the CTD
+     of the profiler, when this one was in his lowest in his mission.
+    [W]Interval not elapsed
+    -Indicate there wasn’t a MiniWinch mission because the interval programmed between two
+     missions is not elapsed.
 
+
+    Other message found in files: But not in documentation...
+    [W]A forced start yoyo was sent
+    [W]35>*** Cable or CTD Jam Detected, Trying To Stop And Retract ***
+    [W]22>Error ! Motor Stopped But Drum Running
+    [W]Waves too high
+    [W]I.N.E
+    [W]30>Attention ! Stop On Switch Overrun
+    [W]Voltage is too low
+
+
+    Generated winch files.
+    --------------
     <buoy name>_WCH_<date>.dat
-
     #1 Date GPS
     #2 Hour GPS
-    #3 The message received of the Mini-Winch controller. It can be text if it begins with [W]94> you got the data received by the CTD when it was at it lowest; or the temperature (°C), Conductivity (S/m), Pressure (decibars), salinity (PSU).
+    #3 The message received of the Mini-Winch controller. It can be text if it begins with [W]94> you got the data
+    received by the CTD when it was at it lowest; or the temperature (°C), Conductivity (S/m), Pressure (decibars), salinity (PSU).
 
 Data That Need Processing
 -------------------------
@@ -138,6 +163,8 @@ import matplotlib.pyplot as plt
 
 matplotlib.use('Qt5Agg')
 
+FILL_VALUE = -32768 # Reusing the same fill value as teledyne (RDI)
+
 TAGS = ["NOM", "COMP", "Triplet", "Par_digi", "SUNA", "GPS",
         "CTD", "CTDO", "RTI", "RDI", "WAVE_M", "WAVE_S", "WXT520",
         "WMT700", "WpH", "CO2_W", "CO2_A", "Debit", "VEMCO"]  # "OCR", "MO", "FIN"]
@@ -147,16 +174,26 @@ DATA_TAG_REGEX = re.compile(rf"\[({'|'.join(TAGS)})],?((?:(?!\[).)*)", re.DOTALL
 
 NOM_KEYS = ['time', 'latitude_N', 'longitude_E']
 COMP_KEYS = ['heading', 'pitch', 'roll', 'tilt', 'pitch_std', 'roll_std', 'tilt_std']
-TRIPLET_KEYS = ['time', 'model_number', 'serial_number', 'wavelengths', 'gross_value', 'calculated_value']
+TRIPLET_KEYS = ['time', 'model_number', 'serial_number',
+                'wavelengths_700', 'gross_value_700', 'calculated_value_700',
+                'wavelengths_695', 'gross_value_695', 'calculated_value_695',
+                'wavelengths_460', 'gross_value_460', 'calculated_value_460']
 PAR_DIGI_KEYS = ['time', 'model_number', 'serial_number', 'timer_s', 'PAR', 'pitch', 'roll', 'intern_temperature']
 SUNA_KEYS = ["time", "model_number", "serial_number", "uMol", "mgNL", "absorbance_254_31",
              "absorbance_350_16", "bromide_mgL", "spectrum_average"]
 GPS_KEYS = ['time', 'latitude_N', 'longitude_E', 'speed', 'course', 'variation_E']
 CTD_KEYS = ['temperature', 'conductivity', 'salinity', 'density']
 CTDO_KEYS = ['temperature', 'conductivity', 'oxygen', 'salinity']
-RTI_KEYS = ['bin', 'position_cm', 'beam_vel_mms', 'enu_mms', 'corr_pc', 'amp_dB',
-            'bt_beam_vel_mms', 'bt_enu_mms', 'bt_corr_pc', 'bt_amp_dB']
-RDI_KEYS = ['time', 'enu_mms']
+RTI_KEYS = ['bin', 'position_cm',
+            'beam1', 'beam2','beam3', 'beam4',
+            'u', 'v', 'w', 'e',
+            'corr1', 'corr2', 'corr3', 'corr4',
+            'amp1', 'amp2', 'amp3', 'amp4',
+            'bt_beam1', 'bt_beam2', 'bt_beam3', 'bt_beam4',
+            'bt_u', 'bt_v','bt_w', 'bt_e',
+            'bt_corr1', 'bt_corr2', 'bt_corr3', 'bt_corr4',
+            'bt_amp1', 'bt_amp2', 'bt_amp3', 'bt_amp4']
+RDI_KEYS = ['time', 'u', 'v', 'w', 'e']
 WAVE_M_KEYS = ['time', "period", "average_height", "significant_height", "maximal_height"]
 WAVE_S_KEYS = ['time', 'heading', 'average_height', 'dominant_period', 'wave_direction',
                'Hmax', 'Hmax2', 'pmax', 'roll', 'pitch']
@@ -180,27 +217,27 @@ class VikingData():
         self.firmware: str = firmware
         self.controller_sn: str = controller_sn
 
-        self.time = []
-        self.latitude = []
-        self.longitude = []
-        self.comp = {key: [] for key in COMP_KEYS}
-        self.triplet = {key: [] for key in TRIPLET_KEYS}
-        self.par_digi = {key: [] for key in PAR_DIGI_KEYS}
-        self.suna = {key: [] for key in SUNA_KEYS}
-        self.gps = {key: [] for key in GPS_KEYS}
-        self.ctd = {key: [] for key in CTD_KEYS}
-        self.ctdo = {key: [] for key in CTDO_KEYS}
-        self.rti = {key: [] for key in RTI_KEYS}
-        self.rdi = {key: [] for key in RDI_KEYS}
-        self.wave_m = {key: [] for key in WAVE_M_KEYS}
-        self.wave_s = {key: [] for key in WAVE_S_KEYS}
-        self.wxt520 = {key: [] for key in WXT520_KEYS}
-        self.wmt700 = {key: [] for key in WMT700_KEYS}
-        self.wph = {key: [] for key in WPH_KEYS}
-        self.co2_w = {key: [] for key in CO2_W_KEYS}
-        self.co2_a = {key: [] for key in CO2_A_KEYS}
-        self.debit = {key: [] for key in DEBIT_KEYS}
-        self.vemco = {key: [] for key in VEMCO_KEYS}
+        self.time: list = []
+        self.latitude: list = []
+        self.longitude: list = []
+        self.comp: list = {key: [] for key in COMP_KEYS}
+        self.triplet: list = {key: [] for key in TRIPLET_KEYS}
+        self.par_digi: list = {key: [] for key in PAR_DIGI_KEYS}
+        self.suna: list = {key: [] for key in SUNA_KEYS}
+        self.gps: list = {key: [] for key in GPS_KEYS}
+        self.ctd: list = {key: [] for key in CTD_KEYS}
+        self.ctdo: list = {key: [] for key in CTDO_KEYS}
+        self.rti: list = {key: [] for key in RTI_KEYS}
+        self.rdi: list = {key: [] for key in RDI_KEYS}
+        self.wave_m: list = {key: [] for key in WAVE_M_KEYS}
+        self.wave_s: list = {key: [] for key in WAVE_S_KEYS}
+        self.wxt520: list = {key: [] for key in WXT520_KEYS}
+        self.wmt700: list = {key: [] for key in WMT700_KEYS}
+        self.wph: list = {key: [] for key in WPH_KEYS}
+        self.co2_w: list = {key: [] for key in CO2_W_KEYS}
+        self.co2_a: list = {key: [] for key in CO2_A_KEYS}
+        self.debit: list = {key: [] for key in DEBIT_KEYS}
+        self.vemco: list = {key: [] for key in VEMCO_KEYS}
 
     def __repr__(self):
         repr = f"""{self.__class__} 
@@ -223,17 +260,31 @@ data: (length: {len(self)})
                 'wave_m', 'wave_s', 'wxt520', 'wmt700', 'wph', 'co2_w', 'co2_a', 'debit', 'vemco']
 
     def _squeeze_data(self):
+        """Set tag where all data are missing to None"""
         for tag in self.tags:
             uniques_values = set()
             [uniques_values.update(value) for value in self.__dict__[tag].values()]
             if len(uniques_values) == 1:
                 self.__dict__[tag] = None
 
-    def _reshape_data(self):
-       """adcp, waves ?"""
-       rti = ['beam_vel_mms', 'enu_mms', 'corr_pc', 'amp_dB', 'bt_beam_vel_mms', 'bt_enu_mms', 'bt_corr_pc', 'bt_amp_dB']
-       rdi = ['enu_mms']
-       wave = [""]
+#    def _reshape_for_missing_data(self):
+#        """Some of rti, rdi and triplet missing values need to be reshaped."""
+#        if self.rti is not None:
+#            for key in ['beam_vel_mms', 'enu_mms', 'corr_pc', 'amp_dB',
+#                        'bt_beam_vel_mms', 'bt_enu_mms', 'bt_corr_pc', 'bt_amp_dB']:
+#                for index, value in enumerate(self.rti[key]):
+#                    if value == FILL_VALUE:
+#                        self.rti[key][index] = 4*(FILL_VALUE,)
+#
+#       if self.rdi is not None:
+#            for index, value in enumerate(self.rdi['enu_mms']):
+#                if value == FILL_VALUE:
+#                    self.rdi['enu_mms'][index] = 4 * (FILL_VALUE,)
+#        if self.triplet is not None:
+#            for key in ['wavelengths', 'gross_value']:
+#                for index, value in enumerate(self.triplet[key]):
+#                    if value == FILL_VALUE:
+#                        self.triplet[key][index] = 3 * (FILL_VALUE,)
 
 
 class VikingReader():
@@ -249,7 +300,7 @@ buoys:\n"""
             repr += f"  {buoy}: (length = {len(viking_data)})\n"
         return repr
 
-    def read_raw(self, filenames, century=21):
+    def read(self, filenames, century=21):
         filenames = get_files_from_expression(filenames)
         decoded_data = []
         for _filename in filenames:
@@ -283,7 +334,7 @@ buoys:\n"""
                 tag_data = buoy_data.__dict__[tag]
                 if data_block[tag] is None:
                     for key, value in tag_data.items():
-                        value.append('NA')
+                        value.append(FILL_VALUE)
                 else:
                     for key, value in tag_data.items():
                         value.append(data_block[tag][key])
@@ -301,11 +352,11 @@ def main():
 
 
 def single_test():
-    return VikingReader().read_raw('/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat')
+    return VikingReader().read('/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat')
 
 
 def multiple_test():
-    return VikingReader().read_raw('/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_[0-9]*.dat')
+    return VikingReader().read('/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_[0-9]*.dat')
 
 
 def _decode_transmitted_data(data_received: str, century: int = 21) -> dict:
@@ -400,12 +451,16 @@ def _decode_Triplet(data: str, century: int) -> dict:
     date = data[1].split('/')
     hours = data[2].split(":")
     ids = data[0].split('-')
+    w_700 = tuple(map(_safe_int, [data[3], data[6], data[9]]))
+    w_695 = tuple(map(_safe_float, [data[4], data[7], data[10]]))
+    w_460 = tuple(map(_safe_float, [data[5], data[8], data[11]]))
     return {'time': _make_timestamp(str(century - 1) + date[2], date[0], date[1], hours[0], hours[1], hours[2]),
             'model_number': ids[0],
             'serial_number': ids[1],
-            'wavelengths': tuple(map(_safe_int, [data[3], data[6], data[9]])),
-            'gross_value': tuple(map(_safe_float, [data[4], data[7], data[10]])),
-            'calculated_value': tuple(map(_safe_float, [data[5], data[8], data[11]]))}
+            'wavelengths_700': w_700[0], 'gross_value_700': w_700[1], 'calculated_value_700': w_700[2],
+            'wavelengths_695': w_695[0], 'gross_value_695': w_695[1], 'calculated_value_695': w_695[2],
+            'wavelengths_460': w_460[0], 'gross_value_460': w_460[1], 'calculated_value_460': w_460[2]
+            }
 
 
 def _decode_Par_digi(data: str, century: int) -> dict:
@@ -472,23 +527,39 @@ def _decode_CTDO(data: str) -> dict:
 
 def _decode_RTI(data: str) -> dict:
     data = data.replace('\n', ',').split(',')
+    beam_vel_mms = tuple(map(_safe_int, data[2:6]))
+    enu_mms = tuple(map(_safe_int, data[6:10]))
+    corr_pc = tuple(map(_safe_int, data[10:14]))
+    amp_dB = tuple(map(_safe_int, data[14:18]))
+    bt_beam_vel_mms = tuple(map(_safe_int, data[19:23]))
+    bt_enu_mms = tuple(map(_safe_int, data[23:27]))
+    bt_corr_pc = tuple(map(_safe_int, data[27:31]))
+    bt_amp_dB = tuple(map(_safe_int, data[31:35]))
     return {'bin': data[0],
             'position_cm': data[1],
-            'beam_vel_mms': tuple(map(_safe_int, data[2:6])),
-            'enu_mms': tuple(map(_safe_int, data[6:10])),
-            'corr_pc': tuple(map(_safe_int, data[10:14])),
-            'amp_dB': tuple(map(_safe_int, data[14:18])),
-            'bt_beam_vel_mms': tuple(map(_safe_int, data[19:23])),
-            'bt_enu_mms': tuple(map(_safe_int, data[23:27])),
-            'bt_corr_pc': tuple(map(_safe_int, data[27:31])),
-            'bt_amp_dB': tuple(map(_safe_int, data[31:35]))}
+            'beam1': beam_vel_mms[0]/1000, 'beam2': beam_vel_mms[1]/1000,
+            'beam3': beam_vel_mms[2]/1000, 'beam4': beam_vel_mms[3]/1000,
+            'u': enu_mms[0]/1000, 'v': enu_mms[0]/1000, 'w': enu_mms[0]/1000, 'e': enu_mms[3]/1000,
+            'corr1': corr_pc[0], 'corr2': corr_pc[1], 'corr3': corr_pc[2], 'corr4': corr_pc[3],
+            'amp1': amp_dB[0], 'amp2': amp_dB[1], 'amp3': amp_dB[2], 'amp4': amp_dB[3],
+            'bt_beam1': bt_beam_vel_mms[0] / 1000, 'bt_beam2': bt_beam_vel_mms[1] / 1000,
+            'bt_beam3': bt_beam_vel_mms[2] / 1000, 'bt_beam4': bt_beam_vel_mms[3] / 1000,
+            'bt_u': bt_enu_mms[0] / 1000, 'bt_v': bt_enu_mms[0] / 1000,
+            'bt_w': bt_enu_mms[0] / 1000, 'bt_e': bt_enu_mms[3] / 1000,
+            'bt_corr1': bt_corr_pc[0], 'bt_corr2': bt_corr_pc[1],
+            'bt_corr3': bt_corr_pc[2], 'bt_corr4': bt_corr_pc[3],
+            'bt_amp1': bt_amp_dB[0], 'bt_amp2': bt_amp_dB[1],
+            'bt_amp3': bt_amp_dB[2], 'bt_amp4': bt_amp_dB[3],
+            }
 
 
 def _decode_RDI(data: str, century: int):
     data = data.strip('\n').split(',')
-    return {'time': _make_timestamp(str(century - 1) + data[1][4:6], data[1][2:4], data[1][0:2],
-                                    data[0][0:2], data[0][2:4], data[0][4:6]),
-            'enu_mms': tuple(struct.unpack('hhhh', bytes.fromhex(data[2])))}
+    enu_mms = tuple(struct.unpack('hhhh', bytes.fromhex(data[2])))
+    return {'time': _make_timestamp(str(century - 1) + data[1][4:6], data[1][2:4],
+                                    data[1][0:2], data[0][0:2], data[0][2:4], data[0][4:6]),
+            'u': enu_mms[0]/1000, 'v': enu_mms[0]/1000, 'w': enu_mms[0]/1000, 'e': enu_mms[3]/1000,
+            }
 
 
 def _decode_WAVE_M(data: str) -> dict:
@@ -594,6 +665,8 @@ def _decode_VEMCO(data: str) -> dict:
             'protocol': data[1],
             'serial_number': data[2]}
 
+def _decode_MO(data: str) -> dict:
+    return None
 
 def _safe_float(value: str) -> Union[float, None]:
     return None if '#' in value else float(value)
