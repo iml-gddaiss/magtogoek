@@ -157,13 +157,14 @@ from math import atan2, sqrt, pi
 from datetime import datetime, timedelta
 import re
 from magtogoek.utils import get_files_from_expression
+import xarray as xr
 
 import matplotlib
 import matplotlib.pyplot as plt
 
 matplotlib.use('Qt5Agg')
 
-FILL_VALUE = -32768 # Reusing the same fill value as teledyne (RDI)
+FILL_VALUE = -32768  # Reusing the same fill value as teledyne (RDI)
 
 TAGS = ["NOM", "COMP", "Triplet", "Par_digi", "SUNA", "GPS",
         "CTD", "CTDO", "RTI", "RDI", "WAVE_M", "WAVE_S", "WXT520",
@@ -172,7 +173,6 @@ TAGS = ["NOM", "COMP", "Triplet", "Par_digi", "SUNA", "GPS",
 DATA_BLOCK_REGEX = re.compile(r"(\[NOM].+?)\[FIN]", re.DOTALL)
 DATA_TAG_REGEX = re.compile(rf"\[({'|'.join(TAGS)})],?((?:(?!\[).)*)", re.DOTALL)
 
-NOM_KEYS = ['time', 'latitude_N', 'longitude_E']
 COMP_KEYS = ['heading', 'pitch', 'roll', 'tilt', 'pitch_std', 'roll_std', 'tilt_std']
 TRIPLET_KEYS = ['time', 'model_number', 'serial_number',
                 'wavelengths_700', 'gross_value_700', 'calculated_value_700',
@@ -185,12 +185,12 @@ GPS_KEYS = ['time', 'latitude_N', 'longitude_E', 'speed', 'course', 'variation_E
 CTD_KEYS = ['temperature', 'conductivity', 'salinity', 'density']
 CTDO_KEYS = ['temperature', 'conductivity', 'oxygen', 'salinity']
 RTI_KEYS = ['bin', 'position_cm',
-            'beam1', 'beam2','beam3', 'beam4',
+            'beam1', 'beam2', 'beam3', 'beam4',
             'u', 'v', 'w', 'e',
             'corr1', 'corr2', 'corr3', 'corr4',
             'amp1', 'amp2', 'amp3', 'amp4',
             'bt_beam1', 'bt_beam2', 'bt_beam3', 'bt_beam4',
-            'bt_u', 'bt_v','bt_w', 'bt_e',
+            'bt_u', 'bt_v', 'bt_w', 'bt_e',
             'bt_corr1', 'bt_corr2', 'bt_corr3', 'bt_corr4',
             'bt_amp1', 'bt_amp2', 'bt_amp3', 'bt_amp4']
 RDI_KEYS = ['time', 'u', 'v', 'w', 'e']
@@ -209,9 +209,39 @@ CO2_A_KEYS = ['time', 'auto-zero', 'current', "co2_ppm", 'irga_temperature', 'hu
 DEBIT_KEYS = ['flow_ms']
 VEMCO_KEYS = ['time', 'protocol', 'serial_number']
 
+WXT520_KEYS_MAP = {"Dn": "wind_direction_min",
+                   "Dm": "wind_direction_mean",
+                   "Dx": "wind_direction_max",
+                   "Sn": "wind_min",
+                   "Sm": "wind_mean",
+                   "Sx": "wind_max",
+                   "Rc": "rain_accumulation_mm",
+                   "Rd": "rain_duration_s",
+                   "Ri": "rain_intensity_mmh",
+                   "Hc": "hail_accumulation_hitscm2",
+                   "Hd": "hail_duration_s",
+                   "Hi": "hail_intensity_hitscm2h",
+                   "Ta": "temperature",
+                   "Ua": "humidity",
+                   "Pa": "pressure"}
+
+WMT700_KEYS_MAP = {"Dn": "wind_direction_min",
+                   "Dm": "wind_direction_mean",
+                   "Dx": "wind_direction_max",
+                   "Sn": "wind_min",
+                   "Sm": "wind_mean",
+                   "Sx": "wind_max"}
+
+def main():
+    # m = multiple_test()
+    # [(tag, [len(value) for value in m.__dict__[tag].values()]) for tag in m.tags if m.__dict__[tag] is not None]
+    m = single_test().pmza_riki
+    return m
+
 
 class VikingData():
     """Object to store Viking data. """
+
     def __init__(self, buoy_name: str, firmware: str, controller_sn: str):
         self.buoy_name: str = buoy_name
         self.firmware: str = firmware
@@ -248,7 +278,7 @@ data: (length: {len(self)})
 """
         for tag in self.tags:
             if self.__dict__[tag] is not None:
-                repr+=f"  {tag}: (" + ", ".join(list(self.__dict__[tag].keys())) + ")\n"
+                repr += f"  {tag}: (" + ", ".join(list(self.__dict__[tag].keys())) + ")\n"
         return repr
 
     def __len__(self):
@@ -259,7 +289,29 @@ data: (length: {len(self)})
         return ['comp', 'triplet', 'par_digi', 'suna', 'gps', 'ctd', 'ctdo', 'rti', 'rdi',
                 'wave_m', 'wave_s', 'wxt520', 'wmt700', 'wph', 'co2_w', 'co2_a', 'debit', 'vemco']
 
-    def _squeeze_data(self):
+    def reformat(self):
+        self._remove_empty_tag()
+        self._rename_keys()
+        self._to_numpy_masked_array()
+
+    def _to_numpy_masked_array(self):
+        self.time = np.array(self.time, dtype='datetime64[s]')
+        self.latitude = _to_numpy_masked_array(self.latitude)
+        self.longitude = _to_numpy_masked_array(self.longitude)
+        for tag in self.tags:
+            if self.__dict__[tag] is not None:
+                for key, value in self.__dict__[tag].items():
+                    self.__dict__[tag][key] = _to_numpy_masked_array(value)
+
+    def _rename_keys(self):
+        if self.wxt520 is not None:
+            for key, value in WXT520_KEYS_MAP.items():
+                self.wxt520[value] = self.wxt520.pop(key)
+        if self.wmt700 is not None:
+            for key, value in WMT700_KEYS_MAP.items():
+                self.wmt700[value] = self.wmt700.pop(key)
+
+    def _remove_empty_tag(self):
         """Set tag where all data are missing to None"""
         for tag in self.tags:
             uniques_values = set()
@@ -267,31 +319,20 @@ data: (length: {len(self)})
             if len(uniques_values) == 1:
                 self.__dict__[tag] = None
 
-#    def _reshape_for_missing_data(self):
-#        """Some of rti, rdi and triplet missing values need to be reshaped."""
-#        if self.rti is not None:
-#            for key in ['beam_vel_mms', 'enu_mms', 'corr_pc', 'amp_dB',
-#                        'bt_beam_vel_mms', 'bt_enu_mms', 'bt_corr_pc', 'bt_amp_dB']:
-#                for index, value in enumerate(self.rti[key]):
-#                    if value == FILL_VALUE:
-#                        self.rti[key][index] = 4*(FILL_VALUE,)
-#
-#       if self.rdi is not None:
-#            for index, value in enumerate(self.rdi['enu_mms']):
-#                if value == FILL_VALUE:
-#                    self.rdi['enu_mms'][index] = 4 * (FILL_VALUE,)
-#        if self.triplet is not None:
-#            for key in ['wavelengths', 'gross_value']:
-#                for index, value in enumerate(self.triplet[key]):
-#                    if value == FILL_VALUE:
-#                        self.triplet[key][index] = 3 * (FILL_VALUE,)
+
+def _to_numpy_masked_array(data, fill_value=FILL_VALUE):
+    data_array = np.ma.masked_array(data)
+    data_array.mask = data_array == fill_value
+    return data_array
 
 
 class VikingReader():
     """Use to read RAW dat files from viking buoy.
     The data are puts in VikingData object and are accessible as attributes."""
+
     def __init__(self):
         self._buoys_data: Dict[str: VikingData] = {}
+        self.buoys: list = []
 
     def __repr__(self):
         repr = f"""{self.__class__} 
@@ -315,6 +356,8 @@ buoys:\n"""
     def _make_viking_data(self, decoded_data: dict):
 
         buoys = set([(block['buoy_name'], block['firmware'], block['controller_sn']) for block in decoded_data])
+
+        self.buoys = list(buoys)
 
         for buoy in buoys:
             self._buoys_data[buoy[0]] = VikingData(*buoy)
@@ -341,22 +384,20 @@ buoys:\n"""
 
         viking_data: VikingData
         for viking_data in self._buoys_data.values():
-            viking_data._squeeze_data()
+            viking_data.reformat()
 
 
-def main():
-    #m = multiple_test()
-    # [(tag, [len(value) for value in m.__dict__[tag].values()]) for tag in m.tags if m.__dict__[tag] is not None]
-    m = single_test()
-    return m
+def to_netcdf(viking_data: VikingData)->xr.Dataset:
+    coords = {'time': np.asarray(viking_data.time)}
+    data = {'lon': np.asarray(viking_data.longitude),
+            'lat': np.asarray(viking_data.latitude)}
+    if viking_data.gps is not None:
+        pass
+    if viking_data.wxt520 is not None:
+        pass
+    if viking_data.wmt700 is not None:
+        pass
 
-
-def single_test():
-    return VikingReader().read('/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat')
-
-
-def multiple_test():
-    return VikingReader().read('/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_[0-9]*.dat')
 
 
 def _decode_transmitted_data(data_received: str, century: int = 21) -> dict:
@@ -378,7 +419,7 @@ def _decode_transmitted_data(data_received: str, century: int = 21) -> dict:
             elif tag == "Par_digi":
                 decoded_block["par_digi"] = _decode_Par_digi(data, century=century)
             elif tag == "SUNA":
-                decoded_block['suna'] =_decode_SUNA(data)
+                decoded_block['suna'] = _decode_SUNA(data)
             elif tag == "GPS":
                 decoded_block["gps"] = _decode_GPS(data, century=century)
             elif tag == "CTD":
@@ -537,9 +578,9 @@ def _decode_RTI(data: str) -> dict:
     bt_amp_dB = tuple(map(_safe_int, data[31:35]))
     return {'bin': data[0],
             'position_cm': data[1],
-            'beam1': beam_vel_mms[0]/1000, 'beam2': beam_vel_mms[1]/1000,
-            'beam3': beam_vel_mms[2]/1000, 'beam4': beam_vel_mms[3]/1000,
-            'u': enu_mms[0]/1000, 'v': enu_mms[0]/1000, 'w': enu_mms[0]/1000, 'e': enu_mms[3]/1000,
+            'beam1': beam_vel_mms[0] / 1000, 'beam2': beam_vel_mms[1] / 1000,
+            'beam3': beam_vel_mms[2] / 1000, 'beam4': beam_vel_mms[3] / 1000,
+            'u': enu_mms[0] / 1000, 'v': enu_mms[0] / 1000, 'w': enu_mms[0] / 1000, 'e': enu_mms[3] / 1000,
             'corr1': corr_pc[0], 'corr2': corr_pc[1], 'corr3': corr_pc[2], 'corr4': corr_pc[3],
             'amp1': amp_dB[0], 'amp2': amp_dB[1], 'amp3': amp_dB[2], 'amp4': amp_dB[3],
             'bt_beam1': bt_beam_vel_mms[0] / 1000, 'bt_beam2': bt_beam_vel_mms[1] / 1000,
@@ -558,7 +599,7 @@ def _decode_RDI(data: str, century: int):
     enu_mms = tuple(struct.unpack('hhhh', bytes.fromhex(data[2])))
     return {'time': _make_timestamp(str(century - 1) + data[1][4:6], data[1][2:4],
                                     data[1][0:2], data[0][0:2], data[0][2:4], data[0][4:6]),
-            'u': enu_mms[0]/1000, 'v': enu_mms[0]/1000, 'w': enu_mms[0]/1000, 'e': enu_mms[3]/1000,
+            'u': enu_mms[0] / 1000, 'v': enu_mms[0] / 1000, 'w': enu_mms[0] / 1000, 'e': enu_mms[3] / 1000,
             }
 
 
@@ -665,8 +706,6 @@ def _decode_VEMCO(data: str) -> dict:
             'protocol': data[1],
             'serial_number': data[2]}
 
-def _decode_MO(data: str) -> dict:
-    return None
 
 def _safe_float(value: str) -> Union[float, None]:
     return None if '#' in value else float(value)
@@ -680,38 +719,11 @@ def _make_timestamp(Y: str, M: str, D: str, h: str, m: str, s: str) -> str:
     time = Y + "-" + M + "-" + D + "T" + h + ":" + m + ":" + s
     return None if "#" in time else time
 
-# Not currenly used
-# def _decode_OCR(data: str, century: int):
-#    """No test string in files.
-#    FIXME: NO idea if its working.
-#    29,220916
-#    D,32,7FF61F47,7FF96AAD,80019C5D,7FF8EEBB,7FF0B2E5,7FFB045E,7FFC0AF4,6CEF2E,5058B5,560C72,516F8D,78A870,48660F,9B89F3,7FF61F00,7FF96AC0,80019C40,7FF8EF00,7FF0B300,7FFB03C0,7FFC0A80
-#    W,12,7FED43A9,7FF5BCC5,8005D91A,8015D956,7FFCD34E,7FF14B6D,7FFC38AC,29BF350,FA9F3A,9ABAD1,1B610D7,3DD6947,CF5AC95,1635C01,7FED4540,7FF5BD00,8005D900,8015D780,7FFCD6C0,7FF13EC0,7FFC3780
-#
-#    NOTES
-#    -----
-#    Bytes are missing for some value. Pad with leading zero ?
-#
-#    """
-#    data = data.replace('\n', ',').split(',')
-#    hours = data[0].rjust(6, '0')
-#    time = _make_timestamp(str(century - 1) + data[1][4:6], data[1][2:4], data[1][0:2],
-#                           hours[0:2], hours[2:4], hours[4:6])
-#    dry_sn = data[3]
-#    wet_sn = data[26]
-#    dry_values = struct.unpack('>' + 21 * 'f', bytes.fromhex(''.join([v.rjust(8, '0') for v in data[4:25]])))
-#    wet_values = struct.unpack('>' + 21 * 'f', bytes.fromhex(''.join([v.rjust(8, '0') for v in data[27:]])))
-#
-#    return {'time': time, 'dry_sn': dry_sn, 'wet_sn': wet_sn, 'dry_values': dry_values, 'wet_values': wet_values}
 
-#    Not currently used.
-# def _decode_p1(data: str):
-#    """
-#    [p1] 12.3, 00.0, 18.9, 00.2, 19.0, 01.5, 18.9, 01.2, 14.6, 18.6, 00.9, 01.6, 14.2, 14.0, 01.3, 14.4, 14.2, 14.1, 14.2, 05.0, 14.1,-00.0, 00.8, 0, 00.1, 00.0, 14.3, 00.1, 14.4"""
-#    data = data.replace(' ', '').split(',')
-#    pass
-#
-# def _decode_MO(data: str):
-#    """[MO],D21027179068450254073423262786-31066+03454+00510##########795190660601214429000804000517537004000E3FFBB0022001400,000"""
-#    84:87 Buoy Compass ture namely with comp. magnetic deflection made on board.
-#    return {'buoy_compass_true': data[1][-27:-19]}
+def single_test():
+    return VikingReader().read('/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat')
+
+
+def multiple_test():
+    return VikingReader().read('/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_[0-9]*.dat')
+
