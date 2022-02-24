@@ -291,7 +291,7 @@ data: (length: {len(self)})
 
     def reformat(self):
         self._remove_empty_tag()
-        self._rename_keys()
+        #self._rename_keys()
         self._to_numpy_masked_array()
 
     def _to_numpy_masked_array(self):
@@ -303,13 +303,13 @@ data: (length: {len(self)})
                 for key, value in self.__dict__[tag].items():
                     self.__dict__[tag][key] = _to_numpy_masked_array(value)
 
-    def _rename_keys(self):
-        if self.wxt520 is not None:
-            for key, value in WXT520_KEYS_MAP.items():
-                self.wxt520[value] = self.wxt520.pop(key)
-        if self.wmt700 is not None:
-            for key, value in WMT700_KEYS_MAP.items():
-                self.wmt700[value] = self.wmt700.pop(key)
+    #def _rename_keys(self):
+    #    if self.wxt520 is not None:
+    #        for key, value in WXT520_KEYS_MAP.items():
+    #            self.wxt520[value] = self.wxt520.pop(key)
+    #    if self.wmt700 is not None:
+    #        for key, value in WMT700_KEYS_MAP.items():
+    #            self.wmt700[value] = self.wmt700.pop(key)
 
     def _remove_empty_tag(self):
         """Set tag where all data are missing to None"""
@@ -321,7 +321,7 @@ data: (length: {len(self)})
 
 
 def _to_numpy_masked_array(data, fill_value=FILL_VALUE):
-    data_array = np.ma.masked_array(data)
+    data_array = np.ma.masked_array(data, fill_value=np.nan)
     data_array.mask = data_array == fill_value
     return data_array
 
@@ -389,15 +389,57 @@ buoys:\n"""
 
 def to_netcdf(viking_data: VikingData)->xr.Dataset:
     coords = {'time': np.asarray(viking_data.time)}
-    data = {'lon': np.asarray(viking_data.longitude),
-            'lat': np.asarray(viking_data.latitude)}
+    data = {'lon': (['time'], np.asarray(viking_data.longitude)),
+            'lat': (['time'], np.asarray(viking_data.latitude))}
+    nom_dataset = xr.open_dataset(data=data, coords=coords)
+    gps_dataset=None
+    wxt_dataset=None
+    wmt_dataset=None
+    wave_dataset=None
     if viking_data.gps is not None:
-        pass
+        good_index = np.invert(viking_data.gps['time'].mask)
+        coords = {'time': np.asarray(viking_data.gps['time'][good_index])}
+        data = {'lon': (['time'], np.asarray(viking_data.gps['longitude_E'][good_index])),
+                'lat': (['time'], np.asarray(viking_data.gps['latitude_N'][good_index])),
+                'speed': (['time'], np.asarray(viking_data.gps['speed'][good_index])),
+                'course': (['time'], np.asarray(viking_data.gps['course'][good_index])),
+                'magnetic_variation': (['time'], np.asarray(viking_data.gps['variation_E'][good_index]))}
+        gps_dataset = xr.open_dataset(data=data, coords=coords)
     if viking_data.wxt520 is not None:
-        pass
+        coords = {'time': np.asarray(viking_data.time)}
+        coords = {'time': np.asarray(viking_data.wxt520['time'][good_index])}
+        data = {'wind_direction': (['time'], np.asarray(viking_data.wxt520['Dm'][good_index])),
+                'wind_min': (['time'], np.asarray(viking_data.wxt520['Sn'][good_index])),
+                'wind_max': (['time'], np.asarray(viking_data.wxt520['Sx'][good_index])),
+                'wind_mean': (['time'], np.asarray(viking_data.wxt520['Sm'][good_index]))}
+        wxt_dataset = xr.open_dataset(data=data, coords=coords)
     if viking_data.wmt700 is not None:
-        pass
+        coords = {'time': np.asarray(viking_data.time)}
+        data = {'direction': (['time'], np.asarray(viking_data.wmt700['Dm'])),
+                'wind_min': (['time'], np.asarray(viking_data.wmt700['Sn'])),
+                'wind_max': (['time'], np.asarray(viking_data.wmt700['Sx'])),
+                'wind_mean': (['time'], np.asarray(viking_data.wmt700['Sm']))}
+        wmt_dataset = xr.open_dataset(data=data, coords=coords)
+    if viking_data.wave_m is not None:
+        good_index = np.invert(viking_data.wave_m['time'].mask)
+        coords = {'time': np.asarray(viking_data.wave_m['time'][good_index])}
+        data = {'lon': (['time'], np.asarray(viking_data.wave_m['longitude_E'][good_index])),
+                'lat': (['time'], np.asarray(viking_data.wave_m['latitude_N'][good_index])),
+                'speed': (['time'], np.asarray(viking_data.wave_m['speed'][good_index])),
+                'course': (['time'], np.asarray(viking_data.wave_m['course'][good_index])),
+                'magnetic_variation': (['time'], np.asarray(viking_data.wave_m['variation_E'][good_index]))}
+        wave_dataset = xr.open_dataset(data=data, coords=coords)
+    elif viking_data.wave_s is not None:
+        good_index = np.invert(viking_data.wave_s['time'].mask)
+        coords = {'time': np.asarray(viking_data.wave_s['time'][good_index])}
+        data = {'lon': (['time'], np.asarray(viking_data.wave_s['longitude_E'][good_index])),
+                'lat': (['time'], np.asarray(viking_data.wave_s['latitude_N'][good_index])),
+                'speed': (['time'], np.asarray(viking_data.wave_s['speed'][good_index])),
+                'course': (['time'], np.asarray(viking_data.wave_s['course'][good_index])),
+                'magnetic_variation': (['time'], np.asarray(viking_data.wave_s['variation_E'][good_index]))}
+        wave_dataset = xr.open_dataset(data=data, coords=coords)
 
+    return nom_dataset, gps_dataset, wxt_dataset, wmt_dataset, wave_dataset
 
 
 def _decode_transmitted_data(data_received: str, century: int = 21) -> dict:
@@ -456,7 +498,7 @@ def _decode_transmitted_data(data_received: str, century: int = 21) -> dict:
 
 def _decode_NOM(data: str, century: int) -> dict:
     data = data.strip('\n').split(',')
-    latitude, longitude = None, None
+    latitude, longitude = FILL_VALUE, FILL_VALUE
     if "#" not in data[7]:
         _lat = data[7].split(' ')
         latitude = {'S': -1, 'N': 1}[_lat[1][-1]] * (int(_lat[0]) + round(float(_lat[1][:-1]) / 60, 2))
@@ -521,7 +563,7 @@ def _decode_Par_digi(data: str, century: int) -> dict:
 def _decode_SUNA(data: str) -> dict:
     data = data.replace(' ', '').split(',')
     model_number, serial_number = re.match(r".*?([A-z]+)([0-9]+)", data[0]).groups()
-    time = None
+    time = FILL_VALUE
     if '#' not in data[1] + data[2]:
         time = (datetime(int(data[1][0:4]), 1, 1)
                 + timedelta(days=int(data[1][4:]), hours=float(data[2]))).strftime('%y-%m-%dT%H:%M:%S')
@@ -693,7 +735,7 @@ def _decode_CO2_A(data: str) -> dict:
 
 def _decode_Debit(data: str) -> dict:
     if "#" in data:
-        return {'flow_mas': None}
+        return {'flow_mas': FILL_VALUE}
     else:
         return {'flow_ms': round(int(data.strip('\n'), 16) * 0.001543, 2)}
 
@@ -707,17 +749,17 @@ def _decode_VEMCO(data: str) -> dict:
             'serial_number': data[2]}
 
 
-def _safe_float(value: str) -> Union[float, None]:
-    return None if '#' in value else float(value)
+def _safe_float(value: str) -> Union[float]:
+    return float(FILL_VALUE) if '#' in value else float(value)
 
 
-def _safe_int(value: str) -> Union[int, None]:
-    return None if '#' in value else int(value)
+def _safe_int(value: str) -> Union[int]:
+    return FILL_VALUE if '#' in value else int(value)
 
 
 def _make_timestamp(Y: str, M: str, D: str, h: str, m: str, s: str) -> str:
     time = Y + "-" + M + "-" + D + "T" + h + ":" + m + ":" + s
-    return None if "#" in time else time
+    return FILL_VALUE if "#" in time else time
 
 
 def single_test():
