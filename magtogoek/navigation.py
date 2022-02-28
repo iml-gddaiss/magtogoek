@@ -195,7 +195,7 @@ def _compute_navigation(
 
         nav_dataset = nav_dataset.rolling(time=window, center=True).mean()
 
-    nav_dataset=nav_dataset.interp(time=dataset.time)
+    nav_dataset = nav_dataset.interp(time=dataset.time)
 
     dataset = xr.merge((nav_dataset, dataset), compat='override')
 
@@ -223,7 +223,6 @@ def _compute_speed_and_course(time: tp.Union[list, np.ndarray],
     centered_time = time[:-1] + time_delta / 2
 
     return centered_time, course, speed
-
 
 
 def _plot_navigation(dataset: xr.Dataset):
@@ -263,8 +262,6 @@ def _check_variables_names(dataset):
                     break
         if var not in dataset:
             print(f"{var} missing from netcdf gps data")
-            dataset = None
-            break
 
     return dataset
 

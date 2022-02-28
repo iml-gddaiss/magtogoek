@@ -384,8 +384,12 @@ def motion_correction(dataset: xr.Dataset, mode: str):
     elif mode == "nav":
         if all(f"{v}_ship" in dataset for v in ["u", "v"]):
             for field in ["u", "v"]:
+                if 'lon' in dataset:
+                    velocity_correction = dataset[field + "_ship"].where(np.isfinite(dataset.lon.values), 0)
+                else:
+                    velocity_correction = dataset[field + "_ship"]
                 dataset[field] += np.tile(
-                    dataset[field + "_ship"].where(np.isfinite(dataset.lon.values), 0),
+                    velocity_correction,
                     (dataset.depth.size, 1),
                 )
             l.log("Motion correction carried out with navigation")
