@@ -162,7 +162,7 @@ def compute_navigation(
 
 
 def _compute_navigation(
-    dataset: xr.Dataset, window: int = 1
+    dataset: xr.Dataset, window: tp.Union[int,None] = None,
 ) -> xr.Dataset:
     """compute bearing, speed, u_ship and v_ship
 
@@ -203,10 +203,13 @@ def _compute_navigation(
         coords={"time": time_centered},
     )
 
-    if not isinstance(window, int):
-        window = int(window)
+    if window is not None:
+        if not isinstance(window, int):
+            window = int(window)
 
-    nav_dataset = nav_dataset.rolling(time=window, center=True).mean().interp(time=dataset.time)
+        nav_dataset = nav_dataset.rolling(time=window, center=True).mean()
+
+    nav_dataset=nav_dataset.interp(time=dataset.time)
 
     dataset = xr.merge((nav_dataset, dataset), compat='override')
 
