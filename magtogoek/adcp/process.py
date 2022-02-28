@@ -788,15 +788,19 @@ def _load_navigation(dataset: xr.Dataset, navigation_files: str):
         Using the magtogoek function `mtgk compute nav`, u_ship, v_ship can be computed from `lon`, `lat`
     data to correct the data for the platform motion by setting the config parameter `m_corr` to `nav`.
     """
-    nav_ds = load_navigation(navigation_files).interp(time=dataset.time)
-    for var in ["lon", "lat", "u_ship", "v_ship"]:
-        if var in nav_ds:
-            dataset[var] = nav_ds[var]
-            if var == "lat":
-                l.log("Platform GPS data loaded.")
-            if var == "v_ship":
-                l.log("Platform velocity data loaded.")
-    nav_ds.close()
+    nav_ds = load_navigation(navigation_files)
+    if nav_ds is not None:
+        nav_ds = nav_ds.interp(time=dataset.time)
+        for var in ["lon", "lat", "u_ship", "v_ship"]:
+            if var in nav_ds:
+                dataset[var] = nav_ds[var]
+                if var == "lat":
+                    l.log("Platform GPS data loaded.")
+                if var == "v_ship":
+                    l.log("Platform velocity data loaded.")
+        nav_ds.close()
+    else:
+        l.warning('Could not load navigation data file.')
 
     return dataset
 
