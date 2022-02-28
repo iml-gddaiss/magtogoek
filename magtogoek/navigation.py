@@ -162,7 +162,7 @@ def compute_navigation(
 
 
 def _compute_navigation(
-    dataset: xr.Dataset, window: tp.Union[int,None] = None,
+    dataset: xr.Dataset, window: tp.Union[int, None] = None,
 ) -> xr.Dataset:
     """compute bearing, speed, u_ship and v_ship
 
@@ -174,33 +174,19 @@ def _compute_navigation(
     window :
         Size of the centered averaging window.
     """
-    position0 = np.array((dataset.lon.values[:-1], dataset.lat.values[:-1])).T.tolist()
-    position1 = np.array((dataset.lon.values[1:], dataset.lat.values[1:])).T.tolist()
+    centered_time, course, speed = _compute_speed_and_course(dataset.time, dataset.lon.values, dataset.lat.values)
 
-    distances = list(map(vincenty, position0, position1))  # meter
-
-    bearing = list(map(get_gps_bearing, position0, position1))  # degree
-
-    time_delta = np.diff(dataset.time).astype("timedelta64[s]")
-
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", category=RuntimeWarning)
-
-        speed = distances / time_delta.astype("float64")  # meter per seconds
-
-    time_centered = dataset.time[:-1] + time_delta / 2
-
-    u_ship = speed * np.sin(np.deg2rad(bearing))
-    v_ship = speed * np.cos(np.deg2rad(bearing))
+    u_ship = speed * np.sin(np.deg2rad(course))
+    v_ship = speed * np.cos(np.deg2rad(course))
 
     nav_dataset = xr.Dataset(
         {
-            "bearing": (["time"], bearing),
+            "course": (["time"], course),
             "speed": (["time"], speed),
             "u_ship": (["time"], u_ship),
             "v_ship": (["time"], v_ship),
         },
-        coords={"time": time_centered},
+        coords={"time": centered_time},
     )
 
     if window is not None:
@@ -214,6 +200,30 @@ def _compute_navigation(
     dataset = xr.merge((nav_dataset, dataset), compat='override')
 
     return dataset
+
+
+def _compute_speed_and_course(time: tp.Union[list, np.ndarray],
+                              longitude: tp.Union[list, np.ndarray],
+                              latitude: tp.Union[list, np.ndarray]) -> tp.Tuple[np.ndarray, np.ndarray, np.ndarray]:
+
+    position0 = np.array((longitude[:-1], latitude[:-1])).T.tolist()
+    position1 = np.array((longitude[1:], latitude[1:])).T.tolist()
+
+    distances = np.array(list(map(vincenty, position0, position1)))  # meter
+
+    course = np.array(list(map(get_gps_bearing, position0, position1)))  # degree
+
+    time_delta = np.diff(time).astype("timedelta64[s]")
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", category=RuntimeWarning)
+
+        speed = distances / time_delta.astype("float64")  # meter per seconds
+
+    centered_time = time[:-1] + time_delta / 2
+
+    return centered_time, course, speed
+
 
 
 def _plot_navigation(dataset: xr.Dataset):
