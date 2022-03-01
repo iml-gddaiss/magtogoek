@@ -838,20 +838,15 @@ def compute_speed_course(viking_data):
 
 if __name__ == "__main__":
     from magtogoek.navigation import _compute_navigation
+
     gps_save_path = '/home/jeromejguay/ImlSpace/Data/iml4_2021/2021-IML4-ADCP-24418/iml4_gps_2021.nc'
     viking_data = main()
     nom, gps, wxt, wmt, wave = to_netcdf(viking_data)
 
-    gps = _compute_navigation(gps)
-    #nav = compute_speed_course(viking_data)
-    #nav.to_netcdf(gps_save_path)
+#    gps = _compute_navigation(gps)
 
-    direction=wmt.direction.rolling(time=1).mean()
-    wmt['u_wind'] = np.sin(np.deg2rad(direction)) * wmt.wind_mean / 25
-    wmt['v_wind'] = np.cos(np.deg2rad(direction)) * wmt.wind_mean / 25
 
-    gps.u_ship.plot()
-    wmt.u_wind.plot()
+
 
 
 

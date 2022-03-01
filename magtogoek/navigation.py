@@ -174,7 +174,7 @@ def _compute_navigation(
     window :
         Size of the centered averaging window.
     """
-    centered_time, course, speed = _compute_speed_and_course(dataset.time, dataset.lon.values, dataset.lat.values)
+    centered_time, course, speed, distances = _compute_speed_and_course(dataset.time, dataset.lon.values, dataset.lat.values)
 
     u_ship = speed * np.sin(np.deg2rad(course))
     v_ship = speed * np.cos(np.deg2rad(course))
@@ -185,6 +185,7 @@ def _compute_navigation(
             "speed": (["time"], speed),
             "u_ship": (["time"], u_ship),
             "v_ship": (["time"], v_ship),
+            'distance': ('time', distances)
         },
         coords={"time": centered_time},
     )
@@ -204,7 +205,7 @@ def _compute_navigation(
 
 def _compute_speed_and_course(time: tp.Union[list, np.ndarray],
                               longitude: tp.Union[list, np.ndarray],
-                              latitude: tp.Union[list, np.ndarray]) -> tp.Tuple[np.ndarray, np.ndarray, np.ndarray]:
+                              latitude: tp.Union[list, np.ndarray]) -> tp.Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
 
     position0 = np.array((longitude[:-1], latitude[:-1])).T.tolist()
     position1 = np.array((longitude[1:], latitude[1:])).T.tolist()
@@ -222,7 +223,7 @@ def _compute_speed_and_course(time: tp.Union[list, np.ndarray],
 
     centered_time = time[:-1] + time_delta / 2
 
-    return centered_time, course, speed
+    return centered_time, course, speed, distances
 
 
 def _plot_navigation(dataset: xr.Dataset):
