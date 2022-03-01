@@ -166,6 +166,8 @@ matplotlib.use('Qt5Agg')
 
 FILL_VALUE = -32768  # Reusing the same fill value as teledyne (RDI)
 
+KNOTS_PER_METER_S = 1.94384 # knots per meter/per
+
 TAGS = ["NOM", "COMP", "Triplet", "Par_digi", "SUNA", "GPS",
         "CTD", "CTDO", "RTI", "RDI", "WAVE_M", "WAVE_S", "WXT520",
         "WMT700", "WpH", "CO2_W", "CO2_A", "Debit", "VEMCO"]  # "OCR", "MO", "FIN"]
@@ -181,7 +183,7 @@ TRIPLET_KEYS = ['time', 'model_number', 'serial_number',
 PAR_DIGI_KEYS = ['time', 'model_number', 'serial_number', 'timer_s', 'PAR', 'pitch', 'roll', 'intern_temperature']
 SUNA_KEYS = ["time", "model_number", "serial_number", "uMol", "mgNL", "absorbance_254_31",
              "absorbance_350_16", "bromide_mgL", "spectrum_average"]
-GPS_KEYS = ['time', 'latitude_N', 'longitude_E', 'speed', 'course', 'variation_E']
+GPS_KEYS = ['time', 'latitude_N', 'longitude_E', 'speed', 'course', 'variation_E', 'validity']
 CTD_KEYS = ['temperature', 'conductivity', 'salinity', 'density']
 CTDO_KEYS = ['temperature', 'conductivity', 'oxygen', 'salinity']
 RTI_KEYS = ['bin', 'position_cm',
@@ -232,12 +234,6 @@ WMT700_KEYS_MAP = {"Dn": "wind_direction_min",
                    "Sm": "wind_mean",
                    "Sx": "wind_max"}
 
-def main():
-    # m = multiple_test()
-    # [(tag, [len(value) for value in m.__dict__[tag].values()]) for tag in m.tags if m.__dict__[tag] is not None]
-    m = single_test().pmza_riki
-    return m
-
 
 class VikingData():
     """Object to store Viking data. """
@@ -247,27 +243,28 @@ class VikingData():
         self.firmware: str = firmware
         self.controller_sn: str = controller_sn
 
-        self.time: list = []
-        self.latitude: list = []
-        self.longitude: list = []
-        self.comp: list = {key: [] for key in COMP_KEYS}
-        self.triplet: list = {key: [] for key in TRIPLET_KEYS}
-        self.par_digi: list = {key: [] for key in PAR_DIGI_KEYS}
-        self.suna: list = {key: [] for key in SUNA_KEYS}
-        self.gps: list = {key: [] for key in GPS_KEYS}
-        self.ctd: list = {key: [] for key in CTD_KEYS}
-        self.ctdo: list = {key: [] for key in CTDO_KEYS}
-        self.rti: list = {key: [] for key in RTI_KEYS}
-        self.rdi: list = {key: [] for key in RDI_KEYS}
-        self.wave_m: list = {key: [] for key in WAVE_M_KEYS}
-        self.wave_s: list = {key: [] for key in WAVE_S_KEYS}
-        self.wxt520: list = {key: [] for key in WXT520_KEYS}
-        self.wmt700: list = {key: [] for key in WMT700_KEYS}
-        self.wph: list = {key: [] for key in WPH_KEYS}
-        self.co2_w: list = {key: [] for key in CO2_W_KEYS}
-        self.co2_a: list = {key: [] for key in CO2_A_KEYS}
-        self.debit: list = {key: [] for key in DEBIT_KEYS}
-        self.vemco: list = {key: [] for key in VEMCO_KEYS}
+        self.time: Union[list, np.ma.MaskedArray] = []
+        self.latitude: Union[list, np.ma.MaskedArray] = []
+        self.longitude: Union[list, np.ma.MaskedArray] = []
+
+        self.comp: dict = {key: [] for key in COMP_KEYS}
+        self.triplet: dict = {key: [] for key in TRIPLET_KEYS}
+        self.par_digi: dict = {key: [] for key in PAR_DIGI_KEYS}
+        self.suna: dict = {key: [] for key in SUNA_KEYS}
+        self.gps: dict = {key: [] for key in GPS_KEYS}
+        self.ctd: dict = {key: [] for key in CTD_KEYS}
+        self.ctdo: dict = {key: [] for key in CTDO_KEYS}
+        self.rti: dict = {key: [] for key in RTI_KEYS}
+        self.rdi: dict = {key: [] for key in RDI_KEYS}
+        self.wave_m: dict = {key: [] for key in WAVE_M_KEYS}
+        self.wave_s: dict = {key: [] for key in WAVE_S_KEYS}
+        self.wxt520: dict = {key: [] for key in WXT520_KEYS}
+        self.wmt700: dict = {key: [] for key in WMT700_KEYS}
+        self.wph: dict = {key: [] for key in WPH_KEYS}
+        self.co2_w: dict = {key: [] for key in CO2_W_KEYS}
+        self.co2_a: dict = {key: [] for key in CO2_A_KEYS}
+        self.debit: dict = {key: [] for key in DEBIT_KEYS}
+        self.vemco: dict = {key: [] for key in VEMCO_KEYS}
 
     def __repr__(self):
         repr = f"""{self.__class__} 
@@ -298,6 +295,7 @@ data: (length: {len(self)})
         self.time = np.array(self.time, dtype='datetime64[s]')
         self.latitude = _to_numpy_masked_array(self.latitude)
         self.longitude = _to_numpy_masked_array(self.longitude)
+
         for tag in self.tags:
             if self.__dict__[tag] is not None:
                 for key, value in self.__dict__[tag].items():
@@ -320,9 +318,13 @@ data: (length: {len(self)})
                 self.__dict__[tag] = None
 
 
-def _to_numpy_masked_array(data, fill_value=FILL_VALUE):
-    data_array = np.ma.masked_array(data, fill_value=np.nan)
-    data_array.mask = data_array == fill_value
+def _to_numpy_masked_array(data):
+    data=np.array(data)
+    if isinstance(data[0], str):
+        data_array = np.ma.masked_where(data==str(FILL_VALUE), data)
+    else:
+        data_array = np.ma.masked_where(data==FILL_VALUE, data)
+
     return data_array
 
 
@@ -387,57 +389,61 @@ buoys:\n"""
             viking_data.reformat()
 
 
-def to_netcdf(viking_data: VikingData)->xr.Dataset:
+def to_netcdf(viking_data: VikingData) -> xr.Dataset:
     coords = {'time': np.asarray(viking_data.time)}
-    data = {'lon': (['time'], np.asarray(viking_data.longitude)),
-            'lat': (['time'], np.asarray(viking_data.latitude))}
-    nom_dataset = xr.open_dataset(data=data, coords=coords)
+    data = {'lon': (['time'], viking_data.longitude.filled(np.nan)),
+            'lat': (['time'], viking_data.latitude.filled(np.nan))}
+    nom_dataset = xr.Dataset(data, coords=coords).dropna('time')
     gps_dataset=None
     wxt_dataset=None
     wmt_dataset=None
     wave_dataset=None
+
     if viking_data.gps is not None:
         good_index = np.invert(viking_data.gps['time'].mask)
-        coords = {'time': np.asarray(viking_data.gps['time'][good_index])}
+        coords = {'time': np.asarray(viking_data.gps['time'][good_index].astype('datetime64[s]'))}
         data = {'lon': (['time'], np.asarray(viking_data.gps['longitude_E'][good_index])),
                 'lat': (['time'], np.asarray(viking_data.gps['latitude_N'][good_index])),
-                'speed': (['time'], np.asarray(viking_data.gps['speed'][good_index])),
+                'speed': (['time'], np.asarray(viking_data.gps['speed'][good_index])/KNOTS_PER_METER_S, {'units': 'meters per second'}),
                 'course': (['time'], np.asarray(viking_data.gps['course'][good_index])),
                 'magnetic_variation': (['time'], np.asarray(viking_data.gps['variation_E'][good_index]))}
-        gps_dataset = xr.open_dataset(data=data, coords=coords)
+        gps_dataset = xr.Dataset(data, coords=coords)
+
     if viking_data.wxt520 is not None:
         coords = {'time': np.asarray(viking_data.time)}
-        coords = {'time': np.asarray(viking_data.wxt520['time'][good_index])}
-        data = {'wind_direction': (['time'], np.asarray(viking_data.wxt520['Dm'][good_index])),
-                'wind_min': (['time'], np.asarray(viking_data.wxt520['Sn'][good_index])),
-                'wind_max': (['time'], np.asarray(viking_data.wxt520['Sx'][good_index])),
-                'wind_mean': (['time'], np.asarray(viking_data.wxt520['Sm'][good_index]))}
-        wxt_dataset = xr.open_dataset(data=data, coords=coords)
+        data = {'wind_direction': (['time'], viking_data.wxt520['Dm'].filled(np.nan)),
+                'wind_min': (['time'], viking_data.wxt520['Sn'].filled(np.nan)/KNOTS_PER_METER_S, {'units': 'meters per second'}),
+                'wind_max': (['time'], viking_data.wxt520['Sx'].filled(np.nan)/KNOTS_PER_METER_S, {'units': 'meters per second'}),
+                'wind_mean': (['time'], viking_data.wxt520['Sm'].filled(np.nan)/KNOTS_PER_METER_S, {'units': 'meters per second'})}
+        wxt_dataset = xr.Dataset(data, coords=coords)
+
     if viking_data.wmt700 is not None:
         coords = {'time': np.asarray(viking_data.time)}
-        data = {'direction': (['time'], np.asarray(viking_data.wmt700['Dm'])),
-                'wind_min': (['time'], np.asarray(viking_data.wmt700['Sn'])),
-                'wind_max': (['time'], np.asarray(viking_data.wmt700['Sx'])),
-                'wind_mean': (['time'], np.asarray(viking_data.wmt700['Sm']))}
-        wmt_dataset = xr.open_dataset(data=data, coords=coords)
+        data = {'direction': (['time'], viking_data.wmt700['Dm'].filled(np.nan)),
+                'wind_min': (['time'], viking_data.wmt700['Sn'].filled(np.nan)/KNOTS_PER_METER_S, {'units': 'meters per second'}),
+                'wind_max': (['time'], viking_data.wmt700['Sx'].filled(np.nan)/KNOTS_PER_METER_S, {'units': 'meters per second'}),
+                'wind_mean': (['time'], viking_data.wmt700['Sm'].filled(np.nan)/KNOTS_PER_METER_S, {'units': 'meters per second'})}
+        wmt_dataset = xr.Dataset(data, coords=coords)
+
     if viking_data.wave_m is not None:
         good_index = np.invert(viking_data.wave_m['time'].mask)
-        coords = {'time': np.asarray(viking_data.wave_m['time'][good_index])}
-        data = {'lon': (['time'], np.asarray(viking_data.wave_m['longitude_E'][good_index])),
-                'lat': (['time'], np.asarray(viking_data.wave_m['latitude_N'][good_index])),
-                'speed': (['time'], np.asarray(viking_data.wave_m['speed'][good_index])),
-                'course': (['time'], np.asarray(viking_data.wave_m['course'][good_index])),
-                'magnetic_variation': (['time'], np.asarray(viking_data.wave_m['variation_E'][good_index]))}
-        wave_dataset = xr.open_dataset(data=data, coords=coords)
+        coords = {'time': np.asarray(viking_data.wave_m['time'][good_index]).astype('datetime64[s]')}
+        data = {'period': (['time'], viking_data.wave_m['period'][good_index].filled(np.nan)),
+                'average_height': (['time'], viking_data.wave_m['average_height'][good_index].filled(np.nan)),
+                'significant_height': (['time'], viking_data.wave_m['significant_height'][good_index].filled(np.nan)),
+                'maximal_height': (['time'], viking_data.wave_m['maximal_height'][good_index].filled(np.nan))}
+        wave_dataset = xr.Dataset(data, coords=coords)
+
     elif viking_data.wave_s is not None:
         good_index = np.invert(viking_data.wave_s['time'].mask)
-        coords = {'time': np.asarray(viking_data.wave_s['time'][good_index])}
-        data = {'lon': (['time'], np.asarray(viking_data.wave_s['longitude_E'][good_index])),
-                'lat': (['time'], np.asarray(viking_data.wave_s['latitude_N'][good_index])),
-                'speed': (['time'], np.asarray(viking_data.wave_s['speed'][good_index])),
-                'course': (['time'], np.asarray(viking_data.wave_s['course'][good_index])),
-                'magnetic_variation': (['time'], np.asarray(viking_data.wave_s['variation_E'][good_index]))}
-        wave_dataset = xr.open_dataset(data=data, coords=coords)
+        coords = {'time': np.asarray(viking_data.wave_s['time'][good_index]).astype('datetime64[s]')}
+        data = {'period': (['time'], np.asarray(viking_data.wave_s['dominant_period'][good_index].filled(np.nan))),
+                'period_max': (['time'], np.asarray(viking_data.wave_s['pmax2'][good_index].filled(np.nan))),
+                'direction': (['time'], np.asarray(viking_data.wave_s['wave_direction'][good_index].filled(np.nan))),
+                'average_height': (['time'], np.asarray(viking_data.wave_s['average_height'][good_index].filled(np.nan))),
+                'max_height': (['time'], np.asarray(viking_data.wave_s['Hmax'][good_index].filled(np.nan))),
+                'max2_height': (['time'], np.asarray(viking_data.wave_s['Hmax2'][good_index].filled(np.nan)))}
+        wave_dataset = xr.Dataset(data, coords=coords)
 
     return nom_dataset, gps_dataset, wxt_dataset, wmt_dataset, wave_dataset
 
@@ -501,9 +507,9 @@ def _decode_NOM(data: str, century: int) -> dict:
     latitude, longitude = FILL_VALUE, FILL_VALUE
     if "#" not in data[7]:
         _lat = data[7].split(' ')
-        latitude = {'S': -1, 'N': 1}[_lat[1][-1]] * (int(_lat[0]) + round(float(_lat[1][:-1]) / 60, 2))
+        latitude = {'S': -1, 'N': 1}[_lat[1][-1]] * (int(_lat[0]) + round(float(_lat[1][:-1]) / 60, 4))
         _lon = data[8].split(' ')
-        longitude = {'W': -1, 'E': 1}[_lon[1][-1]] * (int(_lon[0]) + round(float(_lon[1][:-1]) / 60, 2))
+        longitude = {'W': -1, 'E': 1}[_lon[1][-1]] * (int(_lon[0]) + round(float(_lon[1][:-1]) / 60, 4))
     return {'buoy_name': data[0].lower().replace(' ', '_').replace('-', '_'),
             'time': _make_timestamp(str(century - 1) + data[2][4:6], data[2][2:4], data[2][0:2],
                                     data[1][0:2], data[1][2:4], data[1][4:6]),
@@ -579,14 +585,24 @@ def _decode_SUNA(data: str) -> dict:
 
 
 def _decode_GPS(data: str, century: int) -> dict:
+    """
+           0 1         2 3          4 5     6     7      8     9
+     '110132,A,4839.7541,N,06834.8903,W,003.7,004.4,240521,017.5,W,*7B'
+     """
     data = data.strip('\n').split(',')
+    lat_minutes = float(data[2][-7:-2]) # truncating the last 2 digit in minutes FIXME
+    lon_minutes = float(data[4][-7:-2]) # truncating the last 2 digit in minutes FIXME
+    lat = (int(data[2][:-7]) + round(lat_minutes / 60, 4))
+    lon = (int(data[4][:-7]) + round(lon_minutes / 60, 4))
     return {'time': _make_timestamp(str(century - 1) + data[8][4:6], data[8][2:4], data[8][0:2],
                                     data[0][0:2], data[0][2:4], data[0][4:6]),
-            'latitude_N': {'S': -1, 'N': 1}[data[3]] * (int(data[2][:-7]) + round(float(data[2][-7:]) / 60, 2)),
-            'longitude_E': {'W': -1, 'E': 1}[data[5]] * (int(data[4][:-7]) + round(float(data[4][-7:]) / 60, 2)),
+            'latitude_N': {'S': -1, 'N': 1}[data[3]] * lat,
+            'longitude_E': {'W': -1, 'E': 1}[data[5]] * lon,
             'speed': _safe_float(data[6]),
             'course': _safe_float(data[7]),
-            'variation_E': {'W': -1, 'E': 1}[data[10][0]] * float(data[9]), }
+            'variation_E': {'W': -1, 'E': 1}[data[10][0]] * float(data[9]),
+            'validity': data[1]}
+
     # 'checksum': _safe_int(data[8])}
 
 
@@ -609,6 +625,9 @@ def _decode_CTDO(data: str) -> dict:
 
 
 def _decode_RTI(data: str) -> dict:
+    """
+    Data are in meters (SI)
+    """
     data = data.replace('\n', ',').split(',')
     beam_vel_mms = tuple(map(_safe_int, data[2:6]))
     enu_mms = tuple(map(_safe_int, data[6:10]))
@@ -619,7 +638,7 @@ def _decode_RTI(data: str) -> dict:
     bt_corr_pc = tuple(map(_safe_int, data[27:31]))
     bt_amp_dB = tuple(map(_safe_int, data[31:35]))
     return {'bin': data[0],
-            'position_cm': data[1],
+            'position': data[1]/100,
             'beam1': beam_vel_mms[0] / 1000, 'beam2': beam_vel_mms[1] / 1000,
             'beam3': beam_vel_mms[2] / 1000, 'beam4': beam_vel_mms[3] / 1000,
             'u': enu_mms[0] / 1000, 'v': enu_mms[0] / 1000, 'w': enu_mms[0] / 1000, 'e': enu_mms[3] / 1000,
@@ -677,16 +696,17 @@ def _decode_WXT520(data: str) -> dict:
             'Ta', 'Ua', 'Pa',
             'Th', 'Vh', 'Vs', 'Vr']
     regex = r'([A-z]+)=(\d+(?:\.\d+)?)'
-    decoded_data = dict().fromkeys(keys)
+    decoded_data = dict().fromkeys(keys, float(FILL_VALUE))
     for key, value in re.findall(regex, data.strip('\n')):
         decoded_data[key] = _safe_float(value)
+
     return decoded_data
 
 
 def _decode_WMT700(data: str) -> dict:
     keys = ['Dn', 'Dm', 'Dx', 'Sn', 'Sm', 'Sx']
     regex = r'([A-z]+)=(\d+(?:\.\d+)?)'
-    decoded_data = dict().fromkeys(keys)
+    decoded_data = dict().fromkeys(keys, float(FILL_VALUE))
     for key, value in re.findall(regex, data.strip('\n')):
         decoded_data[key] = _safe_float(value)
     return decoded_data
@@ -737,7 +757,7 @@ def _decode_Debit(data: str) -> dict:
     if "#" in data:
         return {'flow_mas': FILL_VALUE}
     else:
-        return {'flow_ms': round(int(data.strip('\n'), 16) * 0.001543, 2)}
+        return {'flow_ms': round(int(data.strip('\n'), 16) * 0.001543, 4)}
 
 
 def _decode_VEMCO(data: str) -> dict:
@@ -759,7 +779,7 @@ def _safe_int(value: str) -> Union[int]:
 
 def _make_timestamp(Y: str, M: str, D: str, h: str, m: str, s: str) -> str:
     time = Y + "-" + M + "-" + D + "T" + h + ":" + m + ":" + s
-    return FILL_VALUE if "#" in time else time
+    return str(FILL_VALUE) if "#" in time else time
 
 
 def single_test():
@@ -768,4 +788,71 @@ def single_test():
 
 def multiple_test():
     return VikingReader().read('/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_[0-9]*.dat')
+
+
+def main():
+    viking_data = single_test()._buoys_data['pmza_riki']
+    return viking_data
+
+
+def compute_speed_course(viking_data):
+    from pygeodesy.ellipsoidalVincenty import LatLon
+
+    gps_mask = viking_data.gps['longitude_E'].mask
+
+    gps_time = viking_data.gps['time'].data[~gps_mask].astype('datetime64[s]')
+    gps_lat = viking_data.gps['latitude_N'].data[~gps_mask]
+    gps_lon = viking_data.gps['longitude_E'].data[~gps_mask]
+
+    nom_time = viking_data.time[~gps_mask]
+    nom_lon = viking_data.longitude.data[~gps_mask]
+    nom_lat = viking_data.latitude.data[~gps_mask]
+
+    speed = []
+    course = []
+    delta_time = []
+
+    for lon0, lon1, lat0, lat1, time0, time1 in zip(nom_lon, gps_lon, nom_lat, gps_lat, nom_time, gps_time):
+        if time0 < time1:
+            dt = np.diff([time0, time1]).astype("timedelta64[s]").astype("float64")[0]
+            p0 = (lon0, lat0)
+            p1 = (lon1, lat1)
+        else:
+            dt = np.diff([time1, time0]).astype("timedelta64[s]").astype("float64")[0]
+            p1 = (lon0, lat0)
+            p0 = (lon1, lat1)
+
+        speed.append(LatLon(p0[1], p0[0]).distanceTo(LatLon(p1[1], p1[0])) / dt)
+        course.append(LatLon(p0[1], p0[0]).initialBearingTo(LatLon(p1[1], p1[0])))
+        delta_time.append(dt)
+
+    u_ship = np.sin(np.deg2rad(course)) * np.array(speed)
+    v_ship = np.cos(np.deg2rad(course)) * np.array(speed)
+
+    nav_ds = xr.Dataset({'u_ship': (['time'], u_ship),
+                         'v_ship': (['time'], v_ship),
+                         'delta_time' : (['time'], delta_time)},
+                        coords={'time': gps_time})
+    return nav_ds
+
+
+if __name__ == "__main__":
+    from magtogoek.navigation import _compute_navigation
+    gps_save_path = '/home/jeromejguay/ImlSpace/Data/iml4_2021/2021-IML4-ADCP-24418/iml4_gps_2021.nc'
+    viking_data = main()
+    nom, gps, wxt, wmt, wave = to_netcdf(viking_data)
+
+    gps = _compute_navigation(gps)
+    #nav = compute_speed_course(viking_data)
+    #nav.to_netcdf(gps_save_path)
+
+    direction=wmt.direction.rolling(time=1).mean()
+    wmt['u_wind'] = np.sin(np.deg2rad(direction)) * wmt.wind_mean / 25
+    wmt['v_wind'] = np.cos(np.deg2rad(direction)) * wmt.wind_mean / 25
+
+    gps.u_ship.plot()
+    wmt.u_wind.plot()
+
+
+
 
