@@ -790,18 +790,19 @@ def _load_navigation(dataset: xr.Dataset, navigation_files: str):
     """
     nav_ds = load_navigation(navigation_files)
     if nav_ds is not None:
-        nav_ds = nav_ds.interp(time=dataset.time)
-        for var in ["lon", "lat", "u_ship", "v_ship"]:
-            if var in nav_ds:
-                dataset[var] = nav_ds[var]
-                if var == "lat":
+        if nav_ds.attrs['time_flag'] is True:
+            nav_ds = nav_ds.interp(time=dataset.time)
+            if nav_ds.attrs['lonlat_flag']:
+                    dataset['lon'] = nav_ds['lon']
+                    dataset['lat'] = nav_ds['lat']
                     l.log("Platform GPS data loaded.")
-                if var == "v_ship":
+            if nav_ds.attrs['uv_ship_flag']:
+                    dataset['u_ship'] = nav_ds['u_ship']
+                    dataset['v_ship'] = nav_ds['v_ship']
                     l.log("Platform velocity data loaded.")
-        nav_ds.close()
-    else:
-        l.warning('Could not load navigation data file.')
-
+            nav_ds.close()
+            return dataset
+    l.warning('Could not load navigation data file.')
     return dataset
 
 
