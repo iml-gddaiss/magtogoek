@@ -10,7 +10,7 @@ compute_navigation:
     After testing, the u_ship, v_ship computation need more work, using a large value for the rolling
     average window could do the trick.
 """
-
+import sys
 import typing as tp
 import warnings
 from pathlib import Path
@@ -23,12 +23,14 @@ import matplotlib.pyplot as plt
 from magtogoek.tools import get_gps_bearing, vincenty
 from magtogoek.utils import get_files_from_expression
 
-FILE_FORMATS = [".log", ".gpx", ".nc"]
-GPS_VARIABLES_NAME = ["lon", "lat", "time"]
-VARIABLE_TRANSLATOR = dict(
-    time=["Time", "TIME", "T", "t"],
-    lon=["LON", "Lon", "longitude", "LONGITUDE", "Longitude", "X", "x"],
-    lat=["LAT", "Lat", "latitude", "LATITUDE", "Latitude", "Y", "y"],
+FILE_FORMATS = (".log", ".gpx", ".nc")
+NAVIGATION_VARIABLES_NAME = ("lon", "lat", "time",'u_ship', 'v_ship')
+VARIABLE_NAME_MAPPING = dict(
+    time=("Time", "TIME", "T", "t"),
+    lon=("LON", "Lon", "longitude", "LONGITUDE", "Longitude", "X", "x"),
+    lat=("LAT", "Lat", "latitude", "LATITUDE", "Latitude", "Y", "y"),
+    u_ship=(),
+    v_ship=(),
 )
 
 
@@ -55,20 +57,25 @@ def load_navigation(filenames):
                     ext = ".log"
 
         if ext == ".nc":
-            dataset = xr.open_dataset(filename)
-            dataset = _check_variables_names(dataset)
+            _dataset = xr.open_dataset(filename)
+            _dataset = _check_variables_names(_dataset)
         elif ext == ".gpx":
-            dataset = _load_gps(filename, file_type="gpx")
+            _dataset = _load_gps(filename, file_type="gpx")
         elif ext == ".log":
-            dataset = _load_gps(filename, file_type="nmea")
+            _dataset = _load_gps(filename, file_type="nmea")
         else:
-            dataset = None
+            _dataset = None
 
-        if dataset:
-            datasets.append(dataset)
+        if _dataset is not None:
+            datasets.append(_dataset)
 
     if len(datasets) > 0:
-        return xr.merge(datasets)
+        flags = {'time_flag': False, 'lonlat_flag': False, 'uv_ship_flag': False}
+        for key in flags.keys():
+            flags[key] = all([ds.attrs[key] for ds in datasets])
+        dataset = xr.merge(datasets)
+        dataset.attrs.update(flags)
+        return dataset
     else:
         return None
 
@@ -81,7 +88,7 @@ def _load_gps(filename: str, file_type: str) -> xr.Dataset:
     dataset = xr.Dataset(
         {"lon": (["time"], gps_data["lon"]), "lat": (["time"], gps_data["lat"])},
         coords={"time": gps_data["time"]},
-        attrs={"filename": str(Path(filename).resolve())},
+        attrs={'time_flag': True, 'lonlat_flag': True, 'uv_ship_flag': False},
     )
     return dataset.sortby("time")
 
@@ -140,11 +147,26 @@ def compute_navigation(
         After testing, the u_ship, v_ship computation need more works.
 
     """
-
     filenames = get_files_from_expression(filenames)
-
+    print('Loading files ...', end='\r')
     dataset = load_navigation(filenames)
+    if dataset is None:
+        print('Could not load navigation data from file(s).')
+        'Loading files ... [Error]'
+    elif dataset.attrs['time_flag'] is False:
+        'Loading files ... [Error]'
+        print(f"`time` in the coordinates. Valid time name {VARIABLE_NAME_MAPPING['time']}")
+        sys.exit()
+    elif dataset.attrs['lonlat_flag'] is False:
+        print('Loading files ... [Error]')
+        print(f"Either `lon` and/or `lat` variable not found the dataset. Valid `lon` name {VARIABLE_NAME_MAPPING['lon']}, Valid `lat` name {VARIABLE_NAME_MAPPING['lon']}")
+        sys.exit()
+    else:
+        print('Loading files ... [Done]')
+
+    print('Computing navigation ...', end='\r')
     dataset = _compute_navigation(dataset, window=window)
+    print('Computing navigation ... [Done]')
 
     dataset.attrs["input_files"] = filenames
 
@@ -155,14 +177,16 @@ def compute_navigation(
             output_name = str(p.with_name(p.stem + "_nav.nc"))
 
     _plot_navigation(dataset)
-
-    dataset.to_netcdf(Path(output_name).with_suffix(".nc"))
+    dataset.attrs = {'filenames': filenames, 'averaging_window_size': window}
+    output_path = Path(output_name).with_suffix(".nc").absolute()
+    dataset.to_netcdf(output_path)
+    print(f'Files saved at {output_path}')
 
     return dataset
 
 
 def _compute_navigation(
-    dataset: xr.Dataset, window: int = 1
+    dataset: xr.Dataset, window: tp.Union[int, None] = None,
 ) -> xr.Dataset:
     """compute bearing, speed, u_ship and v_ship
 
@@ -174,67 +198,77 @@ def _compute_navigation(
     window :
         Size of the centered averaging window.
     """
+    centered_time, course, speed = _compute_speed_and_course(dataset.time, dataset.lon.values, dataset.lat.values)
 
-    if not isinstance(window, int):
+    u_ship = speed * np.sin(np.deg2rad(course))
+    v_ship = speed * np.cos(np.deg2rad(course))
+
+    nav_dataset = xr.Dataset(
+        {
+            "course": (["time"], course),
+            "speed": (["time"], speed),
+            "u_ship": (["time"], u_ship),
+            "v_ship": (["time"], v_ship),
+        },
+        coords={"time": centered_time},
+        attrs={'history': []}
+    )
+
+    if window is not None:
         window = int(window)
+        nav_dataset = nav_dataset.rolling(time=window, center=True).mean()
+        nav_dataset.attrs['history'].append(f'A rolling average of length {window} was applied to the data.')
 
-    position0 = np.array((dataset.lon.values[:-1], dataset.lat.values[:-1])).T.tolist()
-    position1 = np.array((dataset.lon.values[1:], dataset.lat.values[1:])).T.tolist()
+    nav_dataset = nav_dataset.interp(time=dataset.time)
 
-    distances = list(map(vincenty, position0, position1))  # meter
+    dataset = xr.merge((nav_dataset, dataset), compat='override')
+    dataset.attrs.update({'uv_ship_flag': True})
 
-    bearing = list(map(get_gps_bearing, position0, position1))  # degree
+    return dataset
 
-    time_delta = np.diff(dataset.time).astype("timedelta64[s]")
+
+def _compute_speed_and_course(time: tp.Union[list, np.ndarray],
+                              longitude: tp.Union[list, np.ndarray],
+                              latitude: tp.Union[list, np.ndarray]) -> tp.Tuple[np.ndarray, np.ndarray, np.ndarray]:
+
+    position0 = np.array((longitude[:-1], latitude[:-1])).T.tolist()
+    position1 = np.array((longitude[1:], latitude[1:])).T.tolist()
+
+    distances = np.array(list(map(vincenty, position0, position1)))  # meter
+
+    course = np.array(list(map(get_gps_bearing, position0, position1)))  # degree
+
+    time_delta = np.diff(time).astype("timedelta64[s]")
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", category=RuntimeWarning)
 
         speed = distances / time_delta.astype("float64")  # meter per seconds
 
-    time_centered = dataset.time[:-1] + time_delta / 2
+    centered_time = time[:-1] + time_delta / 2
 
-    u_ship = speed * np.sin(np.deg2rad(bearing))
-    v_ship = speed * np.cos(np.deg2rad(bearing))
-
-    nav_dataset = xr.Dataset(
-        {
-            "bearing": (["time"], bearing),
-            "speed": (["time"], speed),
-            "u_ship": (["time"], u_ship),
-            "v_ship": (["time"], v_ship),
-        },
-        coords={"time": time_centered},
-    )
-
-    nav_dataset = (
-        nav_dataset.rolling(time=window, center=True).mean().interp(time=dataset.time)
-    )
-
-    dataset = xr.merge((nav_dataset, dataset), compat='override')
-
-    return dataset
+    return centered_time, course, speed
 
 
 def _plot_navigation(dataset: xr.Dataset):
     """plots bearing, speed, u_ship and v_ship from a dataset"""
 
     fig = plt.figure(figsize=(12, 8))
-    ax_bearing = plt.subplot(411)
-    ax_bearing.set_ylabel("bearing [degree]")
-    ax_speed = plt.subplot(412, sharex=ax_bearing)
+    ax_course = plt.subplot(411)
+    ax_course.set_ylabel("course [degree]")
+    ax_speed = plt.subplot(412, sharex=ax_course)
     ax_speed.set_ylabel("speed [m/s]")
-    ax_uship = plt.subplot(413, sharex=ax_bearing)
+    ax_uship = plt.subplot(413, sharex=ax_course)
     ax_uship.set_ylabel("uship [m/s]")
-    ax_vship = plt.subplot(414, sharex=ax_bearing)
+    ax_vship = plt.subplot(414, sharex=ax_course)
     ax_vship.set_ylabel("vship [m/s]")
 
-    dataset.bearing.plot(ax=ax_bearing)
+    dataset.course.plot(ax=ax_course)
     dataset.speed.plot(ax=ax_speed)
     dataset.u_ship.plot(ax=ax_uship)
     dataset.v_ship.plot(ax=ax_vship)
 
-    ax_bearing.get_xaxis().set_visible(False)
+    ax_course.get_xaxis().set_visible(False)
     ax_speed.get_xaxis().set_visible(False)
     ax_uship.get_xaxis().set_visible(False)
 
@@ -244,17 +278,33 @@ def _plot_navigation(dataset: xr.Dataset):
 
 
 def _check_variables_names(dataset):
-    """Return None if a variable cannot be found in the dataset"""
-    for var in GPS_VARIABLES_NAME:
-        if var not in dataset:
-            for varname in VARIABLE_TRANSLATOR[var]:
-                if varname in dataset:
-                    dataset = dataset.rename({varname: var})
-                    break
-        if var not in dataset:
-            print(f"{var} missing from netcdf gps data")
-            dataset = None
-            break
+    """Check what variables are int he dataset.
+
+    Converts variables name if needed.
+
+    Return None if:
+     - neither ( (lon and lat) or (u_ship and v_ship)) are not found.
+     - time is not a coordinates.
+    """
+    found_variables = []
+    for var, varnames in VARIABLE_NAME_MAPPING.items():
+        if var in dataset:
+            found_variables.append(var)
+        else:
+            for name in varnames:
+                if name in dataset:
+                    dataset = dataset.rename({name: var})
+                    found_variables.append(var)
+
+    dataset.attrs.update({'time_flag': False, 'lonlat_flag': False, 'uv_ship_flag': False})
+    if 'time' not in dataset.coords:
+        return dataset
+    else:
+        dataset.attrs['time_flag'] = True
+    if all([var in dataset for var in ('lon', 'lat')]):
+        dataset.attrs['lonlat_flag'] = True
+    if all([var in dataset for var in ('u_ship', 'v_ship')]):
+        dataset.attrs['uv_ship_flag'] = True
 
     return dataset
 
