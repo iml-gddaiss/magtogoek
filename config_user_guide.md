@@ -27,7 +27,7 @@ odf_output                    = `path/to/filenames` or (True, 1). If True or 1, 
 ```
 
 # Metadata
-The `NETCDF_CF` section contains the metadata fields required by the CF conventions. Not necessary for ODF ouput.
+The `NETCDF_CF` section contains the metadata fields required by the CF conventions. Not necessary for ODF outputs.
 ```dosini
 [NETCDF_CF]
 Conventions                   = Auto generated.
@@ -41,10 +41,10 @@ source                        = Orginal method that produced the data. Ex: Numer
                                 or instrument sampling (type).
 ```
 
-The `PROJECT`, `CRUISE` and `GLOBAL_ATTRIBUTES` sections contains metadata. 
+The `PROJECT`, `CRUISE` and `GLOBAL_ATTRIBUTES` sections contain metadata. 
 The netcdf global attributes will contain all the keys present in these sections, even if the field are left empty. 
 Removing them will remove them from the netcdf global attributes. 
-For ODF output, only the `CRUISE` sections is required.
+For ODF output, only the `CRUISE` section is required.
 ```dosini
 [PROJECT]
 project                       = 
