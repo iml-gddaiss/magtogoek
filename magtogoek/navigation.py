@@ -177,6 +177,7 @@ def compute_navigation(
             output_name = str(p.with_name(p.stem + "_nav.nc"))
 
     _plot_navigation(dataset)
+    dataset.attrs = {'filenames': filenames, 'averaging_window_size': window}
     output_path = Path(output_name).with_suffix(".nc").absolute()
     dataset.to_netcdf(output_path)
     print(f'Files saved at {output_path}')
@@ -300,9 +301,9 @@ def _check_variables_names(dataset):
         return dataset
     else:
         dataset.attrs['time_flag'] = True
-    if all([var not in dataset for var in ('lon', 'lat')]):
+    if all([var in dataset for var in ('lon', 'lat')]):
         dataset.attrs['lonlat_flag'] = True
-    if all([var not in dataset for var in ('u_ship', 'v_ship')]):
+    if all([var in dataset for var in ('u_ship', 'v_ship')]):
         dataset.attrs['uv_ship_flag'] = True
 
     return dataset

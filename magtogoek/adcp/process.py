@@ -77,11 +77,11 @@ STANDARD_ADCP_GLOBAL_ATTRIBUTES = {
     "sensor_type": "adcp",
     "featureType": "timeSeriesProfile",
 }
-DEFAULT_CONFIG_ATTRIBUTES =  {
-            "date_created": pd.Timestamp.now().strftime("%Y-%m-%d"),
-            "publisher_name": getpass.getuser(),
-            "source": "adcp",
-        }
+DEFAULT_CONFIG_ATTRIBUTES = {
+    "date_created": pd.Timestamp.now().strftime("%Y-%m-%d"),
+    "publisher_name": getpass.getuser(),
+    "source": "adcp",
+}
 VARIABLES_TO_DROP = [
     "binary_mask"
 ]
@@ -329,7 +329,7 @@ def quick_process_adcp(params: tp.Dict):
 
 
 def _pipe_to_process_adcp_data(
-    params, platform_metadata, config_attrs, drop_empty_attrs=False
+        params, platform_metadata, config_attrs, drop_empty_attrs=False
 ):
     """Check if the input_file must be split in multiple output.
 
@@ -357,7 +357,7 @@ def _pipe_to_process_adcp_data(
 
 
 def _process_adcp_data(
-    params: tp.Dict, platform_metadata: tp.Dict, config_attrs, drop_empty_attrs=False
+        params: tp.Dict, platform_metadata: tp.Dict, config_attrs, drop_empty_attrs=False
 ):
     """Process adcp data
 
@@ -471,12 +471,12 @@ def _process_adcp_data(
     if params["quality_control"]:
         _quality_control(dataset, params)
     else:
-        no_adcp_quality_control(dataset,)
+        no_adcp_quality_control(dataset, )
 
     l.reset()
 
     if any(
-        params["drop_" + var] for var in ("percent_good", "correlation", "amplitude")
+            params["drop_" + var] for var in ("percent_good", "correlation", "amplitude")
     ):
         dataset = _drop_beam_data(dataset, params)
 
@@ -494,7 +494,7 @@ def _process_adcp_data(
         **P01_VEL_CODES[platform_type],
         **P01_CODES,
     }
-    dataset.attrs["variables_gen_name"] = [var for var in dataset.variables] # For Odf outputs
+    dataset.attrs["variables_gen_name"] = [var for var in dataset.variables]  # For Odf outputs
 
     l.section("Variables attributes")
     dataset = format_variables_names_and_attributes(dataset)
@@ -610,17 +610,17 @@ def _load_adcp_data(params: tp.Dict) -> xr.Dataset:
 
     l.log(
         (
-            f"Bin count : {len(dataset.depth.data)}, "
-            + f"Min depth : {np.round(dataset.depth.min().data, 3)} m, "
-            + f"Max depth : {np.round(dataset.depth.max().data, 3)} m, "
-            + f"Bin size : {dataset.attrs['bin_size_m']} m"
+                f"Bin count : {len(dataset.depth.data)}, "
+                + f"Min depth : {np.round(dataset.depth.min().data, 3)} m, "
+                + f"Max depth : {np.round(dataset.depth.max().data, 3)} m, "
+                + f"Bin size : {dataset.attrs['bin_size_m']} m"
         )
     )
     l.log(
         (
-            f"Ensemble count : {len(dataset.time.data)}, "
-            + f"Start time : {np.datetime_as_string(dataset.time.min().data, unit='s')}, "
-            + f"End time : {np.datetime_as_string(dataset.time.max().data, unit='s')}"
+                f"Ensemble count : {len(dataset.time.data)}, "
+                + f"Start time : {np.datetime_as_string(dataset.time.min().data, unit='s')}, "
+                + f"End time : {np.datetime_as_string(dataset.time.max().data, unit='s')}"
         )
     )
     if not params["keep_bt"]:
@@ -731,10 +731,10 @@ def _set_xducer_depth_as_sensor_depth(dataset: xr.Dataset):
 
 
 def _set_platform_metadata(
-    dataset: xr.Dataset,
-    platform_metadata: tp.Dict[str, dict],
-    sensor: str,
-    force_platform_metadata: bool = False,
+        dataset: xr.Dataset,
+        platform_metadata: tp.Dict[str, dict],
+        sensor: str,
+        force_platform_metadata: bool = False,
 ):
     """Add metadata from platform_metadata files to dataset.attrs.
 
@@ -793,13 +793,13 @@ def _load_navigation(dataset: xr.Dataset, navigation_files: str):
         if nav_ds.attrs['time_flag'] is True:
             nav_ds = nav_ds.interp(time=dataset.time)
             if nav_ds.attrs['lonlat_flag']:
-                    dataset['lon'] = nav_ds['lon']
-                    dataset['lat'] = nav_ds['lat']
-                    l.log("Platform GPS data loaded.")
+                dataset['lon'] = nav_ds['lon']
+                dataset['lat'] = nav_ds['lat']
+                l.log("Platform GPS data loaded.")
             if nav_ds.attrs['uv_ship_flag']:
-                    dataset['u_ship'] = nav_ds['u_ship']
-                    dataset['v_ship'] = nav_ds['v_ship']
-                    l.log("Platform velocity data loaded.")
+                dataset['u_ship'] = nav_ds['u_ship']
+                dataset['v_ship'] = nav_ds['v_ship']
+                l.log("Platform velocity data loaded.")
             nav_ds.close()
             return dataset
     l.warning('Could not load navigation data file.')
@@ -942,7 +942,7 @@ def _drop_bottom_track(dataset: xr.Dataset) -> xr.Dataset:
 
 
 def cut_bin_depths(
-    dataset: xr.Dataset, depth_range: tp.Union[int, float, list] = None
+        dataset: xr.Dataset, depth_range: tp.Union[int, float, list] = None
 ) -> xr.Dataset:
     """
     Return dataset with cut bin depths if the depth_range are not outside the depth span.
@@ -971,8 +971,8 @@ def cut_bin_depths(
             if dataset.depth[0] > dataset.depth[-1]:
                 depth_range.reverse()
             if (
-                depth_range[0] > dataset.depth.max()
-                or depth_range[1] < dataset.depth.min()
+                    depth_range[0] > dataset.depth.max()
+                    or depth_range[1] < dataset.depth.min()
             ):
                 l.log(
                     "depth_range values are outside the actual depth range. Depth slicing aborted."
@@ -990,7 +990,7 @@ def cut_bin_depths(
 
 
 def cut_times(
-    dataset: xr.Dataset, start_time: str = None, end_time: str = None
+        dataset: xr.Dataset, start_time: str = None, end_time: str = None
 ) -> xr.Dataset:
     """
     Return a dataset with time cut if they are not outside the dataset time span.
@@ -1024,7 +1024,8 @@ def cut_times(
 
 def _outputs_path_handler(input_path: str,
                           odf_output: tp.Union[bool, str],
-                          netcdf_output: tp.Union[bool, str]) -> tp.Tuple[tp.Union[bool, str], tp.Union[bool, str], str]:
+                          netcdf_output: tp.Union[bool, str]) -> tp.Tuple[
+    tp.Union[bool, str], tp.Union[bool, str], str]:
     """
 
     Parameters
