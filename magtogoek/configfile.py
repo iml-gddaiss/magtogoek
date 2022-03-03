@@ -45,6 +45,7 @@ from pathlib import Path
 
 import click
 import dateutil.parser
+from magtogoek.utils import get_files_from_expression
 
 REFERENCE = "https://github.com/JeromeJGuay/magtogoek"
 TRUE_VALUES = ["True", "true", "T", "t", "On", "on"]
@@ -392,13 +393,20 @@ def _format_option(value, option_info, section, option, config_path):
     if option_info.nargs or option_info.nargs_min or option_info.nargs_max:
         value = _get_sequence_from_string(value)
         _check_options_length(value, option_info, section, option)
+        values = []
         for i, _value in enumerate(value):
-            value[i] = _format_option_type(
+            _value = _format_option_type(
                 _value, option_info, section, option, config_path
             )
+            if isinstance(_value, list): #FIXME Quick fix for regex list:
+                values += _value
+            else:
+                values.append(_value)
+        value = values
     else:
         value = _format_option_type(value, option_info, section, option, config_path)
-
+        if isinstance(value, list):  #FIXME for the For the Quick fix above :
+            value = value[0]
     return value
 
 
@@ -425,19 +433,21 @@ def _format_option_type(value, option_info, section, option, config_path):
                 raise ConfigFileError("path", section, option, option_info, value)
             value = str(value)
 
-        if option_info.is_file is True:
-            value = Path(config_path).joinpath(Path(value)).resolve()
-            if not value.is_file():
-                raise ConfigFileError("file", section, option, option_info, value)
-            value = str(value)
+        elif option_info.is_file is True:
+            value = str(Path(config_path).joinpath(Path(value)).resolve())
+            try:
+                value = get_files_from_expression(value)
 
-        if option_info.is_time_stamp is True:
+            except FileNotFoundError:
+                raise ConfigFileError("file", section, option, option_info, value)
+
+        elif option_info.is_time_stamp is True:
             try:
                 value = dateutil.parser.parse(value).astimezone(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.f')[:-2]
             except dateutil.parser.ParserError:
                 raise ConfigFileError("string_format", section, option, option_info, value)
 
-    if isinstance(value, (int,float)):
+    if isinstance(value, (int, float)):
         if option_info.value_min or option_info.value_max:
             _check_option_min_max(value, option_info, section, option)
 

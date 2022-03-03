@@ -144,8 +144,8 @@ def get_headers_default():
             ice_thickness=None,
             meteo_comments=[],
         ),
-        instrument=dict(inst_type="", model="", serial_number="", description="", ),
-        quality=dict(quality_date="", quality_tests=[], quality_comments=[], ),
+        instrument=dict(inst_type="", model="", serial_number="", description="",),
+        quality=dict(quality_date="", quality_tests=[], quality_comments=[],),
         record=dict(
             num_calibration=None,
             num_swing=None,
@@ -534,12 +534,12 @@ class Odf:
         self.buoy_instrument[name].update(items)
 
     def add_parameter(
-            self,
-            code: str,
-            data: tp.Union[list, np.ndarray],
-            null_value: tp.Union[int, float],
-            items: tp.Dict = None,
-            qc_mask: np.ndarray = None,
+        self,
+        code: str,
+        data: tp.Union[list, np.ndarray],
+        null_value: tp.Union[int, float],
+        items: tp.Dict = None,
+        qc_mask: np.ndarray = None,
     ):
         """Add a the parameter to ODF.parameters and the data to ODF.data.
 
@@ -602,10 +602,10 @@ class Odf:
         )
 
     def from_dataframe(
-            self,
-            dataframe: tp.Type[pd.DataFrame],
-            null_values: tp.Union[int, float, list, tuple, dict],
-            items: None,
+        self,
+        dataframe: tp.Type[pd.DataFrame],
+        null_values: tp.Union[int, float, list, tuple, dict],
+        items: None,
     ):
         """Add data and parameters from a pandas.dataframe. Columns names are used for
         the new parameters code.
@@ -719,12 +719,12 @@ class Odf:
 
             elif self.data[vd].dtypes == np.dtype("<M8[ns]"):
                 formats[vd] = lambda x, p=padding: (
-                        SPACE + ("'" + odf_time_format(x) + "'").rjust(p, SPACE)
+                    SPACE + ("'" + odf_time_format(x) + "'").rjust(p, SPACE)
                 )
 
             elif self.data[vd].dtypes == np.floating:
                 formats[vd] = lambda x, p=padding, d=decimal_places: (
-                        SPACE + f"{x:.{d}f}".rjust(p, SPACE)
+                    SPACE + f"{x:.{d}f}".rjust(p, SPACE)
                 )
 
         self.data.to_string(
@@ -733,7 +733,7 @@ class Odf:
 
 
 def _get_null_values(
-        codes: list, null_values: tp.Union[int, float, list, tuple], items: dict
+    codes: list, null_values: tp.Union[int, float, list, tuple], items: dict
 ) -> dict:
     _null_values = {}
     """
@@ -789,12 +789,12 @@ def _format_headers(name: str, header: dict) -> str:
             s += _format_list(value, parent)
         elif isinstance(value, tuple):
             s += (
-                    INDENT
-                    + key.upper()
-                    + " = "
-                    + "".join([f"{v:{12}.{8}f}" for v in value])
-                    + ","
-                    + NEWLINE
+                INDENT
+                + key.upper()
+                + " = "
+                + "".join([f"{v:{12}.{8}f}" for v in value])
+                + ","
+                + NEWLINE
             )
 
         elif not value:
@@ -814,10 +814,10 @@ def _format_list(_list: list, parents: str) -> str:
         for value in _list:
             if isinstance(value, tuple):
                 s += (
-                        parents
-                        + " ".join([f"{v:{12}.{8}f}" for v in value])
-                        + ","
-                        + NEWLINE
+                    parents
+                    + " ".join([f"{v:{12}.{8}f}" for v in value])
+                    + ","
+                    + NEWLINE
                 )
             else:
                 s += parents + "'" + f"{value}'," + NEWLINE

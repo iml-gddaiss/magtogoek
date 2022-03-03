@@ -17,13 +17,14 @@ from pathlib import Path
 from typing import Dict, List, Tuple, Union
 
 import numpy as np
+from scipy.interpolate import griddata
+from scipy.stats import circmean
+from tqdm import tqdm
+
 from magtogoek.adcp.tools import datetime_to_dday
 from magtogoek.utils import Logger, get_files_from_expression
 from rti_python.Codecs.BinaryCodec import BinaryCodec
 from rti_python.Ensemble.EnsembleData import *
-from scipy.interpolate import griddata
-from scipy.stats import circmean
-from tqdm import tqdm
 
 DELIMITER = b"\x80" * 16  # RTB ensemble delimiter
 BLOCK_SIZE = 4096  # Number of bytes read at a time
@@ -340,7 +341,8 @@ class RtiReader:
         ppd.dep = ppd.Bin1Dist + np.arange(0, ppd.nbin * ppd.CellSize, ppd.CellSize)
 
         ppd.pingtype = ens.SystemSetup.WpBroadband
-        ppd.sysconfig = {'angle': _beam_angle(ppd.SerialNumber), 'kHz': ens.SystemSetup.WpSystemFreqHz/1000, 'convex': True,
+        ppd.sysconfig = {'angle': _beam_angle(ppd.SerialNumber), 'kHz': ens.SystemSetup.WpSystemFreqHz / 1000,
+                         'convex': True,
                          'up': False}
         ppd.FL = dict()
         ppd.FL["FWV"] = int(
@@ -391,8 +393,8 @@ class RtiReader:
         (~5s total) for ~4000 chunks. Exiting the processes to output progress could be time consuming
         for bigger files.
         """
-        # spliting the reading workload on multiple cpu
-        number_of_cpu = cpu_count() - 1
+        # splitting the reading workload on multiple cpu
+        number_of_cpu = cpu_count()
 
         print(f"Reading {self.current_file}")
         time0 = datetime.now()

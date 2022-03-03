@@ -50,6 +50,7 @@ Should be a class
 import getpass
 import sys
 import typing as tp
+
 import click
 import numpy as np
 import pandas as pd
@@ -58,12 +59,13 @@ from magtogoek.adcp.loader import load_adcp_binary
 from magtogoek.adcp.odf_exporter import make_odf
 from magtogoek.adcp.quality_control import (adcp_quality_control,
                                             no_adcp_quality_control)
-from magtogoek.adcp.tools import rotate_2d_vector
+from magtogoek.tools import rotate_2d_vector
 from magtogoek.attributes_formatter import (
     compute_global_attrs, format_variables_names_and_attributes)
 from magtogoek.navigation import load_navigation
-from magtogoek.utils import Logger, json2dict, format_str2list
 from magtogoek.platforms import _add_platform
+from magtogoek.utils import Logger, ensure_list_format, json2dict
+from magtogoek.adcp.adcp_plots import make_adcp_figure
 
 l = Logger(level=0)
 
@@ -75,11 +77,14 @@ STANDARD_ADCP_GLOBAL_ATTRIBUTES = {
     "sensor_type": "adcp",
     "featureType": "timeSeriesProfile",
 }
-DEFAULT_CONFIG_ATTRIBUTES =  {
-            "date_created": pd.Timestamp.now().strftime("%Y-%m-%d"),
-            "publisher_name": getpass.getuser(),
-            "source": "adcp",
-        }
+DEFAULT_CONFIG_ATTRIBUTES = {
+    "date_created": pd.Timestamp.now().strftime("%Y-%m-%d"),
+    "publisher_name": getpass.getuser(),
+    "source": "adcp",
+}
+VARIABLES_TO_DROP = [
+    "binary_mask"
+]
 GLOBAL_ATTRS_TO_DROP = [
     "sensor_type",
     "platform_type",
@@ -88,6 +93,8 @@ GLOBAL_ATTRS_TO_DROP = [
     "xducer_depth",
     "sonar",
     "variables_gen_name",
+    "binary_mask_tests",
+    "binary_mask_tests_values",
     "bodc_name"
 ]
 CONFIG_GLOBAL_ATTRS_SECTIONS = ["NETCDF_CF", "PROJECT", "CRUISE", "GLOBAL_ATTRIBUTES"]
@@ -271,7 +278,7 @@ def process_adcp(config: dict):
     """
     params, config_attrs = _get_config(config)
 
-    params["input_files"] = format_str2list(params["input_files"])
+    params["input_files"] = ensure_list_format(params["input_files"])
 
     if len(params["input_files"]) == 0:
         raise ValueError("No adcp file was provided in the configfile.")
@@ -284,7 +291,7 @@ def process_adcp(config: dict):
             l.warning(f"platform_file, {params['platform_file']}, not found")
     else:
         if params["platform_type"]:
-            platform_metadata["platform"]['platform_type'] = params["platform_type"]
+            platform_metadata["platform"]["platform_type"] = params["platform_type"]
     _pipe_to_process_adcp_data(params, platform_metadata, config_attrs)
 
 
@@ -308,11 +315,12 @@ def quick_process_adcp(params: tp.Dict):
     config_attrs = {}
     config_attrs.update(DEFAULT_CONFIG_ATTRIBUTES)
     platform_metadata = _default_platform()
+
     platform_metadata['platform']["platform_type"] = params["platform_type"]
 
     params["force_platform_metadata"] = False
 
-    if params["odf_output"] in [1, "true", "True", 't', "T"]:
+    if params["odf_output"] in [1, "true", "True", "t", "T"]:
         params["odf_output"] = True
 
     _pipe_to_process_adcp_data(
@@ -388,7 +396,7 @@ def _process_adcp_data(
     l.reset()
 
     _check_platform_type(platform_metadata)
-    platform_type = platform_metadata['platform']['platform_type']
+    platform_type = platform_metadata["platform"]["platform_type"]
 
     # ----------------- #
     # LOADING ADCP DATA #
@@ -412,14 +420,14 @@ def _process_adcp_data(
     dataset.attrs["data_type"] = DATA_TYPES[platform_type]
     dataset.attrs["data_subtype"] = DATA_SUBTYPES[platform_type]
 
-    if platform_metadata['platform']["longitude"]:
-        dataset.attrs["longitude"] = platform_metadata['platform']["longitude"]
-    if platform_metadata['platform']["latitude"]:
-        dataset.attrs["latitude"] = platform_metadata['platform']["latitude"]
+    if platform_metadata["platform"]["longitude"]:
+        dataset.attrs["longitude"] = platform_metadata["platform"]["longitude"]
+    if platform_metadata["platform"]["latitude"]:
+        dataset.attrs["latitude"] = platform_metadata["platform"]["latitude"]
 
     compute_global_attrs(dataset)
 
-    if platform_metadata['platform']["platform_type"] in ["mooring", "buoy"]:
+    if platform_metadata["platform"]["platform_type"] in ["mooring", "buoy"]:
         if "bt_depth" in dataset:
             dataset.attrs["sounding"] = np.round(np.median(dataset.bt_depth.data), 2)
 
@@ -486,10 +494,17 @@ def _process_adcp_data(
         **P01_VEL_CODES[platform_type],
         **P01_CODES,
     }
-    dataset.attrs['variables_gen_name'] = [var for var in dataset.variables] # For Odf outputs
+    dataset.attrs["variables_gen_name"] = [var for var in dataset.variables]  # For Odf outputs
 
     l.section("Variables attributes")
     dataset = format_variables_names_and_attributes(dataset)
+
+    # ------------ #
+    # MAKE FIGURES #
+    # ------------ #
+
+    if params["make_figures"]:
+        make_adcp_figure(dataset, flag_thres=2)
 
     dataset["time"].assign_attrs(TIME_ATTRS)
 
@@ -515,9 +530,9 @@ def _process_adcp_data(
     # ----------- #
     # ODF OUTPUTS #
     # ----------- #
-    netcdf_path, odf_path, log_path = _outputs_path_handler(params['input_files'][0],
-                                                            params['odf_output'],
-                                                            params['netcdf_output'])
+    netcdf_path, odf_path, log_path = _outputs_path_handler(
+        params["input_files"][0], params["odf_output"], params["netcdf_output"]
+    )
 
     l.section("Output")
     if odf_path:
@@ -533,9 +548,13 @@ def _process_adcp_data(
                 output_path=odf_path,
             )
 
-    # --------------------------------------- #
-    # FORMATTING GLOBAL ATTRIBUTES FOR OUTPUT #
-    # --------------------------------------- #
+    # ------------------------------------ #
+    # FORMATTING DATASET FOR NETCDF OUTPUT #
+    # ------------------------------------ #
+    for var in VARIABLES_TO_DROP:
+        if var in dataset.variables:
+            dataset = dataset.drop_vars([var])
+
     for attr in GLOBAL_ATTRS_TO_DROP:
         if attr in dataset.attrs:
             del dataset.attrs[attr]
@@ -551,7 +570,7 @@ def _process_adcp_data(
     # NC OUTPUTS #
     # ---------- #
     if not isinstance(netcdf_path, bool):
-        netcdf_path = Path(netcdf_path).with_suffix('.nc')
+        netcdf_path = Path(netcdf_path).with_suffix(".nc")
         dataset.to_netcdf(netcdf_path)
         l.log(f"netcdf file made -> {netcdf_path}")
 
@@ -560,8 +579,6 @@ def _process_adcp_data(
         with open(log_path, "w") as log_file:
             log_file.write(dataset.attrs["history"])
             print(f"log file made -> {log_path.resolve()}")
-
-    # MAKE_FIG TODO
 
     click.echo(click.style("=" * TERMINAL_WIDTH, fg="white", bold=True))
 
@@ -593,14 +610,15 @@ def _load_adcp_data(params: tp.Dict) -> xr.Dataset:
 
     l.log(
         (
-                f"Bins count : {len(dataset.depth.data)}, "
+                f"Bin count : {len(dataset.depth.data)}, "
                 + f"Min depth : {np.round(dataset.depth.min().data, 3)} m, "
-                + f"Max depth : {np.round(dataset.depth.max().data, 3)} m"
+                + f"Max depth : {np.round(dataset.depth.max().data, 3)} m, "
+                + f"Bin size : {dataset.attrs['bin_size_m']} m"
         )
     )
     l.log(
         (
-                f"Ensembles count : {len(dataset.time.data)}, "
+                f"Ensemble count : {len(dataset.time.data)}, "
                 + f"Start time : {np.datetime_as_string(dataset.time.min().data, unit='s')}, "
                 + f"End time : {np.datetime_as_string(dataset.time.max().data, unit='s')}"
         )
@@ -646,14 +664,20 @@ def _load_platform(params: dict) -> tp.Dict:
     platform_metadata = _default_platform()
     json_dict = json2dict(params["platform_file"])
     if params["platform_id"] in json_dict:
-        platform_metadata['platform'].update(json_dict[params["platform_id"]])
-        if 'buoy_specs' in platform_metadata['platform']:
-            platform_metadata['buoy_specs'].update(platform_metadata['platform'].pop('buoy_specs'))
-        if 'sensors' in platform_metadata['platform']:
-            platform_metadata['sensors'].update(platform_metadata['platform'].pop('sensors'))
+        platform_metadata["platform"].update(json_dict[params["platform_id"]])
+        if "buoy_specs" in platform_metadata["platform"]:
+            platform_metadata["buoy_specs"].update(
+                platform_metadata["platform"].pop("buoy_specs")
+            )
+        if "sensors" in platform_metadata["platform"]:
+            platform_metadata["sensors"].update(
+                platform_metadata["platform"].pop("sensors")
+            )
             if params["sensor_id"] in platform_metadata["sensors"]:
-                platform_metadata['adcp_id'] = params["sensor_id"]
-                platform_metadata['adcp'].update(platform_metadata["sensors"].pop(params["sensor_id"]))
+                platform_metadata["adcp_id"] = params["sensor_id"]
+                platform_metadata["adcp"].update(
+                    platform_metadata["sensors"].pop(params["sensor_id"])
+                )
             else:
                 l.warning(
                     f"{params['sensor_id']} not found in the {params['platform_id']}['sensor'] section "
@@ -671,19 +695,21 @@ def _load_platform(params: dict) -> tp.Dict:
 
 def _default_platform() -> dict:
     """Return an empty platform data dictionary"""
-    platform_metadata = {'platform': _add_platform(), 'adcp_id': 'ADCP_01'}
-    platform_metadata['platform']["platform_type"] = DEFAULT_PLATFORM_TYPE
-    platform_metadata['sensors'] = platform_metadata['platform'].pop('sensors')
-    platform_metadata['adcp'] = platform_metadata['sensors'].pop('__enter_a_sensor_ID_here')
-    platform_metadata['buoy_specs'] = platform_metadata['platform'].pop('buoy_specs')
+    platform_metadata = {"platform": _add_platform(), "adcp_id": "ADCP_01"}
+    platform_metadata["platform"]["platform_type"] = DEFAULT_PLATFORM_TYPE
+    platform_metadata["sensors"] = platform_metadata["platform"].pop("sensors")
+    platform_metadata["adcp"] = platform_metadata["sensors"].pop(
+        "__enter_a_sensor_ID_here"
+    )
+    platform_metadata["buoy_specs"] = platform_metadata["platform"].pop("buoy_specs")
 
     return platform_metadata
 
 
 def _check_platform_type(platform_metadata: dict):
     """DEFINED BELOW"""
-    if platform_metadata['platform']["platform_type"] not in PLATFORM_TYPES:
-        platform_metadata['platform']["platform_type"] = DEFAULT_PLATFORM_TYPE
+    if platform_metadata["platform"]["platform_type"] not in PLATFORM_TYPES:
+        platform_metadata["platform"]["platform_type"] = DEFAULT_PLATFORM_TYPE
         l.warning(
             f"platform_file missing or invalid, defaulting to `{DEFAULT_PLATFORM_TYPE}` for platform_type."
         )
@@ -723,8 +749,8 @@ def _set_platform_metadata(
     force_platform_metadata :
         If `True`, metadata from sensor_metadata overwrite those already present in dataset.attrs
     """
-    metadata = {**platform_metadata['platform'], **platform_metadata[sensor]}
-    metadata['sensor_comments'] = metadata['comments']
+    metadata = {**platform_metadata["platform"], **platform_metadata[sensor]}
+    metadata["sensor_comments"] = metadata["comments"]
     if force_platform_metadata:
         for key, value in metadata.items():
             dataset.attrs[key] = value
@@ -762,16 +788,21 @@ def _load_navigation(dataset: xr.Dataset, navigation_files: str):
         Using the magtogoek function `mtgk compute nav`, u_ship, v_ship can be computed from `lon`, `lat`
     data to correct the data for the platform motion by setting the config parameter `m_corr` to `nav`.
     """
-    nav_ds = load_navigation(navigation_files).interp(time=dataset.time)
-    for var in ['lon', 'lat', 'u_ship', 'v_ship']:
-        if var in nav_ds:
-            dataset[var] = nav_ds[var]
-            if var == "lat":
-                l.log('Platform GPS data loaded.')
-            if var == "v_ship":
-                l.log('Platform velocity data loaded.')
-    nav_ds.close()
-
+    nav_ds = load_navigation(navigation_files)
+    if nav_ds is not None:
+        if nav_ds.attrs['time_flag'] is True:
+            nav_ds = nav_ds.interp(time=dataset.time)
+            if nav_ds.attrs['lonlat_flag']:
+                dataset['lon'] = nav_ds['lon']
+                dataset['lat'] = nav_ds['lat']
+                l.log("Platform GPS data loaded.")
+            if nav_ds.attrs['uv_ship_flag']:
+                dataset['u_ship'] = nav_ds['u_ship']
+                dataset['v_ship'] = nav_ds['v_ship']
+                l.log("Platform velocity data loaded.")
+            nav_ds.close()
+            return dataset
+    l.warning('Could not load navigation data file.')
     return dataset
 
 
@@ -780,13 +811,21 @@ def _quality_control(dataset: xr.Dataset, params: tp.Dict):
 
     Wrapper for adcp_quality_control"""
 
-    adcp_quality_control(dataset=dataset, amp_th=params["amplitude_threshold"], corr_th=params["correlation_threshold"],
-                         pg_th=params["percentgood_threshold"], roll_th=params["roll_threshold"],
-                         pitch_th=params["pitch_threshold"], horizontal_vel_th=params["horizontal_velocity_threshold"],
-                         vertical_vel_th=params["vertical_velocity_threshold"],
-                         error_vel_th=params["error_velocity_threshold"],
-                         motion_correction_mode=params["motion_correction_mode"],
-                         sidelobes_correction=params["sidelobes_correction"], bottom_depth=params["bottom_depth"])
+    adcp_quality_control(
+        dataset=dataset,
+        amp_th=params["amplitude_threshold"],
+        corr_th=params["correlation_threshold"],
+        pg_th=params["percentgood_threshold"],
+        roll_th=params["roll_threshold"],
+        pitch_th=params["pitch_threshold"],
+        horizontal_vel_th=params["horizontal_velocity_threshold"],
+        vertical_vel_th=params["vertical_velocity_threshold"],
+        error_vel_th=params["error_velocity_threshold"],
+        motion_correction_mode=params["motion_correction_mode"],
+        sidelobes_correction=params["sidelobes_correction"],
+        bottom_depth=params["bottom_depth"],
+        bad_pressure=params["bad_pressure"]
+    )
 
 
 def _apply_magnetic_correction(dataset: xr.Dataset, magnetic_declination: float):
@@ -812,7 +851,7 @@ def _apply_magnetic_correction(dataset: xr.Dataset, magnetic_declination: float)
         dataset.u, dataset.v, -magnetic_declination
     )
     l.log(f"Velocities transformed to true north and true east.")
-    if all(v in dataset for v in ['bt_u', 'bt_v']):
+    if all(v in dataset for v in ["bt_u", "bt_v"]):
         dataset.bt_u.values, dataset.bt_v.values = rotate_2d_vector(
             dataset.bt_u, dataset.bt_v, -magnetic_declination
         )
@@ -903,8 +942,7 @@ def _drop_bottom_track(dataset: xr.Dataset) -> xr.Dataset:
 
 
 def cut_bin_depths(
-        dataset: xr.Dataset,
-        depth_range: tp.Union[int, float, list] = None
+        dataset: xr.Dataset, depth_range: tp.Union[int, float, list] = None
 ) -> xr.Dataset:
     """
     Return dataset with cut bin depths if the depth_range are not outside the depth span.
@@ -924,7 +962,7 @@ def cut_bin_depths(
         if not isinstance(depth_range, (list, tuple)):
             if depth_range > dataset.depth.max():
                 l.log(
-                    "depth_range value is greater than the maximum bin depth. Depth slicing aborded."
+                    "depth_range value is greater than the maximum bin depth. Depth slicing aborted."
                 )
             else:
                 dataset = dataset.sel(depth=slice(depth_range, None))
@@ -932,7 +970,10 @@ def cut_bin_depths(
         elif len(depth_range) == 2:
             if dataset.depth[0] > dataset.depth[-1]:
                 depth_range.reverse()
-            if depth_range[0] > dataset.depth.max() or depth_range[1] < dataset.depth.min():
+            if (
+                    depth_range[0] > dataset.depth.max()
+                    or depth_range[1] < dataset.depth.min()
+            ):
                 l.log(
                     "depth_range values are outside the actual depth range. Depth slicing aborted."
                 )
@@ -948,9 +989,9 @@ def cut_bin_depths(
     return dataset
 
 
-def cut_times(dataset: xr.Dataset,
-              start_time: pd.Timestamp = None,
-              end_time: pd.Timestamp = None) -> xr.Dataset:
+def cut_times(
+        dataset: xr.Dataset, start_time: str = None, end_time: str = None
+) -> xr.Dataset:
     """
     Return a dataset with time cut if they are not outside the dataset time span.
 
@@ -983,7 +1024,8 @@ def cut_times(dataset: xr.Dataset,
 
 def _outputs_path_handler(input_path: str,
                           odf_output: tp.Union[bool, str],
-                          netcdf_output: tp.Union[bool, str]) -> tp.Tuple[tp.Union[bool, str], tp.Union[bool, str], str]:
+                          netcdf_output: tp.Union[bool, str]) -> tp.Tuple[
+    tp.Union[bool, str], tp.Union[bool, str], str]:
     """
 
     Parameters
