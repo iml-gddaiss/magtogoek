@@ -1,5 +1,3 @@
-!!! Important: Use the develop branch. !!!
-======================================
 # Magtogoek
 *Name origin: Magtogoek is Algonquin for the Saint-Lawrence River and means "the path that walks".*
 ## Description
