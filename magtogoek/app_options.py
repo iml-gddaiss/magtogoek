@@ -182,7 +182,8 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
         ),
         click.option(
             "--sidelobes/--no-sidelobes",
-            help="Do side lobe correction.",
+            help="Do side lobe correction. Uses bottom_track if available. See option `--bottom-depth` "
+                 "to force a bottom_depth.",
             default=True,
             show_default=True,
         ),
@@ -190,7 +191,7 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
             "-b",
             "--bottom-depth",
             type=click.FLOAT,
-            help="""If provided, this fixed depth will be
+            help="""If provided, this constant bottom_depth will be
             used for sidelobes correction.""",
             default=None,
             show_default=True,
@@ -208,7 +209,7 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
             "--bad-pressure/-",
             help="""Use the `--bad-pressure` flag to discard pressure data from the processing.
             This will in turn discard the adcp depth (XducerDepth) measured by the ADCP.
-            Use the option `--sensor-depth` to enter a fixed depth.""",
+            Use the option `--sensor-depth` to enter a constant xducer depth.""",
             default=False,
             show_default=True,
         ),
@@ -269,13 +270,13 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
             default=True,
         ),
         click.option(
-            "--mk-log/--no-mk-log",
+            "--mk-log/--no-log",
             help="""Make an output log of the processing.""",
             default=True,
             show_default=True,
         ),
         click.option(
-            "--mk-fig/--no-mk-fig",
+            "--mk-fig/--no-fig",
             help="""Make figures to inspect the data.""",
             default=True,
             show_default=True,
@@ -310,6 +311,14 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
             help="Time step in seconds. Only use if a `start_time` value is provided.",
             nargs=1,
             default=None,
+        ),
+        click.option(
+            "--odf_dtype",
+            type=click.Choice(['both', 'vel', 'anc']),
+            help="Type of ODF file to output.",
+            nargs=1,
+            default='both',
+            show_default=True,
         ),
     ]
     return options

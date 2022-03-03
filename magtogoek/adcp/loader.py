@@ -2,7 +2,7 @@
 author: Jérôme Guay
 date: Feb. 22, 2021
 based in part  on: https://github.com/jeanlucshaw/adcp2nc/
-                   https://github.com/hhourston/pycurrents_ADCP_processign
+                   https://github.com/hhourston/pycurrents_ADCP_processing
 
 
 This script contains functions to read adcp files and load them in xarray.Dataset.
@@ -218,17 +218,18 @@ def load_adcp_binary(
     # ----------------------------------------------------------- #
     # Convert depth relative to the ADCP to depth below surface   #
     # ----------------------------------------------------------- #
-    if bad_pressure:
-        l.log("XducerDepth were discarded by the user.")
-        if sensor_depth:
-            data.XducerDepth[:] = sensor_depth
-            l.log(f"XducerDepth set to {sensor_depth} m.")
-        else:
-            data.XducerDepth[:] = 0
-            l.log("XducerDepth set to 0 m.")
 
     average_xducer_depth = np.round(np.median(data.XducerDepth), 3)
     l.log(f"Sensor depth (XducerDepth) in raw file : {average_xducer_depth} m")
+    if bad_pressure:
+        l.log("XducerDepth were discarded by the user.")
+        if sensor_depth:
+            average_xducer_depth = sensor_depth
+            l.log(f"XducerDepth set to {sensor_depth} m.")
+        else:
+            average_xducer_depth = 0
+            l.log("XducerDepth set to 0 m.")
+        data.XducerDepth[:] = average_xducer_depth
     xducer_depth = data.XducerDepth
 
     depth_difference = 0
@@ -237,7 +238,7 @@ def load_adcp_binary(
         if abs(depth_difference) > 0:
             l.log(
                 [
-                    f"The difference between the raw file sensor depth and the user"
+                    f"The difference between the raw file sensor depth and the user "
                     f"provided `sensor_depth` ({sensor_depth} m) is {depth_difference} m",
                 ]
             )
@@ -373,7 +374,7 @@ def load_adcp_binary(
     # ------------------ #
 
     # For `wh`, `sv` and `sw` XducerDepth varies over times but is constant for `os`.
-    if sonar != "os":
+    if sonar != "os" and len(np.unique(xducer_depth)) > 1:
         dataset["xducer_depth"] = (["time"], np.asarray(xducer_depth))
 
     # --------------------------- #
@@ -451,7 +452,7 @@ def load_adcp_binary(
         dataset.attrs["xducer_depth"] = round(average_xducer_depth, 2)
     dataset.attrs["coord_system"] = data.trans["coordsystem"]
     dataset.attrs["beam_angle"] = data.sysconfig["angle"]
-    dataset.attrs["frequency_Hz"] = data.sysconfig["kHz"] * 1000  # kHz to hz
+    dataset.attrs["frequency_Hz"] = int(data.sysconfig["kHz"]) * 1000  # kHz to hz
     dataset.attrs["bin_size_m"] = data.CellSize
     dataset.attrs["ping_per_ensemble"] = data.NPings
     dataset.attrs["ping_type"] = data.pingtype

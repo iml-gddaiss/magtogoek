@@ -51,6 +51,7 @@ FIXME SOURCE : moored adcp ?
 import getpass
 import sys
 import typing as tp
+
 import click
 import numpy as np
 import pandas as pd
@@ -59,12 +60,13 @@ from magtogoek.adcp.loader import load_adcp_binary
 from magtogoek.adcp.odf_exporter import make_odf
 from magtogoek.adcp.quality_control import (adcp_quality_control,
                                             no_adcp_quality_control)
-from magtogoek.adcp.tools import rotate_2d_vector
+from magtogoek.tools import rotate_2d_vector
 from magtogoek.attributes_formatter import (
     compute_global_attrs, format_variables_names_and_attributes)
 from magtogoek.navigation import load_navigation
-from magtogoek.utils import Logger, json2dict, format_str2list
 from magtogoek.platforms import _add_platform
+from magtogoek.utils import Logger, ensure_list_format, json2dict
+from magtogoek.adcp.adcp_plots import make_adcp_figure
 from pathlib import Path
 
 l = Logger(level=0)
@@ -80,6 +82,9 @@ DEFAULT_CONFIG_ATTRIBUTES = {
     "publisher_name": getpass.getuser(),
     "source": "adcp",
 }
+VARIABLES_TO_DROP = [
+    "binary_mask"
+]
 GLOBAL_ATTRS_TO_DROP = [
     "sensor_type",
     "platform_type",
@@ -88,6 +93,9 @@ GLOBAL_ATTRS_TO_DROP = [
     "xducer_depth",
     "sonar",
     "variables_gen_name",
+    "binary_mask_tests",
+    "binary_mask_tests_values",
+    "bodc_name"
 ]
 CONFIG_GLOBAL_ATTRS_SECTIONS = ["NETCDF_CF", "PROJECT", "CRUISE", "GLOBAL_ATTRIBUTES"]
 PLATFORM_TYPES = ["buoy", "mooring", "ship"]
@@ -248,7 +256,7 @@ class ProcessConfig:
         self._get_platform_metadata()
         self.platform_type = self.platform_metadata["platform"]['platform_type']
 
-        _figure_out_the_outputs(self)
+        _outputs_path_handler(self)
 
     def _load_config_dict(self, config: dict) -> dict:
         """Split and flattens"""
@@ -360,14 +368,14 @@ def _process_adcp_data(pconfig: ProcessConfig):
     dataset.attrs["data_type"] = DATA_TYPES[pconfig.platform_type]
     dataset.attrs["data_subtype"] = DATA_SUBTYPES[pconfig.platform_type]
 
-    if pconfig.platform_metadata['platform']["longitude"]:
-        dataset.attrs["longitude"] = pconfig.platform_metadata['platform']["longitude"]
-    if pconfig.platform_metadata['platform']["latitude"]:
-        dataset.attrs["latitude"] = pconfig.platform_metadata['platform']["latitude"]
+    if pconfig.platform_metadata["platform"]["longitude"]:
+        dataset.attrs["longitude"] = pconfig.platform_metadata["platform"]["longitude"]
+    if pconfig.platform_metadata["platform"]["latitude"]:
+        dataset.attrs["latitude"] = pconfig.platform_metadata["platform"]["latitude"]
 
     compute_global_attrs(dataset)
 
-    if pconfig.platform_metadata['platform']["platform_type"] in ["mooring", "buoy"]:
+    if pconfig.platform_metadata["platform"]["platform_type"] in ["mooring", "buoy"]:
         if "bt_depth" in dataset:
             dataset.attrs["sounding"] = np.round(np.median(dataset.bt_depth.data), 2)
 
@@ -423,17 +431,23 @@ def _process_adcp_data(pconfig: ProcessConfig):
     # -------------------- #
     # VARIABLES ATTRIBUTES #
     # -------------------- #
+    dataset.attrs['bodc_name'] = params["bodc_name"]
     dataset.attrs["VAR_TO_ADD_SENSOR_TYPE"] = VAR_TO_ADD_SENSOR_TYPE
     dataset.attrs["P01_CODES"] = {
         **P01_VEL_CODES[pconfig.platform_type],
         **P01_CODES,
     }
-    dataset.attrs['variables_gen_name'] = [var for var in dataset.variables]
+    dataset.attrs["variables_gen_name"] = [var for var in dataset.variables]  # For Odf outputs
 
     l.section("Variables attributes")
-    dataset = format_variables_names_and_attributes(
-        dataset, use_bodc_codes=pconfig.bodc_name
-    )
+    dataset = format_variables_names_and_attributes(dataset)
+
+    # ------------ #
+    # MAKE FIGURES #
+    # ------------ #
+
+    if params["make_figures"]:
+        make_adcp_figure(dataset, flag_thres=2)
 
     dataset["time"].assign_attrs(TIME_ATTRS)
 
@@ -459,6 +473,7 @@ def _process_adcp_data(pconfig: ProcessConfig):
     # ----------- #
     # ODF OUTPUTS #
     # ----------- #
+
     l.section("Output")
     if pconfig.odf_output is True:
         if pconfig.odf_data is None:
@@ -474,9 +489,13 @@ def _process_adcp_data(pconfig: ProcessConfig):
                 output_path=pconfig.odf_path,
             )
 
-    # --------------------------------------- #
-    # FORMATTING GLOBAL ATTRIBUTES FOR OUTPUT #
-    # --------------------------------------- #
+    # ------------------------------------ #
+    # FORMATTING DATASET FOR NETCDF OUTPUT #
+    # ------------------------------------ #
+    for var in VARIABLES_TO_DROP:
+        if var in dataset.variables:
+            dataset = dataset.drop_vars([var])
+
     for attr in GLOBAL_ATTRS_TO_DROP:
         if attr in dataset.attrs:
             del dataset.attrs[attr]
@@ -534,14 +553,15 @@ def _load_adcp_data(pconfig: ProcessConfig) -> xr.Dataset:
 
     l.log(
         (
-                f"Bins count : {len(dataset.depth.data)}, "
+                f"Bin counts : {len(dataset.depth.data)}, "
                 + f"Min depth : {np.round(dataset.depth.min().data, 3)} m, "
-                + f"Max depth : {np.round(dataset.depth.max().data, 3)} m"
+                + f"Max depth : {np.round(dataset.depth.max().data, 3)} m, "
+                + f"Bin size : {dataset.attrs['bin_size_m']} m"
         )
     )
     l.log(
         (
-                f"Ensembles count : {len(dataset.time.data)}, "
+                f"Ensemble counts : {len(dataset.time.data)}, "
                 + f"Start time : {np.datetime_as_string(dataset.time.min().data, unit='s')}, "
                 + f"End time : {np.datetime_as_string(dataset.time.max().data, unit='s')}"
         )
@@ -613,16 +633,21 @@ def _load_navigation(dataset: xr.Dataset, navigation_files: str):
         Using the magtogoek function `mtgk compute nav`, u_ship, v_ship can be computed from `lon`, `lat`
     data to correct the data for the platform motion by setting the config parameter `m_corr` to `nav`.
     """
-    nav_ds = load_navigation(navigation_files).interp(time=dataset.time)
-    for var in ['lon', 'lat', 'u_ship', 'v_ship']:
-        if var in nav_ds:
-            dataset[var] = nav_ds[var]
-            if var == "lat":
-                l.log('Platform GPS data loaded.')
-            if var == "v_ship":
-                l.log('Platform velocity data loaded.')
-    nav_ds.close()
-
+    nav_ds = load_navigation(navigation_files)
+    if nav_ds is not None:
+        if nav_ds.attrs['time_flag'] is True:
+            nav_ds = nav_ds.interp(time=dataset.time)
+            if nav_ds.attrs['lonlat_flag']:
+                dataset['lon'] = nav_ds['lon']
+                dataset['lat'] = nav_ds['lat']
+                l.log("Platform GPS data loaded.")
+            if nav_ds.attrs['uv_ship_flag']:
+                dataset['u_ship'] = nav_ds['u_ship']
+                dataset['v_ship'] = nav_ds['v_ship']
+                l.log("Platform velocity data loaded.")
+            nav_ds.close()
+            return dataset
+    l.warning('Could not load navigation data file.')
     return dataset
 
 
@@ -642,7 +667,8 @@ def _quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
                          error_vel_th=pconfig.error_velocity_threshold,
                          motion_correction_mode=pconfig.motion_correction_mode,
                          sidelobes_correction=pconfig.sidelobes_correction,
-                         bottom_depth=pconfig.bottom_depth)
+                         bottom_depth=pconfig.bottom_depth,
+                         bad_pressure=pconfig.bad_pressure)
 
 
 def _apply_magnetic_correction(dataset: xr.Dataset, magnetic_declination: float):
@@ -668,7 +694,7 @@ def _apply_magnetic_correction(dataset: xr.Dataset, magnetic_declination: float)
         dataset.u, dataset.v, -magnetic_declination
     )
     l.log(f"Velocities transformed to true north and true east.")
-    if all(v in dataset for v in ['bt_u', 'bt_v']):
+    if all(v in dataset for v in ["bt_u", "bt_v"]):
         dataset.bt_u.values, dataset.bt_v.values = rotate_2d_vector(
             dataset.bt_u, dataset.bt_v, -magnetic_declination
         )
@@ -691,7 +717,7 @@ def _get_datetime_and_count(trim_arg: str):
 
     Returns:
     --------
-    datetime:
+    Timestamp:
         None or pandas.Timestamp
     count:
         None or int
@@ -756,8 +782,7 @@ def _drop_bottom_track(dataset: xr.Dataset) -> xr.Dataset:
 
 
 def cut_bin_depths(
-        dataset: xr.Dataset,
-        depth_range: tp.Union[int, float, list] = None
+        dataset: xr.Dataset, depth_range: tp.Union[int, float, list] = None
 ) -> xr.Dataset:
     """
     Return dataset with cut bin depths if the depth_range are not outside the depth span.
@@ -777,7 +802,7 @@ def cut_bin_depths(
         if not isinstance(depth_range, (list, tuple)):
             if depth_range > dataset.depth.max():
                 l.log(
-                    "depth_range value is greater than the maximum bin depth. Depth slicing aborded."
+                    "depth_range value is greater than the maximum bin depth. Depth slicing aborted."
                 )
             else:
                 dataset = dataset.sel(depth=slice(depth_range, None))
@@ -785,7 +810,10 @@ def cut_bin_depths(
         elif len(depth_range) == 2:
             if dataset.depth[0] > dataset.depth[-1]:
                 depth_range.reverse()
-            if depth_range[0] > dataset.depth.max() or depth_range[1] < dataset.depth.min():
+            if (
+                    depth_range[0] > dataset.depth.max()
+                    or depth_range[1] < dataset.depth.min()
+            ):
                 l.log(
                     "depth_range values are outside the actual depth range. Depth slicing aborted."
                 )
@@ -801,9 +829,9 @@ def cut_bin_depths(
     return dataset
 
 
-def cut_times(dataset: xr.Dataset,
-              start_time: str = None,
-              end_time: str = None) -> xr.Dataset:
+def cut_times(
+        dataset: xr.Dataset, start_time: str = None, end_time: str = None
+) -> xr.Dataset:
     """
     Return a dataset with time cut if they are not outside the dataset time span.
 
@@ -812,7 +840,7 @@ def cut_times(dataset: xr.Dataset,
     dataset
     start_time :
         minimum time to be included in the dataset.
-    end_time
+    end_time :
         maximum time to be included in the dataset.
     Returns
     -------
@@ -851,7 +879,6 @@ def _load_platform(platform_file: str, platform_id: str, sensor_id: str) -> tp.D
     Returns a `flat` dictionary with all the parents metadata
     to `platform.json/platform_id/sensors/sensor_id` and the
     metadata of the `sensor_id.`
-
     """
     platform_metadata = _default_platform_metadata()
     json_dict = json2dict(platform_file)
@@ -870,71 +897,53 @@ def _load_platform(platform_file: str, platform_id: str, sensor_id: str) -> tp.D
             l.warning(f'sensors section missing in the {platform_id} section of the platform file.')
     else:
         l.warning(f"{platform_id} not found in platform file.")
-
     return platform_metadata
 
-
-def _figure_out_the_outputs(pconfig: ProcessConfig) -> tp.Tuple[tp.Union[bool, str], tp.Union[bool, str], str]:
+def _outputs_path_handler(pconfig: ProcessConfig):
     """ Figure out the outputs to make and their path.
     """
+    default_path = Path(pconfig.input_path).parent
+    default_filename = Path(pconfig.input_path).name
 
-    input_path = pconfig.input_files[0]
-    default_path = Path(input_path).parent
-    default_filename = Path(input_path).name
+    if not odf_output and not netcdf_output:
+        netcdf_output = True
 
-    # Default to netcdf output is none was selected
-    if not pconfig.odf_output and not pconfig.netcdf_output:
-        pconfig.netcdf_output = True
+    netcdf_path = False
+    if isinstance(netcdf_output, bool):
+        if netcdf_output is True:
+            netcdf_path = default_path.joinpath(default_filename)
+    elif isinstance(netcdf_output, str):
+        netcdf_output = Path(netcdf_output)
+        if Path(netcdf_output.name) == netcdf_output:
+            netcdf_path = default_path.joinpath(netcdf_output).resolve()
+        elif netcdf_output.absolute().is_dir():
+            netcdf_path = netcdf_output.joinpath(default_filename)
+        elif netcdf_output.parent.is_dir():
+            netcdf_path = netcdf_output
+        default_path = netcdf_path.parent
+        default_filename = netcdf_path.name
+        netcdf_path = str(netcdf_path)
+        netcdf_output = True
 
-    # NETCDF
-    if isinstance(pconfig.netcdf_output, bool):
-        if pconfig.netcdf_output is True:
-            pconfig.netcdf_path = str(default_path.joinpath(default_filename))
+    odf_path = False
+    if isinstance(odf_output, bool):
+        if odf_output is True:
+            odf_path = default_path
+    elif isinstance(odf_output, str):
+        odf_output = Path(odf_output)
+        if Path(odf_output.name) == odf_output:
+            odf_path = default_path.joinpath(odf_output).resolve()
+        elif odf_output.is_dir():
+            odf_path = odf_output
+        elif odf_output.parent.is_dir():
+            odf_path = odf_output
+        if not netcdf_output:
+            default_path = odf_path.parent
+            default_filename = odf_path.stem
+        odf_path = str(odf_path)
 
-    elif isinstance(pconfig.netcdf_output, str):
-        _netcdf_output = Path(pconfig.netcdf_output)
-        pconfig.netcdf_output = True
-        # got a filename
-        if Path(_netcdf_output.name) == _netcdf_output:
-            pconfig.netcdf_path = default_path.joinpath(_netcdf_output)
-        # got a path
-        elif _netcdf_output.absolute().is_dir():
-            pconfig.netcdf_path = _netcdf_output.joinpath(default_filename)
-            default_path = _netcdf_output
-        # got a path and a filename
-        elif _netcdf_output.absolute().parent.is_dir():
-            pconfig.netcdf_path = _netcdf_output
-            default_path = pconfig.netcdf_path.parent
-            default_filename = pconfig.netcdf_path.name
-        # Path to file doesn't exist
-        else:
-            raise ValueError(f'Path or path to {_netcdf_output} does not exists.')
-        pconfig.netcdf_path = str(pconfig.netcdf_path.resolve())
+    log_path = str(default_path.joinpath(default_filename))
+    pconfig.netcdf_path = netcdf_path
+    pconfig.odf_path = odf_path
+    pconfig.log_path = log_path
 
-    # ODF
-    if isinstance(pconfig.odf_output, bool):
-        if pconfig.odf_output is True:
-            pconfig.odf_path = str(default_path)
-    elif isinstance(pconfig.odf_output, str):
-        _odf_output = Path(pconfig.odf_output)
-        pconfig.odf_output = True
-        # got filename
-        if Path(_odf_output.name) == _odf_output:
-            pconfig.odf_path = default_path.joinpath(_odf_output)
-        # got a path (odf_maker will make the filename)
-        # or got a path and a filename
-        elif (_odf_output.absolute().is_dir()
-              or _odf_output.absolute().parent.is_dir()):
-            pconfig.odf_path = _odf_output
-        else:
-            raise ValueError(f'Path or path to {_odf_output} does not exists.')
-
-        pconfig.odf_path = str(pconfig.odf_path.resolve())
-
-    # If no nc output was made. Thus the ODF path is now the default path.
-    if pconfig.netcdf_output is False:
-        default_path = Path(pconfig.odf_path).parent
-        default_filename = Path(pconfig.odf_path).name
-
-    # LOG
-    pconfig.log_path = str(default_path.joinpath(default_filename).resolve())

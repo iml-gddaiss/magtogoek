@@ -5,6 +5,7 @@ import json
 import typing as tp
 from datetime import datetime
 from pathlib import Path
+from collections import abc
 
 import click
 
@@ -114,17 +115,15 @@ class Logger:
         return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
-def format_str2list(filenames: tp.Union[str, tp.List[str]]) -> tp.List[str]:
-    """ If not str1 -> [str1].
-    Returns
-    -------
+def ensure_list_format(value: tp.Union[str, int, float, tp.List[tp.Union[str, int, float]]]) -> tp.List[str]:
     """
-    if isinstance(filenames, str):
-        filenames = [filenames]
-    return filenames
+    """
+    if not isinstance(value, (list, set, tuple)):
+        value = [value]
+    return value
 
 
-def get_files_from_expression(filenames: tp.Union[str, tp.List[str]]) -> tp.List[str]:
+def get_files_from_expression(filenames: tp.Union[str, tp.List[str]]) -> tp.List[str]: # TODO tester
     """Get existing files from expression.
 
     Returns a list of existing files.
@@ -142,6 +141,12 @@ def get_files_from_expression(filenames: tp.Union[str, tp.List[str]]) -> tp.List
             filenames = sorted(map(str, p.parent.glob(p.name)))
             if len(filenames) == 0:
                 raise FileNotFoundError(f"Expression `{p}` does not match any files.")
+
+    else:
+        _filenames = []
+        for filename in filenames:
+            _filenames += get_files_from_expression(filename)
+        filenames = _filenames
 
     return sorted(filenames)
 
@@ -208,6 +213,7 @@ def json2dict(json_file: tp.Union[str, Path]):
     with open(json_file) as f:
         dictionary = json.load(f)
     return dictionary
+
 
 def resolve_relative_path(relative_path, current_path):
     """ """

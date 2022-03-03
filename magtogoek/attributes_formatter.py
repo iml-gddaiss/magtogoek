@@ -45,9 +45,7 @@ STATIC_ATTRIBUTES_ABSOLUTE_FILE_PATH = (
 )
 
 
-def format_variables_names_and_attributes(
-    dataset: xr.Dataset, use_bodc_codes: bool
-) -> xr.Dataset:
+def format_variables_names_and_attributes(dataset: xr.Dataset) -> xr.Dataset:
     """Format variables names and attributes
 
     Returns dataset with variables attributes set.
@@ -58,7 +56,8 @@ def format_variables_names_and_attributes(
     their original names (generic_name) setting `use_bodc_codes` as `False`/
 
     Require dataset global attributes  :
-        `P01_CODE_TRANSLATOR` : a dictionary containing `generic_name`:`p01_codes`
+        `bodc_name` : Bool to say that indicates if the dataset has uses bodc name.
+        `P01_CODES` : a dictionary containing `generic_name`:`p01_codes`
              as keys and items.
 
     None essential global attributes :
@@ -73,9 +72,6 @@ def format_variables_names_and_attributes(
     dataset :
         dataset to format. The dataset must contain a global_attributes named `P01_CODE_TRANSLATOR`
     which has to be a dictionary containing `generic_name`:`p01_code` as keys and items.
-
-    use_bodc_codes :
-       If `True`, the variable names are changed to th BODC P01 parameters codes.
 
     Notes
     -----
@@ -93,7 +89,7 @@ def format_variables_names_and_attributes(
 
     _add_sdn_and_cf_var_attrs(dataset, json2dict(STATIC_ATTRIBUTES_ABSOLUTE_FILE_PATH))
 
-    if not use_bodc_codes:
+    if dataset.attrs['bodc_name'] is not True:
         dataset = _convert_variables_names(dataset, convert_back_to_generic=True)
     else:
         dataset = dataset.rename(

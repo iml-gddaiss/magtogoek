@@ -46,7 +46,6 @@ def make_odf(
         dataset: xr.Dataset,
         platform_metadata: dict,
         config_attrs: dict,
-        bodc_name: bool = True,
         event_qualifier2: str = 'VEL',
         output_path: str = None, ):
     """
@@ -58,11 +57,9 @@ def make_odf(
         Metadata from the platform file.
     config_attrs :
         Global attributes parameter from the configFile.
-    bodc_name:
-        If True, map from the generic to the BODC p01 variables names.
     output_path:
     event_qualifier2:
-        Either `VEL` or `ANC`.
+        Either `'VEL'` or `'ANC'`.
 
     """
     odf = Odf()
@@ -78,14 +75,14 @@ def make_odf(
         _make_instrument_header(odf, dataset)
     _make_quality_header(odf, dataset)
     _make_history_header(odf, dataset)
-    _make_parameter_headers(odf, dataset, PARAMETERS[event_qualifier2], bodc_name)
+    _make_parameter_headers(odf, dataset, PARAMETERS[event_qualifier2])
 
     if output_path is not None:
         output_path = Path(output_path)
         if output_path.is_dir():
             output_path = output_path.joinpath(odf.odf["file_specification"])
         else:
-            if not event_qualifier2 in output_path.name:
+            if event_qualifier2 not in output_path.name:
                 output_path = Path(str(output_path.with_suffix('')) + f'_{event_qualifier2}')
             odf.odf["file_specification"] = output_path.name
 
@@ -149,8 +146,19 @@ def _set_event_header_geospatials(odf: Odf, dataset: xr.Dataset) -> None:
     odf.event['start_date_time'] = odf_time_format(dataset.time.values.min())
     odf.event['end_date_time'] = odf_time_format(dataset.time.values.max())
 
-    odf.event['min_depth'] = dataset.depth.values.min()
-    odf.event['max_depth'] = dataset.depth.values.max()
+    if odf.event['event_qualifier2'] == 'ANC':
+        if 'xducer_depth' in dataset:
+            odf.event['min_depth'] = dataset['xducer_depth'].values.min()
+            odf.event['max_depth'] = dataset['xducer_depth'].values.max()
+        elif dataset.attrs['P01_CODES']['xducer_depth'] in dataset:
+            odf.event['min_depth'] = dataset[dataset.attrs['P01_CODES']['xducer_depth']].values.min()
+            odf.event['max_depth'] = dataset[dataset.attrs['P01_CODES']['xducer_depth']].values.max()
+        else:
+            odf.event['min_depth'] = dataset.attrs['sensor_depth']
+            odf.event['max_depth'] = dataset.attrs['sensor_depth']
+    else:
+        odf.event['min_depth'] = dataset.depth.values.min()
+        odf.event['max_depth'] = dataset.depth.values.max()
 
     if "lat" in dataset and "lon" in dataset:
         odf.event["initial_latitude"] = dataset.lat.values[0]
@@ -377,7 +385,7 @@ def _make_history_header(odf, dataset):
     odf.add_history({"creation_date": creation_date, "process": process})
 
 
-def _make_parameter_headers(odf, dataset, variables: List[str], bodc_name=False):
+def _make_parameter_headers(odf, dataset, variables: List[str]):
     """
     Parameters
     ----------
@@ -386,11 +394,9 @@ def _make_parameter_headers(odf, dataset, variables: List[str], bodc_name=False)
         Dataset to which add the navigation data.
     variables:
        variables to put in the ODF.
-    bodc_name:
-        If True, map from the generic to the BODC p01 variables names.
     Notes
     -----
-    The variable order is important in the variables list.
+    The variable order in the ODF will be the same as in the variables list parameter.
     """
 
     parameters_metadata = {}
@@ -399,7 +405,7 @@ def _make_parameter_headers(odf, dataset, variables: List[str], bodc_name=False)
 
     for var in variables:
         dataset_variable_name = var
-        if bodc_name is True and not var in ('time', 'depth'):
+        if dataset.attrs['bodc_name'] is True and var not in ('time', 'depth'):
             dataset_variable_name = dataset.attrs["P01_CODES"][var]
         if dataset_variable_name in dataset.variables:
             parameters_metadata[dataset_variable_name] = PARAMETERS_METADATA[var]

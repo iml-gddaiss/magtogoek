@@ -65,7 +65,7 @@ def _print_info(ctx, callback, info_called):
             click.secho("\nCommands:", fg="red")
         else:
             click.secho("\nArguments:", fg="red")
-        _print_arguments(ctx.info_name)
+        _print_arguments(ctx.info_name, ctx.parent)
         click.secho("\nOptions", fg="red")
         click.echo("  Use  -h/--help to show the options")
         click.echo("\n")
@@ -93,7 +93,11 @@ def magtogoek(info):
 @magtogoek.command("process")
 @add_options(common_options)
 @click.argument("config_file", metavar="[config_file]", type=click.Path(exists=True))
-def process(info, config_file: str):
+@click.option("--mk-fig/--no-fig",
+              type=bool,
+              help="""Make figures to inspect the data. Use to overwrite the value in the config_file""",
+              default=None)
+def process(info, config_file: str, **options):
     """Process data by reading configfile"""
     # NOTE This could be update as a group with sensor specific command.
     # Doing so would allow the user to pass config options. The load_configfile
@@ -105,9 +109,11 @@ def process(info, config_file: str):
 
     try:
         configuration, sensor_type = load_configfile(config_file)
-    except ParsingError:
+    except (ParsingError, UnicodeDecodeError):
         print("Failed to open the given configfile.\n mtgk process aborted.")
         sys.exit()
+    if options['mk_fig'] is not None:
+        configuration['ADCP_OUTPUT']["make_figures"] = options['mk_fig']
 
     if sensor_type == "adcp":
         from magtogoek.adcp.process import process_adcp
@@ -142,6 +148,12 @@ def compute(info):
     """Command to compute certain quantities."""
 
 
+@magtogoek.group("plot", context_settings=CONTEXT_SETTINGS)
+@add_options(common_options)
+def plot(info):
+    """Command to make plot from nc data."""
+
+
 # --------------------------- #
 #       config command        #
 # --------------------------- #
@@ -160,14 +172,8 @@ def config_platform(ctx, info, filename):
 @config.command("adcp")
 @add_options(common_options)
 @click.argument("config_name", metavar="[config_name]", type=str)
-@click.option(
-    "-T",
-    "--platform",
-    type=(click.Path(exists=True), str, str),
-    help="platform_file, platform_id, sensor_id",
-    default=(None, None, None),
-    nargs=3,
-)
+@click.option("-T", "--platform", type=(click.Path(exists=True), str, str),
+              help="platform_file, platform_id, sensor_id", default=(None, None, None), nargs=3)
 @add_options(adcp_options())
 @click.pass_context
 def config_adcp(
@@ -175,13 +181,7 @@ def config_adcp(
 ):
     """Command to make an adcp config files. The [OPTIONS] can be added
     before or after the [config_name]."""
-    #TODO TEST. So far not crashing
-    from magtogoek.config_handler import write_configfile
-
-    options["platform_file"] = options["platform"][0]
-    options["platform_id"] = options["platform"][1]
-    options["sensor_id"] = options["platform"][2]
-    del options["platform"]
+    from magtogoek.configfile import make_configfile
 
     _print_passed_options(options)
     config_name = is_valid_filename(config_name, ext=".ini")
@@ -194,39 +194,19 @@ def config_adcp(
 # --------------------------- #
 @quick.command("adcp")
 @add_options(common_options)
-@click.argument(
-    "input_files",
-    metavar="[input_files]",
-    nargs=-1,
-    type=click.Path(exists=True),
-    required=True,
-)
+@click.argument("input_files", metavar="[input_files]", nargs=-1, type=click.Path(exists=True), required=True)
 @add_options(adcp_options(input_files=False, sonar=False, yearbase=False))
 @click.option(
-    "-s",
-    "--sonar",
-    type=click.Choice(["wh", "sv", "os", "sw", "sw_pd0"]),
+    "-s", "--sonar", type=click.Choice(["wh", "sv", "os", "sw", "sw_pd0"]),
     help="String designating type of adcp. This  is fed to CODAS Multiread or switches to the magtogoek RTIReader.",
     required=True,
 )
-@click.option(
-    "-y",
-    "--yearbase",
-    type=click.INT,
-    help="""year when the adcp sampling started. ex: `1970`""",
-    required=True,
-)
-@click.option(
-    "-T",
-    "--platform_type",
-    type=click.Choice(["buoy", "mooring", "ship"]),
-    help="Used for Proper BODC variables names",
-    default="buoy",
-)
+@click.option("-y", "--yearbase", type=click.INT,
+              help="""year when the adcp sampling started. ex: `1970`""", required=True)
+@click.option("-T", "--platform_type", type=click.Choice(["buoy", "mooring", "ship"]),
+              help="Used for Proper BODC variables names", default="buoy")
 @click.pass_context
-def quick_adcp(
-        ctx, info, input_files, sonar, yearbase, **options,
-):
+def quick_adcp(ctx, info, input_files, sonar, yearbase, **options):
     """Command to make an quickly process adcp files. The [OPTIONS] can be added
     before or after the [inputs_files]."""
     # TODO TEST. So far not crashing
@@ -245,13 +225,7 @@ def quick_adcp(
 # --------------------------- #
 @check.command("rti")
 @add_options(common_options)
-@click.argument(
-    "input_files",
-    metavar="[input_files]",
-    nargs=-1,
-    type=click.Path(exists=True),
-    required=True,
-)
+@click.argument("input_files", metavar="[input_files]", nargs=-1, type=click.Path(exists=True), required=True)
 @click.pass_context
 def check_rti(ctx, info, input_files, **options):
     """Prints info about RTI .ENS files."""
@@ -262,23 +236,9 @@ def check_rti(ctx, info, input_files, **options):
 
 @compute.command("nav", context_settings=CONTEXT_SETTINGS)
 @add_options(common_options)
-@click.argument(
-    "input_files",
-    metavar="[input_files]",
-    nargs=-1,
-    type=click.Path(exists=True),
-    required=True,
-)
-@click.option(
-    "-o",
-    "--output-name",
-    type=click.STRING,
-    default=None,
-    help="Name for the output file.",
-)
-@click.option(
-    "-w", "--window", type=click.INT, default=1, help="Length of the averaging window.",
-)
+@click.argument("input_files", metavar="[input_files]", nargs=-1, type=click.Path(exists=True), required=True)
+@click.option("-o", "--output-name", type=click.STRING, default=None, help="Name for the output file.")
+@click.option("-w", "--window", type=click.INT, default=1, help="Length of the averaging window.")
 @click.pass_context
 def navigation(ctx, info, input_files, **options):
     """Command to compute u_ship, v_ship, bearing from gsp data."""
@@ -324,6 +284,24 @@ def odf2nc(ctx, info, input_files, output_name, **options):
         dims=options['dims'],
         time=options['time'],
         merge=options['merge'])
+
+
+# ------------------------ #
+#        plot commands     #
+# ------------------------ #
+@plot.command("adcp", context_settings=CONTEXT_SETTINGS)
+@add_options(common_options)
+@click.argument("input_file", metavar="[input_files]", nargs=1, type=click.Path(exists=True), required=True)
+@click.option("-t", "--flag-thres", help="""Set threshold value for flagging""", default=2, show_default=True)
+@click.option("-v", "--vel-only", help="""Only plots 2D velocity fields and polar histogram.""", is_flag=True,
+              default=False)
+@click.pass_context
+def plot_adcp(ctx, info, input_file, **options):
+    """Command to compute u_ship, v_ship, bearing from gsp data."""
+    import xarray as xr
+    from magtogoek.adcp.adcp_plots import make_adcp_figure
+    dataset = xr.open_dataset(input_file)
+    make_adcp_figure(dataset, flag_thres=options['flag_thres'], vel_only=options["vel_only"])
 
 
 # ------------------------ #
@@ -373,9 +351,9 @@ def _print_logo(logo_path: str = "files/logo.json", group: str = ""):
     click.echo(click.style("=" * TERMINAL_WIDTH, fg="white", bold=True))
 
 
-def _print_arguments(group):
+def _print_arguments(group, parent):
     """print group(command) command(arguments)"""
-    #    _parent = parent.info_name if parent else ""
+    _parent = parent.info_name if parent else ""
     messages = {"mtgk": '\n'.join(["  config".ljust(20, " ") + "Command to make configuration files",
                                    "  process".ljust(20, " ") + "Command to process data with configuration files",
                                    "  quick".ljust(20, " ") + "Command to quickly process data files",
@@ -434,22 +412,27 @@ def _print_description(group):
             "Print some raw files information. Only available for adcp RTI .ENS files."
         ),
         "adcp": (
-            "\n"
-            "        sonar\n"
-            "        -----\n"
-            "           os : OceanSurveyor (RDI)\n"
-            "           wh : WorkHorse (RDI)\n"
-            "           sv : SentinelV (RDI)\n"
-            "           sw : SeaWatch (RTI)\n"
-            "           sw_pd0 : SeaWatch (RTI in RDI pd0 file format)\n"
-            "\n"
-            "        quality control\n"
-            "        ---------------\n"
-            "           - velocity, amplitude, correlation, percentgood, roll, pitch, \n"
-            "             side_lobe.\n"
-            "           - Temperatures outside [-2, 32] Celsius. \n"
-            "           - Pressures outside [0, 180] dbar.           \n"
-            "        "
+                "\n"
+                "        sonar\n"
+                "        -----\n"
+                "           os : OceanSurveyor (RDI)\n"
+                "           wh : WorkHorse (RDI)\n"
+                "           sv : SentinelV (RDI)\n"
+                "           sw : SeaWatch (RTI)\n"
+                "           sw_pd0 : SeaWatch (RTI in RDI pd0 file format)\n"
+                "\n"
+                "        quality control\n"
+                "        ---------------\n"
+                "           - velocity, amplitude, correlation, percentgood, roll, pitch, \n"
+                "             side_lobe.\n"
+                "           - Temperatures outside [-2, 32] Celsius. \n"
+                "           - Pressures outside [0, 180] dbar.\n"
+                "\n"
+                "        plots\n"
+                "        -----\n"
+                "           - 2D velocity fields (u,v), time-series,\n"
+                "           - Polar Histogram of the Velocities amplitude and direction,\n"
+                "           - Pearson Correlation of velocity for consecutive bins,\n"
         ),
         "nav": (
             " Compute u_ship (eastward velocity), v_ship (northward velocity) and the bearing"
@@ -462,7 +445,10 @@ def _print_description(group):
         "odf2nc": "Converts odf files to netcdf",
     }
     if group in messages:
-        click.echo(click.wrap_text(messages[group], width=TERMINAL_WIDTH, initial_indent=''))
+        if "\n" in messages[group]:
+            click.echo(messages[group])
+        else:
+            click.echo(click.wrap_text(messages[group], width=TERMINAL_WIDTH, initial_indent=''))
 
 
 def _print_usage(group, parent):
