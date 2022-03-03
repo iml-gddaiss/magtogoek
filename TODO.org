@@ -1,8 +1,13 @@
 #+Author: jerome.guay@protonmail.com
 #+TITLE: Notes on Magtogoek
 
-* Command to add.
-** navigation command.
+* Issues.
+** Motion Correction in Adcp adcp/quality_control.py and load_navigation in navigation.
+   The load_navigation can return None if lon, lat are missing from the files which will crash in quality_control.py. Furthermore, the motion_correction function    in quality_control.py needs to have longitude (and latitude) data to check for finite values. The code can crash there also since there is no if or else. A fix    has been added in vicking_dat branche.
+  
+
+* Commands to add.
+** Navigation command.
 *** Add Navigation loadable from csv file maybe ?
    -n nc_filename
    -c csv_filename
@@ -12,7 +17,8 @@
    -w length of the averaging window
 
 ** Rotation command.
-* Improvement
+
+* Improvements
 ** ~/.magtogoek configuration files.
    + P01, GF3, CF, etc.
    + Maybe put this in the ConfigFiles.
@@ -29,6 +35,5 @@
    + mtgk rotate NETCDF_FILES ANGLE -o [output_files]
    + Rotate data clockwise and adds u, v are then not East and North anymore.
       
-
-* Verification
+* Others
 ** Review documentations

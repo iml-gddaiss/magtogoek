@@ -393,8 +393,8 @@ class RtiReader:
         (~5s total) for ~4000 chunks. Exiting the processes to output progress could be time consuming
         for bigger files.
         """
-        # spliting the reading workload on multiple cpu
-        number_of_cpu = cpu_count() - 1
+        # splitting the reading workload on multiple cpu
+        number_of_cpu = cpu_count()
 
         print(f"Reading {self.current_file}")
         time0 = datetime.now()

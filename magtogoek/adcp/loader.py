@@ -2,7 +2,7 @@
 author: Jérôme Guay
 date: Feb. 22, 2021
 based in part  on: https://github.com/jeanlucshaw/adcp2nc/
-                   https://github.com/hhourston/pycurrents_ADCP_processign
+                   https://github.com/hhourston/pycurrents_ADCP_processing
 
 
 This script contains functions to read adcp files and load them in xarray.Dataset.

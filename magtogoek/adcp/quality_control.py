@@ -45,6 +45,7 @@ IML flags meaning : (Basically the same)
 
 TODO:
    - Add a test with the pearson correlation
+   - A processing value could be use to tell every fonction which xducer_depth to take instead of checking everytime.
 
 """
 import typing as tp
@@ -270,9 +271,9 @@ def adcp_quality_control(
         binary_mask_tests_value[7] = pitch_th
 
     if sidelobes_correction is True:
-        sidelobe_flag = sidelobe_test(dataset, bottom_depth)
+        sidelobe_flag, msg = sidelobe_test(dataset, bottom_depth)
         if isinstance(sidelobe_flag, np.ndarray):
-            l.log("Sidelobe correction carried out.")
+            l.log(f"Sidelobe correction carried out. {msg}.")
             vel_flags[sidelobe_flag] = 3
             vel_qc_test.append("sidelobes")
             binary_mask[sidelobe_flag] += 2 ** 8
@@ -525,7 +526,8 @@ def vertical_beam_test(
     return vb_test
 
 
-def sidelobe_test(dataset: xr.Dataset, bottom_depth: float = None):
+def sidelobe_test(dataset: xr.Dataset, bottom_depth: float = None) -> tp.Union[tp.Tuple[np.ndarray, str],
+                                                                               tp.Tuple[bool, None]]:
     """FIXME
     Test for sidelobe contamination (True fails).
 
@@ -534,61 +536,72 @@ def sidelobe_test(dataset: xr.Dataset, bottom_depth: float = None):
     Downward equation:
         bin_depth + 0.5*bin_size > XducerDepth + (bottom_depth - XducerDepth)*cos(beam_angle)
     Upward equation:
-        bin_depth - 0.5*bin_size < XducerDepth*( 1 - cos(beam_angle))
+        bin_depth - 0.5*bin_size < XducerDepth * ( 1 - cos(beam_angle))
 
     Parameters
     ----------
     dataset :
     bottom_depth : optional
         Fixed bottom depth to use for sidelobe correction
+    Returns
+    -------
+    sidelobe_flags : Boolean Array
+    msg :
     """
+    msg = ""
     if dataset.attrs["beam_angle"] and dataset.attrs["orientation"]:
         angle_cos = np.cos(np.radians(dataset.attrs["beam_angle"]))
         depth_array = np.tile(dataset.depth.data, dataset.time.shape + (1,))
-        if "xducer_depth" in dataset.attrs:
-            xducer_depth = np.tile(dataset.attrs["xducer_depth"], dataset.time.shape)
-        elif "xducer_depth" in dataset:
+        if "xducer_depth" in dataset:
             xducer_depth = dataset["xducer_depth"].data
+            msg += "xducer_depth: time dependent"
+        elif "xducer_depth" in dataset.attrs:
+            xducer_depth = np.tile(dataset.attrs["xducer_depth"], dataset.time.shape)
+            msg += f"xducer_depth: constant {xducer_depth[0]}"
         else:
             l.warning(
-                "Sidelobes correction aborted. Adcp depth `xducer_depth` not provided."
+                "Sidelobes correction aborted. Adcp depth `xducer_depth` not found and one was not provided."
             )
-            return False
+            return False, None
 
         if dataset.attrs["orientation"] == "down":
             if "bt_depth" in dataset:
-                bottom_depth = dataset.bt_depth.data
+                sounding = dataset.bt_depth.data
+                msg += ", sounding: bottom range"
+            elif bottom_depth:
+                sounding = bottom_depth
+                msg += f", sounding: constant {sounding}"
             elif not bottom_depth:
                 l.warning(
-                    "Sidelobes correction aborted. Bottom depth not found or provided."
+                    "Sidelobes correction aborted. Bottom depth not found and one was not provided."
                 )
-                return False
+                return False, None
 
-            max_depth = xducer_depth + (bottom_depth - xducer_depth) * angle_cos
-            return depth_array.T + dataset.attrs["bin_size_m"] / 2 > max_depth
+            max_depth = xducer_depth + (sounding - xducer_depth) * angle_cos
+            return depth_array.T + dataset.attrs["bin_size_m"] / 2 > max_depth, msg
 
         elif dataset.attrs["orientation"] == "up":
             min_depth = xducer_depth * (1 - angle_cos)
-            return depth_array.T - dataset.attrs["bin_size_m"] / 2 < min_depth.T
+            return depth_array.T - dataset.attrs["bin_size_m"] / 2 < min_depth.T, msg
 
         else:
             l.warning(
                 "Can not correct for sidelobes, `adcp_orientation` parameter not set. Must be `up` or `down`."
             )
-            return False
+            return False, None
     else:
         l.warning("Can not correct for sidelobes, beam_angle not found in raw file.")
-        return False
+        return False, None
 
 
-def temperature_test(dataset: xr.Dataset):
-    """FIXME"""
+def temperature_test(dataset: xr.Dataset) -> np.ndarray:
+    """"""
     return np.bitwise_or(
         dataset.temperature > MAX_TEMPERATURE, dataset.temperature < MIN_TEMPERATURE
     ).data
 
 
-def pressure_test(dataset: xr.Dataset):
+def pressure_test(dataset: xr.Dataset) -> np.ndarray:
     """FIXME"""
     return np.bitwise_or(dataset.pres > MAX_PRESSURE, dataset.pres < MIN_PRESSURE).data
 

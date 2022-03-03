@@ -182,7 +182,8 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
         ),
         click.option(
             "--sidelobes/--no-sidelobes",
-            help="Do side lobe correction.",
+            help="Do side lobe correction. Uses bottom_track if available. See option `--bottom-depth` "
+                 "to force a bottom_depth.",
             default=True,
             show_default=True,
         ),
@@ -190,7 +191,7 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
             "-b",
             "--bottom-depth",
             type=click.FLOAT,
-            help="""If provided, this fixed depth will be
+            help="""If provided, this constant bottom_depth will be
             used for sidelobes correction.""",
             default=None,
             show_default=True,
@@ -208,7 +209,7 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
             "--bad-pressure/-",
             help="""Use the `--bad-pressure` flag to discard pressure data from the processing.
             This will in turn discard the adcp depth (XducerDepth) measured by the ADCP.
-            Use the option `--sensor-depth` to enter a fixed depth.""",
+            Use the option `--sensor-depth` to enter a constant xducer depth.""",
             default=False,
             show_default=True,
         ),

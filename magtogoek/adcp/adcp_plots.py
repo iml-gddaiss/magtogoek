@@ -8,10 +8,6 @@ This modules contains the essential figure to do a visual inspection of the data
 
 # Use ancillary_variables for QC. modify on the flag data function tools.
 """
-
-import matplotlib
-matplotlib.use('Qt5Agg')
-
 from itertools import cycle
 from typing import List, Union, Dict
 
@@ -24,6 +20,8 @@ import xarray as xr
 
 from magtogoek.plot_utils import grid_subplot
 from magtogoek.tools import round_up, flag_data, polar_histo
+
+#plt.switch_backend('Qt5Agg')
 
 FONT = {"family": "serif", "color": "darkred", "weight": "normal", "size": 12}
 BINARY_CMAP = plt.get_cmap("viridis_r", 2)
@@ -241,7 +239,10 @@ def plot_pearson_corr(dataset: xr.Dataset, uvw: List[str] = ("u", "v", "w"), fla
     for var in uvw:
         da = flag_data(dataset=dataset, var=var)
         for d in range(dataset.dims["depth"] - 2):
-            corr[var].append(xr.corr(da[d], da[d + 2], "time"))
+            if np.isfinite(da[d]).any() and np.isfinite(da[d + 2]).any():
+                corr[var].append(xr.corr(da[d], da[d + 2], "time"))
+            else:
+                corr[var].append(np.nan)
     fig, axe = plt.subplots(figsize=(6, 8))
     for var in uvw:
         axe.plot(corr[var], dataset.depth[:-2], label=var)
