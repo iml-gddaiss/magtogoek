@@ -94,7 +94,8 @@ GLOBAL_ATTRS_TO_DROP = [
     "sonar",
     "variables_gen_name",
     "binary_mask_tests",
-    "binary_mask_tests_values"
+    "binary_mask_tests_values",
+    "bodc_name"
 ]
 CONFIG_GLOBAL_ATTRS_SECTIONS = ["NETCDF_CF", "PROJECT", "CRUISE", "GLOBAL_ATTRIBUTES"]
 PLATFORM_TYPES = ["buoy", "mooring", "ship"]
@@ -430,6 +431,7 @@ def _process_adcp_data(pconfig: ProcessConfig):
     # -------------------- #
     # VARIABLES ATTRIBUTES #
     # -------------------- #
+    dataset.attrs['bodc_name'] = pconfig.bodc_name
     dataset.attrs["VAR_TO_ADD_SENSOR_TYPE"] = VAR_TO_ADD_SENSOR_TYPE
     dataset.attrs["P01_CODES"] = {
         **P01_VEL_CODES[pconfig.platform_type],
