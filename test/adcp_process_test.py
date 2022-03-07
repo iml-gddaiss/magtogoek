@@ -1,6 +1,6 @@
 import pytest
 from pathlib import Path
-from magtogoek.adcp.process import _outputs_path_handler, ProcessConfig
+from magtogoek.adcp.process import ProcessConfig
 
 INPUT_FILES = str(Path('input_file').absolute())
 CONFIG_PATH = Path().cwd()
