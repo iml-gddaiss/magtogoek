@@ -182,6 +182,8 @@ def config_adcp(
     """Command to make an adcp config files. The [OPTIONS] can be added
     before or after the [config_name]."""
 
+    from magtogoek.config_handler import write_configfile
+
     _print_passed_options(options)
     config_name = is_valid_filename(config_name, ext=".ini")
     write_configfile(filename=config_name, sensor_type="adcp", cli_options=options)
