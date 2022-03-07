@@ -43,6 +43,7 @@ OPTIONS_NAME_TRANSLATOR = dict(
         drop_amplitude="drop_amp",
         make_figures="mk_fig",
         make_log="mk_log",
+        odf_data="odf_dtype"
     )
 )
 
@@ -208,8 +209,7 @@ def get_config_taskparser(sensor_type: Optional[str] = None):
         section = "ADCP_PROCESSING"
         tparser.add_option(section, "yearbase", dtypes=["int"], default="", is_required=True)
         tparser.add_option(section, "adcp_orientation", dtypes=["str"], choice=["up", "down"])
-        tparser.add_option(section, "sonar", dtypes=["str"], choice=["wh", "sv", "os", "sw", "sw_pd0"],
-                           is_required=True)
+        tparser.add_option(section, "sonar", dtypes=["str"], choice=["wh", "sv", "os", "sw", "sw_pd0"], is_required=True)
         tparser.add_option(section, "navigation_file", dtypes=["str"], default="", is_file=True)
         tparser.add_option(section, "leading_trim", dtypes=["int", "str"], default="", is_time_stamp=True)
         tparser.add_option(section, "trailing_trim", dtypes=["int", "str"], default="", is_time_stamp=True)
