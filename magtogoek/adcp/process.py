@@ -248,7 +248,7 @@ class ProcessConfig:
             self._load_config_dict(config_dict)
 
         if isinstance(self.input_files, str):
-            self.input_files = format_str2list(self.input_files)
+            self.input_files = ensure_list_format(self.input_files)
 
         if len(self.input_files) == 0:
             raise ValueError("No adcp file was provided in the configfile.")
@@ -431,7 +431,6 @@ def _process_adcp_data(pconfig: ProcessConfig):
     # -------------------- #
     # VARIABLES ATTRIBUTES #
     # -------------------- #
-    dataset.attrs['bodc_name'] = params["bodc_name"]
     dataset.attrs["VAR_TO_ADD_SENSOR_TYPE"] = VAR_TO_ADD_SENSOR_TYPE
     dataset.attrs["P01_CODES"] = {
         **P01_VEL_CODES[pconfig.platform_type],
@@ -446,7 +445,7 @@ def _process_adcp_data(pconfig: ProcessConfig):
     # MAKE FIGURES #
     # ------------ #
 
-    if params["make_figures"]:
+    if pconfig.make_figures:
         make_adcp_figure(dataset, flag_thres=2)
 
     dataset["time"].assign_attrs(TIME_ATTRS)
@@ -529,7 +528,7 @@ def _process_adcp_data(pconfig: ProcessConfig):
 def _load_adcp_data(pconfig: ProcessConfig) -> xr.Dataset:
     """
     Load and trim the adcp data into a xarray.Dataset.
-    Drops bottom track data if params `keep_bt` is False.
+    Drops bottom track data if `keep_bt` is False.
     """
     start_time, leading_index = _get_datetime_and_count(pconfig.leading_trim)
     end_time, trailing_index = _get_datetime_and_count(pconfig.trailing_trim)
@@ -899,51 +898,54 @@ def _load_platform(platform_file: str, platform_id: str, sensor_id: str) -> tp.D
         l.warning(f"{platform_id} not found in platform file.")
     return platform_metadata
 
+
 def _outputs_path_handler(pconfig: ProcessConfig):
     """ Figure out the outputs to make and their path.
     """
     default_path = Path(pconfig.input_path).parent
     default_filename = Path(pconfig.input_path).name
 
-    if not odf_output and not netcdf_output:
-        netcdf_output = True
+    _netcdf_output = False
+    if not pconfig.odf_output and not pconfig.netcdf_output:
+        _netcdf_output = True
 
     netcdf_path = False
-    if isinstance(netcdf_output, bool):
-        if netcdf_output is True:
+    if isinstance(_netcdf_output, bool):
+        if _netcdf_output is True:
             netcdf_path = default_path.joinpath(default_filename)
-    elif isinstance(netcdf_output, str):
-        netcdf_output = Path(netcdf_output)
-        if Path(netcdf_output.name) == netcdf_output:
-            netcdf_path = default_path.joinpath(netcdf_output).resolve()
-        elif netcdf_output.absolute().is_dir():
-            netcdf_path = netcdf_output.joinpath(default_filename)
-        elif netcdf_output.parent.is_dir():
-            netcdf_path = netcdf_output
+    elif isinstance(_netcdf_output, str):
+        _netcdf_output = Path(_netcdf_output)
+        if Path(_netcdf_output.name) == _netcdf_output:
+            netcdf_path = default_path.joinpath(_netcdf_output).resolve()
+        elif _netcdf_output.absolute().is_dir():
+            netcdf_path = _netcdf_output.joinpath(default_filename)
+        elif _netcdf_output.parent.is_dir():
+            netcdf_path = _netcdf_output
         default_path = netcdf_path.parent
         default_filename = netcdf_path.name
         netcdf_path = str(netcdf_path)
-        netcdf_output = True
+        _netcdf_output = True
 
-    odf_path = False
-    if isinstance(odf_output, bool):
-        if odf_output is True:
-            odf_path = default_path
-    elif isinstance(odf_output, str):
-        odf_output = Path(odf_output)
-        if Path(odf_output.name) == odf_output:
-            odf_path = default_path.joinpath(odf_output).resolve()
-        elif odf_output.is_dir():
-            odf_path = odf_output
-        elif odf_output.parent.is_dir():
-            odf_path = odf_output
-        if not netcdf_output:
-            default_path = odf_path.parent
-            default_filename = odf_path.stem
-        odf_path = str(odf_path)
+    _odf_path = False
+    if isinstance(pconfig.odf_output, bool):
+        if pconfig.odf_output is True:
+            _odf_path = default_path
+    elif isinstance(pconfig.odf_output, str):
+        _odf_output = Path(pconfig.odf_output)
+        if Path(_odf_output.name) == _odf_output:
+            _odf_path = default_path.joinpath(_odf_output).resolve()
+        elif _odf_output.is_dir():
+            _odf_path = _odf_output
+        elif _odf_output.parent.is_dir():
+            _odf_path = _odf_output
+        if not _netcdf_output:
+            default_path = _odf_path.parent
+            default_filename = _odf_path.stem
+        _odf_path = str(_odf_path)
 
-    log_path = str(default_path.joinpath(default_filename))
     pconfig.netcdf_path = netcdf_path
-    pconfig.odf_path = odf_path
-    pconfig.log_path = log_path
+    pconfig.odf_path = _odf_path
+    pconfig.log_path = str(default_path.joinpath(default_filename))
+    pconfig.netcdf_output = _netcdf_output
+
 
