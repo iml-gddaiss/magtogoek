@@ -10,9 +10,11 @@ from pathlib import Path
 from datetime import timezone
 import click
 import dateutil.parser
+from magtogoek.utils import get_files_from_expression
 
-TRUE_VALUES = ["True", "true", "On", "on"]
-FALSE_VALUES = ["False", "False", "Off", "off", ""]
+
+TRUE_VALUES = ["True", "true", "T", "t","On", "on"]
+FALSE_VALUES = ["False", "False", "F", "f", "Off", "off", ""]
 VALID_DTYPES = ["str", "int", "float", "bool"]
 
 StrIntFloatBool = Union[str, int, float, bool]
@@ -428,23 +430,41 @@ def _format_parser_options(parser_dict: dict, parser_infos: ParserInfos, file_pa
                 if option in parser_dict[section]:
                     option_info = parser_infos[section][option]
                     value = parser_dict[section][option]
-                    if "bool" not in option_info.dtypes and value == "":
-                        value = option_info.null_value
-                        if option_info.is_required is True:
-                            raise TaskParserError("required", option_info, value)
-                    else:
+
+                    if "bool" not in option_info.dtypes:
+                        if not value and value != 0:
+                            value = None
+                            if option_info.is_required is True:
+                                raise TaskParserError("required", option_info, value)
+                    if value is not None:
                         value = _format_option(parser_dict[section][option], option_info, file_path)
+                    elif option_info.null_value is not None:
+                        value = option_info.null_value
                     parser_dict[section][option] = value
 
 
 def _format_option(value: str, option_info: OptionInfos, file_path: Optional[str] = None):
+    """
+    Notes
+    -----
+    The quick fixes below are needed for OptionInfos.is_file = True due to get_file_from_expression
+    that always return a list.
+    """
     if option_info.nargs or option_info.nargs_min or option_info.nargs_max:
         value = _get_sequence_from_string(value)
         _check_options_length(value, option_info)
+        values = []
         for i, _value in enumerate(value):
-            value[i] = _format_option_type(_value, option_info, file_path)
+            _value = _format_option_type(_value, option_info, file_path)
+            if isinstance(_value, list): #quick fix
+                values +=_value
+            else:
+                values.append(_value)
+        value = values
     else:
         value = _format_option_type(value, option_info, file_path)
+        if isinstance(value, list): #quick fix
+            value = value[0]
 
     return value
 
@@ -453,6 +473,7 @@ def _format_option_type(value: str, option_info: OptionInfos, file_path: Optiona
     """Format option to the right dtypes.
     - Checks if value is outside option_info.min_value and option_info.max_value.
     - Check if values is within the option_info.choice."""
+
     try:
         value = _format_value_dtypes(value, option_info.dtypes)
     except ValueError:
@@ -463,22 +484,23 @@ def _format_option_type(value: str, option_info: OptionInfos, file_path: Optiona
             raise TaskParserError("choice", option_info, value)
 
     if isinstance(value, str):
-        if option_info.is_path is True and isinstance(value, str):
+        if option_info.is_path is True:
             value = Path(file_path).joinpath(Path(value)).resolve()
             if not any((value.is_dir(), value.parent.is_dir())):
                 raise TaskParserError("path", option_info, value)
             value = str(value)
 
-        if option_info.is_file is True:
+        elif option_info.is_file is True:
             if file_path is not None:
-                value = Path(file_path).joinpath(Path(value)).resolve()
+                value = str(Path(file_path).joinpath(Path(value)).resolve())
             else:
-                value = Path(value)
-            if not value.is_file():
-                raise TaskParserError("file", option_info, value)
-            value = str(value)
+                value = str(Path(value))
+            try:
+                value = get_files_from_expression(value)
+            except FileNotFoundError:
+                raise TaskParserError('file', option_info, value)
 
-        if option_info.is_time_stamp is True:
+        elif option_info.is_time_stamp is True:
             try:
                 value = dateutil.parser.parse(value).astimezone(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.f')[:-2]
             except dateutil.parser.ParserError:
@@ -492,6 +514,7 @@ def _format_option_type(value: str, option_info: OptionInfos, file_path: Optiona
 
 def _format_value_dtypes(value: str, dtypes: List[str]) -> StrIntFloatBool:
     value = _remove_quotes(value)
+
     if "int" in dtypes or 'float' in dtypes:
         try:
             float_value = float(value)
@@ -509,13 +532,6 @@ def _format_value_dtypes(value: str, dtypes: List[str]) -> StrIntFloatBool:
     raise ValueError
 
 
-def _remove_quotes(value: str) -> str:
-    """Remove any redundant quotes around the string."""
-    for quotes in ["'", '"']:
-        value = value.strip(quotes)
-    return value
-
-
 def _get_sequence_from_string(sequence: str) -> List:
     """Decode string containing a sequence of value.
 
@@ -530,6 +546,13 @@ def _get_sequence_from_string(sequence: str) -> List:
         sequence = sequence.replace(sep, ",")
 
     return list(filter(None, sequence.split(",")))
+
+
+def _remove_quotes(value: str) -> str:
+    """Remove any redundant quotes around the string."""
+    for quotes in ["'", '"']:
+        value = value.strip(quotes)
+    return value
 
 
 def _check_options_length(value: StrIntFloatBool, option_info: OptionInfos):
