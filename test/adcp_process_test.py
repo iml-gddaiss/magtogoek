@@ -12,21 +12,10 @@ CONFIG_PATH = Path().cwd()
         ({'netcdf_output': True, 'odf_output': True}, True, True, INPUT_FILES, str(CONFIG_PATH), INPUT_FILES),
         ({'netcdf_output': True, 'odf_output': False}, True, False, INPUT_FILES, None, INPUT_FILES),
         ({'netcdf_output': False, 'odf_output': False}, True, False, INPUT_FILES, None, INPUT_FILES),
-        (
-                {'netcdf_output': 'filename', 'odf_output': True},
-                True, True, str(CONFIG_PATH) + '/filename', str(CONFIG_PATH), INPUT_FILES
-        ),
-        (
-                {'netcdf_output': '../magtogoek/filename_nc', 'odf_output': '../magtogoek/filename_odf'}, True, True,
-                str(CONFIG_PATH.joinpath('../magtogoek/filename_nc').resolve()),
-                str(CONFIG_PATH.joinpath('../magtogoek/filename_odf').resolve()),
-                str(CONFIG_PATH.joinpath('../magtogoek/filename_nc').resolve())
-        ),
-        (
-                {'netcdf_output': False, 'odf_output': 'filename'}, False, True,
-                None,
-                str(CONFIG_PATH) + '/filename',
-                str(CONFIG_PATH) + '/filename'),
+        ({'netcdf_output': 'filename', 'odf_output': True}, True, True, str(CONFIG_PATH) + '/filename', str(CONFIG_PATH), str(CONFIG_PATH) + '/filename'),
+        ({'netcdf_output': '../magtogoek/filename_nc', 'odf_output': '../magtogoek/filename_odf'},
+          True, True, '../magtogoek/filename_nc', '../magtogoek/filename_odf', '../magtogoek/filename_nc',),
+        ({'netcdf_output': False, 'odf_output': 'filename'}, False, True, None, str(CONFIG_PATH) + '/filename', str(CONFIG_PATH) + '/filename'),
         # ({'netcdf_output': '', 'odf_output': ''}, , , , ,),
 
     ],
