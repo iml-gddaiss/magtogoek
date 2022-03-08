@@ -23,6 +23,12 @@ ParserDict = Dict[str, Dict[str, ListStrIntFloatBool]]
 
 
 class OptionInfos:
+    """
+    Class used/called by TaskParser.
+    Immutable object that hold the TaskParser options information.
+    When created, an OptionInfos object run check-up to validate the validate
+    the given values.
+    """
     section: str = None
     option: str = None
     dtypes: List[str] = None
@@ -97,6 +103,8 @@ class OptionInfos:
 
     def _dtypes_check(self):
         if self.dtypes is not None:
+            if isinstance(self.dtypes, list):
+                raise ValueError(f"`dtypes` parameter expected a list not {type(self.dtypes)}")
             for e in self.dtypes:
                 if e not in VALID_DTYPES:
                     raise ValueError(
@@ -121,6 +129,7 @@ class OptionInfos:
 
 
 class TaskParserError(SystemExit):
+    """Handle TaskParser error message."""
     def __init__(self, error: str, option_info: OptionInfos,
                  value: ListStrIntFloatBool = 'None'):
         self.error = error
@@ -176,6 +185,15 @@ ParserInfos = Dict[str, Dict[str, OptionInfos]]
 
 class TaskParser:
     """
+    Example:
+    parser = TaskParser()
+
+    parser.add_option(section="INPUT", option="made_by", dtypes=["str"], default="")
+    parser.add_option(section, "sensor_type", dtypes=["str"], default="", is_required=True, choice=["adcp"])
+    parser.add_option(section, "platform_type", dtypes=["str"], default="", choice=["buoy", "mooring", "ship"])
+
+    section = "INPUT"
+    parser.add_option(section, "input_files", dtypes=["str"], default="", nargs_min=1, is_file=True, is_required=True)
     parser.add_option(section, option, default, ...)
     parser.load(input_filename) -> dictionary with formatted values.
     parser.write(output_filename) -> writes a .ini file.
