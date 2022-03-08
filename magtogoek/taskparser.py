@@ -114,8 +114,17 @@ class OptionInfos:
 
     def _value_min_max_check(self):
         if self.value_min is not None and self.value_max is not None:
+            if 'int' not in self.dtypes or 'float' not in self.dtypes:
+                raise ValueError('value_min and value_max can only be used for int or float.')
             if self.value_min > self.value_max:
                 raise ValueError("value_max must be greater than value_min.")
+        if self.default is not None:
+            if self.value_min is not None:
+                if self.default > self.value_max:
+                    raise ValueError('default value must be <= value_max.')
+            if self.value_max is not None:
+                if self.default < self.value_min:
+                    raise ValueError('default value must be >= value_min.')
 
     def _nargs_min_max_check(self):
         if self.nargs_min is not None and self.nargs_max is not None:
@@ -207,8 +216,8 @@ class TaskParser:
             nargs_min: int                            -> Minimum number of arguments. Can't be sued with nargs.
             nargs_max: int                            -> Maximum number of arguments. Can't be sued with nargs.
             choice: list                              -> List of choices.
-            value_min: Union[int, float]              ->
-            value_max: Union[int, float]              ->
+            value_min: Union[int, float]              -> Minimum numerical value.
+            value_max: Union[int, float]              -> Maximum numerical value.
             is_path: bool                             ->
             is_file: bool                             ->
             is_time_stamp: bool                       ->
