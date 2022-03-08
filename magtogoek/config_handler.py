@@ -152,8 +152,8 @@ def get_config_taskparser(sensor_type: Optional[str] = None):
     section = "HEADER"
     tparser.add_option(section, "made_by", dtypes=["str"], default=getpass.getuser())
     tparser.add_option(section, "last_updated", dtypes=["str"], default=datetime.now().strftime("%Y-%m-%d"))
-    tparser.add_option(section, "sensor_type", dtypes=["str"], default="", is_required=True, choice=["adcp"])
-    tparser.add_option(section, "platform_type", dtypes=["str"], default="", choice=["buoy", "mooring", "ship"])
+    tparser.add_option(section, "sensor_type", dtypes=["str"], default="adcp", is_required=True, choice=["adcp"])
+    tparser.add_option(section, "platform_type", dtypes=["str"], choice=["buoy", "mooring", "ship"])
 
     section = "INPUT"
     tparser.add_option(section, "input_files", dtypes=["str"], default="", nargs_min=1, is_file=True, is_required=True)
@@ -208,13 +208,13 @@ def get_config_taskparser(sensor_type: Optional[str] = None):
     if sensor_type == 'adcp':
         section = "ADCP_PROCESSING"
         tparser.add_option(section, "yearbase", dtypes=["int"], default="", is_required=True)
-        tparser.add_option(section, "adcp_orientation", dtypes=["str"], choice=["up", "down"])
+        tparser.add_option(section, "adcp_orientation", dtypes=["str"], default="down", choice=["up", "down"])
         tparser.add_option(section, "sonar", dtypes=["str"], choice=["wh", "sv", "os", "sw", "sw_pd0"], is_required=True)
         tparser.add_option(section, "navigation_file", dtypes=["str"], default="", is_file=True)
         tparser.add_option(section, "leading_trim", dtypes=["int", "str"], default="", is_time_stamp=True)
         tparser.add_option(section, "trailing_trim", dtypes=["int", "str"], default="", is_time_stamp=True)
         tparser.add_option(section, "sensor_depth", dtypes=["float"], default="")
-        tparser.add_option(section, "depth_range", dtypes=["float"], default="()", nargs_min=0, nargs_max=2)
+        tparser.add_option(section, "depth_range", dtypes=["float"], nargs_min=0, nargs_max=2)
         tparser.add_option(section, "bad_pressure", dtypes=["bool"], default=False)
         tparser.add_option(section, "magnetic_declination", dtypes=["float"], default="")
         tparser.add_option(section, "keep_bt", dtypes=["bool"], default=True)
