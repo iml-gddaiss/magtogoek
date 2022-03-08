@@ -218,23 +218,31 @@ class TaskParser:
             choice: list                              -> List of choices.
             value_min: Union[int, float]              -> Minimum numerical value.
             value_max: Union[int, float]              -> Maximum numerical value.
-            is_path: bool                             ->
-            is_file: bool                             ->
-            is_time_stamp: bool                       ->
-            is_required: bool                         ->
-            null_value: Optional[ListStrIntFloatBool] ->
+            is_path: bool                             -> If an existing path is expected.
+            is_file: bool                             -> If an existing file is expected.
+            is_time_stamp: bool                       -> If a timestamp is expected
+            is_required: bool                         -> If a value is required.
+            null_value: Optional[ListStrIntFloatBool] -> Set option to None for this null_value is parsed.
+
 
     Other Methods
     -------------
-    load(input_filename)                         -> dictionary with formatted values.
+    load(input_filename)                         -> load '.ini' and into a dictionary with formatted(parse) values.
     write(output_filename)                       -> writes a .ini file.
     write_from_dict(output_filename, dictionary) -> format and write from a dictionary.
-    as_dict(with_default=False)                  -> dictionary empty fields.
-    parser(with_default=False)                   -> rawconfigparser with empty fields.
+    as_dict(with_default=False)                  -> dictionary empty fields (null_value).
+    parser(with_default=False)                   -> rawconfigparser with empty fields (null_value).
     sections                                     -> list of the section.
     options(section)                             -> list option of a section.
     format_parser_dict(dictionary)               -> formatted dictionary parser.
-    format_option(value, section, option)        -> formatted value.
+    format_option(value, section, option)        -> formatted(parse) single value.
+
+    Notes
+    -----
+    For add_option, a series of check-up is done to ensure coherence e.g. `value_min < default < value_max`.
+    Check-up are yet not done to check if a given `default` value is valid for is_path/is_file/is_time_stamp = True and
+    that the correct dtypes is 'str'.
+    .
     """
 
     def __init__(self):
