@@ -85,6 +85,7 @@ class OptionInfos:
         self._dtypes_check()
         self._value_min_max_check()
         self._nargs_check()
+        self._check_default_choice()
 
     def __setattr__(self, name, value):
         raise AttributeError("ParserInfos attributes cannot be modify.")
@@ -127,9 +128,14 @@ class OptionInfos:
                 "nargs parameter cannot be used with nargs_min or nargs_max."
             )
 
+    def _check_default_choice(self):
+        if self.choice is not None and self.default is not None:
+            if self.default not in self.choice:
+                raise ValueError("Default value must be in given choices.")
+
 
 class TaskParserError(SystemExit):
-    """Handle TaskParser error message."""
+    """Handle TaskParser parsing error message."""
     def __init__(self, error: str, option_info: OptionInfos,
                  value: ListStrIntFloatBool = 'None'):
         self.error = error
@@ -185,25 +191,41 @@ ParserInfos = Dict[str, Dict[str, OptionInfos]]
 
 class TaskParser:
     """
-    Example:
-    parser = TaskParser()
+    Create Parser
+    -------------
+        parser = TaskParser()
+        parser.add_option(section="section0", option="option0", dtypes=["str"], default="")
+        parser.add_option(section="section0", options="option1", dtypes=["str"], default="", is_required=True)
+        parser.add_option(section="section1", options="option0", dtypes=["float"], default="", choice=[1,2,3])
 
-    parser.add_option(section="INPUT", option="made_by", dtypes=["str"], default="")
-    parser.add_option(section, "sensor_type", dtypes=["str"], default="", is_required=True, choice=["adcp"])
-    parser.add_option(section, "platform_type", dtypes=["str"], default="", choice=["buoy", "mooring", "ship"])
+    add_option :
+            section: str                              -> Section's name
+            option: str                               -> Name for the option
+            dtypes: Union[str, List[str]]             -> data types. Different types can be expected ex. [int, str]
+            default: Optional[ListStrIntFloatBool]    -> Default value
+            nargs: int                                -> Number of arguments.
+            nargs_min: int                            -> Minimum number of arguments. Can't be sued with nargs.
+            nargs_max: int                            -> Maximum number of arguments. Can't be sued with nargs.
+            choice: list                              -> List of choices.
+            value_min: Union[int, float]              ->
+            value_max: Union[int, float]              ->
+            is_path: bool                             ->
+            is_file: bool                             ->
+            is_time_stamp: bool                       ->
+            is_required: bool                         ->
+            null_value: Optional[ListStrIntFloatBool] ->
 
-    section = "INPUT"
-    parser.add_option(section, "input_files", dtypes=["str"], default="", nargs_min=1, is_file=True, is_required=True)
-    parser.add_option(section, option, default, ...)
-    parser.load(input_filename) -> dictionary with formatted values.
-    parser.write(output_filename) -> writes a .ini file.
-    parser.write_from_dict(output_filename, dictionary) -> format and write from a dictionary.
-    parser.as_dict(with_default=False) -> dictionary empty fields.
-    parser.parser(with_default=False) -> rawconfigparser with empty fields.
-    parser.sections -> list of the section.
-    parser.options(section) -> list option of a section.
-    parser.format_parser_dict(dictionary) -> formatted dictionary parser.
-    parser.format_option(value, section, option) -> formatted value.
+    Other Methods
+    -------------
+    load(input_filename)                         -> dictionary with formatted values.
+    write(output_filename)                       -> writes a .ini file.
+    write_from_dict(output_filename, dictionary) -> format and write from a dictionary.
+    as_dict(with_default=False)                  -> dictionary empty fields.
+    parser(with_default=False)                   -> rawconfigparser with empty fields.
+    sections                                     -> list of the section.
+    options(section)                             -> list option of a section.
+    format_parser_dict(dictionary)               -> formatted dictionary parser.
+    format_option(value, section, option)        -> formatted value.
     """
 
     def __init__(self):
