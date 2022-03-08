@@ -207,6 +207,8 @@ class TaskParser:
             section: str                              -> Section's name
             option: str                               -> Name for the option
             dtypes: Union[str, List[str]]             -> data types. Different types can be expected ex. [int, str]
+                                                         Try to parse/decode into one of the dtypes returning the first
+                                                         succesfull decoding in this order (float, int, bool, int).
             default: Optional[ListStrIntFloatBool]    -> Default value
             nargs: int                                -> Number of arguments.
             nargs_min: int                            -> Minimum number of arguments. Can't be sued with nargs.
@@ -218,7 +220,7 @@ class TaskParser:
             is_file: bool                             -> If an existing file is expected.
             is_time_stamp: bool                       -> If a timestamp is expected
             is_required: bool                         -> If a value is required.
-            null_value: Optional[ListStrIntFloatBool] -> Set option to None for this null_value is parsed.
+            null_value: Optional[ListStrIntFloatBool] -> Returns `null_value` for empty filled. Default None.
 
 
     Other Methods
@@ -288,11 +290,13 @@ class TaskParser:
         parser = _rawconfigparser()
         for section, options in self._parser_infos.items():
             parser.add_section(section)
-            for option, value in options.items():
-                if with_default is False or value.default is None:
+            for option, option_infos in options.items():
+                if with_default is False or option_infos.default is None:
+                    if option_infos.null_value is not None:
+                        parser[section][option] = str(option_infos.null_value)
                     parser[section][option] = ""
                 else:
-                    parser[section][option] = str(value.default)
+                    parser[section][option] = str(option_infos.default)
 
         return parser
 
@@ -457,9 +461,9 @@ def _add_missing_options(parser_dict: dict, parser_infos: ParserInfos):
             parser_dict[section] = {}
         for option in options.keys():
             if option not in parser_dict[section]:
-                parser_dict[section][option] = None
-                if parser_infos[section][option].null_value is not None:
-                    parser_dict[section][option] = parser_infos[section][option].null_value
+                #parser_dict[section][option] = None                                    # This should be fine.
+                #if parser_infos[section][option].null_value is not None:
+                parser_dict[section][option] = parser_infos[section][option].null_value #null_value == None by default
 
 
 def _format_parser_options(parser_dict: dict, parser_infos: ParserInfos, file_path: Optional[str] = None):
@@ -476,7 +480,6 @@ def _format_parser_options(parser_dict: dict, parser_infos: ParserInfos, file_pa
         length, value, choice,  etc.
 
     """
-    # TODO test
     for section, options in parser_infos.items():
         if section in parser_dict:
             for option in options:
@@ -484,16 +487,14 @@ def _format_parser_options(parser_dict: dict, parser_infos: ParserInfos, file_pa
                     option_info = parser_infos[section][option]
                     value = parser_dict[section][option]
 
-                    if "bool" not in option_info.dtypes:
-                        if not value and value != 0:
-                            value = None
-                            if option_info.is_required is True:
-                                raise TaskParserError("required", option_info, value)
-                    if value is not None:
-                        value = _format_option(parser_dict[section][option], option_info, file_path)
-                    elif option_info.null_value is not None:
-                        value = option_info.null_value
-                    parser_dict[section][option] = value
+                    if value == "":
+                        _value = option_info.null_value
+                        if option_info.is_required is True:
+                            raise TaskParserError("required", option_info, value)
+                    else:
+                        _value = _format_option(parser_dict[section][option], option_info, file_path)
+
+                    parser_dict[section][option] = _value
 
 
 def _format_option(value: str, option_info: OptionInfos, file_path: Optional[str] = None):
@@ -631,7 +632,7 @@ def _check_option_min_max(value: StrIntFloatBool, option_info: OptionInfos) -> S
 
 def main():
     from datetime import datetime
-    REFERENCE = "TODO"
+    REFERENCE = "-"
 
     parser = TaskParser()
 

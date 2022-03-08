@@ -33,7 +33,7 @@ ParserDict = Dict[str, Dict[str, ListStrIntFloatBool]]
 REFERENCE = "https://github.com/JeromeJGuay/magtogoek"
 VALID_SENSOR_TYPES = ['ADCP']
 
-OPTIONS_NAME_TRANSLATOR = dict(
+CONFIG_TO_CLI_MAPS = dict(
     adcp=dict(
         quality_control="qc",
         sidelobes_correction="sidelobes",
@@ -61,7 +61,7 @@ def write_configfile(filename: str, sensor_type: str, cli_options: Optional[dict
     new_values_dict = None
     if cli_options is None:
         _convert_options_names(sensor_type, cli_options)
-        new_values_dict = _format_options_to_config_dict(sensor_type, cli_options)
+        new_values_dict = _format_options_dict_to_config_dict(sensor_type, cli_options)
 
     tparser = get_config_taskparser(sensor_type)
     tparser.write_from_dict(filename=filename,
@@ -95,19 +95,19 @@ def load_configfile(filename: str, new_values_dict: ParserDict = None) -> dict:
     return config, sensor_type
 
 
-def cli_options_to_config(sensor_type: str, options: dict, cwd: str)->ParserDict:
+def cli_options_to_config(sensor_type: str, cli_options: dict, cwd: str)->ParserDict:
     """
 
     Parameters
     ----------
     sensor_type :
-    options :
+    cli_options :
         command line options.
     cwd :
        current working directory.
     """
+    config = _format_options_dict_to_config_dict(sensor_type, cli_options)
     tparser = get_config_taskparser(sensor_type)
-    config = _format_options_to_config_dict(sensor_type, options)
     tparser.format_parser_dict(parser_dict=config, add_missing=True, format_options=True, file_path=cwd)
     return config
 
@@ -117,7 +117,7 @@ def _get_sensor_type(filename):
     return tparser.load(filename)["HEADER"]["sensor_type"]
 
 
-def _format_options_to_config_dict(sensor_type: str, options: dict):
+def _format_options_dict_to_config_dict(sensor_type: str, options: dict):
     """format options into the  configfile structure"""
     _convert_options_names(sensor_type, options)
 
@@ -134,7 +134,7 @@ def _format_options_to_config_dict(sensor_type: str, options: dict):
 
 
 def _convert_options_names(sensor_type: str, options: dict):
-    for key, item in OPTIONS_NAME_TRANSLATOR[sensor_type].items():
+    for key, item in CONFIG_TO_CLI_MAPS[sensor_type].items():
         options[key] = options.pop(item)
 
 
@@ -162,8 +162,8 @@ def get_config_taskparser(sensor_type: Optional[str] = None):
     tparser.add_option(section, "sensor_id", dtypes=["str"], default="")
 
     section = "OUTPUT"
-    tparser.add_option(section, "netcdf_output", dtypes=["str", "bool"], default="", is_path=True)
-    tparser.add_option(section, "odf_output", dtypes=["str", "bool"], default="", is_path=True)
+    tparser.add_option(section, "netcdf_output", dtypes=["str", "bool"], default="", is_path=True, null_value=False)
+    tparser.add_option(section, "odf_output", dtypes=["str", "bool"], default="", is_path=True, null_value=False)
 
     section = "NETCDF_CF"
     tparser.add_option(section, "Conventions", dtypes=["str"], default="CF 1.8")
@@ -215,36 +215,36 @@ def get_config_taskparser(sensor_type: Optional[str] = None):
         tparser.add_option(section, "trailing_trim", dtypes=["int", "str"], default="", is_time_stamp=True)
         tparser.add_option(section, "sensor_depth", dtypes=["float"], default="")
         tparser.add_option(section, "depth_range", dtypes=["float"], nargs_min=0, nargs_max=2)
-        tparser.add_option(section, "bad_pressure", dtypes=["bool"], default=False)
+        tparser.add_option(section, "bad_pressure", dtypes=["bool"], default=False, null_value=False)
         tparser.add_option(section, "magnetic_declination", dtypes=["float"], default="")
-        tparser.add_option(section, "keep_bt", dtypes=["bool"], default=True)
+        tparser.add_option(section, "keep_bt", dtypes=["bool"], default=True, null_value=False)
         tparser.add_option(section, "start_time", dtypes=["str"], default="", is_time_stamp=True)
         tparser.add_option(section, "time_step", dtypes=["float"], default="")
 
         section = "ADCP_QUALITY_CONTROL"
-        tparser.add_option(section, "quality_control", dtypes=["bool"], default=True)
+        tparser.add_option(section, "quality_control", dtypes=["bool"], default=True, null_value=False)
         tparser.add_option(section, "amplitude_threshold", dtypes=["int"], default=0, value_min=0, value_max=255)
         tparser.add_option(section, "percentgood_threshold", dtypes=["int"], default=64, value_min=0, value_max=100)
         tparser.add_option(section, "correlation_threshold", dtypes=["int"], default=90, value_min=0, value_max=255)
         tparser.add_option(section, "horizontal_velocity_threshold", dtypes=["float"], default=5)
         tparser.add_option(section, "vertical_velocity_threshold", dtypes=["float"], default=5)
         tparser.add_option(section, "error_velocity_threshold", dtypes=["float"], default=5)
-        tparser.add_option(section, "sidelobes_correction", dtypes=["bool"], default=True)
+        tparser.add_option(section, "sidelobes_correction", dtypes=["bool"], default=True, null_value=False)
         tparser.add_option(section, "bottom_depth", dtypes=["float"])
         tparser.add_option(section, "pitch_threshold", dtypes=["int"], default=20, value_min=0, value_max=180, )
         tparser.add_option(section, "roll_threshold", dtypes=["int"], default=20, value_min=0, value_max=180)
         tparser.add_option(section, "motion_correction_mode", dtypes=["str"], default="bt", choice=["bt", "nav", "off"])
 
         section = "ADCP_OUTPUT"
-        tparser.add_option(section, "merge_output_files", dtypes=["bool"], default=True)
-        tparser.add_option(section, "bodc_name", dtypes=["bool"], default=True)
-        tparser.add_option(section, "force_platform_metadata", dtypes=["bool"], default=False)
-        tparser.add_option(section, "drop_percent_good", dtypes=["bool"], default=True)
-        tparser.add_option(section, "drop_correlation", dtypes=["bool"], default=True)
-        tparser.add_option(section, "drop_amplitude", dtypes=["bool"], default=True)
+        tparser.add_option(section, "merge_output_files", dtypes=["bool"], default=True, null_value=False)
+        tparser.add_option(section, "bodc_name", dtypes=["bool"], default=True, null_value=False)
+        tparser.add_option(section, "force_platform_metadata", dtypes=["bool"], default=False, null_value=False)
+        tparser.add_option(section, "drop_percent_good", dtypes=["bool"], default=True, null_value=False)
+        tparser.add_option(section, "drop_correlation", dtypes=["bool"], default=True, null_value=False)
+        tparser.add_option(section, "drop_amplitude", dtypes=["bool"], default=True, null_value=False)
         tparser.add_option(section, "odf_data", dtypes=["str"], default="both", choice=["vel", "anc", "both"])
-        tparser.add_option(section, "make_figures", dtypes=["bool"], default=True)
-        tparser.add_option(section, "make_log", dtypes=["bool"], default=True)
+        tparser.add_option(section, "make_figures", dtypes=["bool"], default=True, null_value=False)
+        tparser.add_option(section, "make_log", dtypes=["bool"], default=True, null_value=False)
 
     return tparser
 
