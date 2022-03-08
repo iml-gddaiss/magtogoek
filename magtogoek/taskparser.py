@@ -10,7 +10,7 @@ from pathlib import Path
 from datetime import timezone
 import click
 import dateutil.parser
-from magtogoek.utils import get_files_from_expression
+from magtogoek.utils import get_files_from_expression, ensure_list_format
 
 
 TRUE_VALUES = ["True", "true", "T", "t","On", "on"]
@@ -63,8 +63,8 @@ class OptionInfos:
             is_required: bool = False,
             null_value: Optional[ListStrIntFloatBool] = None,
     ):
-        if not isinstance(dtypes, (list, tuple)):
-            dtypes = [dtypes]
+        dtypes = ensure_list_format(dtypes)
+
         object.__setattr__(self, "section", section)
         object.__setattr__(self, "option", option)
         object.__setattr__(self, "dtypes", dtypes)
@@ -103,21 +103,17 @@ class OptionInfos:
                     raise ValueError(f"{option} argument expected a list.")
 
     def _dtypes_check(self):
-        if self.dtypes is not None:
-            if isinstance(self.dtypes, list):
-                raise ValueError(f"`dtypes` parameter expected a list not {type(self.dtypes)}")
-            for e in self.dtypes:
-                if e not in VALID_DTYPES:
-                    raise ValueError(
-                        f"{e} is not a valid dtype. dtypes must be one of {VALID_DTYPES}."
-                    )
+        for e in self.dtypes:
+            if e not in VALID_DTYPES:
+                raise ValueError(f"{e} is not a valid dtype. dtypes must be one of {VALID_DTYPES}.")
 
     def _value_min_max_check(self):
         if self.value_min is not None and self.value_max is not None:
-            if 'int' not in self.dtypes or 'float' not in self.dtypes:
-                raise ValueError('value_min and value_max can only be used for int or float.')
             if self.value_min > self.value_max:
                 raise ValueError("value_max must be greater than value_min.")
+        if self.value_min is not None or self.value_max is not None:
+            if 'int' not in self.dtypes and 'float' not in self.dtypes:
+                raise ValueError('value_min and value_max can only be used for int or float.')
         if self.default is not None:
             if self.value_min is not None:
                 if self.default > self.value_max:
