@@ -43,7 +43,7 @@ def _add_buoy_specs() -> dict:
     )
 
 
-def _add_sensors()->dict:
+def _add_sensors() -> dict:
     return dict(
         sensor_type=None,
         sensor_depth=None,
