@@ -4,6 +4,7 @@ Made by JeromeJGuay
 """
 
 import getpass
+import sys
 from typing import List, Union, Dict, Optional
 from configparser import RawConfigParser
 from pathlib import Path
@@ -334,8 +335,9 @@ class TaskParser:
         -------
 
         """
+
         if new_values_dict is not None:
-            _update_parser_values(parser_dict, new_values_dict)
+            _update_parser_values(parser_dict=parser_dict, parser_infos=self._parser_infos, values_dict=new_values_dict)
 
         if format_options is True:
             _format_parser_options(parser_dict=parser_dict, parser_infos=self._parser_infos, file_path=file_path)
@@ -440,18 +442,20 @@ class TaskParser:
             parser.write(f)
 
 
+def _update_parser_values(parser_dict: dict, parser_infos: ParserInfos, values_dict: Optional[dict] = None):
+    for section, options in values_dict.items():
+        if section in parser_dict:
+            for option, value in options.items():
+                if value is None:
+                    parser_dict[section][option] = parser_infos[section][option].null_value
+                else:
+                    parser_dict[section][option] = str(value)
+
+
 def _rawconfigparser():
     parser: RawConfigParser = RawConfigParser()
     parser.optionxform = str
     return parser
-
-
-def _update_parser_values(parser: dict, values_dict: Optional[dict] = None):
-    for section, options in values_dict.items():
-        if section in parser:
-            for option, value in options.items():
-                parser[section][option] = "" if value is None else str(value)
-        return parser
 
 
 def _add_missing_options(parser_dict: dict, parser_infos: ParserInfos):
@@ -467,9 +471,7 @@ def _add_missing_options(parser_dict: dict, parser_infos: ParserInfos):
             parser_dict[section] = {}
         for option in options.keys():
             if option not in parser_dict[section]:
-                #parser_dict[section][option] = None                                    # This should be fine.
-                #if parser_infos[section][option].null_value is not None:
-                parser_dict[section][option] = parser_infos[section][option].null_value #null_value == None by default
+                parser_dict[section][option] = parser_infos[section][option].null_value
 
 
 def _format_parser_options(parser_dict: dict, parser_infos: ParserInfos, file_path: Optional[str] = None):

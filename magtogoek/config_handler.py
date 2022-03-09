@@ -54,7 +54,6 @@ def _format_cli_options_to_config_dict(sensor_type: str, tparser: TaskParser, cl
     Put the options under the correction sections.
     """
     _map_cli_options_names_to_config_names(sensor_type, cli_options)
-
     config_struct = _get_configparser_structure(tparser.as_dict())
     cli_config = {section: {} for section in tparser.sections}
     for option, value in cli_options.items():
@@ -65,7 +64,8 @@ def _format_cli_options_to_config_dict(sensor_type: str, tparser: TaskParser, cl
 
 def _map_cli_options_names_to_config_names(sensor_type: str, cli_options: dict):
     for key, item in CONFIG_TO_CLI_MAPS[sensor_type].items():
-        cli_options[key] = cli_options.pop(item)
+        if item in cli_options:
+            cli_options[key] = cli_options.pop(item)
 
 
 def _get_configparser_structure(configparser: Dict) -> Dict:

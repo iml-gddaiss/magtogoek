@@ -104,18 +104,19 @@ def process(info, config_file: str, **options):
     # command is already able to take updated_params options and update de configfile.
     # The same options (or nearly all the same) as for adcp_config could be use.
     from configparser import ParsingError
-
     from magtogoek.config_handler import load_configfile
 
+    cli_options = {}
+    if options['mk_fig'] is not None:
+        cli_options['mk_fig'] = options['mk_fig']
+
     try:
-        configuration, sensor_type = load_configfile(config_file)
+        configuration, sensor_type = load_configfile(config_file, cli_options=cli_options)
     except (ParsingError, UnicodeDecodeError):
         print("Failed to open the given configfile.\n mtgk process aborted.")
         sys.exit()
-    if options['mk_fig'] is not None:
-        configuration['ADCP_OUTPUT']["make_figures"] = options['mk_fig']
-    # TODO could be given to load_configfile
 
+    # TODO could be given to load_configfile
     if sensor_type == "adcp":
         from magtogoek.adcp.process import process_adcp
 
