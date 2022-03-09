@@ -116,7 +116,6 @@ def process(info, config_file: str, **options):
         print("Failed to open the given configfile.\n mtgk process aborted.")
         sys.exit()
 
-    # TODO could be given to load_configfile
     if sensor_type == "adcp":
         from magtogoek.adcp.process import process_adcp
 
