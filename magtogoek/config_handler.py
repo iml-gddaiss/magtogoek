@@ -48,6 +48,34 @@ CONFIG_TO_CLI_MAPS = dict(
 )
 
 
+def _format_cli_options_to_config_dict(sensor_type: str, tparser: TaskParser, cli_options: dict) -> ParserDict:
+    """Put the cli_options dict into a config_dict (ParserDict) structure.
+
+    Put the options under the correction sections.
+    """
+    _map_cli_options_names_to_config_names(sensor_type, cli_options)
+
+    config_struct = _get_configparser_structure(tparser.as_dict())
+    cli_config = {section: {} for section in tparser.sections}
+    for option, value in cli_options.items():
+        if value is not None and option in config_struct.keys():
+            cli_config[config_struct[option]][option] = str(value)
+    return cli_config
+
+
+def _map_cli_options_names_to_config_names(sensor_type: str, cli_options: dict):
+    for key, item in CONFIG_TO_CLI_MAPS[sensor_type].items():
+        cli_options[key] = cli_options.pop(item)
+
+
+def _get_configparser_structure(configparser: Dict) -> Dict:
+    parser_struct = dict()
+    for section, items in configparser.items():
+        for item in items:
+            parser_struct[item] = section
+    return parser_struct
+
+
 def write_configfile(filename: str, sensor_type: str, cli_options: Optional[dict] = None):
     """Make a configfile for the given sensor_type.
 
@@ -58,19 +86,16 @@ def write_configfile(filename: str, sensor_type: str, cli_options: Optional[dict
     cli_options :
         command line options.
     """
-    new_values_dict = None
-    if cli_options is None:
-        _convert_options_names(sensor_type, cli_options)
-        new_values_dict = _format_options_dict_to_config_dict(sensor_type, cli_options)
-
     tparser = get_config_taskparser(sensor_type)
-    tparser.write_from_dict(filename=filename,
-                            parser_dict=tparser.as_dict(),
-                            format_options=False,
-                            new_values_dict=new_values_dict)
+
+    cli_config = None
+    if cli_options is not None:
+        cli_config = _format_cli_options_to_config_dict(sensor_type, tparser, cli_options)
+
+    tparser.write_from_dict(filename=filename, parser_dict=cli_config, add_missing=True, format_options=False)
 
 
-def load_configfile(filename: str, new_values_dict: ParserDict = None) -> dict:
+def load_configfile(filename: str, cli_options: Optional[dict] = None) -> ParserDict:
     """load a configfile.
 
     Returns parser as a dictionary with the appropriate types.
@@ -87,15 +112,16 @@ def load_configfile(filename: str, new_values_dict: ParserDict = None) -> dict:
     sensor_type = _get_sensor_type(filename)
     tparser = get_config_taskparser(sensor_type)
 
-    config = tparser.load(filename, add_missing=True, new_values_dict=new_values_dict)
+    cli_config = None
+    if cli_options is not None:
+        cli_config = _format_cli_options_to_config_dict(sensor_type, tparser, cli_options)
 
-    if new_values_dict is not None:
-        tparser.write_from_dict(filename, config)
+    config = tparser.load(filename, add_missing=True, new_values_dict=cli_config, format_options=True)
 
     return config, sensor_type
 
 
-def cli_options_to_config(sensor_type: str, cli_options: dict, cwd: str)->ParserDict:
+def cli_options_to_config(sensor_type: str, cli_options: dict, cwd: Optional[str] = None) -> ParserDict:
     """
 
     Parameters
@@ -106,44 +132,18 @@ def cli_options_to_config(sensor_type: str, cli_options: dict, cwd: str)->Parser
     cwd :
        current working directory.
     """
-    config = _format_options_dict_to_config_dict(sensor_type, cli_options)
     tparser = get_config_taskparser(sensor_type)
-    tparser.format_parser_dict(parser_dict=config, add_missing=True, format_options=True, file_path=cwd)
-    return config
+    config = tparser.as_dict(with_default=True)
+    cli_config = _format_cli_options_to_config_dict(sensor_type, tparser, cli_options)
+
+    tparser.format_parser_dict(parser_dict=cli_config, add_missing=True, format_options=True, file_path=cwd)
+
+    return cli_config
 
 
 def _get_sensor_type(filename):
     tparser = get_config_taskparser()
     return tparser.load(filename)["HEADER"]["sensor_type"]
-
-
-def _format_options_dict_to_config_dict(sensor_type: str, options: dict):
-    """format options into the  configfile structure"""
-    _convert_options_names(sensor_type, options)
-
-    config = get_config_taskparser(sensor_type=sensor_type).as_dict()
-    config_struct = _get_configparser_structure(config)
-
-    for option, value in options.items():
-        if value is not None:
-            config[config_struct[option]][option] = str(value)
-
-    config['HEADER']['sensor_type'] = sensor_type
-
-    return config
-
-
-def _convert_options_names(sensor_type: str, options: dict):
-    for key, item in CONFIG_TO_CLI_MAPS[sensor_type].items():
-        options[key] = options.pop(item)
-
-
-def _get_configparser_structure(configparser: Dict) -> Dict:
-    parser_struct = dict()
-    for section, items in configparser.items():
-        for item in items:
-            parser_struct[item] = section
-    return parser_struct
 
 
 def get_config_taskparser(sensor_type: Optional[str] = None):
@@ -152,14 +152,14 @@ def get_config_taskparser(sensor_type: Optional[str] = None):
     section = "HEADER"
     tparser.add_option(section, "made_by", dtypes=["str"], default=getpass.getuser())
     tparser.add_option(section, "last_updated", dtypes=["str"], default=datetime.now().strftime("%Y-%m-%d"))
-    tparser.add_option(section, "sensor_type", dtypes=["str"], default="adcp", is_required=True, choice=["adcp"])
+    tparser.add_option(section, "sensor_type", dtypes=["str"], default=sensor_type, is_required=True, choice=["adcp"])
     tparser.add_option(section, "platform_type", dtypes=["str"], choice=["buoy", "mooring", "ship"])
 
     section = "INPUT"
     tparser.add_option(section, "input_files", dtypes=["str"], default="", nargs_min=1, is_file=True, is_required=True)
-    tparser.add_option(section, "platform_file", dtypes=["str"], default="", is_file=True)
-    tparser.add_option(section, "platform_id", dtypes=["str"], default="")
-    tparser.add_option(section, "sensor_id", dtypes=["str"], default="")
+    tparser.add_option(section, "platform_file", dtypes=["str"], default=None, is_file=True)
+    tparser.add_option(section, "platform_id", dtypes=["str"], default=None)
+    tparser.add_option(section, "sensor_id", dtypes=["str"], default=None)
 
     section = "OUTPUT"
     tparser.add_option(section, "netcdf_output", dtypes=["str", "bool"], default="", is_path=True, null_value=False)
@@ -209,7 +209,8 @@ def get_config_taskparser(sensor_type: Optional[str] = None):
         section = "ADCP_PROCESSING"
         tparser.add_option(section, "yearbase", dtypes=["int"], default="", is_required=True)
         tparser.add_option(section, "adcp_orientation", dtypes=["str"], default="down", choice=["up", "down"])
-        tparser.add_option(section, "sonar", dtypes=["str"], choice=["wh", "sv", "os", "sw", "sw_pd0"], is_required=True)
+        tparser.add_option(section, "sonar", dtypes=["str"], choice=["wh", "sv", "os", "sw", "sw_pd0"],
+                           is_required=True)
         tparser.add_option(section, "navigation_file", dtypes=["str"], default="", is_file=True)
         tparser.add_option(section, "leading_trim", dtypes=["int", "str"], default="", is_time_stamp=True)
         tparser.add_option(section, "trailing_trim", dtypes=["int", "str"], default="", is_time_stamp=True)

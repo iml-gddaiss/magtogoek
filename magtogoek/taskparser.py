@@ -286,22 +286,28 @@ class TaskParser:
             choice, value_min, value_max, is_path, is_file, is_time_stamp, is_required, null_value
         )
 
-    def parser(self, with_default: bool = True) -> RawConfigParser:
-        parser = _rawconfigparser()
+    def configparser(self, with_default: bool = True) -> RawConfigParser:
+        configparser = _rawconfigparser()
         for section, options in self._parser_infos.items():
-            parser.add_section(section)
+            configparser.add_section(section)
             for option, option_infos in options.items():
                 if with_default is False or option_infos.default is None:
-                    if option_infos.null_value is not None:
-                        parser[section][option] = str(option_infos.null_value)
-                    parser[section][option] = ""
+                    configparser[section][option] = ""
                 else:
-                    parser[section][option] = str(option_infos.default)
+                    configparser[section][option] = str(option_infos.default)
 
-        return parser
+        return configparser
 
     def as_dict(self, with_default: bool = True) -> ParserDict:
-        return self.parser(with_default)._sections
+        config = {k: {} for k in self._parser_infos.keys()}
+        for section, options in self._parser_infos.items():
+            for option, option_infos in options.items():
+                if with_default is True:
+                    config[section][option] = option_infos.default
+                else:
+                    config[section][option] = option_infos.null_value
+
+        return config
 
     def format_parser_dict(
             self, parser_dict: dict,
@@ -385,16 +391,17 @@ class TaskParser:
         filename:
             path/to/filename
         new_values_dict:
-            dictionary with the same structure as the parser. New value to use.
+            dictionary with the same structure as the parser. New value to use. (update)
         """
         if new_values_dict is None:
             with open(filename, "w") as f:
-                self.parser.write(Path(f).with_suffix('.ini'))
+                self.configparser().write(Path(f).with_suffix('.ini'))
         else:
             self.write_from_dict(filename,
                                  parser_dict=self.as_dict(),
                                  add_missing=False,
-                                 new_values_dict=new_values_dict)
+                                 new_values_dict=new_values_dict,
+                                 format_options=True)
 
     def write_from_dict(self, filename: str, parser_dict: ParserDict,
                         add_missing: bool = True,
@@ -417,18 +424,17 @@ class TaskParser:
            If True, the loaded config options will be formatted.
 
         """
+        self.format_parser_dict(parser_dict, add_missing=add_missing, new_values_dict=new_values_dict,
+                                format_options=format_options)
+
         parser = _rawconfigparser()
         for section, options in parser_dict.items():
             parser.add_section(section)
             for option, value in options.items():
-                if value is None:
+                if value == self._parser_infos[section][option].null_value:
                     parser[section][option] = ""
                 else:
                     parser[section][option] = str(value)
-
-        parser_dict = parser._sections
-        self.format_parser_dict(parser_dict, add_missing=add_missing, new_values_dict=new_values_dict,
-                                format_options=format_options)
 
         with open(Path(filename).with_suffix('.ini'), "w") as f:
             parser.write(f)

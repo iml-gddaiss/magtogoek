@@ -114,6 +114,7 @@ def process(info, config_file: str, **options):
         sys.exit()
     if options['mk_fig'] is not None:
         configuration['ADCP_OUTPUT']["make_figures"] = options['mk_fig']
+    # TODO could be given to load_configfile
 
     if sensor_type == "adcp":
         from magtogoek.adcp.process import process_adcp
@@ -186,6 +187,9 @@ def config_adcp(
 
     _print_passed_options(options)
     config_name = is_valid_filename(config_name, ext=".ini")
+    options['sensor_type'] = 'adcp'
+    options.update({k: v for k, v in zip(("platform_file", "platform_id", "sensor_id"), options.pop('platform'))})
+
     write_configfile(filename=config_name, sensor_type="adcp", cli_options=options)
     click.secho(f"Config file created for adcp processing -> {config_name}", bold=True)
 
@@ -207,15 +211,14 @@ def config_adcp(
 @click.option("-T", "--platform_type", type=click.Choice(["buoy", "mooring", "ship"]),
               help="Used for Proper BODC variables names", default="buoy")
 @click.pass_context
-def quick_adcp(ctx, info, input_files, sonar, yearbase, **options):
+def quick_adcp(ctx, info, input_files: tuple, sonar: str, yearbase: int, **options: dict):
     """Command to make an quickly process adcp files. The [OPTIONS] can be added
     before or after the [inputs_files]."""
     # TODO TEST. So far not crashing
     from magtogoek.config_handler import cli_options_to_config
     from magtogoek.adcp.process import process_adcp
-    options = {**{"input_files": input_files, "yearbase": yearbase, "sonar": sonar}, **options}
+    options.update({"input_files": input_files, "sensor_type": "adcp", "yearbase": yearbase, "sonar": sonar})
     _print_passed_options(options)
-
     configuration = cli_options_to_config('adcp', options, cwd=str(Path().cwd()))
 
     process_adcp(configuration, drop_empty_attrs=True)
