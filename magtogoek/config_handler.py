@@ -117,7 +117,7 @@ def load_configfile(filename: str, cli_options: Optional[dict] = None) -> Parser
         cli_config = _format_cli_options_to_config_dict(sensor_type, tparser, cli_options)
 
     config = tparser.load(filename, add_missing=True, new_values_dict=cli_config, format_options=True)
-
+ 
     return config, sensor_type
 
 
