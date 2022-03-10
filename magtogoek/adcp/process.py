@@ -708,7 +708,7 @@ def _apply_magnetic_correction(dataset: xr.Dataset, magnetic_declination: float)
         l.log(f"Heading transformed to true north.")
 
 
-def _get_datetime_and_count(trim_arg: str):
+def _get_datetime_and_count(trim_arg: tp.Union[str, int]):
     """Get datetime and count from trim_arg.
 
     If `trim_arg` is None, returns (None, None)
@@ -724,7 +724,9 @@ def _get_datetime_and_count(trim_arg: str):
 
     """
     if trim_arg:
-        if not trim_arg.isdecimal():
+        if isinstance(trim_arg, int):
+            return None, trim_arg
+        elif not trim_arg.isdecimal():
             try:
                 return pd.Timestamp(trim_arg), None
             except ValueError:
