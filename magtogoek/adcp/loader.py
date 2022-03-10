@@ -174,7 +174,9 @@ def load_adcp_binary(
                 f"ERROR: The input_files are not in a RDI pd0 format. RDI sonar : {RDI_SONAR}"
             )
             sys.exit()
-
+        if leading_index is not None or trailing_index is not None:
+            l.log(f"Time index cut: leading={0 if leading_index is None else leading_index}, "
+                  f"trailing={0 if trailing_index is None else trailing_index}")
         # Reading the files FixedLeaders to check for invalid config.
         # noinspection PyTupleAssignmentBalance
         data.sysconfig["up"], invalid_config_count = check_pd0_fixed_leader(

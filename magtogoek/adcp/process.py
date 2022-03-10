@@ -832,7 +832,7 @@ def cut_bin_depths(
 
 
 def cut_times(
-        dataset: xr.Dataset, start_time: str = None, end_time: str = None
+        dataset: xr.Dataset, start_time: pd.Timestamp = None, end_time: pd.Timestamp = None
 ) -> xr.Dataset:
     """
     Return a dataset with time cut if they are not outside the dataset time span.
@@ -849,17 +849,24 @@ def cut_times(
     dataset with times cut.
 
     """
+    msg = []
     out_off_bound_time = False
     if start_time is not None:
         if start_time > dataset.time.max():
             out_off_bound_time = True
+        else:
+            msg.append(f"Start={start_time.strftime('%Y-%m-%dT%H:%M:%S')}")
     if end_time is not None:
         if end_time < dataset.time.min():
             out_off_bound_time = True
+        else:
+            msg.append(f"end={end_time.strftime('%Y-%m-%dT%H:%M:%S')}")
     if out_off_bound_time is True:
         l.warning("Trimming datetimes out of bounds. Time slicing aborted.")
     else:
         dataset = dataset.sel(time=slice(start_time, end_time))
+        if len(msg) > 0:
+            l.log('Time slicing: ' + ', '.join(msg) + '.')
 
     return dataset
 
