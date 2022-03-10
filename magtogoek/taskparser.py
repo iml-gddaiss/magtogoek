@@ -396,8 +396,8 @@ class TaskParser:
             dictionary with the same structure as the parser. New value to use. (update)
         """
         if new_values_dict is None:
-            with open(filename, "w") as f:
-                self.configparser().write(Path(f).with_suffix('.ini'))
+            with open(Path(filename).with_suffix('.ini'), "w") as f:
+                self.configparser().write(f)
         else:
             self.write_from_dict(filename,
                                  parser_dict=self.as_dict(),
@@ -421,7 +421,7 @@ class TaskParser:
         add_missing:
             If True, adds the missing option with empty fields.
         new_values_dict:
-            dictionary with the same structure as the parser. New values to use.
+            dictionary with the same structure as the configparser. New values to use.
         format_options :
            If True, the loaded config options will be formatted.
 
@@ -429,17 +429,17 @@ class TaskParser:
         self.format_parser_dict(parser_dict, add_missing=add_missing, new_values_dict=new_values_dict,
                                 format_options=format_options)
 
-        parser = _rawconfigparser()
+        configparser = _rawconfigparser()
         for section, options in parser_dict.items():
-            parser.add_section(section)
+            configparser.add_section(section)
             for option, value in options.items():
                 if value == self._parser_infos[section][option].null_value:
-                    parser[section][option] = ""
+                    configparser[section][option] = ""
                 else:
-                    parser[section][option] = str(value)
+                    configparser[section][option] = str(value)
 
         with open(Path(filename).with_suffix('.ini'), "w") as f:
-            parser.write(f)
+            configparser.write(f)
 
 
 def _update_parser_values(parser_dict: dict, parser_infos: ParserInfos, values_dict: Optional[dict] = None):
@@ -453,7 +453,7 @@ def _update_parser_values(parser_dict: dict, parser_infos: ParserInfos, values_d
 
 
 def _rawconfigparser():
-    parser: RawConfigParser = RawConfigParser()
+    parser: RawConfigParser = RawConfigParser(inline_comment_prefixes=(';;',))
     parser.optionxform = str
     return parser
 
