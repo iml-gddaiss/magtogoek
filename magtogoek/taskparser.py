@@ -13,8 +13,7 @@ import click
 import dateutil.parser
 from magtogoek.utils import get_files_from_expression, ensure_list_format
 
-
-TRUE_VALUES = ["True", "true", "T", "t","On", "on"]
+TRUE_VALUES = ["True", "true", "T", "t", "On", "on"]
 FALSE_VALUES = ["False", "False", "F", "f", "Off", "off", ""]
 VALID_DTYPES = ["str", "int", "float", "bool"]
 
@@ -145,6 +144,7 @@ class OptionInfos:
 
 class TaskParserError(SystemExit):
     """Handle TaskParser parsing error message."""
+
     def __init__(self, error: str, option_info: OptionInfos,
                  value: ListStrIntFloatBool = 'None'):
         self.error = error
@@ -253,7 +253,7 @@ class TaskParser:
     .
     """
 
-    def __init__(self, inline_comment_prefixes: Tuple[str] = (';;', ), comment_prefixes: Tuple[str] = (';;', )):
+    def __init__(self, inline_comment_prefixes: Tuple[str] = (';;',), comment_prefixes: Tuple[str] = (';;',)):
         self._parser_infos: ParserInfos = {}
         self.inline_comment_prefixes: Tuple[str] = inline_comment_prefixes
         self.comment_prefixes: Tuple[str] = comment_prefixes
@@ -313,8 +313,8 @@ class TaskParser:
         -------
 
         """
-        configparser = _rawconfigparser(inline_comment_prefixes = self.inline_comment_prefixes,
-                                        comment_prefixes = self.comment_prefixes)
+        configparser = _rawconfigparser(inline_comment_prefixes=self.inline_comment_prefixes,
+                                        comment_prefixes=self.comment_prefixes)
         for section, options in self._parser_infos.items():
             configparser.add_section(section)
             for option, option_infos in options.items():
@@ -323,7 +323,7 @@ class TaskParser:
                 else:
                     value = str(option_infos.default)
                 if with_comments is True and self._parser_infos[section][option].comments is not None:
-                     value += f"    ;;{self._parser_infos[section][option].comments}"
+                    value += f"    ;;{self._parser_infos[section][option].comments}"
                 configparser[section][option] = value
 
         return configparser
@@ -408,8 +408,8 @@ class TaskParser:
         """
         file_path = str(Path(filename).absolute().parent)
 
-        parser = _rawconfigparser(inline_comment_prefixes = self.inline_comment_prefixes,
-                                  comment_prefixes = self.comment_prefixes)
+        parser = _rawconfigparser(inline_comment_prefixes=self.inline_comment_prefixes,
+                                  comment_prefixes=self.comment_prefixes)
         parser.read(filename)
         parser_dict = parser._sections
 
@@ -474,13 +474,13 @@ class TaskParser:
         self.format_parser_dict(parser_dict, add_missing=add_missing, new_values_dict=new_values_dict,
                                 format_options=format_options)
 
-        configparser = _rawconfigparser(inline_comment_prefixes = self.inline_comment_prefixes,
-                                        comment_prefixes = self.comment_prefixes)
+        configparser = _rawconfigparser(inline_comment_prefixes=self.inline_comment_prefixes,
+                                        comment_prefixes=self.comment_prefixes)
         for section, options in parser_dict.items():
             configparser.add_section(section)
             for option, value in options.items():
                 comments = ""
-                if option in self._parser_infos[section]:                     
+                if option in self._parser_infos[section]:
                     if value == self._parser_infos[section][option].null_value:
                         value = None
                     if with_comments is True and self._parser_infos[section][option].comments is not None:
@@ -577,14 +577,14 @@ def _format_option(value: str, option_info: OptionInfos, file_path: Optional[str
         values = []
         for i, _value in enumerate(value):
             _value = _format_option_type(_value, option_info, file_path)
-            if isinstance(_value, list): #quick fix
-                values +=_value
+            if isinstance(_value, list):  # quick fix
+                values += _value
             else:
                 values.append(_value)
         value = values
     else:
         value = _format_option_type(value, option_info, file_path)
-        if isinstance(value, list): #quick fix
+        if isinstance(value, list):  # quick fix
             value = value[0]
 
     return value
