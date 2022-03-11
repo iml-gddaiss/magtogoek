@@ -152,8 +152,8 @@ def get_config_taskparser(sensor_type: Optional[str] = None):
     section = "HEADER"
     tparser.add_option(section, "made_by", dtypes=["str"], default=getpass.getuser())
     tparser.add_option(section, "last_updated", dtypes=["str"], default=datetime.now().strftime("%Y-%m-%d"))
-    tparser.add_option(section, "sensor_type", dtypes=["str"], default=sensor_type, is_required=True, choice=["adcp"])
-    tparser.add_option(section, "platform_type", dtypes=["str"], choice=["buoy", "mooring", "ship"])
+    tparser.add_option(section, "sensor_type", dtypes=["str"], default=sensor_type, is_required=True, choice=["adcp"], comments='One of [adcp, ].')
+    tparser.add_option(section, "platform_type", dtypes=["str"], choice=["buoy", "mooring", "ship"], comments='One of [buoy, mooring, ship, ].')
 
     section = "INPUT"
     tparser.add_option(section, "input_files", dtypes=["str"], default="", nargs_min=1, is_file=True, is_required=True)
@@ -208,8 +208,8 @@ def get_config_taskparser(sensor_type: Optional[str] = None):
     if sensor_type == 'adcp':
         section = "ADCP_PROCESSING"
         tparser.add_option(section, "yearbase", dtypes=["int"], default="", is_required=True)
-        tparser.add_option(section, "adcp_orientation", dtypes=["str"], default="down", choice=["up", "down"])
-        tparser.add_option(section, "sonar", dtypes=["str"], choice=["wh", "sv", "os", "sw", "sw_pd0"],
+        tparser.add_option(section, "adcp_orientation", dtypes=["str"], default="down", choice=["up", "down"], comments='up or down')
+        tparser.add_option(section, "sonar", dtypes=["str"], choice=["wh", "sv", "os", "sw", "sw_pd0"], comments='[wh, sv, os, sw, sw_pd0, ]',
                            is_required=True)
         tparser.add_option(section, "navigation_file", dtypes=["str"], default="", is_file=True)
         tparser.add_option(section, "leading_trim", dtypes=["int", "str"], default="", is_time_stamp=True)
@@ -224,17 +224,17 @@ def get_config_taskparser(sensor_type: Optional[str] = None):
 
         section = "ADCP_QUALITY_CONTROL"
         tparser.add_option(section, "quality_control", dtypes=["bool"], default=True, null_value=False)
-        tparser.add_option(section, "amplitude_threshold", dtypes=["int"], default=0, value_min=0, value_max=255)
-        tparser.add_option(section, "percentgood_threshold", dtypes=["int"], default=64, value_min=0, value_max=100)
-        tparser.add_option(section, "correlation_threshold", dtypes=["int"], default=90, value_min=0, value_max=255)
+        tparser.add_option(section, "amplitude_threshold", dtypes=["int"], default=0, value_min=0, value_max=255, comments='Value between 0 and 255.')
+        tparser.add_option(section, "percentgood_threshold", dtypes=["int"], default=64, value_min=0, value_max=100, comments='Value between 0 and 100.')
+        tparser.add_option(section, "correlation_threshold", dtypes=["int"], default=90, value_min=0, value_max=255, comments='Value between 0 and 255.')
         tparser.add_option(section, "horizontal_velocity_threshold", dtypes=["float"], default=5)
         tparser.add_option(section, "vertical_velocity_threshold", dtypes=["float"], default=5)
         tparser.add_option(section, "error_velocity_threshold", dtypes=["float"], default=5)
         tparser.add_option(section, "sidelobes_correction", dtypes=["bool"], default=True, null_value=False)
         tparser.add_option(section, "bottom_depth", dtypes=["float"])
-        tparser.add_option(section, "pitch_threshold", dtypes=["int"], default=20, value_min=0, value_max=180, )
-        tparser.add_option(section, "roll_threshold", dtypes=["int"], default=20, value_min=0, value_max=180)
-        tparser.add_option(section, "motion_correction_mode", dtypes=["str"], default="bt", choice=["bt", "nav", "off"])
+        tparser.add_option(section, "pitch_threshold", dtypes=["int"], default=20, value_min=0, value_max=180, comments='Value between 0 and 180.')
+        tparser.add_option(section, "roll_threshold", dtypes=["int"], default=20, value_min=0, value_max=180, comments='Value between 0 and 180.')
+        tparser.add_option(section, "motion_correction_mode", dtypes=["str"], default="bt", choice=["bt", "nav", "off"], comments='[bt, nav, off, ].')
 
         section = "ADCP_OUTPUT"
         tparser.add_option(section, "merge_output_files", dtypes=["bool"], default=True, null_value=False)
@@ -243,7 +243,7 @@ def get_config_taskparser(sensor_type: Optional[str] = None):
         tparser.add_option(section, "drop_percent_good", dtypes=["bool"], default=True, null_value=False)
         tparser.add_option(section, "drop_correlation", dtypes=["bool"], default=True, null_value=False)
         tparser.add_option(section, "drop_amplitude", dtypes=["bool"], default=True, null_value=False)
-        tparser.add_option(section, "odf_data", dtypes=["str"], default="both", choice=["vel", "anc", "both"])
+        tparser.add_option(section, "odf_data", dtypes=["str"], default="both", choice=["vel", "anc", "both"], comments='One of [vel, anc, both,].')
         tparser.add_option(section, "make_figures", dtypes=["bool"], default=True, null_value=False)
         tparser.add_option(section, "make_log", dtypes=["bool"], default=True, null_value=False)
 
