@@ -5,7 +5,7 @@ Made by JeromeJGuay
 
 import getpass
 import sys
-from typing import List, Union, Dict, Optional
+from typing import List, Union, Dict, Optional, Tuple
 from configparser import RawConfigParser
 from pathlib import Path
 from datetime import timezone
@@ -45,6 +45,7 @@ class OptionInfos:
     is_time_stamp: bool = False
     is_required: bool = False
     null_value: Optional[ListStrIntFloatBool] = None
+    comments: str = None
 
     def __init__(
             self,
@@ -63,6 +64,7 @@ class OptionInfos:
             is_time_stamp: bool = False,
             is_required: bool = False,
             null_value: Optional[ListStrIntFloatBool] = None,
+            comments: str = None,
     ):
         dtypes = ensure_list_format(dtypes)
 
@@ -81,6 +83,7 @@ class OptionInfos:
         object.__setattr__(self, "is_time_stamp", is_time_stamp)
         object.__setattr__(self, "is_required", is_required)
         object.__setattr__(self, "null_value", null_value)
+        object.__setattr__(self, "comments", comments)
 
         self._list_check()
         self._dtypes_check()
@@ -197,6 +200,11 @@ ParserInfos = Dict[str, Dict[str, OptionInfos]]
 
 class TaskParser:
     """
+    Parameters
+    ----------
+    comment_prefixes : See ConfigParser
+    inline_comment_prefixes : See ConfigParser
+
     Create Parser
     -------------
         parser = TaskParser()
@@ -222,6 +230,7 @@ class TaskParser:
             is_time_stamp: bool                       -> If a timestamp is expected
             is_required: bool                         -> If a value is required.
             null_value: Optional[ListStrIntFloatBool] -> Returns `null_value` for empty filled. Default None.
+            comments: str                             -> Comments to add to the ini. Comments are preceded by `;;`.
 
 
     Other Methods
@@ -244,8 +253,10 @@ class TaskParser:
     .
     """
 
-    def __init__(self):
+    def __init__(self, inline_comment_prefixes: Tuple[str] = (';;', ), comment_prefixes: Tuple[str] = (';;', )):
         self._parser_infos: ParserInfos = {}
+        self.inline_comment_prefixes: Tuple[str] = inline_comment_prefixes
+        self.comment_prefixes: Tuple[str] = comment_prefixes
 
     @property
     def parser_infos(self):
@@ -278,24 +289,42 @@ class TaskParser:
             is_file: bool = False,
             is_time_stamp: bool = False,
             is_required: bool = False,
-            null_value: Optional[ListStrIntFloatBool] = None
+            null_value: Optional[ListStrIntFloatBool] = None,
+            comments: str = None
     ):
         if section not in self._parser_infos:
             self._parser_infos[section] = {}
         self._parser_infos[section][option] = OptionInfos(
-            section, option, dtypes, default, nargs, nargs_min, nargs_max,
-            choice, value_min, value_max, is_path, is_file, is_time_stamp, is_required, null_value
+            section, option, dtypes, default, nargs, nargs_min, nargs_max, choice,
+            value_min, value_max, is_path, is_file, is_time_stamp, is_required, null_value, comments
         )
 
-    def configparser(self, with_default: bool = True) -> RawConfigParser:
-        configparser = _rawconfigparser()
+    def configparser(self, with_default: bool = True, with_comments: bool = False) -> RawConfigParser:
+        """Return a RawConfigParser from the TaskParser.
+
+        Parameters
+        ----------
+        with_default:
+            If True, uses the default value.
+        with_comments
+            If True, the comments are added.
+
+        Returns
+        -------
+
+        """
+        configparser = _rawconfigparser(inline_comment_prefixes = self.inline_comment_prefixes,
+                                        comment_prefixes = self.comment_prefixes)
         for section, options in self._parser_infos.items():
             configparser.add_section(section)
             for option, option_infos in options.items():
                 if with_default is False or option_infos.default is None:
-                    configparser[section][option] = ""
+                    value = ""
                 else:
-                    configparser[section][option] = str(option_infos.default)
+                    value = str(option_infos.default)
+                if with_comments is True and self._parser_infos[section][option].comments is not None:
+                     value += f"    ;;{self._parser_infos[section][option].comments}"
+                configparser[section][option] = value
 
         return configparser
 
@@ -311,17 +340,19 @@ class TaskParser:
         return config
 
     def format_parser_dict(
-            self, parser_dict: dict,
+            self, parser_dict: ParserDict,
             add_missing: bool = True,
-            new_values_dict: Optional[dict] = None,
+            new_values_dict: Optional[ParserDict] = None,
             format_options: bool = True,
             file_path: Optional[str] = None
     ):
         """
 
+        New values are updated as string before being formatted.
+
         Parameters
         ----------
-        parser_dict
+        parser_dict :
         add_missing :
             If True, missing will be added to the output with null value.
         new_values_dict :
@@ -337,7 +368,7 @@ class TaskParser:
         """
 
         if new_values_dict is not None:
-            _update_parser_values(parser_dict=parser_dict, parser_infos=self._parser_infos, values_dict=new_values_dict)
+            _update_parser_values(parser_dict=parser_dict, values_dict=new_values_dict)
 
         if format_options is True:
             _format_parser_options(parser_dict=parser_dict, parser_infos=self._parser_infos, file_path=file_path)
@@ -377,7 +408,8 @@ class TaskParser:
         """
         file_path = str(Path(filename).absolute().parent)
 
-        parser = _rawconfigparser()
+        parser = _rawconfigparser(inline_comment_prefixes = self.inline_comment_prefixes,
+                                  comment_prefixes = self.comment_prefixes)
         parser.read(filename)
         parser_dict = parser._sections
 
@@ -385,82 +417,105 @@ class TaskParser:
 
         return parser_dict
 
-    def write(self, filename: str, new_values_dict: Optional[ParserDict] = None):
+    def write(self, filename: str,
+              new_values_dict: Optional[ParserDict] = None,
+              with_default: bool = True,
+              with_comments: bool = True):
         """
 
         Parameters
         ----------
-        filename:
+        filename :
             path/to/filename
-        new_values_dict:
-            dictionary with the same structure as the parser. New value to use. (update)
+        new_values_dict :
+            dictionary of the same structure as the parser with new option values to use. (update)
+        with_default :
+            If True, add default values.
+        with_comments :
+            If True, the comments are added.
         """
         if new_values_dict is None:
             with open(Path(filename).with_suffix('.ini'), "w") as f:
-                self.configparser().write(f)
+                self.configparser(with_default=with_default,
+                                  with_comments=with_comments).write(f)
         else:
             self.write_from_dict(filename,
-                                 parser_dict=self.as_dict(),
+                                 parser_dict=self.as_dict(with_default=with_default),
                                  add_missing=False,
                                  new_values_dict=new_values_dict,
-                                 format_options=True)
+                                 format_options=True,
+                                 with_comments=with_comments)
 
-    def write_from_dict(self, filename: str, parser_dict: ParserDict,
+    def write_from_dict(self, filename: str,
+                        parser_dict: ParserDict,
                         add_missing: bool = True,
                         new_values_dict: Optional[ParserDict] = None,
                         format_options: bool = True,
+                        with_comments: bool = True
                         ):
         """
 
         Parameters
         ----------
-        filename:
+        filename :
             path/to/filename
-        parser_dict:
+        parser_dict :
             from the methode Parser.
-        add_missing:
+        add_missing :
             If True, adds the missing option with empty fields.
         new_values_dict:
-            dictionary with the same structure as the configparser. New values to use.
+            dictionary of the same structure as the configparser with new option values to use.
         format_options :
            If True, the loaded config options will be formatted.
+        with_comments :
+            If True, the comments are added
 
         """
         self.format_parser_dict(parser_dict, add_missing=add_missing, new_values_dict=new_values_dict,
                                 format_options=format_options)
 
-        configparser = _rawconfigparser()
+        configparser = _rawconfigparser(inline_comment_prefixes = self.inline_comment_prefixes,
+                                        comment_prefixes = self.comment_prefixes)
         for section, options in parser_dict.items():
             configparser.add_section(section)
             for option, value in options.items():
-                if value == self._parser_infos[section][option].null_value:
-                    configparser[section][option] = ""
+                comments = ""
+                if option in self._parser_infos[section]:                     
+                    if value == self._parser_infos[section][option].null_value:
+                        value = None
+                    if with_comments is True and self._parser_infos[section][option].comments is not None:
+                        comments += f"    ;;{self._parser_infos[section][option].comments}"
+                if value is None:
+                    value = ""
                 else:
-                    configparser[section][option] = str(value)
+                    value = str(value)
+                configparser[section][option] = value + comments
 
         with open(Path(filename).with_suffix('.ini'), "w") as f:
             configparser.write(f)
 
 
-def _update_parser_values(parser_dict: dict, parser_infos: ParserInfos, values_dict: Optional[dict] = None):
+def _update_parser_values(parser_dict: dict, values_dict: Optional[dict] = None):
+    """Value are updated before any option value decoding."""
     for section, options in values_dict.items():
         if section in parser_dict:
             for option, value in options.items():
                 if value is None:
-                    parser_dict[section][option] = parser_infos[section][option].null_value
+                    parser_dict[section][option] = ""
                 else:
                     parser_dict[section][option] = str(value)
 
 
-def _rawconfigparser():
-    parser: RawConfigParser = RawConfigParser(inline_comment_prefixes=(';;',))
+def _rawconfigparser(inline_comment_prefixes: Tuple[str] = (';;',), comment_prefixes: Tuple[str] = (';;',)):
+    parser: RawConfigParser = RawConfigParser(inline_comment_prefixes=inline_comment_prefixes,
+                                              comment_prefixes=comment_prefixes)
     parser.optionxform = str
     return parser
 
 
 def _add_missing_options(parser_dict: dict, parser_infos: ParserInfos):
     """Check for missing sections or options compared to the expected parser
-       - Adds the options or section if needed with empty string as value.
+       - Adds the options or section if needed with value == ParserInfo.null_value
        Notes
        -----
        This prevents missing key error later in the processing without needing
@@ -487,6 +542,11 @@ def _format_parser_options(parser_dict: dict, parser_infos: ParserInfos, file_pa
         Error are risen if the options value cannot be converted to the right dtypes,
         length, value, choice,  etc.
 
+    Notes
+    -----
+    Value are turned into string before being pass to _format_option since _format_option expect a string and the
+    algorithm were design to accept string.
+
     """
     for section, options in parser_infos.items():
         if section in parser_dict:
@@ -494,13 +554,12 @@ def _format_parser_options(parser_dict: dict, parser_infos: ParserInfos, file_pa
                 if option in parser_dict[section]:
                     option_info = parser_infos[section][option]
                     value = parser_dict[section][option]
-
                     if value == "":
                         _value = option_info.null_value
                         if option_info.is_required is True:
                             raise TaskParserError("required", option_info, value)
                     else:
-                        _value = _format_option(parser_dict[section][option], option_info, file_path)
+                        _value = _format_option(str(parser_dict[section][option]), option_info, file_path)
 
                     parser_dict[section][option] = _value
 
