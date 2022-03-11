@@ -755,7 +755,7 @@ def _decode_CO2_A(data: str) -> dict:
 
 def _decode_Debit(data: str) -> dict:
     if "#" in data:
-        return {'flow_mas': FILL_VALUE}
+        return {'flow_mcs': FILL_VALUE}
     else:
         return {'flow_ms': round(int(data.strip('\n'), 16) * 0.001543, 4)}
 
