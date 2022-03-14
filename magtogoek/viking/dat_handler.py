@@ -143,11 +143,44 @@ Notes
     D,32,7FF61F47,7FF96AAD,80019C5D,7FF8EEBB,7FF0B2E5,7FFB045E,7FFC0AF4,6CEF2E,5058B5,560C72,516F8D,78A870,48660F,9B89F3,7FF61F00,7FF96AC0,80019C40,7FF8EF00,7FF0B300,7FFB03C0,7FFC0A80
     W,12,7FED43A9,7FF5BCC5,8005D91A,8015D956,7FFCD34E,7FF14B6D,7FFC38AC,29BF350,FA9F3A,9ABAD1,1B610D7,3DD6947,CF5AC95,1635C01,7FED4540,7FF5BD00,8005D900,8015D780,7FFCD6C0,7FF13EC0,7FFC3780
 
-TODO
-----
-    Get CTD-YOYO winch files.
-    Reshape adcp data and others.
+
+    BODC NAMES: https://vocab.nerc.ac.uk/search_nvs/P01/
+
+    METEOCE BODC:
+        Time                                                 : SYTM_01 : SDN:P01::
+        Longitude (East +ve)                                 : LOND_01 : SDN:P01::
+        Latitude (North +ve)                                 : LATD_01 : SDN:P01::
+        Horizontal Wind Speed                                : WSPD_01 : SDN:P01::EWSBZZ01
+        Gust Wind Speed                                      : GSPD_01 : SDN:P01::EGTSZZ01
+        Wind Direction relative to North (T)                 : WDIR_01 : SDN:P01::EWDASS01
+        Dry Bulb Temperature                                 : DRYT_01 : SDN:P01::CTMPZZ01
+        Relative Humidity                                    : RELH_01 : SDN:P01::CRELZZ01
+        Atmospheric pressure                                 : ATMP_01 : SDN:P01::CAPHZZ01
+        Temperature (1990 scale)                             : TE90_01 : SDN:P01::TEMPPR01
+        Electrical Conductivity                              : CNDC_01 : SDN:P01::CNDCZZ01
+        Practical Salinity                                   : PSAL_01 : SDN:P01::PSLTZZ01
+        Sea Density                                          : DENS_01 : SDN:P01::SIGTEQ01
+        Hydrogen Ion Concentration (pH)                      : PHPH_01 : SDN:P01::PHXXZZXX
+        Fluorescence                                         : FLOR_01 : SDN:P01::FLUOZZZZ
+        Partial pressure of carbon dioxide in the atmosphere : ACO2_01 : SDN:P01::ACO2XXXX
+        Partial pressure of carbon dioxide in the water boby : PCO2_01 : SDN:P01::PCO2XXXX
+        Wave mean height                                     : VRMS_01 : SDN:P01::
+        Wave maximum height                                  : VMXL_01 : SDN:P01::GMXLZZ01
+        Wave period                                          : VTCA_01 : SDN:P01::
+
+    OTHER NAMES BODC:
+
+        wave period                         : SDN:P01::GTAMZZ01
+        average wave height                 : SDN:P01::
+        average wave height one third       : SDN:P01::GAVHZZ01
+        average wave height dominant period : SDN:P01::
+        max wave height                     : SDN:P01::GCMXZZ01
+        wave direction                      : SDN:P01::
+        Hmax                                : SDN:P01::
+        Hmax2                               : SDN:P01::
+        Pmax                                : SDN:P01::
 """
+
 
 import struct
 import pandas as pd
@@ -223,9 +256,9 @@ WXT520_KEYS_MAP = {"Dn": "wind_direction_min",
                    "Hc": "hail_accumulation_hitscm2",
                    "Hd": "hail_duration_s",
                    "Hi": "hail_intensity_hitscm2h",
-                   "Ta": "temperature",
-                   "Ua": "humidity",
-                   "Pa": "pressure"}
+                   "Ta": "atm_temperature",
+                   "Ua": "atm_humidity",
+                   "Pa": "atm_pressure"}
 
 WMT700_KEYS_MAP = {"Dn": "wind_direction_min",
                    "Dm": "wind_direction_mean",
@@ -233,6 +266,14 @@ WMT700_KEYS_MAP = {"Dn": "wind_direction_min",
                    "Sn": "wind_min",
                    "Sm": "wind_mean",
                    "Sx": "wind_max"}
+
+meteoc_variables = ['lon', 'lat',
+                    'wind_mean', 'wind_direction_mean', 'wind_max', 'wind_direction_max',
+                    'atm_temperature', 'atm_humidity', 'atm_pressure',
+                    'temperature', 'conductivity', 'salinity', 'density',
+                    'ph', 'fluorescence', 'co2_a', 'co2_w',
+                    'averaged_height', 'maximal_height', 'wave_period']
+
 
 
 class VikingData():
