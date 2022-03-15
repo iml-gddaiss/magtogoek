@@ -179,6 +179,10 @@ Notes
         Hmax                                : SDN:P01::
         Hmax2                               : SDN:P01::
         Pmax                                : SDN:P01::
+
+    DO computation:
+        https://github.com/TEOS-10/python-gsw/blob/master/gsw/gibbs/conversions.py
+        https://github.com/ooici/ion-functions/blob/master/ion_functions/data/do2_functions.py
 """
 
 
