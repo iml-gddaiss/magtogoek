@@ -89,7 +89,7 @@ The Buoy Data
 [p0] ou [p1]: Power
     (not used)
 [VEMCO] Acoustic receiver
-     Date       Time    ,Protocal, Serial number
+     Date       Time    ,Protocol, Serial number
     '2018-05-05 04:27:35,A69-1602,46179'
 
 [MO]: Short string. Not Used
