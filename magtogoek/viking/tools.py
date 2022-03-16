@@ -11,6 +11,8 @@ winkler coeff  : d1, d2
 import numpy as np
 import xarray as xr
 
+GAS_CONSTANT = 8.31446261815324
+
 RINKO_COEFFS_KEYS = ('c0', 'c1', 'c2', 'd0', 'cp',
                      'b0', 'b1', 'b2', 'b3', 'b4',
                      'd1', 'd2')
@@ -79,7 +81,7 @@ def compensation_pres_temp_psal_rinko(doxy: np.ndarray,
 
     doxy_pc = _doxy * (1 + coeffs['cp'] * _pres)
 
-    temp_s = np.log((298.15 - temp) / (273.15 + temp))
+    temp_s = np.log10((298.15 - temp) / (273.15 + temp))
 
     doxy_sc = doxy_pc * (np.exp(coeffs['b0']
                                 + coeffs['b1'] * temp_s
@@ -134,13 +136,81 @@ def sample_ionic_strength(psal: np.ndarray) -> np.ndarray:
 
 
 def debye_huckel_HCl_activity_constant(temp: np.ndarray) -> np.ndarray:
+    """(Khoo et al. 1977)
+
+    A_DH = 0.0000034286 * temp**2 + 0.00067524 * temp + 0.49172143
+    Parameters
+    ----------
+    temp :
+        temperature in Celsius
+
     """
+    return 0.0000034286 * temp**2 + 0.00067524 * temp + 0.49172143
+
+
+def log_of_HCl_activity_as_temperature_function(psal: np.temp, temp: np.ndarray) -> np.ndarray:
+    """(Khoo et al. 1977)
+
+    log(Y_HCl)_T = -(A_DH * sqrt(I))/(1 + 1.394*sqrt(I)) + (0.08885 - 0.000111 * t) * I
+
+    I : sample_ionic_strength
+    A_DH : HCl_activity_constant
 
     Parameters
     ----------
-    temp
+    psal :
+        practical salinity
+    temp :
+        temperature in Celsius
 
-    Returns
-    -------
+
+    """
+    a_dh = debye_huckel_HCl_activity_constant(temp=temp)
+    i = sample_ionic_strength(psal=psal)
+
+    return -(a_dh * np.sqrt(i))/(1 + 1.394 * np.sqrt(i)) + (0.08885 - 0.000111 * temp) * i
+
+
+def log_of_HCl_activity_as_temperature_and_pressure_function(psal: np.temp,
+                                                             temp: np.ndarray,
+                                                             pres: np.ndarray) -> np.ndarray:
+    """(Khoo et al. 1977)
+
+    log(Y_HCL)_TP = log_t + ((V_HCl * P) / (10 * ln(10) * R * T)) / 2
+
+    log_t : log_of_HCl_activity_as_temperature_function
+    V_HCl : partial molal volume of HCl cm**3/mol
+    P : pressure in dbar
+    R : Gas Constant
+    T : 273.15 + temperature
+
+    Parameters
+    ----------
+    psal :
+        practical salinity
+    temp :
+        temperature in Celsius
+    """
+    temp_k = 273.15 + temp
+    log_t = log_of_HCl_activity_as_temperature_function(psal=psal, temp=temp)
+    v_hcl = None # FIXME
+
+    return log_t + ((v_hcl * pres) / (np.log(10) * GAS_CONSTANT * temp * 10)) / 2
+
+
+def total_sulfate_in_seawater(psal: np.ndarray) -> np.ndarray:
+    """(Dickson et al. 2007)
+
+    S_T = (0.1400 / 96.062) * (psal / 1.80655)
+
+    Parameters
+    ----------
+    psal :
+        practical salinity
+
+    Notes
+    -----
+        Dickson et al. 2007, IOCCP Report No.8, Guide to Best Practices for Ocean CO2 Measurements
+
 
     """
