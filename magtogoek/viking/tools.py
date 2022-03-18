@@ -94,14 +94,68 @@ def compensation_pres_temp_psal_rinko(doxy: np.ndarray,
     return doxy_sc * 44.66  # uM -> ml/L
 
 
-def pHEXT_from_vFET(temp: np.ndarray, psal: np.ndarray, volt: np.ndarray, k0: float, k2: float) -> np.ndarray:
+def voltExt_from_pHext(temp: np.ndarray, psal: float, ph: np.ndarray, k0: float, k2: float) -> np.ndarray:
+    """Based on Seabird documentations
+
+    ```(Johnson et al. 2016)
+    V_EXT = S_nernst*(pH_EXT
+                      - log(Cl_T)
+                      - 2*log(Y_HCl)_T
+                      + log(1 + S_T/K_S)
+                      + log((1000 - 1.005 * psal) / 1000))) + k0_EXT + k2_EXT * t
+
+    S_nernst = (R * T * ln(10)) / F
+
+    T : temperature in Kelvin
+    t : temperature in Celsius
+    psal : salinity in PSU
+    V_EXT : raw exterior voltage
+    K0_EXT : Exterior cell standard potential Offset (From Calibration).
+    K2_Ext : Exterior temperature slope coefficient (From Calibration).
+    F : Faraday Constant
+    K_S : acid_dissociation_constant_HSO4
+    log(Y_HCl)_T : log_of_HCl_activity_as_temperature_function
+    ```
+
+    Parameters
+    ----------
+    temp :
+        Temperature in Celsius.
+    psal :
+        Practical salinity.
+    ph :
+        Exterior pH.
+    k0 :
+        Exterior cell standard potential Offset (From Calibration).
+    k2 :
+        Exterior temperature slope coefficient (From Calibration).
+
+    Notes
+    -----
+    Johnson et al.2016, Analytical Chemistry, DeepSea DuraFET: A pressure tolerant pH sensor designed for global sensor networks.
+    Sea-Bird Scientific, Technical Note on Calculating pH, Application Note 99
+    """
+    s_nernst = GAS_CONSTANT * (temp + 273.15) * np.log(10) / FARADAY_CONSTANT
+    cl_t = total_chloride_in_seawater(psal=psal)
+    log_y_hcl_t = log_of_HCl_activity_as_temperature_function(temp=temp, psal=psal)
+    s_t = total_sulfate_in_seawater(psal=psal)
+    k_s = acid_dissociation_constant_HSO4(temp=temp, psal=psal)
+
+    return k0 + k2 * temp + s_nernst*(ph
+                                      - np.log10(cl_t)
+                                      - 2 * log_y_hcl_t
+                                      + np.log10(1 + (s_t / k_s))
+                                      + np.log10((1000 - 1.005 * psal) / 1000))
+
+
+def pHEXT_from_voltEXT(temp: np.ndarray, psal: np.ndarray, volt: np.ndarray, k0: float, k2: float) -> np.ndarray:
     """Taken from Seabird documentations
 
     ```(Johnson et al. 2016)
     pH_EXT = (V_EXT - k0_EXT - k2_EXT * t) / S_nernst
              + log(Cl_T)
              + 2*log(Y_HCl)_T
-             - log(1 - S_T/K_S)
+             - log(1 + S_T/K_S)
              - log((1000 - 1.005 * psal) / 1000))
 
     S_nernst = (R * T * ln(10)) / F

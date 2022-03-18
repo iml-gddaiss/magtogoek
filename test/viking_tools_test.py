@@ -1,5 +1,5 @@
 import numpy as np
-from magtogoek.viking.tools import pHEXT_from_vFET
+from magtogoek.viking.tools import pHEXT_from_voltEXT
 
 
 def test_pHEXT_from_vFET():
@@ -16,4 +16,4 @@ def test_pHEXT_from_vFET():
     k0 = -1.429278
     k2 = -1.142026*10**(-3)
 
-    assert ph_ext[0] == np.round(pHEXT_from_vFET(temp=temp, psal=psal, volt=volt, k0=k0, k2=k2)[0], 4)
+    assert ph_ext[0] == np.round(pHEXT_from_voltEXT(temp=temp, psal=psal, volt=volt, k0=k0, k2=k2)[0], 4)

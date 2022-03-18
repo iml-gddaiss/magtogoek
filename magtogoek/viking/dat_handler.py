@@ -911,7 +911,6 @@ def compute_speed_course(viking_data):
 
 
 if __name__ == "__main__":
-    from magtogoek.viking.tools import pHEXT_from_vFET
     import matplotlib.pyplot as plt
 
     viking_data = main()
@@ -920,15 +919,6 @@ if __name__ == "__main__":
     _, index = np.unique(ctd['time'], return_index=True)
     ctd = ctd.isel(time=index).interp(time=wph.time)
 
-    ph = pHEXT_from_vFET(temp=wph.temperature,
-                         psal=27,
-                         volt=wph.ext_volt,
-                         k0=-1.364009,
-                         k2=-0.001074503)
-
-    plt.plot(ph, label='with ctd psal')
-    plt.plot(wph.ext_ph,label='RAW', linestyle='--')
-    plt.legend()
 
 
 
