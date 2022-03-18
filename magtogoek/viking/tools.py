@@ -94,27 +94,10 @@ def compensation_pres_temp_psal_rinko(doxy: np.ndarray,
     return doxy_sc * 44.66  # uM -> ml/L
 
 
-def pHEXT_from_vFET_test():
-    """
-    Test value from Seabird documentations
-    Notes
-    -----
-    Sea-Bird Scientific, Technical Note on Calculating pH, Application Note 99
-    """
-    ph_ext = np.array([7.8454])
-    temp = np.array([15.8735])
-    psal = np.array([36.817])
-    volt = np.array([-0.965858])
-    k0 = -1.429278
-    k2 = -1.142026*10**(-3)
-
-    assert ph_ext[0] == np.round(pHEXT_from_vFET(temp=temp, psal=psal, volt=volt, k0=k0, k2=k2)[0], 4)
-
-
 def pHEXT_from_vFET(temp: np.ndarray, psal: np.ndarray, volt: np.ndarray, k0: float, k2: float) -> np.ndarray:
-    """Taken from Seabird Documentations
+    """Taken from Seabird documentations
 
-    (Johnson et al. 2016)
+    ```(Johnson et al. 2016)
     pH_EXT = (V_EXT - k0_EXT - k2_EXT * t) / S_nernst
              + log(Cl_T)
              + 2*log(Y_HCl)_T
@@ -132,6 +115,7 @@ def pHEXT_from_vFET(temp: np.ndarray, psal: np.ndarray, volt: np.ndarray, k0: fl
     F : Faraday Constant
     K_S : acid_dissociation_constant_HSO4
     log(Y_HCl)_T : log_of_HCl_activity_as_temperature_function
+    ```
 
     Parameters
     ----------
@@ -166,12 +150,13 @@ def pHEXT_from_vFET(temp: np.ndarray, psal: np.ndarray, volt: np.ndarray, k0: fl
 
 
 def total_chloride_in_seawater(psal: np.ndarray) -> np.ndarray:
-    """Taken from Seabird Documentations
+    """Taken from Seabird documentations
 
-    (Dickson et al. 2007)
+    ```(Dickson et al. 2007)
     Cl_T = (0.99889/35.453)*(S/1.80655)*(1000/(1000-1.005*S))
 
     S : Salinity in PSU
+    ```
 
     Parameters
     ----------
@@ -187,12 +172,13 @@ def total_chloride_in_seawater(psal: np.ndarray) -> np.ndarray:
 
 
 def sample_ionic_strength(psal: np.ndarray) -> np.ndarray:
-    """Taken from Seabird Documentations
+    """Taken from Seabird documentations
 
-    (Dickson et al. 2007)
+    ```(Dickson et al. 2007)
     I = (19.924*psal)/(1000-1.005*psal)
 
     psal : Salinity in PSU
+    ```
 
     Parameters
     ----------
@@ -208,12 +194,13 @@ def sample_ionic_strength(psal: np.ndarray) -> np.ndarray:
 
 
 def debye_huckel_HCl_activity_constant(temp: np.ndarray) -> np.ndarray:
-    """Taken from Seabird Documentations
+    """Taken from Seabird documentations
 
-    (Khoo et al. 1977)
+    ```(Khoo et al. 1977)
     A_DH = 0.0000034286 * t**2 + 0.00067524 * t + 0.49172143
 
     t: temperature in Celsius
+    ```
 
     Parameters
     ----------
@@ -229,9 +216,9 @@ def debye_huckel_HCl_activity_constant(temp: np.ndarray) -> np.ndarray:
 
 
 def log_of_HCl_activity_as_temperature_function(temp: np.ndarray, psal: np.ndarray) -> np.ndarray:
-    """Taken from Seabird Documentations
+    """Taken from Seabird documentations
 
-    (Khoo et al. 1977)
+    ```(Khoo et al. 1977)
                      -A_DH * sqrt(I)
     log(Y_HCl)_T = --------------------  + (0.08885 - 0.000111 * t) * I
                    1 + 1.394 * sqrt(I)
@@ -239,7 +226,7 @@ def log_of_HCl_activity_as_temperature_function(temp: np.ndarray, psal: np.ndarr
     t: temperature in Celsius
     I : sample_ionic_strength
     A_DH : HCl_activity_constant
-
+    ```
 
     Parameters
     ----------
@@ -263,10 +250,11 @@ def log_of_HCl_activity_as_temperature_function(temp: np.ndarray, psal: np.ndarr
 def total_sulfate_in_seawater(psal: np.ndarray) -> np.ndarray:
     """Taken from Seabird Documentations
 
-    (Dickson et al. 2007)
+    ```(Dickson et al. 2007)
     S_T = (0.1400 / 96.062) * (psal / 1.80655)
 
     psal : Salinity in PSU
+    ```
 
     Parameters
     ----------
@@ -283,9 +271,9 @@ def total_sulfate_in_seawater(psal: np.ndarray) -> np.ndarray:
 
 
 def acid_dissociation_constant_HSO4(temp: np.ndarray, psal: np.ndarray) -> np.ndarray:
-    """Taken from Seabird Documentations
+    """Taken from Seabird documentations
 
-    (Dickson et al. 2007)
+    ```(Dickson et al. 2007)
     K_S = (1 - 0.001005 * S)*exp( a0 + a1 + a2 + a3 + a4)
 
     a0 = (-4276.1/T) + 141.328 - 23.093 * ln(T)
@@ -297,6 +285,7 @@ def acid_dissociation_constant_HSO4(temp: np.ndarray, psal: np.ndarray) -> np.nd
     T : temperature in Kelvin
     S : Salinity in PSU
     I : sample_ionic_strength
+    ```
 
     Parameters
     ----------
