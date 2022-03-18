@@ -240,7 +240,7 @@ WXT520_KEYS = ['Dn', 'Dm', 'Dx', 'Sn', 'Sm', 'Sx', 'Rc', 'Rd', 'Ri', 'Hc', 'Hd',
                'Ta', 'Ua', 'Pa', 'Th', 'Vh', 'Vs', 'Vr']
 WMT700_KEYS = ['Dn', 'Dm', 'Dx', 'Sn', 'Sm', 'Sx']
 WPH_KEYS = ['time', 'model', 'serial_number', 'sample_number', 'error_flag',
-            'ext_ph', 'int_ph', 'ph_temperature', 'rel_humidity', 'int_temperature']
+            'ext_ph', 'int_ph', 'int_volt', 'ext_volt', 'ph_temperature', 'rel_humidity', 'int_temperature']
 CO2_W_KEYS = ["time", "auto-zero", "current", "co2_ppm", "irga_temperature", "humidity_mbar",
               "humidity_sensor_temperature", "cell_gas_pressure_mar"]
 CO2_A_KEYS = ['time', 'auto-zero', 'current', "co2_ppm", 'irga_temperature', 'humidity_mbar',
@@ -277,7 +277,6 @@ meteoc_variables = ['lon', 'lat',
                     'temperature', 'conductivity', 'salinity', 'density',
                     'ph', 'fluorescence', 'co2_a', 'co2_w',
                     'averaged_height', 'maximal_height', 'wave_period']
-
 
 
 class VikingData():
@@ -443,6 +442,8 @@ def to_netcdf(viking_data: VikingData) -> xr.Dataset:
     wxt_dataset=None
     wmt_dataset=None
     wave_dataset=None
+    wph_dataset=None
+    ctd_dataset=None
 
     if viking_data.gps is not None:
         good_index = np.invert(viking_data.gps['time'].mask)
@@ -490,7 +491,35 @@ def to_netcdf(viking_data: VikingData) -> xr.Dataset:
                 'max2_height': (['time'], np.asarray(viking_data.wave_s['Hmax2'][good_index].filled(np.nan)))}
         wave_dataset = xr.Dataset(data, coords=coords)
 
-    return nom_dataset, gps_dataset, wxt_dataset, wmt_dataset, wave_dataset
+    if viking_data.wph is not None:
+        good_index = np.invert(viking_data.wph['time'].mask)
+        coords = {'time': np.asarray(viking_data.wph['time'][good_index]).astype('datetime64[s]')}
+        data = {'ext_ph': (['time'], np.asarray(viking_data.wph['ext_ph'][good_index].filled(np.nan))),
+                'ext_volt': (['time'], np.asarray(viking_data.wph['ext_volt'][good_index].filled(np.nan))),
+                'temperature': (['time'], np.asarray(viking_data.wph['ph_temperature'][good_index].filled(np.nan))),
+                'error_flag': (['time'], np.asarray(viking_data.wph['ext_volt'][good_index].filled(np.nan)))}
+        attrs = {'model': viking_data.wph['model'][0], 'serial_number': viking_data.wph['serial_number'][0]}
+        wph_dataset = xr.Dataset(data, coords=coords, attrs=attrs)
+
+    if viking_data.ctd is not None:
+        coords = {'time': np.asarray(viking_data.time)}
+        data = {'temperature': (['time'], viking_data.ctd['temperature'].filled(np.nan)),
+                'conductivity': (['time'], viking_data.ctd['conductivity'].filled(np.nan)),
+                'salinity': (['time'], viking_data.ctd['salinity'].filled(np.nan)),
+                'density': (['time'], viking_data.ctd['density'].filled(np.nan))}
+        ctd_dataset = xr.Dataset(data, coords=coords)
+
+    if viking_data.ctdo is not None:
+        coords = {'time': np.asarray(viking_data.time)}
+        data = {'temperature': (['time'], viking_data.ctd['temperature'].filled(np.nan)),
+                'conductivity': (['time'], viking_data.ctd['conductivity'].filled(np.nan)),
+                'salinity': (['time'], viking_data.ctd['salinity'].filled(np.nan)),
+                'oxygen': (['time'], viking_data.ctd['oxygen'].filled(np.nan))}
+        ctd_dataset = xr.Dataset(data, coords=coords)
+
+
+
+    return nom_dataset, gps_dataset, wxt_dataset, wmt_dataset, wave_dataset, wph_dataset, ctd_dataset
 
 
 def _decode_transmitted_data(data_received: str, century: int = 21) -> dict:
@@ -767,8 +796,8 @@ def _decode_WpH(data: str) -> dict:
             'error_flag': data[3],
             'ext_ph': _safe_float(data[4]),
             'int_ph': _safe_float(data[5]),
-            # 'ext_volt': _safe_float(data[6]),
-            # 'int_volt': _safe_float(data[7]),
+            'ext_volt': _safe_float(data[6]),
+            'int_volt': _safe_float(data[7]),
             'ph_temperature': _safe_float(data[8]),
             'rel_humidity': _safe_float(data[9]),
             'int_temperature': _safe_float(data[10])}
@@ -882,13 +911,27 @@ def compute_speed_course(viking_data):
 
 
 if __name__ == "__main__":
-    from magtogoek.navigation import _compute_navigation
+    from magtogoek.viking.tools import pHEXT_from_vFET
+    import matplotlib.pyplot as plt
 
-    gps_save_path = '/home/jeromejguay/ImlSpace/Data/iml4_2021/2021-IML4-ADCP-24418/iml4_gps_2021.nc'
     viking_data = main()
-    nom, gps, wxt, wmt, wave = to_netcdf(viking_data)
+    nom, gps, wxt, wmt, wave, wph, ctd = to_netcdf(viking_data)
 
-#    gps = _compute_navigation(gps)
+    _, index = np.unique(ctd['time'], return_index=True)
+    ctd = ctd.isel(time=index).interp(time=wph.time)
+
+    ph = pHEXT_from_vFET(temp=wph.temperature,
+                         psal=27,
+                         volt=wph.ext_volt,
+                         k0=-1.364009,
+                         k2=-0.001074503)
+
+    plt.plot(ph, label='with ctd psal')
+    plt.plot(wph.ext_ph,label='RAW', linestyle='--')
+    plt.legend()
+
+
+
 
 
 
