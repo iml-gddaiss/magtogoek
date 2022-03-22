@@ -8,6 +8,7 @@ from pathlib import Path
 from collections import abc
 
 import click
+import numpy as np
 
 
 class Logger:
@@ -218,3 +219,8 @@ def json2dict(json_file: tp.Union[str, Path]):
 def resolve_relative_path(relative_path, current_path):
     """ """
     return Path(current_path).resolve().parent.joinpath(relative_path).resolve()
+
+
+def nans(shape: tp.Union[list, tuple, np.ndarray]) -> np.ndarray:
+    """return array of nan of shape `shape`"""
+    return np.full(shape, np.nan)

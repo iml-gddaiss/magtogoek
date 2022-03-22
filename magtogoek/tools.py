@@ -35,11 +35,6 @@ def round_up(x: float, scale: float=1):
     return np.ceil(np.asarray(x) * 1 / scale) * scale
 
 
-def nans(shape: tp.Union[list, tuple, np.ndarray]) -> np.ndarray:
-    """return array of nan of shape `shape`"""
-    return np.full(shape, np.nan)
-
-
 def polar_histo(dataset: xr.Dataset, x_vel: str, y_vel: str, r_max: float):
     u = flag_data(dataset, x_vel).data.flatten()
     v = flag_data(dataset, y_vel).data.flatten()
