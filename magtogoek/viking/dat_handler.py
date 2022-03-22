@@ -454,12 +454,12 @@ def to_netcdf(viking_data: VikingData) -> xr.Dataset:
 
     Deals with duplicate Time in NOM.
     """
-    coords = {'time': np.asarray(viking_data.time)}
+    nom_coords = {'time': np.asarray(viking_data.time)}
     data = {'lon': (['time'], viking_data.longitude.filled(np.nan)),
             'lat': (['time'], viking_data.latitude.filled(np.nan))}
     attrs = {'firmware': viking_data.firmware, 'controller_sn': viking_data.controller_sn}
 
-    nom_dataset = xr.Dataset(data, coords=coords, attrs=attrs).dropna('time')
+    nom_dataset = xr.Dataset(data, coords=nom_coords, attrs=attrs).dropna('time')
     comp_dataset = None
     triplet_dataset = None
     par_digi_dataset = None
@@ -479,13 +479,14 @@ def to_netcdf(viking_data: VikingData) -> xr.Dataset:
     if viking_data.comp is not None:
         data = {'heading': (['time'], viking_data.comp['heading'].filled(np.nan)),
                 'pitch': (['time'], viking_data.comp['pitch'].filled(np.nan)),
-                '_roll': (['time'], viking_data.comp['_roll'].filled(np.nan)),
+                '_roll': (['time'], viking_data.comp['roll'].filled(np.nan)),
                 'tilt': (['time'], viking_data.comp['tilt'].filled(np.nan)),
                 'pitch_std': (['time'], viking_data.comp['pitch_std'].filled(np.nan)),
                 'roll_std': (['time'], viking_data.comp['roll_std'].filled(np.nan)),
                 'tilt_std': (['time'], viking_data.comp['tilt_std'].filled(np.nan))
         }
-        comp_dataset = xr.Dataset(data, coords=nom_dataset.coords)
+        coords = {'time': np.asarray(viking_data.time)}
+        comp_dataset = xr.Dataset(data, coords=coords)
 
     if viking_data.triplet is not None:
         triplet_dataset = _sort_triplet_wavelength(viking_data.triplet)
@@ -522,14 +523,14 @@ def to_netcdf(viking_data: VikingData) -> xr.Dataset:
                 'conductivity': (['time'], viking_data.ctd['conductivity'].filled(np.nan)),
                 'salinity': (['time'], viking_data.ctd['salinity'].filled(np.nan)),
                 'density': (['time'], viking_data.ctd['density'].filled(np.nan))}
-        ctd_dataset = xr.Dataset(data, coords=nom_dataset.coords)
+        ctd_dataset = xr.Dataset(data, coords=nom_coords)
 
     if viking_data.ctdo is not None:
         data = {'temperature': (['time'], viking_data.ctd['temperature'].filled(np.nan)),
                 'conductivity': (['time'], viking_data.ctd['conductivity'].filled(np.nan)),
                 'salinity': (['time'], viking_data.ctd['salinity'].filled(np.nan)),
                 'oxygen': (['time'], viking_data.ctd['oxygen'].filled(np.nan))}
-        ctd_dataset = xr.Dataset(data, coords=nom_dataset.coords)
+        ctd_dataset = xr.Dataset(data, coords=nom_coords)
 
     if viking_data.rti is not None:
         """
@@ -545,6 +546,7 @@ def to_netcdf(viking_data: VikingData) -> xr.Dataset:
         """
         coords = nom_dataset.coords
         pass
+
     elif viking_data.rdi is not None:
         """
         'time', 'u', 'v', 'w', 'e'
@@ -578,14 +580,14 @@ def to_netcdf(viking_data: VikingData) -> xr.Dataset:
                 'wind_min': (['time'], viking_data.wxt520['Sn'].filled(np.nan) / KNOTS_PER_METER_S, {'units': 'meters per second'}),
                 'wind_max': (['time'], viking_data.wxt520['Sx'].filled(np.nan) / KNOTS_PER_METER_S, {'units': 'meters per second'}),
                 'wind_mean': (['time'], viking_data.wxt520['Sm'].filled(np.nan) / KNOTS_PER_METER_S, {'units': 'meters per second'})}
-        wxt_dataset = xr.Dataset(data, coords=nom_dataset.coords)
+        wxt_dataset = xr.Dataset(data, coords=nom_coords)
 
     if viking_data.wmt700 is not None:
         data = {'direction': (['time'], viking_data.wmt700['Dm'].filled(np.nan)),
                 'wind_min': (['time'], viking_data.wmt700['Sn'].filled(np.nan) / KNOTS_PER_METER_S, {'units': 'meters per second'}),
                 'wind_max': (['time'], viking_data.wmt700['Sx'].filled(np.nan) / KNOTS_PER_METER_S, {'units': 'meters per second'}),
                 'wind_mean': (['time'], viking_data.wmt700['Sm'].filled(np.nan) / KNOTS_PER_METER_S, {'units': 'meters per second'})}
-        wmt_dataset = xr.Dataset(data, coords=nom_dataset.coords)
+        wmt_dataset = xr.Dataset(data, coords=nom_coords)
 
     if viking_data.wph is not None:
         good_index = ~viking_data.wph['time'].mask
