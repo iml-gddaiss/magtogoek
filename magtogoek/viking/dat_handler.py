@@ -452,6 +452,10 @@ buoys:\n"""
 def to_netcdf(viking_data: VikingData) -> xr.Dataset:
     """FIXME Make it a method of VikingData
     Deals with duplicate Time in NOM.
+
+    Notes
+    -----
+    WXT only output Th, Vh, Vs, Vr data and I have no Idea what they are.
     """
     nom_coords = {'time': np.asarray(viking_data.time)}
     data = {'lon': (['time'], viking_data.longitude.filled(np.nan)),
@@ -672,22 +676,85 @@ def to_netcdf(viking_data: VikingData) -> xr.Dataset:
                 'serial_number': (['time'], viking_data.vemco['serial_number'].filled('N/A'))}
         vemco_dataset = xr.Dataset(data, coords=coords)
 
-    return {'nom': nom_dataset,
-            'comp': comp_dataset,
-            'trip': triplet_dataset,
-            'par': par_digi_dataset,
-            'suna': suna_dataset,
-            'gps': gps_dataset,
-            'ctd': ctd_dataset,
-            'adcp': adcp_dataset,
-            'wave': wave_dataset,
-            'wxt': wxt_dataset,
-            'wmt': wmt_dataset,
-            'wph': wph_dataset,
-            'co2w': co2_w_dataset,
-            'co2a': co2_a_dataset,
-            'debit': debit_dataset,
-            'vemco': vemco_dataset}
+    _datasets = {'nom': nom_dataset, 'comp': comp_dataset, 'trip': triplet_dataset, 'par': par_digi_dataset,
+                 'suna': suna_dataset, 'gps': gps_dataset, 'ctd': ctd_dataset, 'adcp': adcp_dataset,
+                 'wave': wave_dataset, 'wxt': wxt_dataset, 'wmt': wmt_dataset, 'wph': wph_dataset,
+                 'co2w': co2_w_dataset, 'co2a': co2_a_dataset, 'debit': debit_dataset, 'vemco': vemco_dataset}
+
+    for key in _datasets.keys():
+        if _datasets[key] is not None:
+            _datasets[key] = _average_duplicates(_datasets[key], 'time')
+
+    return _datasets
+
+
+def _average_duplicates(dataset: xr.Dataset, coord: str)->xr.Dataset:
+    """
+
+    Parameters
+    ----------
+    dataset
+    coord
+
+    Returns
+    -------
+
+    """
+    df = dataset.to_dataframe().groupby(coord).mean()
+
+    _dataset = dataset[{coord: np.unique(dataset[coord], return_index=True)[1]}]
+    for var in _dataset.keys():
+        _dataset[var].values[:] = df[var][:]
+
+    return _dataset
+
+
+def _sort_triplet_wavelength(triplet_data: dict):
+    """
+
+    700 nm: Scattering
+    695 nm: Chlorophyll
+    460 nm: FDOM
+
+    Returns
+    -------
+
+    Notes
+    -----
+    fill for nan
+    """
+    _shape = triplet_data['time'].shape
+
+    scatter_raw, scatter_calc = nans(_shape), nans(_shape)
+    chloro_raw, chloro_calc = nans(_shape), nans(_shape)
+    fdom_raw, fdom_calc = nans(_shape), nans(_shape)
+
+    for i in ("1", "2", "3"):
+        index700 = triplet_data['wavelength_' + i] == 700
+        scatter_raw[index700] = triplet_data['raw_value_' + i][index700]
+        scatter_calc[index700] = triplet_data['calculated_value_' + i][index700]
+
+        index695 = triplet_data['wavelength_' + i] == 695
+        chloro_raw[index695] = triplet_data['raw_value_' + i][index695]
+        chloro_calc[index695] = triplet_data['calculated_value_' + i][index695]
+
+        index460 = triplet_data['wavelength_' + i] == 460
+        fdom_raw[index460] = triplet_data['raw_value_' + i][index460]
+        fdom_calc[index460] = triplet_data['calculated_value_' + i][index460]
+
+    good_index = ~triplet_data['time'].mask
+
+    coords = {'time': np.asarray(triplet_data['time'][good_index]).astype('datetime64[s]')}
+
+    data = {'scatter_raw': (['time'], scatter_raw[good_index]),
+            'scatter_calculated': (['time'], scatter_calc[good_index]),
+            'chloro_raw': (['time'], chloro_raw[good_index]),
+            'chloro_calculated': (['time'], chloro_calc[good_index]),
+            'fdom_raw': (['time'], fdom_raw[good_index]),
+            'fdom_calculated': (['time'], fdom_calc[good_index])
+            }
+
+    return xr.Dataset(data, coords=coords)
 
 
 def _decode_transmitted_data(data_received: str, century: int = 21) -> dict:
@@ -1025,54 +1092,6 @@ def _make_timestamp(Y: str, M: str, D: str, h: str, m: str, s: str) -> str:
     return str(FILL_VALUE) if "#" in time else time
 
 
-def _sort_triplet_wavelength(triplet_data: dict):
-    """
-
-    700 nm: Scattering
-    695 nm: Chlorophyll
-    460 nm: FDOM
-
-    Returns
-    -------
-
-    Notes
-    -----
-    fill for nan
-    """
-    _shape = triplet_data['time'].shape
-
-    scatter_raw, scatter_calc = nans(_shape), nans(_shape)
-    chloro_raw, chloro_calc = nans(_shape), nans(_shape)
-    fdom_raw, fdom_calc = nans(_shape), nans(_shape)
-
-    for i in ("1", "2", "3"):
-        index700 = triplet_data['wavelength_' + i] == 700
-        scatter_raw[index700] = triplet_data['raw_value_' + i][index700]
-        scatter_calc[index700] = triplet_data['calculated_value_' + i][index700]
-
-        index695 = triplet_data['wavelength_' + i] == 695
-        chloro_raw[index695] = triplet_data['raw_value_' + i][index695]
-        chloro_calc[index695] = triplet_data['calculated_value_' + i][index695]
-
-        index460 = triplet_data['wavelength_' + i] == 460
-        fdom_raw[index460] = triplet_data['raw_value_' + i][index460]
-        fdom_calc[index460] = triplet_data['calculated_value_' + i][index460]
-
-    good_index = ~triplet_data['time'].mask
-
-    coords = {'time': np.asarray(triplet_data['time'][good_index]).astype('datetime64[s]')}
-
-    data = {'scatter_raw': (['time'], scatter_raw[good_index]),
-            'scatter_calculated': (['time'], scatter_calc[good_index]),
-            'chloro_raw': (['time'], chloro_raw[good_index]),
-            'chloro_calculated': (['time'], chloro_calc[good_index]),
-            'fdom_raw': (['time'], fdom_raw[good_index]),
-            'fdom_calculated': (['time'], fdom_calc[good_index])
-            }
-
-    return xr.Dataset(data, coords=coords)
-
-
 ##### TEST FUNCTION #####
 def single_test():
     return VikingReader().read('/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat')
@@ -1129,16 +1148,22 @@ def compute_speed_course(viking_data):
 
 
 if __name__ == "__main__":
+    import matplotlib.pyplot as plt
+    def find_duplicates(array: np.ndarray):
+        index = np.where(array[:-1] == array[1:])[0]
+        return sorted(list(set(list(index) + list(index+1))))
 
     # viking_data = main()
     vr = VikingReader().read('/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat')
     viking_data = vr._buoys_data['pmza_riki']
 
-    datasets = to_netcdf(viking_data)
-    for key, value in datasets.items():
-        if value is not None and 'time' not in value.attrs:
-            print(key, value.time.shape, np.unique(value.time).shape)
+    nom_datasets = {}
 
-    #
-    # _, index = np.unique(ctd['time'], return_index=True)
-    # ctd = ctd.isel(time=index).interp(time=wph.time)
+    datasets = to_netcdf(viking_data)
+
+    for key, value in datasets.items():
+        if value is not None:
+            if 'time' not in value.attrs:
+                print(key, value.time.shape, np.unique(value.time).shape)
+            else:
+                nom_datasets[key] = value
