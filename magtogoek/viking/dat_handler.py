@@ -188,6 +188,9 @@ Notes
         https://github.com/ooici/ion-functions/blob/master/ion_functions/data/do2_functions.py
 
     - Everything is loaded as float since nans are not avaiable for int type in numpy
+
+    - Triplets Data Decoding: The code will to be modified for other wave lengths.
+          700 nm: Scattering, 695 nm: Chlorophyll, 460 nm: FDOM
 """
 
 import re
@@ -458,171 +461,165 @@ def to_netcdf(viking_data: VikingData) -> xr.Dataset:
     WXT only output Th, Vh, Vs, Vr data and I have no Idea what they are.
     """
     nom_coords = {'time': np.asarray(viking_data.time)}
-    data = {'lon': (['time'], viking_data.longitude.filled(np.nan)),
-            'lat': (['time'], viking_data.latitude.filled(np.nan))}
-    attrs = {'firmware': viking_data.firmware, 'controller_sn': viking_data.controller_sn}
-
-    nom_dataset = xr.Dataset(data, coords=nom_coords, attrs=attrs).dropna('time')
-    comp_dataset = None
+    nom_data = {'lon': (['time'], viking_data.longitude.filled(np.nan)),
+                'lat': (['time'], viking_data.latitude.filled(np.nan))}
+    nom_dataset = xr.Dataset(nom_data,
+                             coords=nom_coords,
+                             attrs={'firmware': viking_data.firmware, 'controller_sn': viking_data.controller_sn}
+                             ).dropna('time')
+    comp_dataset = None # nom_coords
     triplet_dataset = None
-    par_digi_dataset = None
+    par_digi_dataset = None # nom_coords
     suna_dataset = None
     gps_dataset = None
-    ctd_dataset = None
-    adcp_dataset = None
+    ctd_dataset = None # nom_coords
+    adcp_dataset = None # nom_coords if RTI
     wave_dataset = None
-    wxt_dataset = None
-    wmt_dataset = None
+    wxt_dataset = None # nom_coords
+    wmt_dataset = None # nom_coords
     wph_dataset = None
     co2_w_dataset = None
     co2_a_dataset = None
-    debit_dataset = None
+    debit_dataset = None # nom_coords
     vemco_dataset = None
 
     if viking_data.comp is not None:
-        data = {'heading': (['time'], viking_data.comp['heading'].filled(np.nan)),
-                'pitch': (['time'], viking_data.comp['pitch'].filled(np.nan)),
-                '_roll': (['time'], viking_data.comp['roll'].filled(np.nan)),
-                'tilt': (['time'], viking_data.comp['tilt'].filled(np.nan)),
-                'pitch_std': (['time'], viking_data.comp['pitch_std'].filled(np.nan)),
-                'roll_std': (['time'], viking_data.comp['roll_std'].filled(np.nan)),
-                'tilt_std': (['time'], viking_data.comp['tilt_std'].filled(np.nan))
-        }
-        comp_dataset = xr.Dataset(data, coords=nom_coords, attrs={'time': 'nom'})
+        comp_variables = {'heading': 'heading', 'pitch': 'pitch', 'roll': '_roll', 'tilt': 'tilt',
+                          'pitch_std': 'pitch_std', 'roll_std': 'roll_std', 'tilt_std': 'tilt_std'}
+        comp_dataset = xr.Dataset(_make_data_vars(viking_data, 'comp', comp_variables),
+                                  coords=nom_coords,
+                                  attrs={'time': 'nom'})
 
     if viking_data.triplet is not None:
         triplet_dataset = _sort_triplet_wavelength(viking_data.triplet)
 
     if viking_data.par_digi is not None:
-        good_index = ~viking_data.par_digi['time'].mask
-        coords = {'time': np.asarray(viking_data.par_digi['time'][good_index].astype('datetime64[s]'))}
-        data = {'timer_s': (['time'], viking_data.par_digi['timer_s'][good_index].filled(np.nan)),
-                'PAR': (['time'], viking_data.par_digi['PAR'][good_index].filled(np.nan)),
-                'intern_temperature': (['time'], viking_data.par_digi['intern_temperature'][good_index].filled(np.nan))}
-        attrs = {'model_number': viking_data.par_digi['model_number'][good_index][0],
-                 'serial_number': viking_data.par_digi['serial_number'][good_index][0]}
-        par_digi_dataset = xr.Dataset(data, coords=coords, attrs=attrs)
+        par_digi_index = ~viking_data.par_digi['time'].mask
+
+        par_digi_variables = {'timer_s': 'timer', 'PAR': 'PAR', 'intern_temperature': 'intern_temperature'}
+        par_digi_dataset = xr.Dataset(
+            _make_data_vars(viking_data, 'par_digi', par_digi_variables, index=par_digi_index),
+            coords={'time': np.asarray(viking_data.par_digi['time'][par_digi_index].astype('datetime64[s]'))},
+            attrs={'model_number': viking_data.par_digi['model_number'][par_digi_index][0],
+                   'serial_number': viking_data.par_digi['serial_number'][par_digi_index][0]}
+        )
 
     if viking_data.suna is not None:
-        good_index = ~viking_data.suna['time'].mask
-        coords = {'time': np.asarray(viking_data.suna['time'][good_index].astype('datetime64[s]'))}
-        data = {'nitrate': (['time'], viking_data.suna['nitrate'][good_index].filled(np.nan), {'units': 'uMol'}),
-                'nitrogen': (['time'], viking_data.suna['nitrogen'][good_index].filled(np.nan), {'units': 'mgN/L'}),
-                'absorbance_254_31': (['time'], viking_data.suna['absorbance_254_31'][good_index].filled(np.nan)),
-                'absorbance_350_16': (['time'], viking_data.suna['absorbance_350_16'][good_index].filled(np.nan)),
-                'bromide': (['time'], viking_data.suna['bromide'][good_index].filled(np.nan), {'units': 'mg/L'}),
-                'spectrum_average': (['time'], viking_data.suna['spectrum_average'][good_index].filled(np.nan)),
-                }
-        attrs = {'model_number': viking_data.suna['model_number'][good_index][0],
-                 'serial_number': viking_data.suna['serial_number'][good_index][0]}
-        suna_dataset = xr.Dataset(data, coords=coords, attrs=attrs)
+        suna_index = ~viking_data.suna['time'].mask
+
+        suna_attrs = {'nitrate': {'units': 'uMol'}, 'nitrogen': {'units': 'mgN/L'}, 'bromide': {'units': 'mg/L'}}
+        suna_variables = {'nitrate': 'nitrate', 'nitrogen': 'nitrogen', 'absorbance_254_31': 'absorbance_254_31',
+                          'absorbance_350_16': 'absorbance_350_16', 'bromide': 'bromide',
+                          'spectrum_average': 'spectrum_average'}
+        suna_dataset = xr.Dataset(
+            _make_data_vars(viking_data, 'suna', variables=suna_variables, index=suna_index, attrs=suna_attrs),
+            coords={'time': np.asarray(viking_data.suna['time'][suna_index].astype('datetime64[s]'))},
+            attrs={'model_number': viking_data.suna['model_number'][suna_index][0],
+                   'serial_number': viking_data.suna['serial_number'][suna_index][0]}
+        )
 
     if viking_data.gps is not None:
-        good_index = ~viking_data.gps['time'].mask
-        coords = {'time': np.asarray(viking_data.gps['time'][good_index].astype('datetime64[s]'))}
-        data = {'lon': (['time'], viking_data.gps['longitude_E'][good_index].filled(np.nan)),
-                'lat': (['time'], viking_data.gps['latitude_N'][good_index].filled(np.nan)),
-                'speed': (['time'], viking_data.gps['speed'][good_index].filled(np.nan) / KNOTS_PER_METER_S, {'units': 'meters per second'}),
-                'course': (['time'], viking_data.gps['course'][good_index].filled(np.nan)),
-                'magnetic_variation': (['time'], viking_data.gps['variation_E'][good_index].filled(np.nan))}
-        gps_dataset = xr.Dataset(data, coords=coords)
+        gps_index = ~viking_data.gps['time'].mask
+
+        gps_attrs = {'speed': {'units': 'meters per second'}}
+        gps_scale = {'speed': 1 / KNOTS_PER_METER_S}
+        gps_variables = {'longitude_E': 'lon', 'latitude_N': 'lat', 'speed': 'speed', 'course': 'course',
+                         'variation_E': 'magnetic_variation'}
+
+        gps_dataset = xr.Dataset(
+            _make_data_vars(viking_data, 'gps', variables=gps_variables,
+                            index=gps_index, attrs=gps_attrs, scales=gps_scale),
+            coords={'time': np.asarray(viking_data.gps['time'][gps_index].astype('datetime64[s]'))}
+        )
 
     if viking_data.ctd is not None:
-        data = {'temperature': (['time'], viking_data.ctd['temperature'].filled(np.nan)),
-                'conductivity': (['time'], viking_data.ctd['conductivity'].filled(np.nan)),
-                'salinity': (['time'], viking_data.ctd['salinity'].filled(np.nan)),
-                'density': (['time'], viking_data.ctd['density'].filled(np.nan))}
-        ctd_dataset = xr.Dataset(data, coords=nom_coords, attrs={'time': 'nom'})
+        ctd_variables = {'temperature': 'temperature', 'conductivity': 'conductivity',
+                         'salinity': 'salinity', 'density': 'density'}
 
-    if viking_data.ctdo is not None:
-        data = {'temperature': (['time'], viking_data.ctdo['temperature'].filled(np.nan)),
-                'conductivity': (['time'], viking_data.ctdo['conductivity'].filled(np.nan)),
-                'salinity': (['time'], viking_data.ctdo['salinity'].filled(np.nan)),
-                'oxygen': (['time'], viking_data.ctdo['oxygen'].filled(np.nan))}
-        ctd_dataset = xr.Dataset(data, coords=nom_coords, attrs={'time': 'nom'})
+        ctd_dataset = xr.Dataset(
+            _make_data_vars(viking_data, 'ctd', variables=ctd_variables),
+            coords=nom_coords,
+            attrs={'time': 'nom'})
+
+    elif viking_data.ctdo is not None:
+        ctdo_variables = {'temperature': 'temperature', 'conductivity': 'conductivity',
+                          'salinity': 'salinity', 'oxygen': 'oxygen'}
+
+        ctd_dataset = xr.Dataset(
+            _make_data_vars(viking_data, 'ctdo', variables=ctdo_variables),
+            coords=nom_coords,
+            attrs={'time': 'nom'})
 
     if viking_data.rti is not None:
-        data = {
-            'bin': (['time'], viking_data.rti['bin'].filled(np.nan)),
-            'position': (['time'], viking_data.rti['position_cm'].filled(np.nan)/100, {'units': 'meters'}),
-            'beam1': (['time'], viking_data.rti['beam1'].filled(np.nan)),
-            'beam2': (['time'], viking_data.rti['beam2'].filled(np.nan)),
-            'beam3': (['time'], viking_data.rti['beam3'].filled(np.nan)),
-            'beam4': (['time'], viking_data.rti['beam4'].filled(np.nan)),
-            'u': (['time'], viking_data.rti['u'].filled(np.nan)/1000, {'units': 'meters per second'}),
-            'v': (['time'], viking_data.rti['v'].filled(np.nan)/1000, {'units': 'meters per second'}),
-            'w': (['time'], viking_data.rti['w'].filled(np.nan)/1000, {'units': 'meters per second'}),
-            'e': (['time'], viking_data.rti['e'].filled(np.nan)/1000, {'units': 'meters per second'}),
-            'corr1': (['time'], viking_data.rti['corr1'].filled(np.nan)),
-            'corr2': (['time'], viking_data.rti['corr2'].filled(np.nan)),
-            'corr3': (['time'], viking_data.rti['corr3'].filled(np.nan)),
-            'corr4': (['time'], viking_data.rti['corr4'].filled(np.nan)),
-            'amp1': (['time'], viking_data.rti['amp1'].filled(np.nan)),
-            'amp2': (['time'], viking_data.rti['amp2'].filled(np.nan)),
-            'amp3': (['time'], viking_data.rti['amp3'].filled(np.nan)),
-            'amp4': (['time'], viking_data.rti['amp4'].filled(np.nan)),
-            'bt_beam1': (['time'], viking_data.rti['bt_beam1'].filled(np.nan)),
-            'bt_beam2': (['time'], viking_data.rti['bt_beam2'].filled(np.nan)),
-            'bt_beam3': (['time'], viking_data.rti['bt_beam3'].filled(np.nan)),
-            'bt_beam4': (['time'], viking_data.rti['bt_beam4'].filled(np.nan)),
-            'bt_u': (['time'], viking_data.rti['bt_u'].filled(np.nan)/1000, {'units': 'meters per second'}),
-            'bt_v': (['time'], viking_data.rti['bt_v'].filled(np.nan)/1000, {'units': 'meters per second'}),
-            'bt_w': (['time'], viking_data.rti['bt_w'].filled(np.nan)/1000, {'units': 'meters per second'}),
-            'bt_e': (['time'], viking_data.rti['bt_e'].filled(np.nan)/1000, {'units': 'meters per second'}),
-            'bt_corr1': (['time'], viking_data.rti['bt_corr1'].filled(np.nan)),
-            'bt_corr2': (['time'], viking_data.rti['bt_corr2'].filled(np.nan)),
-            'bt_corr3': (['time'], viking_data.rti['bt_corr3'].filled(np.nan)),
-            'bt_corr4': (['time'], viking_data.rti['bt_corr4'].filled(np.nan)),
-            'bt_amp1': (['time'], viking_data.rti['bt_amp1'].filled(np.nan)),
-            'bt_amp2': (['time'], viking_data.rti['bt_amp2'].filled(np.nan)),
-            'bt_amp3': (['time'], viking_data.rti['bt_amp3'].filled(np.nan)),
-            'bt_amp4': (['time'], viking_data.rti['bt_amp4'].filled(np.nan)),
-        }
-        adcp_dataset = xr.Dataset(data, coords=nom_coords,
-                                  attrs={'time': 'nom', 'manufacturer': 'Teledyne RD Instruments Inc.'})
+        rti_variables = {'bin': 'bin', 'position_cm': 'position',
+                         'beam1': 'beam1', 'beam2': 'beam2', 'beam3': 'beam3', 'beam4': 'beam4',
+                         'u': 'u', 'v': 'v', 'w': 'w', 'e': 'e',
+                         'corr1': 'corr1', 'corr2': 'corr2', 'corr3': 'corr3', 'corr4': 'corr4',
+                         'amp1': 'amp1', 'amp2': 'amp2', 'amp3': 'amp3', 'amp4': 'amp4',
+                         'bt_beam1': 'bt_beam1', 'bt_beam2': 'bt_beam2', 'bt_beam3': 'bt_beam3', 'bt_beam4': 'bt_beam4',
+                         'bt_u': 'bt_u', 'bt_v': 'bt_v', 'bt_w': 'bt_w', 'bt_e': 'bt_e',
+                         'bt_corr1': 'bt_corr1', 'bt_corr2': 'bt_corr2', 'bt_corr3': 'bt_corr3', 'bt_corr4': 'bt_corr4',
+                         'bt_amp1': 'bt_amp1', 'bt_amp2': 'bt_amp2', 'bt_amp3': 'bt_amp3', 'bt_amp4': 'bt_amp4'}
+        rti_scales = {'position_cm': 1 / 100,
+                      'u': 1 / 1000, 'v': 1 / 1000, 'w': 1 / 1000, 'e': 1 / 1000,
+                      'bt_u': 1 / 1000, 'bt_v': 1 / 1000, 'bt_w': 1 / 1000, 'bt_e': 1 / 1000}
+        rti_attrs = {'position_cm': {'units': 'meters'},
+                     'u': {'units': 'meters per second'}, 'v': {'units': 'meters per second'},
+                     'w': {'units': 'meters per second'}, 'e': {'units': 'meters per second'},
+                     'bt_u': {'units': 'meters per second'}, 'bt_v': {'units': 'meters per second'},
+                     'bt_w': {'units': 'meters per second'}, 'bt_e': {'units': 'meters per second'}}
+        adcp_dataset = xr.Dataset(
+            _make_data_vars(viking_data, 'rti', variables=rti_variables, scales=rti_scales, attrs=rti_attrs),
+            coords=nom_coords,
+            attrs={'time': 'nom', 'manufacturer': 'rti'})
 
     elif viking_data.rdi is not None:
-        good_index = ~viking_data.rdi['time'].mask
-        coords = {'time': np.asarray(viking_data.rdi['time'][good_index].astype('datetime64[s]'))}
-        data = {'u': (['time'], viking_data.rdi['u'].filled(np.nan)[good_index]/1000, {'units': 'meters per second'}),
-                'v': (['time'], viking_data.rdi['v'].filled(np.nan)[good_index]/1000, {'units': 'meters per second'}),
-                'w': (['time'], viking_data.rdi['w'].filled(np.nan)[good_index]/1000, {'units': 'meters per second'}),
-                'e': (['time'], viking_data.rdi['e'].filled(np.nan)[good_index]/1000, {'units': 'meters per second'})}
-        adcp_dataset = xr.Dataset(data, coords=coords, attrs={'manufacturer': 'Teledyne RD Instruments Inc.'})
+        rdi_index = ~viking_data.rdi['time'].mask
+        rdi_variables = {'u': 'u', 'v': 'v', 'w': 'w', 'e': 'e'}
+        rdi_scales = {'u': 1 / 1000, 'v': 1 / 1000, 'w': 1 / 1000, 'e': 1 / 1000}
+        rdi_attrs = {'u': {'units': 'meters per second'}, 'v': {'units': 'meters per second'},
+                     'w': {'units': 'meters per second'}, 'e': {'units': 'meters per second'}}
+        adcp_dataset = xr.Dataset(
+            _make_data_vars(viking_data, 'rdi', variables=rdi_variables,
+                            index=rdi_index, scales=rdi_scales, attrs=rdi_attrs),
+            coords={'time': np.asarray(viking_data.rdi['time'][rdi_index].astype('datetime64[s]'))},
+            attrs={'time': 'nom', 'manufacturer': 'rdi'})
 
     if viking_data.wave_m is not None:
-        good_index = ~viking_data.wave_m['time'].mask
-        coords = {'time': np.asarray(viking_data.wave_m['time'][good_index]).astype('datetime64[s]')}
-        data = {'period': (['time'], viking_data.wave_m['period'][good_index].filled(np.nan)),
-                'average_height': (['time'], viking_data.wave_m['average_height'][good_index].filled(np.nan)),
-                'significant_height': (['time'], viking_data.wave_m['significant_height'][good_index].filled(np.nan)),
-                'maximal_height': (['time'], viking_data.wave_m['maximal_height'][good_index].filled(np.nan))}
-        wave_dataset = xr.Dataset(data, coords=coords)
+        wave_m_index = ~viking_data.wave_m['time'].mask
+        wave_m_variables = {'period': 'period', 'average_height': 'average_height',
+                            'significant_height': 'significant_height', 'maximal_height': 'maximal_height'}
+        wave_dataset = xr.Dataset(
+            _make_data_vars(viking_data, 'wave_m', variables=wave_m_variables, index=wave_m_index),
+            coords={'time': np.asarray(viking_data.wave_m['time'][wave_m_index]).astype('datetime64[s]')})
 
     elif viking_data.wave_s is not None:
-        good_index = ~viking_data.wave_s['time'].mask
-        coords = {'time': np.asarray(viking_data.wave_s['time'][good_index]).astype('datetime64[s]')}
-        data = {'period': (['time'], viking_data.wave_s['dominant_period'][good_index].filled(np.nan)),
-                'period_max': (['time'], viking_data.wave_s['pmax2'][good_index].filled(np.nan)),
-                'direction': (['time'], viking_data.wave_s['wave_direction'][good_index].filled(np.nan)),
-                'average_height': (['time'], viking_data.wave_s['average_height'][good_index].filled(np.nan)),
-                'max_height': (['time'], viking_data.wave_s['Hmax'][good_index].filled(np.nan)),
-                'max2_height': (['time'], viking_data.wave_s['Hmax2'][good_index].filled(np.nan))}
-        wave_dataset = xr.Dataset(data, coords=coords)
+        wave_s_index = ~viking_data.wave_s['time'].mask
+        wave_s_variables = {'dominant_period': 'period', 'pmax2': 'period_max', 'wave_direction': 'direction',
+                            'average_height': 'average_height', 'Hmax': 'maximal_height', 'Hmax2': 'maximal2_height'}
+        wave_dataset = xr.Dataset(
+            _make_data_vars(viking_data, 'wave_s', variables=wave_s_variables, index=wave_s_index),
+            coords={'time': np.asarray(viking_data.wave_s['time'][wave_s_index]).astype('datetime64[s]')})
 
     if viking_data.wxt520 is not None:
-        data = {'wind_direction': (['time'], viking_data.wxt520['Dm'].filled(np.nan)),
-                'wind_min': (['time'], viking_data.wxt520['Sn'].filled(np.nan) / KNOTS_PER_METER_S, {'units': 'meters per second'}),
-                'wind_max': (['time'], viking_data.wxt520['Sx'].filled(np.nan) / KNOTS_PER_METER_S, {'units': 'meters per second'}),
-                'wind_mean': (['time'], viking_data.wxt520['Sm'].filled(np.nan) / KNOTS_PER_METER_S, {'units': 'meters per second'})}
-        wxt_dataset = xr.Dataset(data, coords=nom_coords, attrs={'time': 'nom'})
+        wxt_variables = {'Dm':'wind_direction', 'Sn': 'wind_min', 'Sx': 'wind_max', 'Sm': 'wind_mean'}
+        wxt_scales = {'Sn': 1 / KNOTS_PER_METER_S, 'Sx': 1 / KNOTS_PER_METER_S, 'Sm': 1 / KNOTS_PER_METER_S}
+        wxt_attrs = {'Sn': {'units': 'meters per second'}, 'Sx': {'units': 'meters per second'},
+                     'Sm': {'units': 'meters per second'}}
+        wxt_dataset = xr.Dataset(
+            _make_data_vars(viking_data, 'wxt520', variables=wxt_variables, scales=wxt_scales, attrs=wxt_attrs),
+            coords=nom_coords,
+            attrs={'time': 'nom'})
 
     if viking_data.wmt700 is not None:
-        data = {'direction': (['time'], viking_data.wmt700['Dm'].filled(np.nan)),
-                'wind_min': (['time'], viking_data.wmt700['Sn'].filled(np.nan) / KNOTS_PER_METER_S, {'units': 'meters per second'}),
-                'wind_max': (['time'], viking_data.wmt700['Sx'].filled(np.nan) / KNOTS_PER_METER_S, {'units': 'meters per second'}),
-                'wind_mean': (['time'], viking_data.wmt700['Sm'].filled(np.nan) / KNOTS_PER_METER_S, {'units': 'meters per second'})}
-        wmt_dataset = xr.Dataset(data, coords=nom_coords, attrs={'time': 'nom'})
+        wmt_variables = {'Dm': 'wind_direction', 'Sn': 'wind_min', 'Sx': 'wind_max', 'Sm': 'wind_mean'}
+        wmt_scales = {'Sn': 1 / KNOTS_PER_METER_S, 'Sx': 1 / KNOTS_PER_METER_S, 'Sm': 1 / KNOTS_PER_METER_S}
+        wmt_attrs = {'Sn': {'units': 'meters per second'}, 'Sx': {'units': 'meters per second'},
+                     'Sm': {'units': 'meters per second'}}
+        wmt_dataset = xr.Dataset(
+            _make_data_vars(viking_data, 'wmt700', variables=wmt_variables, scales=wmt_scales, attrs=wmt_attrs),
+            coords=nom_coords,
+            attrs={'time': 'nom'})
 
     if viking_data.wph is not None:
         good_index = ~viking_data.wph['time'].mask
@@ -636,10 +633,6 @@ def to_netcdf(viking_data: VikingData) -> xr.Dataset:
         wph_dataset = xr.Dataset(data, coords=coords, attrs=attrs)
 
     if viking_data.co2_w:
-        """
-        'time', 'auto-zero', 'current', 'co2_ppm', 'irga_temperature', 'humidity_mbar',
-        'humidity_sensor_temperature', 'cell_gas_pressure_mar'
-        """
         good_index = ~viking_data.co2_w['time'].mask
         coords = {'time': viking_data.co2_w['time'][good_index].astype('datetime64[s]')}
         data = {'auto_zero': (['time'], viking_data.co2_w['auto_zero'][good_index].filled(np.nan)),
@@ -672,9 +665,9 @@ def to_netcdf(viking_data: VikingData) -> xr.Dataset:
     if viking_data.vemco:
         good_index = ~viking_data.vemco['time'].mask
         coords = {'time': np.asarray(viking_data.vemco['time'][good_index].astype('datetime64[s]'))}
-        data = {'protocol': (['time'], viking_data.vemco['protocol'].filled('N/A')),
-                'serial_number': (['time'], viking_data.vemco['serial_number'].filled('N/A'))}
-        vemco_dataset = xr.Dataset(data, coords=coords)
+        data = {'protocol': (['time'], viking_data.vemco['protocol'].filled('NA')),
+                'serial_number': (['time'], viking_data.vemco['serial_number'].filled('NA'))}
+        vemco_dataset = xr.Dataset(data, coords=coords, attrs = None)
 
     _datasets = {'nom': nom_dataset, 'comp': comp_dataset, 'trip': triplet_dataset, 'par': par_digi_dataset,
                  'suna': suna_dataset, 'gps': gps_dataset, 'ctd': ctd_dataset, 'adcp': adcp_dataset,
@@ -688,19 +681,37 @@ def to_netcdf(viking_data: VikingData) -> xr.Dataset:
     return _datasets
 
 
-def _average_duplicates(dataset: xr.Dataset, coord: str)->xr.Dataset:
+def _make_data_vars(viking_data: VikingData,
+                    tag: str, variables: dict,
+                    index: np.ndarray = None,
+                    attrs: dict = None,
+                    scales: dict = None,
+                    ):
+    """Return parameters data_var for xarray.Dataset.
+    """
+    if attrs is None:
+        attrs = {}
+    if scales is None:
+        scales = {}
+
+    data_vars = {}
+    for key, value in variables.items():
+        values = viking_data.__dict__[tag][key][index] if index is not None else viking_data.__dict__[tag][key]
+        key_attrs = attrs[key] if key in attrs else None
+        key_scale = scales[key] if key in scales else 1
+        fill_value = "NA" if np.issubdtype(values.dtype, str) else np.nan
+
+        data_vars[key] = (['time'], values.filled(fill_value)*key_scale, key_attrs)
+
+    return data_vars
+
+
+def _average_duplicates(dataset: xr.Dataset, coord: str) -> xr.Dataset:
+    """Average data_array values of duplicates time coords index.
     """
 
-    Parameters
-    ----------
-    dataset
-    coord
-
-    Returns
-    -------
-
-    """
-    df = dataset.to_dataframe().groupby(coord).mean()
+    df = dataset.to_dataframe()
+    df = df.groupby(coord).mean(numeric_only=False)
 
     _dataset = dataset[{coord: np.unique(dataset[coord], return_index=True)[1]}]
     for var in _dataset.keys():
@@ -711,7 +722,6 @@ def _average_duplicates(dataset: xr.Dataset, coord: str)->xr.Dataset:
 
 def _sort_triplet_wavelength(triplet_data: dict):
     """
-
     700 nm: Scattering
     695 nm: Chlorophyll
     460 nm: FDOM
@@ -721,7 +731,7 @@ def _sort_triplet_wavelength(triplet_data: dict):
 
     Notes
     -----
-    fill for nan
+    For other wave lengths: The code will to be modified
     """
     _shape = triplet_data['time'].shape
 
@@ -1155,15 +1165,8 @@ if __name__ == "__main__":
 
     # viking_data = main()
     vr = VikingReader().read('/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat')
-    viking_data = vr._buoys_data['pmza_riki']
 
-    nom_datasets = {}
+    viking_data = vr._buoys_data['pmza_riki']
 
     datasets = to_netcdf(viking_data)
 
-    for key, value in datasets.items():
-        if value is not None:
-            if 'time' not in value.attrs:
-                print(key, value.time.shape, np.unique(value.time).shape)
-            else:
-                nom_datasets[key] = value
