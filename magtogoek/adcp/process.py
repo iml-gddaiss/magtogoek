@@ -60,6 +60,7 @@ from magtogoek.adcp.loader import load_adcp_binary
 from magtogoek.adcp.odf_exporter import make_odf
 from magtogoek.adcp.quality_control import (adcp_quality_control,
                                             no_adcp_quality_control)
+from magtogoek.adcp.tools import regrid_dataset
 from magtogoek.tools import rotate_2d_vector
 from magtogoek.attributes_formatter import (
     compute_global_attrs, format_variables_names_and_attributes)
@@ -239,6 +240,9 @@ class ProcessConfig:
     odf_path: str = None
     log_path: str = None
 
+    grid_depth: str = None
+    grid_method: str = None
+
     def __init__(self, config_dict: dict = None):
         self.metadata: dict = {}
         self.platform_metadata: dict = {}
@@ -417,6 +421,16 @@ def _process_adcp_data(pconfig: ProcessConfig):
         _quality_control(dataset, pconfig)
     else:
         no_adcp_quality_control(dataset)
+
+    # ----------- #
+    # RE-GRIDDING #
+    # ----------- #
+    if pconfig.grid_depth is not None:
+        grid_method = pconfig.grid_method or 'interp'
+        dataset = regrid_dataset(dataset,
+                                 grid=pconfig.grid_depth,
+                                 dim='depth',
+                                 method=grid_method)
 
     l.reset()
 
