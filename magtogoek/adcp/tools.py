@@ -10,6 +10,7 @@ from nptyping import NDArray
 from pandas import Timestamp, to_datetime
 import warnings
 
+
 def dday_to_datetime64(dday: np.ndarray, yearbase: int) -> tp.Tuple[NDArray, NDArray]:
     """Convert time recorded time to pandas time (np.datetime64[s]).
 
@@ -76,7 +77,7 @@ def get_datetime_and_count(trim_arg: str):
 
 
 def regrid_dataset(dataset: xr.Dataset,
-                   grid: (str, list, np.ndarray),
+                   grid: tp.Union(str, list, np.ndarray),
                    method: str = 'interp',
                    dim: str = 'depth') -> xr.Dataset:
     """
@@ -84,18 +85,18 @@ def regrid_dataset(dataset: xr.Dataset,
 
     Parameters
     ----------
-    dataset: xarray.Dataset
+    dataset :
         Input data.
-    grid: str, list or numpy.ndarray
+    grid :
         Path to a column text file or array-like of depths in meters.
-    method: str
+    method :
         One of [`interp`, `bin`]. Regrid by bin-averaging or interpolation.
-    dim: str
+    dim :
         Name of the coordinate along which to regrid `dataset`.
 
     Returns
     -------
-    regridded: xarray.Dataset
+    regridded :
         The input data regridded on `grid` along `dim`.
 
     """
@@ -126,7 +127,7 @@ def regrid_dataset(dataset: xr.Dataset,
     return regridded
 
 
-def bin_centers_to_edges(z):
+def bin_centers_to_edges(centers: tp.Union[list, np.ndarray]) -> np.ndarray:
     """
     Get bin edges from bin centers.
 
@@ -135,20 +136,21 @@ def bin_centers_to_edges(z):
 
     Parameters
     ----------
-    z : numpy.array
+    centers :
         Bin centers.
 
     Returns
     -------
-    numpy.array
+    edges :
         Bin edges.
 
     """
-    dz = np.diff(z)
+    z = np.array(centers)
+    dz = np.diff(centers)
     return np.r_[z[0]-dz[0]/2, z[1:]-dz/2, z[-1] + dz[-1]/2]
 
 
-def bin_edges_to_centers(bine):
+def bin_edges_to_centers(edges: tp.Union[list, np.ndarray]) -> np.ndarray:
     """
     Get bin centers from bin edges.
 
@@ -157,19 +159,23 @@ def bin_edges_to_centers(bine):
 
     Parameters
     ----------
-    bine : 1D array
+    edges : 1D array
         Bin edges.
 
     Returns
     -------
-    1D array
+    centers :
         Bin centers.
 
     """
-    return bine[:-1] + np.diff(bine) / 2
+    edges = np.array(edges)
+    return edges[:-1] + np.diff(edges) / 2
 
 
-def xr_bin(dataset, dim, bins, centers=True):
+def xr_bin(dataset: tp.union[xr.Dataset, xr.DataArray],
+           dim: str,
+           bins: np.ndarray,
+           centers: bool = True) -> tp.Union[xr.Dataset, xr.DataArray]:
     """
     Bin dataset along `dim`.
 
@@ -179,18 +185,18 @@ def xr_bin(dataset, dim, bins, centers=True):
 
     Parameters
     ----------
-    dataset : xarray.Dataset or xarray.DataArray
+    dataset :
         Dataset to operate on.
-    dim: str
+    dim :
         Name of dimension along which to bin.
-    bins: array_like
+    bins :
         Bin centers or edges if `centers` is False.
-    centers: bool
+    centers :
         Parameter `bins` is the centers, otherwise it is the edges.
 
     Returns
     -------
-    xarray.Dataset
+    binned :
         Dataset binned at `binc` along `dim`.
 
     """
