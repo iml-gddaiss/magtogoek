@@ -217,11 +217,11 @@ class TaskParser:
             option: str                               -> Name for the option
             dtypes: Union[str, List[str]]             -> data types. Different types can be expected ex. [int, str]
                                                          Try to parse/decode into one of the dtypes returning the first
-                                                         succesfull decoding in this order (float, int, bool, int).
+                                                         successful decoding in this order (float, int, bool, int).
             default: Optional[ListStrIntFloatBool]    -> Default value
             nargs: int                                -> Number of arguments.
-            nargs_min: int                            -> Minimum number of arguments. Can't be sued with nargs.
-            nargs_max: int                            -> Maximum number of arguments. Can't be sued with nargs.
+            nargs_min: int                            -> Minimum number of arguments. Can't be used with nargs.
+            nargs_max: int                            -> Maximum number of arguments. Can't be used with nargs.
             choice: list                              -> List of choices.
             value_min: Union[int, float]              -> Minimum numerical value.
             value_max: Union[int, float]              -> Maximum numerical value.

@@ -23,7 +23,7 @@ def flag_data(dataset: xr.Dataset, var: str, flag_thres: int = 2, ancillary_vari
 
     Returns
     -------
-
+    data with nan values where the flags were greater than the flag_thres.
     """
     if ancillary_variables is None:
         ancillary_variables = dataset[var].attrs["ancillary_variables"]
