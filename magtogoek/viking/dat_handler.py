@@ -622,52 +622,55 @@ def to_netcdf(viking_data: VikingData) -> xr.Dataset:
             attrs={'time': 'nom'})
 
     if viking_data.wph is not None:
-        good_index = ~viking_data.wph['time'].mask
-        coords = {'time': np.asarray(viking_data.wph['time'][good_index]).astype('datetime64[s]')}
-        data = {'ext_ph': (['time'], viking_data.wph['ext_ph'][good_index].filled(np.nan)),
-                'ext_volt': (['time'], viking_data.wph['ext_volt'][good_index].filled(np.nan)),
-                'temperature': (['time'], viking_data.wph['ph_temperature'][good_index].filled(np.nan)),
-                'error_flag': (['time'], viking_data.wph['ext_volt'][good_index].filled(np.nan))}
-        attrs = {'model': viking_data.wph['model'][good_index][0],
-                 'serial_number': viking_data.wph['serial_number'][good_index][0]}
-        wph_dataset = xr.Dataset(data, coords=coords, attrs=attrs)
+        wph_index = ~viking_data.wph['time'].mask
+        wph_variables = {'ext_ph': 'ext_ph', 'ext_volt': 'ext_volt', 'ph_temperature': 'temperature',
+                         'error_flag': 'error_flag'}
+        wph_dataset = xr.Dataset(
+            _make_data_vars(viking_data, 'wph', variables=wph_variables, index=wph_index),
+            coords={'time': np.asarray(viking_data.wph['time'][wph_index]).astype('datetime64[s]')},
+            attrs={'model': viking_data.wph['model'][wph_index][0],
+                   'serial_number': viking_data.wph['serial_number'][wph_index][0]})
 
     if viking_data.co2_w:
-        good_index = ~viking_data.co2_w['time'].mask
-        coords = {'time': viking_data.co2_w['time'][good_index].astype('datetime64[s]')}
-        data = {'auto_zero': (['time'], viking_data.co2_w['auto_zero'][good_index].filled(np.nan)),
-                'current': (['time'], viking_data.co2_w['current'][good_index].filled(np.nan), {'units': 'counts'}),
-                'co2': (['time'], viking_data.co2_w['co2_ppm'][good_index].filled(np.nan), {'units': 'ppm'}),
-                'irga_temperature': (['time'], viking_data.co2_w['irga_temperature'][good_index].filled(np.nan)),
-                'humidity': (['time'], viking_data.co2_w['humidity_mbar'][good_index].filled(np.nan), {'units': 'mbar'}),
-                'humidity_sensor_temperature': (['time'], viking_data.co2_w['humidity_sensor_temperature'][good_index].filled(np.nan)),
-                'cell_gas_pressure': (['time'], viking_data.co2_w['cell_gas_pressure_mbar'][good_index].filled(np.nan), {'units': 'mbar'}),
-                }
-        co2_w_dataset = xr.Dataset(data, coords=coords)
+        co2_w_index = ~viking_data.co2_w['time'].mask
+        co2_w_variables = {'auto_zero': 'auto_zero', 'current': 'current', 'co2_ppm': 'co2',
+                           'irga_temperature': 'irga_temperature', 'humidity_mbar': 'humidity',
+                           'humidity_sensor_temperature': 'humidity_sensor_temperature',
+                           'cell_gas_pressure_mbar': 'cell_gas_pressure'}
+        co2_w_attrs = {'currents': {'units': 'counts'},
+                       'co2_ppm': {'units': 'ppm'},
+                       'humidity_mbar': {'units': 'mbar'},
+                       'cell_gas_pressure_mbar': {'units': 'mbar'}}
+        co2_w_dataset = xr.Dataset(
+            _make_data_vars(viking_data, 'co2_w', variables=co2_w_variables, attrs=co2_w_attrs, index=co2_w_index),
+            coords={'time': viking_data.co2_w['time'][co2_w_index].astype('datetime64[s]')})
 
     if viking_data.co2_a:
-        good_index = ~viking_data.co2_a['time'].mask
-        coords = {'time': viking_data.co2_a['time'][good_index].astype('datetime64[s]')}
-        data = {'auto_zero': (['time'], viking_data.co2_a['auto_zero'][good_index].filled(np.nan)),
-                'current': (['time'], viking_data.co2_a['current'][good_index].filled(np.nan), {'units': 'counts'}),
-                'co2': (['time'], viking_data.co2_a['co2_ppm'][good_index].filled(np.nan), {'units': 'ppm'}),
-                'irga_temperature': (['time'], viking_data.co2_a['irga_temperature'][good_index].filled(np.nan)),
-                'humidity': (['time'], viking_data.co2_a['humidity_mbar'][good_index].filled(np.nan), {'units': 'mbar'}),
-                'humidity_sensor_temperature': (['time'], viking_data.co2_a['humidity_sensor_temperature'][good_index].filled(np.nan)),
-                'cell_gas_pressure': (['time'], viking_data.co2_a['cell_gas_pressure_mbar'][good_index].filled(np.nan), {'units': 'mbar'}),
-                }
-        co2_a_dataset = xr.Dataset(data, coords=coords)
+        co2_a_index = ~viking_data.co2_a['time'].mask
+        co2_a_variables = {'auto_zero': 'auto_zero', 'current': 'current', 'co2_ppm': 'co2',
+                           'irga_temperature': 'irga_temperature', 'humidity_mbar': 'humidity',
+                           'humidity_sensor_temperature': 'humidity_sensor_temperature',
+                           'cell_gas_pressure_mbar': 'cell_gas_pressure'}
+        co2_a_attrs = {'currents': {'units': 'counts'},
+                       'co2_ppm': {'units': 'ppm'},
+                       'humidity_mbar': {'units': 'mbar'},
+                       'cell_gas_pressure_mbar': {'units': 'mbar'}}
+        co2_a_dataset = xr.Dataset(
+            _make_data_vars(viking_data, 'co2_a', variables=co2_a_variables, attrs=co2_a_attrs, index=co2_a_index),
+            coords={'time': viking_data.co2_a['time'][co2_a_index].astype('datetime64[s]')})
 
     if viking_data.debit:
-        data = {'flow': (['time'], viking_data.debit['flow_ms'].filled(np.nan), {'units': 'meter per second'})}
-        debit_dataset = xr.Dataset(data, coords=nom_coords, attrs={'time': 'nom'})
+        debit_dataset = xr.Dataset(
+            {'flow': (['time'], viking_data.debit['flow_ms'].filled(np.nan), {'units': 'meter per second'})},
+            coords=nom_coords,
+            attrs={'time': 'nom'})
 
     if viking_data.vemco:
-        good_index = ~viking_data.vemco['time'].mask
-        coords = {'time': np.asarray(viking_data.vemco['time'][good_index].astype('datetime64[s]'))}
-        data = {'protocol': (['time'], viking_data.vemco['protocol'].filled('NA')),
-                'serial_number': (['time'], viking_data.vemco['serial_number'].filled('NA'))}
-        vemco_dataset = xr.Dataset(data, coords=coords, attrs = None)
+        vemco_index = ~viking_data.vemco['time'].mask
+        vemco_variables = {'protocol': 'protocol', 'serial_number': 'serial_number'}
+        vemco_dataset = xr.Dataset(
+            _make_data_vars(viking_data, 'vemco', variables=vemco_variables, index=vemco_index),
+            coords={'time': np.asarray(viking_data.vemco['time'][vemco_index].astype('datetime64[s]'))})
 
     _datasets = {'nom': nom_dataset, 'comp': comp_dataset, 'trip': triplet_dataset, 'par': par_digi_dataset,
                  'suna': suna_dataset, 'gps': gps_dataset, 'ctd': ctd_dataset, 'adcp': adcp_dataset,
@@ -699,9 +702,10 @@ def _make_data_vars(viking_data: VikingData,
         values = viking_data.__dict__[tag][key][index] if index is not None else viking_data.__dict__[tag][key]
         key_attrs = attrs[key] if key in attrs else None
         key_scale = scales[key] if key in scales else 1
-        fill_value = "NA" if np.issubdtype(values.dtype, str) else np.nan
-
-        data_vars[key] = (['time'], values.filled(fill_value)*key_scale, key_attrs)
+        if np.issubdtype(values.dtype, str):
+            data_vars[key] = (['time'], values.filled("NA" ), key_attrs)
+        else:
+            data_vars[key] = (['time'], values.filled(np.nan) * key_scale, key_attrs)
 
     return data_vars
 
