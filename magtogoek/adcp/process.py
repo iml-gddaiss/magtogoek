@@ -392,6 +392,17 @@ def _process_adcp_data(pconfig: ProcessConfig):
     if not dataset.attrs["source"]:
         dataset.attrs["source"] = pconfig.platform_type
 
+        # --------------- #
+    # QUALITY CONTROL #
+    # --------------- #
+
+    dataset.attrs["logbook"] += l.logbook
+
+    if pconfig.quality_control:
+        _quality_control(dataset, pconfig)
+    else:
+        no_adcp_quality_control(dataset)
+
     # ----------------------------------- #
     # CORRECTION FOR MAGNETIC DECLINATION #
     # ----------------------------------- #
@@ -411,26 +422,11 @@ def _process_adcp_data(pconfig: ProcessConfig):
         dataset.attrs["magnetic_declination"] = pconfig.magnetic_declination
         l.log(f"Absolute magnetic declination: {dataset.attrs['magnetic_declination']} degree east.")
 
-    # --------------- #
-    # QUALITY CONTROL #
-    # --------------- #
-
-    dataset.attrs["logbook"] += l.logbook
-
-    if pconfig.quality_control:
-        _quality_control(dataset, pconfig)
-    else:
-        no_adcp_quality_control(dataset)
-
     # ----------- #
     # RE-GRIDDING #
     # ----------- #
     if pconfig.grid_depth is not None:
-        grid_method = pconfig.grid_method or 'interp'
-        dataset = regrid_dataset(dataset,
-                                 grid=pconfig.grid_depth,
-                                 dim='depth',
-                                 method=grid_method)
+        _regrid_dataset(dataset, pconfig)
 
     l.reset()
 
@@ -664,6 +660,16 @@ def _load_navigation(dataset: xr.Dataset, navigation_files: str):
     l.warning('Could not load navigation data file.')
     return dataset
 
+def _regrid_dataset(dataset: xr.Dataset, pconfig: ProcessConfig) -> xr.Dataset:
+    """ Wrapper for regrid_dataset
+    """
+    grid_source_str = 'to grid from file: %s' % pconfig.grid_depth
+    l.log(f"Regridded dataset with method `%s` %s" % grid_source_str)
+    return regrid_dataset(dataset,
+                          grid=pconfig.grid_depth,
+                          dim='depth',
+                          method=pconfig.grid_method)
+    
 
 def _quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
     """Carries quality control.
