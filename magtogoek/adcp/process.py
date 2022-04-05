@@ -62,7 +62,7 @@ from magtogoek.adcp.quality_control import (adcp_quality_control,
                                             no_adcp_quality_control)
 from magtogoek.tools import rotate_2d_vector, regrid_dataset
 from magtogoek.attributes_formatter import (
-    compute_global_attrs, format_variables_names_and_attributes)
+    compute_global_attrs, format_variables_names_and_attributes, _add_data_min_max_to_var_attrs)
 from magtogoek.navigation import load_navigation
 from magtogoek.platforms import _add_platform
 from magtogoek.utils import Logger, ensure_list_format, json2dict
@@ -670,12 +670,24 @@ def _regrid_dataset(dataset: xr.Dataset, pconfig: ProcessConfig) -> xr.Dataset:
     and with equal weights for all data inside each bin.
  
     """
+    # Apply quality control
+    for var_ in 'uvw':
+        dataset[var_] = dataset[var_].where(dataset[f"{var_}_QC"] < 2)
+
+    # Log entry
     msg = 'to grid from file: %s' % pconfig.grid_depth
     l.log(f"Regridded dataset with method {pconfig.grid_method} {msg}")
-    return regrid_dataset(dataset,
-                          grid=pconfig.grid_depth,
-                          dim='depth',
-                          method=pconfig.grid_method)
+
+    # Regridding
+    dataset = regrid_dataset(dataset,
+                             grid=pconfig.grid_depth,
+                             dim='depth',
+                             method=pconfig.grid_method)
+
+    # Change min and max values
+    _add_data_min_max_to_var_attrs(dataset)
+
+    return dataset
 
 
 def _quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
