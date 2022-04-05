@@ -77,7 +77,7 @@ def get_datetime_and_count(trim_arg: str):
 
 
 def regrid_dataset(dataset: xr.Dataset,
-                   grid: tp.Union(str, list, np.ndarray),
+                   grid: tp.Union[str, list, np.ndarray],
                    method: str = 'interp',
                    dim: str = 'depth') -> xr.Dataset:
     """
@@ -172,7 +172,7 @@ def bin_edges_to_centers(edges: tp.Union[list, np.ndarray]) -> np.ndarray:
     return edges[:-1] + np.diff(edges) / 2
 
 
-def xr_bin(dataset: tp.union[xr.Dataset, xr.DataArray],
+def xr_bin(dataset: tp.Union[xr.Dataset, xr.DataArray],
            dim: str,
            bins: np.ndarray,
            centers: bool = True) -> tp.Union[xr.Dataset, xr.DataArray]:
@@ -215,40 +215,19 @@ def xr_bin(dataset: tp.union[xr.Dataset, xr.DataArray],
         for key in dataset.keys():
             dim_dict[key] = dataset[key].dims
 
-        # Save dataset attributes
-        attributes = dataset.attrs
-
-        # Save variable attributes
-        var_attributes = dict()
-        for v in dataset.data_vars:
-            var_attributes[v] = dataset[v].attrs
-
-        # Save coordinate variable attributes
-        coord_attributes = dict()
-        for c in dataset.coords:
-            coord_attributes[c] = dataset[c].attrs
-
     # Avoids printing mean of empty slice warning
     with warnings.catch_warnings():
         warnings.simplefilter('ignore', category=RuntimeWarning)
 
         # Bin reduction 
         output = (dataset.groupby_bins(dataset[dim], bins=edge, labels=labels)
-                  .mean(dim=dim)
+                  .mean(dim=dim, keep_attrs=True)
                   .rename({dim+'_bins': dim}))
 
     # Skip for compatibility with DataArray
     if isinstance(dataset, xr.core.dataset.Dataset):
         # Restore dataset attributes
-        output.attrs = attributes
-
-        # Restore variable attributes
-        for v in output.data_vars:
-            output[v].attrs = var_attributes[v]
-
-        # Restore coordinate variable attributes
-        for c in output.coords:
-            output[c].attrs = coord_attributes[c]
+        output.attrs = dataset.attrs
 
         # Restore dimension order to each variable
         for key, dim_tuple in dim_dict.items():

@@ -664,7 +664,7 @@ def _regrid_dataset(dataset: xr.Dataset, pconfig: ProcessConfig) -> xr.Dataset:
     """ Wrapper for regrid_dataset
     """
     grid_source_str = 'to grid from file: %s' % pconfig.grid_depth
-    l.log(f"Regridded dataset with method `%s` %s" % grid_source_str)
+    l.log(f"Regridded dataset with method `%s` %s" % (pconfig.grid_method, grid_source_str))
     return regrid_dataset(dataset,
                           grid=pconfig.grid_depth,
                           dim='depth',
