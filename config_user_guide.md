@@ -111,8 +111,9 @@ grid_depth                    = Path and name of the file containing depths
                                 containing depth values in meters. For example, the output of:
                                 `$ seq 0 10 100 > z.grid`.
 grid_method                   = Either `interp` or `bin`. Selects whether vertical dimension
-                                regridding will be performed by interpolation or bin averaging of the
-                                quality-controlled data.   
+                                regridding will be performed by linear interpolation or bin averaging of the
+                                quality-controlled data. Bin averaging selects all data strictly within the bin
+                                boundaries and averages them with equal weight.
 
 [ADCP_QUALITY_CONTROL]
 quality_control               = If True, quality control is carried out.
