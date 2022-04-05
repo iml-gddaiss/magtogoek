@@ -60,8 +60,7 @@ from magtogoek.adcp.loader import load_adcp_binary
 from magtogoek.adcp.odf_exporter import make_odf
 from magtogoek.adcp.quality_control import (adcp_quality_control,
                                             no_adcp_quality_control)
-from magtogoek.adcp.tools import regrid_dataset
-from magtogoek.tools import rotate_2d_vector
+from magtogoek.tools import rotate_2d_vector, regrid_dataset
 from magtogoek.attributes_formatter import (
     compute_global_attrs, format_variables_names_and_attributes)
 from magtogoek.navigation import load_navigation
@@ -392,7 +391,7 @@ def _process_adcp_data(pconfig: ProcessConfig):
     if not dataset.attrs["source"]:
         dataset.attrs["source"] = pconfig.platform_type
 
-        # --------------- #
+    # --------------- #
     # QUALITY CONTROL #
     # --------------- #
 
@@ -402,6 +401,8 @@ def _process_adcp_data(pconfig: ProcessConfig):
         _quality_control(dataset, pconfig)
     else:
         no_adcp_quality_control(dataset)
+
+    l.reset()
 
     # ----------------------------------- #
     # CORRECTION FOR MAGNETIC DECLINATION #
@@ -427,8 +428,6 @@ def _process_adcp_data(pconfig: ProcessConfig):
     # ----------- #
     if pconfig.grid_depth is not None:
         _regrid_dataset(dataset, pconfig)
-
-    l.reset()
 
     if any(x is True for x in [pconfig.drop_percent_good, pconfig.drop_correlation, pconfig.drop_amplitude]):
         dataset = _drop_beam_data(dataset, pconfig)
@@ -660,16 +659,24 @@ def _load_navigation(dataset: xr.Dataset, navigation_files: str):
     l.warning('Could not load navigation data file.')
     return dataset
 
+
 def _regrid_dataset(dataset: xr.Dataset, pconfig: ProcessConfig) -> xr.Dataset:
     """ Wrapper for regrid_dataset
+ 
+    Note
+    ----
+    The `interp` method performs linear interpolation. The `bin` method
+    performs averaging of input data strictly within the bin boundaries
+    and with equal weights for all data inside each bin.
+ 
     """
-    grid_source_str = 'to grid from file: %s' % pconfig.grid_depth
-    l.log(f"Regridded dataset with method `%s` %s" % (pconfig.grid_method, grid_source_str))
+    msg = 'to grid from file: %s' % pconfig.grid_depth
+    l.log(f"Regridded dataset with method {pconfig.grid_method} {msg}")
     return regrid_dataset(dataset,
                           grid=pconfig.grid_depth,
                           dim='depth',
                           method=pconfig.grid_method)
-    
+
 
 def _quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
     """Carries quality control.
