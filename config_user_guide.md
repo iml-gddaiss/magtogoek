@@ -105,6 +105,14 @@ start_time                    = Format 'YYYY-MM-DDThh:mm:ss.ssss'.
                                 `time_step` to use a different time step than the one found in the adcp 
                                 raw adcp file. 
 time_step                     = Time step in seconds. Only use if a `start_time` value is provided.
+grid_depth                    = Path and name of the file containing depths
+                                to which the dataset should be regridded. Setting this value activates the
+                                regridding procedure. The grid file should be a one-column text file
+                                containing depth values in meters. For example, the output of:
+                                `$ seq 0 10 100 > z.grid`.
+grid_method                   = Either `interp` or `bin`. Selects whether vertical dimension
+                                regridding will be performed by interpolation or bin averaging of the
+                                quality-controlled data.   
 
 [ADCP_QUALITY_CONTROL]
 quality_control               = If True, quality control is carried out.
