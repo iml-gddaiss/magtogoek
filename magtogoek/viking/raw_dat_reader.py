@@ -266,6 +266,8 @@ data: (length: {len(self)})
     def reformat(self):
         self._squeeze_empty_tag()
         self._to_numpy_masked_array()
+        if self.triplet is not None: # This Could be done directly during the decoding
+            _convert_triplet_wavelength(self.triplet) # This Could be done directly during the decoding
 
     def _to_numpy_masked_array(self):
         self.time = np.array(self.time, dtype='datetime64[s]')
@@ -355,7 +357,6 @@ buoys:\n"""
                     for key, value in tag_data.items():
                         value.append(data_block[tag][key])
 
-        viking_data: VikingData
         for viking_data in self._buoys_data.values():
             viking_data.reformat()
 
@@ -374,7 +375,8 @@ buoys:\n"""
 
         return buoy_info
 
-def _sort_triplet_wavelength(triplet_data: dict):
+
+def _convert_triplet_wavelength(triplet_data: dict):
     """
     700 nm: Scattering
     695 nm: Chlorophyll
@@ -389,9 +391,9 @@ def _sort_triplet_wavelength(triplet_data: dict):
     """
     _shape = triplet_data['time'].shape
 
-    scatter_raw, scatter_calc = nans(_shape), nans(_shape)
-    chloro_raw, chloro_calc = nans(_shape), nans(_shape)
-    fdom_raw, fdom_calc = nans(_shape), nans(_shape)
+    scatter_raw, scatter_calc = np.ma.masked_all(_shape), np.ma.masked_all(_shape)
+    chloro_raw, chloro_calc = np.ma.masked_all(_shape), np.ma.masked_all(_shape)
+    fdom_raw, fdom_calc = np.ma.masked_all(_shape), np.ma.masked_all(_shape)
 
     for i in ("1", "2", "3"):
         index700 = triplet_data['wavelength_' + i] == 700
@@ -406,19 +408,14 @@ def _sort_triplet_wavelength(triplet_data: dict):
         fdom_raw[index460] = triplet_data['raw_value_' + i][index460]
         fdom_calc[index460] = triplet_data['calculated_value_' + i][index460]
 
-    good_index = ~triplet_data['time'].mask
-
-    coords = {'time': np.asarray(triplet_data['time'][good_index]).astype('datetime64[s]')}
-
-    data = {'scatter_raw': (['time'], scatter_raw[good_index]),
-            'scatter_calculated': (['time'], scatter_calc[good_index]),
-            'chloro_raw': (['time'], chloro_raw[good_index]),
-            'chloro_calculated': (['time'], chloro_calc[good_index]),
-            'fdom_raw': (['time'], fdom_raw[good_index]),
-            'fdom_calculated': (['time'], fdom_calc[good_index])
-            }
-
-    return xr.Dataset(data, coords=coords)
+    triplet_data.update({
+        'scatter_raw':  scatter_raw,
+        'scatter_calculated': scatter_calc,
+        'chloro_raw':  chloro_raw,
+        'chloro_calculated':  chloro_calc,
+        'fdom_raw': fdom_raw,
+        'fdom_calculated': fdom_calc
+            })
 
 
 def _decode_transmitted_data(data_received: str, century: int = 21) -> dict:
