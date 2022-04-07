@@ -62,9 +62,9 @@ Data That Need Processing
 """
 
 import re
-#import struct
-#from datetime import datetime, timedelta
-#from math import atan2, sqrt, pi
+# import struct
+# from datetime import datetime, timedelta
+# from math import atan2, sqrt, pi
 from typing import List, Dict, Union
 
 from magtogoek.viking.raw_dat_reader import VikingReader, VikingData
@@ -76,22 +76,23 @@ from magtogoek.utils import get_files_from_expression, nans
 
 matplotlib.use('Qt5Agg')
 
-#FILL_VALUE = -32768  # Reusing the same fill value as teledyne (RDI) -(2**15)
+# FILL_VALUE = -32768  # Reusing the same fill value as teledyne (RDI) -(2**15)
 
 KNOTS_PER_METER_S = 1.94384  # knots per meter/per
 
-DAT_TAGS =['comp', 'triplet', 'par_digi', 'suna', 'gps', 'ctd', 'ctdo', 'rti', 'rdi',
-           'wave_m', 'wave_s', 'wxt520', 'wmt700', 'wph', 'co2_w', 'co2_a', 'debit', 'vemco']
+DAT_TAGS = ['comp', 'triplet', 'par_digi', 'suna', 'gps', 'ctd', 'ctdo', 'rti', 'rdi',
+            'wave_m', 'wave_s', 'wxt520', 'wmt700', 'wph', 'co2_w', 'co2_a', 'debit', 'vemco']
 
-variables_names = {
+VARIABLES_NAMES = {
     'comp': {'heading': 'heading', 'pitch': 'pitch', 'roll': '_roll', 'tilt': 'tilt',
              'pitch_std': 'pitch_std', 'roll_std': 'roll_std', 'tilt_std': 'tilt_std'},
-    'triplet': {'time':'_time', 'scatter_calculated': 'scatter', 'chloro_calculated': 'chloro', 'fdom_calculated': 'fdom'},
-    'par_digi': {'time':'_time','timer_s': 'timer', 'PAR': 'PAR', 'intern_temperature': 'intern_temperature'},
-    'suna': {'time':'_time', 'nitrate': 'nitrate', 'nitrogen': 'nitrogen', 'absorbance_254_31': 'absorbance_254_31',
+    'triplet': {'time': '_time', 'scatter_calculated': 'scatter', 'chloro_calculated': 'chloro',
+                'fdom_calculated': 'fdom'},
+    'par_digi': {'time': '_time', 'timer_s': 'timer', 'PAR': 'PAR', 'intern_temperature': 'intern_temperature'},
+    'suna': {'time': '_time', 'nitrate': 'nitrate', 'nitrogen': 'nitrogen', 'absorbance_254_31': 'absorbance_254_31',
              'absorbance_350_16': 'absorbance_350_16', 'bromide': 'bromide',
              'spectrum_average': 'spectrum_average'},
-    'gps': {'time':'_time', 'longitude_E': 'lon', 'latitude_N': 'lat', 'speed': 'speed', 'course': 'course',
+    'gps': {'time': '_time', 'longitude_E': 'lon', 'latitude_N': 'lat', 'speed': 'speed', 'course': 'course',
             'variation_E': 'magnetic_variation'},
     'ctd': {'temperature': 'temperature', 'conductivity': 'conductivity',
             'salinity': 'salinity', 'density': 'density'},
@@ -106,28 +107,28 @@ variables_names = {
             'bt_u': 'bt_u', 'bt_v': 'bt_v', 'bt_w': 'bt_w', 'bt_e': 'bt_e',
             'bt_corr1': 'bt_corr1', 'bt_corr2': 'bt_corr2', 'bt_corr3': 'bt_corr3', 'bt_corr4': 'bt_corr4',
             'bt_amp1': 'bt_amp1', 'bt_amp2': 'bt_amp2', 'bt_amp3': 'bt_amp3', 'bt_amp4': 'bt_amp4'},
-    'rdi': {'time':'_time', 'u': 'u', 'v': 'v', 'w': 'w', 'e': 'e'},
-    'wave_m': {'time':'_time', 'period': 'period', 'average_height': 'average_height',
+    'rdi': {'time': '_time', 'u': 'u', 'v': 'v', 'w': 'w', 'e': 'e'},
+    'wave_m': {'time': '_time', 'period': 'period', 'average_height': 'average_height',
                'significant_height': 'significant_height', 'maximal_height': 'maximal_height'},
-    'wave_s': {'time':'_time', 'dominant_period': 'period', 'pmax2': 'period_max', 'wave_direction': 'direction',
+    'wave_s': {'time': '_time', 'dominant_period': 'period', 'pmax2': 'period_max', 'wave_direction': 'direction',
                'average_height': 'average_height', 'Hmax': 'maximal_height', 'Hmax2': 'maximal2_height'},
     'wxt520': {'Dm': 'wind_direction', 'Sn': 'wind_min', 'Sx': 'wind_max', 'Sm': 'wind_mean',
                'Ta': 'temperature', 'Ua': 'humidity', 'Pa': 'pressure'},
     'wmt700': {'Dm': 'wind_direction', 'Sn': 'wind_min', 'Sx': 'wind_max', 'Sm': 'wind_mean'},
-    'wph': {'time':'_time', 'ext_ph': 'ext_ph', 'ext_volt': 'ext_volt', 'ph_temperature': 'temperature',
+    'wph': {'time': '_time', 'ext_ph': 'ext_ph', 'ext_volt': 'ext_volt', 'ph_temperature': 'temperature',
             'error_flag': 'error_flag'},
-    'co2_w': {'time':'_time', 'auto_zero': 'auto_zero', 'current': 'current', 'co2_ppm': 'co2',
+    'co2_w': {'time': '_time', 'auto_zero': 'auto_zero', 'current': 'current', 'co2_ppm': 'co2',
               'irga_temperature': 'irga_temperature', 'humidity_mbar': 'humidity',
               'humidity_sensor_temperature': 'humidity_sensor_temperature',
               'cell_gas_pressure_mbar': 'cell_gas_pressure'},
-    'co2_a': {'time':'_time', 'auto_zero': 'auto_zero', 'current': 'current', 'co2_ppm': 'co2',
+    'co2_a': {'time': '_time', 'auto_zero': 'auto_zero', 'current': 'current', 'co2_ppm': 'co2',
               'irga_temperature': 'irga_temperature', 'humidity_mbar': 'humidity',
               'humidity_sensor_temperature': 'humidity_sensor_temperature',
               'cell_gas_pressure_mbar': 'cell_gas_pressure'},
     'debit': {'flow_ms': 'flow'},
-    'vemco': {'time':'_time', 'protocol': 'protocol', 'serial_number': 'serial_number'}
+    'vemco': {'time': '_time', 'protocol': 'protocol', 'serial_number': 'serial_number'}
 }
-variables_attrs = {
+VARIABLES_ATTRS = {
     'suna': {'nitrate': {'units': 'uMol'}, 'nitrogen': {'units': 'mgN/L'}, 'bromide': {'units': 'mg/L'}},
     'gps': {'speed': {'units': 'meters per second'}},
     'rti': {'position_cm': {'units': 'meters'},
@@ -147,7 +148,7 @@ variables_attrs = {
               'humidity_mbar': {'units': 'mbar'}, 'cell_gas_pressure_mbar': {'units': 'mbar'}},
     'debit': {'flow_ms': {'units': 'meter per second'}}
 }
-variables_scales = {
+VARIABLES_SCALES = {
     'rti': {'position_cm': 1 / 100,
             'u': 1 / 1000, 'v': 1 / 1000, 'w': 1 / 1000, 'e': 1 / 1000,
             'bt_u': 1 / 1000, 'bt_v': 1 / 1000, 'bt_w': 1 / 1000, 'bt_e': 1 / 1000},
@@ -156,7 +157,7 @@ variables_scales = {
     'wmt': {'Sn': 1 / KNOTS_PER_METER_S, 'Sx': 1 / KNOTS_PER_METER_S, 'Sm': 1 / KNOTS_PER_METER_S}
 
 }
-global_attrs = {'triplet': {'model_number': 'model_number', 'serial_number': 'serial_number'},
+GLOBAL_ATTRS = {'triplet': {'model_number': 'model_number', 'serial_number': 'serial_number'},
                 'par_digi': {'model_number': 'model_number', 'serial_number': 'serial_number'},
                 'wph': {'serial_number': 'serial_number'},
                 }
@@ -180,35 +181,40 @@ def load_viking_dat(viking_data: VikingData) -> xr.Dataset:
         coords=nom_coords,
         attrs={'firmware': viking_data.firmware, 'controller_sn': viking_data.controller_sn}).dropna('time')
 
-    for tag in variables_names.keys():
+    for tag in VARIABLES_NAMES.keys():
         if viking_data.__dict__[tag] is not None:
-            v_attrs = variables_attrs[tag] if tag in variables_attrs else {}
-            v_scales = variables_scales[tag] if tag in variables_scales else {}
-
-            data_vars = {}
-            for var, name in variables_names[tag].items():
-                values = viking_data.__dict__[tag][var]
-                var_attrs = v_attrs[var] if var in v_attrs else None
-                var_scale = v_scales[var] if var in v_scales else 1
-                if var == 'time':
-                    data_vars[name] = (['time'], values.filled(np.datetime64('NaT')).astype('datetime64[s]'), var_attrs)
-                elif np.issubdtype(values.dtype, str):
-                    data_vars[name] = (['time'], values.filled("NA"), var_attrs)
-                else:
-                    data_vars[name] = (['time'], values.filled(np.nan) * var_scale, var_attrs)
-
-            g_attrs = {}
-            if tag in global_attrs:
-                for var, name in global_attrs[tag].items():
-                    index = np.where(viking_data.__dict__[tag][var].mask == False)[0]
-                    g_attrs[name] = str(viking_data.__dict__[tag][var].data[index][0])
-
-            datasets[tag] = xr.Dataset(data_vars, coords=nom_coords, attrs = g_attrs)
+            datasets[tag] = _load_tag_data_to_dataset(tag, tag_data=viking_data.__dict__[tag], coords=nom_coords)
 
     for key in datasets.keys():
         datasets[key] = _average_duplicates(datasets[key], 'time')
 
     return datasets
+
+
+def _load_tag_data_to_dataset(tag: str, tag_data: dict, coords: dict) -> xr.Dataset:
+    vars_attrs = VARIABLES_ATTRS[tag] if tag in VARIABLES_ATTRS else {}
+    vars_scales = VARIABLES_SCALES[tag] if tag in VARIABLES_SCALES else {}
+
+    data_vars = {}
+    for var, name in VARIABLES_NAMES[tag].items():
+        values = tag_data[var]
+        vars_attrs = vars_attrs[var] if var in vars_attrs else None
+        vars_scale = vars_scales[var] if var in vars_scales else 1
+        if var == 'time':
+            data_vars[name] = (['time'], values.filled(np.datetime64('NaT')).astype('datetime64[s]'), vars_attrs)
+        elif np.issubdtype(values.dtype, str):
+            data_vars[name] = (['time'], values.filled("NA"), vars_attrs)
+        else:
+            data_vars[name] = (['time'], values.filled(np.nan) * vars_scale, vars_attrs)
+
+    _global_attrs = {}
+    if tag in GLOBAL_ATTRS:
+        for var, name in GLOBAL_ATTRS[tag].items():
+            index = np.where(tag_data[var].mask == False)[0]
+            _global_attrs[name] = str([var].data[index][0])
+
+    return xr.Dataset(data_vars, coords=coords, attrs=_global_attrs)
+
 
 
 def _average_duplicates(dataset: xr.Dataset, coord: str) -> xr.Dataset:
@@ -227,9 +233,12 @@ def _average_duplicates(dataset: xr.Dataset, coord: str) -> xr.Dataset:
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
+
+
     def find_duplicates(array: np.ndarray):
         index = np.where(array[:-1] == array[1:])[0]
-        return sorted(list(set(list(index) + list(index+1))))
+        return sorted(list(set(list(index) + list(index + 1))))
+
 
     # viking_data = main()
     vr = VikingReader().read('/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat')
@@ -237,4 +246,3 @@ if __name__ == "__main__":
     viking_data = vr._buoys_data['pmza_riki']
 
     datasets = load_viking_dat(viking_data)
-
