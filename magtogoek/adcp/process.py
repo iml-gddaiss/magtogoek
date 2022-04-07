@@ -703,8 +703,14 @@ def _regrid_dataset(dataset: xr.Dataset, pconfig: ProcessConfig) -> xr.Dataset:
         if pconfig.grid_method == 'bin':
             dataset[f"{var_}_QC"] = new_flags[f"{var_}_QC"]
         elif pconfig.grid_method == 'interp':
-            
-            raise KeyError('Flag transfer method not yet implemented for regrid method: interp')
+            condition_null = dataset[f"{var_}"].isnull()
+            condition_good = (dataset[f"{var_}_QC"] == 8) & ~condition_null
+            condition_changed = (dataset[f"{var_}_QC"] == 5) & condition_null
+            # Init flags as missing
+            dataset[f"{var_}_QC"].loc[:] = 9
+            dataset[f"{var_}_QC"] = xr.where(condition_changed, 5, dataset[f"{var_}_QC"])
+            dataset[f"{var_}_QC"] = xr.where(condition_good, 8, dataset[f"{var_}_QC"])
+
         else:
             raise KeyError('Unexpected grid_method parameter: %s' % pconfig.grid_method)
 
