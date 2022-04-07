@@ -674,7 +674,7 @@ def _regrid_dataset(dataset: xr.Dataset, pconfig: ProcessConfig) -> xr.Dataset:
     """
     # Pre-process flags
     for var_ in 'uvw':
-        dataset[f"{var_}_QC"] = _prepare_flags_for_regrid(dataset[f"{var_}_QC"])
+        dataset[f"{var_}_QC"].values[:] = _prepare_flags_for_regrid(dataset[f"{var_}_QC"].data)
 
     # Make new quality flags if grid_method is `bin`. Must happen before averaging.
     if pconfig.grid_method == 'bin':
