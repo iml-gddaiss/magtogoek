@@ -353,45 +353,27 @@ def _xr_bin(dataset: tp.Union[xr.Dataset, xr.DataArray],
     return output
 
 
-def _isin_along_axis(array: tp.Union[np.ndarray, xr.DataArray],
-                     elements: tp.Union[int, float, list, np.ndarray],
-                     axis: int = 0) -> tp.Union[np.ndarray, xr.DataArray]:
+def _isin_any(array: tp.Union[np.ndarray, xr.DataArray],
+              element: tp.Union[int, float, str],
+              dim):
     """
     Check if `elements` are in `array` along `axis`.
 
     Parameters
     ----------
     array :
-        In which to look for elements (m by n by l by ...).
-    elements :
-        Elements to look for (k by 1).
-    axis :
-        Index of the dimension along which look for `elements` in `array`.
+        In which to look for elements.
+    element :
+        Element to look for.
+    dim :
+        Name of the dimension along which look for `elements` in `array`.
 
     Returns
     -------
     bool_array :
-        True if element was found, False otherwise. Of same size as
-        `array` except dimension `axis`. For example, if `axis = 1`
-        `bool_array` is of size m by k by l by (...). Dimension `axis`
-        `bool_array` represents if element was found in `array` along
-        dimension `axis` for each element in `elements`.
-
+        True if element was found, False otherwise.
     """
-    # Compute result for ndarray
-    _func = lambda a, elements: np.isin(elements, a)
-    result = np.apply_along_axis(_func, axis, array, elements)
-
-    # Form into DataArray if input is DataArray
-    if isinstance(array, xr.DataArray):
-        shape, dims = [], []
-        for i_, (dim_size, dim_name) in enumerate(zip(array.shape, array.dims)):
-            if i_ != axis:
-                shape.append(dim_size)
-                dims.append(dim_name)
-        result = xr.DataArray(result.reshape(*shape), dims=dims)
-
-    return result
+    return (array == element).any(dim=dim)
 
 
 def _new_flags_bin_regrid(flags: xr.DataArray,
@@ -422,8 +404,8 @@ def _new_flags_bin_regrid(flags: xr.DataArray,
 
     # Determine if bins contained 5 or 8 flags
     grouped = flags.groupby_bins(dim, bin_edges, labels=bin_depths)
-    contains_8 = grouped.map(_isin_along_axis, args=(8, axis,))
-    contains_5 = grouped.map(_isin_along_axis, args=(5, axis,))
+    contains_8 = grouped.map(_isin_any, args=(8, dim,))
+    contains_5 = grouped.map(_isin_any, args=(5, dim,))
 
     # Make new flag array
     new_flags = xr.where(contains_5, 5, 9)  # contains 5 or 8 -> 5, not -> 9
@@ -460,7 +442,7 @@ def _new_flags_interp_regrid(dataset: xr.Dataset, variable: str) -> xr.DataArray
     return new_flags
 
 
-def _prepare_flags_for_regrid(flags: xr.DataArray) -> xr.DataArray:
+def _prepare_flags_for_regrid(flags: tp.Union[np.ndarray, xr.DataArray]) -> tp.Union[np.ndarray, xr.DataArray]:
     """
     Format quality control flags for input to regridding transfer schemes.
 
@@ -482,6 +464,4 @@ def _prepare_flags_for_regrid(flags: xr.DataArray) -> xr.DataArray:
     flagged as `modified`. All flag values are therefore funneled into
     these three types before regridding to simplify the transfer algorithms.
     """
-    new_flags = xr.where(flags < 9, 5, 9)
-    new_flags = xr.where(flags < 3, 8, new_flags)
-    return new_flags
+    return (flags < 9)*5 + (flags < 3)*3 + (flags==9)*9
