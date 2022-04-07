@@ -431,9 +431,8 @@ def _new_flags_interp_regrid(dataset: xr.Dataset, variable: str) -> xr.DataArray
         Quality flags for the regridded data variable.
 
     """
-    condition_null = dataset[f"{variable}"].isnull()
-    condition_good = (dataset[f"{variable}_QC"] == 8) & ~condition_null
-    condition_changed = (dataset[f"{variable}_QC"] == 5) & condition_null
+    good_condition = dataset[f"{variable}"].isfinite()
+    condition_changed = dataset[f"{variable}_QC"] == 5
     new_flags = dataset[f"{variable}_QC"].copy()
     new_flags.loc[:] = 9
     new_flags = xr.where(condition_changed, 5, new_flags)
