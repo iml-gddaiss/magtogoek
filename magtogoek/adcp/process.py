@@ -60,7 +60,8 @@ from magtogoek.adcp.loader import load_adcp_binary
 from magtogoek.adcp.odf_exporter import make_odf
 from magtogoek.adcp.quality_control import (adcp_quality_control,
                                             no_adcp_quality_control)
-from magtogoek.tools import rotate_2d_vector, regrid_dataset
+from magtogoek.tools import (
+    rotate_2d_vector, regrid_dataset, _prepare_flags_for_regrid, _new_flags_bin_regrid)
 from magtogoek.attributes_formatter import (
     compute_global_attrs, format_variables_names_and_attributes, _add_data_min_max_to_var_attrs)
 from magtogoek.navigation import load_navigation
@@ -427,7 +428,7 @@ def _process_adcp_data(pconfig: ProcessConfig):
     # RE-GRIDDING #
     # ----------- #
     if pconfig.grid_depth is not None:
-        _regrid_dataset(dataset, pconfig)
+        dataset = _regrid_dataset(dataset, pconfig)
 
     if any(x is True for x in [pconfig.drop_percent_good, pconfig.drop_correlation, pconfig.drop_amplitude]):
         dataset = _drop_beam_data(dataset, pconfig)
@@ -670,12 +671,25 @@ def _regrid_dataset(dataset: xr.Dataset, pconfig: ProcessConfig) -> xr.Dataset:
     and with equal weights for all data inside each bin.
  
     """
+    # Re-flag
+    for var_ in 'uvw':
+        dataset[f"{var_}_QC"] = _prepare_flags_for_regrid(dataset[f"{var_}_QC"])
+
+    # Save old flags if grid_method is `bin`
+    if pconfig.grid_method == 'bin':
+        l.log(f"Making regridded quality flags according to bin transfer scheme.")
+
+        _bin_depths, _new_flags = np.loadtxt(pconfig.grid_depth), dict()
+        for var_ in 'uvw':
+            _new_flags[f"{var_}_QC"] = _new_flags_bin_regrid(dataset[f"{var_}_QC"], _bin_depths)
+        new_flags = xr.Dataset(_new_flags)
+
     # Apply quality control
     for var_ in 'uvw':
-        dataset[var_] = dataset[var_].where(dataset[f"{var_}_QC"] < 2)
+        dataset[var_] = dataset[var_].where(dataset[f"{var_}_QC"] == 8)
 
     # Log entry
-    msg = 'to grid from file: %s' % pconfig.grid_depth
+    msg = f"to grid from file: {pconfig.grid_depth}"
     l.log(f"Regridded dataset with method {pconfig.grid_method} {msg}")
 
     # Regridding
@@ -683,6 +697,16 @@ def _regrid_dataset(dataset: xr.Dataset, pconfig: ProcessConfig) -> xr.Dataset:
                              grid=pconfig.grid_depth,
                              dim='depth',
                              method=pconfig.grid_method)
+
+    # Make new flags and replace interpolated/binned values
+    for var_ in 'uvw':
+        if pconfig.grid_method == 'bin':
+            dataset[f"{var_}_QC"] = new_flags[f"{var_}_QC"]
+        elif pconfig.grid_method == 'interp':
+            
+            raise KeyError('Flag transfer method not yet implemented for regrid method: interp')
+        else:
+            raise KeyError('Unexpected grid_method parameter: %s' % pconfig.grid_method)
 
     # Change min and max values
     _add_data_min_max_to_var_attrs(dataset)

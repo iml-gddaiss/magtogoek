@@ -313,6 +313,7 @@ def _xr_bin(dataset: tp.Union[xr.Dataset, xr.DataArray],
         Dataset binned at `binc` along `dim`.
 
     """
+    print("Passing through _xr_bin")
     # Bin type management
     if centers:
         edge = _bin_centers_to_edges(bins)
@@ -350,3 +351,109 @@ def _xr_bin(dataset: tp.Union[xr.Dataset, xr.DataArray],
                 output[key] = output[key].transpose(*dim_tuple)
 
     return output
+
+
+def _isin_along_axis(array: tp.Union[np.ndarray, xr.DataArray],
+                     elements: tp.Union[int, float, list, np.ndarray],
+                     axis: int = 0) -> tp.Union[np.ndarray, xr.DataArray]:
+    """
+    Check if `elements` are in `array` along `axis`.
+
+    Parameters
+    ----------
+    array :
+        In which to look for elements (m by n by l by ...).
+    elements :
+        Elements to look for (k by 1).
+    axis :
+        Index of the dimension along which look for `elements` in `array`.
+
+    Returns
+    -------
+    bool_array :
+        True if element was found, False otherwise. Of same size as
+        `array` except dimension `axis`. For example, if `axis = 1`
+        `bool_array` is of size m by k by l by (...). Dimension `axis`
+        `bool_array` represents if element was found in `array` along
+        dimension `axis` for each element in `elements`.
+
+    """
+    # Compute result for ndarray
+    _func = lambda a, elements: np.isin(elements, a)
+    result = np.apply_along_axis(_func, axis, array, elements)
+
+    # Form into DataArray if input is DataArray
+    if isinstance(array, xr.DataArray):
+        shape, dims = [], []
+        for i_, (dim_size, dim_name) in enumerate(zip(array.shape, array.dims)):
+            if i_ != axis:
+                shape.append(dim_size)
+                dims.append(dim_name)
+        result = xr.DataArray(result.reshape(*shape), dims=dims)
+
+    return result
+
+
+def _new_flags_bin_regrid(flags: xr.DataArray,
+                          bin_depths: np.ndarray,
+                          dim: str = 'depth',
+                          axis: int = 0) -> xr.DataArray:
+    """
+    Quality flag transfer function for bin average regridding.
+
+    Parameters
+    ----------
+    flags :
+        Flags prepared for regridding (5, 8, 9).
+    bin_depths :
+        Center of the regridding averaging bins (meters).
+    dim :
+        Name of the dimension along which the binning is done.
+    axis :
+        Index of the dimension along which the binning is done.
+
+    Returns
+    -------
+    new_flags :
+        Quality flags for the regridded data.
+
+    """
+    bin_edges = _bin_centers_to_edges(bin_depths)
+
+    # Determine if bins contained 5 or 8 flags
+    grouped = flags.groupby_bins(dim, bin_edges, labels=bin_depths)
+    contains_8 = grouped.map(_isin_along_axis, args=(8, axis,))
+    contains_5 = grouped.map(_isin_along_axis, args=(5, axis,))
+
+    # Make new flag array
+    new_flags = xr.where(contains_5, 5, 9)  # contains 5 or 8 -> 5, not -> 9
+    new_flags = xr.where(contains_8, 8, new_flags)  # contains 8 -> 8
+
+    return new_flags
+
+
+def _prepare_flags_for_regrid(flags: xr.DataArray) -> xr.DataArray:
+    """
+    Format quality control flags for input to regridding transfer schemes.
+
+    Parameters
+    ----------
+    flags :
+        Quality control flags [0, 1, 2, 3, 4, 5, 9].
+
+    Returns
+    -------
+    new_flags :
+        Quality control flags [5, 8, 9].
+
+    Notes
+    -----
+    The rationale for this transformation is that after interpolation or
+    averaging missing values should remain flagged as `missing`, good values
+    should be flagged as `interpolated` and questionable values should be
+    flagged as `modified`. All flag values are therefore funneled into
+    these three types before regridding to simplify the transfer algorithms.
+    """
+    new_flags = xr.where(flags < 9, 5, 9)
+    new_flags = xr.where(flags < 3, 8, new_flags)
+    return new_flags
