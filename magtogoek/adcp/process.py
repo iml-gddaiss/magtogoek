@@ -61,7 +61,8 @@ from magtogoek.adcp.odf_exporter import make_odf
 from magtogoek.adcp.quality_control import (adcp_quality_control,
                                             no_adcp_quality_control)
 from magtogoek.tools import (
-    rotate_2d_vector, regrid_dataset, _prepare_flags_for_regrid, _new_flags_bin_regrid)
+    rotate_2d_vector, regrid_dataset, _prepare_flags_for_regrid, _new_flags_bin_regrid,
+    _new_flags_interp_regrid)
 from magtogoek.attributes_formatter import (
     compute_global_attrs, format_variables_names_and_attributes, _add_data_min_max_to_var_attrs)
 from magtogoek.navigation import load_navigation
@@ -671,11 +672,11 @@ def _regrid_dataset(dataset: xr.Dataset, pconfig: ProcessConfig) -> xr.Dataset:
     and with equal weights for all data inside each bin.
  
     """
-    # Re-flag
+    # Pre-process flags
     for var_ in 'uvw':
         dataset[f"{var_}_QC"] = _prepare_flags_for_regrid(dataset[f"{var_}_QC"])
 
-    # Save old flags if grid_method is `bin`
+    # Make new quality flags if grid_method is `bin`. Must happen before averaging.
     if pconfig.grid_method == 'bin':
         l.log(f"Making regridded quality flags according to bin transfer scheme.")
 
@@ -688,11 +689,9 @@ def _regrid_dataset(dataset: xr.Dataset, pconfig: ProcessConfig) -> xr.Dataset:
     for var_ in 'uvw':
         dataset[var_] = dataset[var_].where(dataset[f"{var_}_QC"] == 8)
 
-    # Log entry
+    # Regridding
     msg = f"to grid from file: {pconfig.grid_depth}"
     l.log(f"Regridded dataset with method {pconfig.grid_method} {msg}")
-
-    # Regridding
     dataset = regrid_dataset(dataset,
                              grid=pconfig.grid_depth,
                              dim='depth',
@@ -703,16 +702,7 @@ def _regrid_dataset(dataset: xr.Dataset, pconfig: ProcessConfig) -> xr.Dataset:
         if pconfig.grid_method == 'bin':
             dataset[f"{var_}_QC"] = new_flags[f"{var_}_QC"]
         elif pconfig.grid_method == 'interp':
-            condition_null = dataset[f"{var_}"].isnull()
-            condition_good = (dataset[f"{var_}_QC"] == 8) & ~condition_null
-            condition_changed = (dataset[f"{var_}_QC"] == 5) & condition_null
-            # Init flags as missing
-            dataset[f"{var_}_QC"].loc[:] = 9
-            dataset[f"{var_}_QC"] = xr.where(condition_changed, 5, dataset[f"{var_}_QC"])
-            dataset[f"{var_}_QC"] = xr.where(condition_good, 8, dataset[f"{var_}_QC"])
-
-        else:
-            raise KeyError('Unexpected grid_method parameter: %s' % pconfig.grid_method)
+            dataset[f"{var_}_QC"] = _new_flags_interp_regrid(dataset, var_)
 
     # Change min and max values
     _add_data_min_max_to_var_attrs(dataset)

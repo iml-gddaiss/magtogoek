@@ -432,6 +432,34 @@ def _new_flags_bin_regrid(flags: xr.DataArray,
     return new_flags
 
 
+def _new_flags_interp_regrid(dataset: xr.Dataset, variable: str) -> xr.DataArray:
+    """
+    Quality flag transfer function for interpolation regridding.
+
+    Parameters
+    ----------
+    flags :
+        Dataset being regridded.
+    variable :
+        Name of the variable for which flags are being transfered.
+
+    Returns
+    -------
+    new_flags :
+        Quality flags for the regridded data variable.
+
+    """
+    condition_null = dataset[f"{variable}"].isnull()
+    condition_good = (dataset[f"{variable}_QC"] == 8) & ~condition_null
+    condition_changed = (dataset[f"{variable}_QC"] == 5) & condition_null
+    new_flags = dataset[f"{variable}_QC"].copy()
+    new_flags.loc[:] = 9
+    new_flags = xr.where(condition_changed, 5, new_flags)
+    new_flags = xr.where(condition_good, 8, new_flags)
+
+    return new_flags
+
+
 def _prepare_flags_for_regrid(flags: xr.DataArray) -> xr.DataArray:
     """
     Format quality control flags for input to regridding transfer schemes.
