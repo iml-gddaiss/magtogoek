@@ -401,12 +401,12 @@ def _new_flags_bin_regrid(flags: xr.DataArray,
     """
     bin_edges = _bin_centers_to_edges(bin_depths)
 
-    # Determine if bins contained 5 or 8 flags
+    # Determine if original bins contained 5 or 8 flags
     grouped = flags.groupby_bins(dim, bin_edges, labels=bin_depths)
-    contains_8 = grouped.map(_isin_any, args=(8, dim,))
-    contains_5 = grouped.map(_isin_any, args=(5, dim,))
+    good = grouped.map(_isin_any, args=(8, dim,))  # contains 8 flags
+    changed = grouped.map(_isin_any, args=(5, dim,))  # contains 5 flags
 
-    return contains_8*8 + (contains_5 & ~contains_8)*5 + (~contains_5 & ~contains_8)*9
+    return good*8 + (changed & ~good)*5 + (~changed & ~good)*9
 
 
 def _new_flags_interp_regrid(dataset: xr.Dataset, variable: str) -> xr.DataArray:
