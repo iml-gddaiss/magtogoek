@@ -313,7 +313,6 @@ def _xr_bin(dataset: tp.Union[xr.Dataset, xr.DataArray],
         Dataset binned at `binc` along `dim`.
 
     """
-    print("Passing through _xr_bin")
     # Bin type management
     if centers:
         edge = _bin_centers_to_edges(bins)
@@ -355,7 +354,7 @@ def _xr_bin(dataset: tp.Union[xr.Dataset, xr.DataArray],
 
 def _isin_any(array: tp.Union[np.ndarray, xr.DataArray],
               element: tp.Union[int, float, str],
-              dim):
+              dim) -> tp.Union[np.ndarray, xr.DataArray]:
     """
     Check if `elements` are in `array` along `axis`.
 
@@ -407,11 +406,7 @@ def _new_flags_bin_regrid(flags: xr.DataArray,
     contains_8 = grouped.map(_isin_any, args=(8, dim,))
     contains_5 = grouped.map(_isin_any, args=(5, dim,))
 
-    # Make new flag array
-    new_flags = xr.where(contains_5, 5, 9)  # contains 5 or 8 -> 5, not -> 9
-    new_flags = xr.where(contains_8, 8, new_flags)  # contains 8 -> 8
-
-    return new_flags
+    return contains_8*8 + (contains_5 & ~contains_8)*5 + (~contains_5 & ~contains_8)*9
 
 
 def _new_flags_interp_regrid(dataset: xr.Dataset, variable: str) -> xr.DataArray:
@@ -431,14 +426,10 @@ def _new_flags_interp_regrid(dataset: xr.Dataset, variable: str) -> xr.DataArray
         Quality flags for the regridded data variable.
 
     """
-    good_condition = dataset[f"{variable}"].isfinite()
-    condition_changed = dataset[f"{variable}_QC"] == 5
-    new_flags = dataset[f"{variable}_QC"].copy()
-    new_flags.loc[:] = 9
-    new_flags = xr.where(condition_changed, 5, new_flags)
-    new_flags = xr.where(condition_good, 8, new_flags)
-
-    return new_flags
+    good = ~dataset[f"{variable}"].isnull()
+    changed = dataset[f"{variable}_QC"] == 5
+  
+    return good*8 + changed*5 + (~good & ~changed)*9
 
 
 def _prepare_flags_for_regrid(flags: tp.Union[np.ndarray, xr.DataArray]) -> tp.Union[np.ndarray, xr.DataArray]:

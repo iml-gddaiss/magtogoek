@@ -674,12 +674,10 @@ def _regrid_dataset(dataset: xr.Dataset, pconfig: ProcessConfig) -> xr.Dataset:
     """
     # Pre-process flags
     for var_ in 'uvw':
-        dataset[f"{var_}_QC"].values[:] = _prepare_flags_for_regrid(dataset[f"{var_}_QC"].data)
+        dataset[f"{var_}_QC"].values = _prepare_flags_for_regrid(dataset[f"{var_}_QC"].data)
 
     # Make new quality flags if grid_method is `bin`. Must happen before averaging.
     if pconfig.grid_method == 'bin':
-        l.log(f"Making regridded quality flags according to bin transfer scheme.")
-
         _bin_depths, _new_flags = np.loadtxt(pconfig.grid_depth), dict()
         for var_ in 'uvw':
             _new_flags[f"{var_}_QC"] = _new_flags_bin_regrid(dataset[f"{var_}_QC"], _bin_depths)
