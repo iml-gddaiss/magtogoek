@@ -198,20 +198,20 @@ def _load_tag_data_to_dataset(tag: str, tag_data: dict, coords: dict) -> xr.Data
     data_vars = {}
     for var, name in VARIABLES_NAMES[tag].items():
         values = tag_data[var]
-        vars_attrs = vars_attrs[var] if var in vars_attrs else None
-        vars_scale = vars_scales[var] if var in vars_scales else 1
+        _attrs = vars_attrs[var] if var in vars_attrs else None
+        _scales = vars_scales[var] if var in vars_scales else 1
         if var == 'time':
-            data_vars[name] = (['time'], values.filled(np.datetime64('NaT')).astype('datetime64[s]'), vars_attrs)
+            data_vars[name] = (['time'], values.filled(np.datetime64('NaT')).astype('datetime64[s]'), _attrs)
         elif np.issubdtype(values.dtype, str):
-            data_vars[name] = (['time'], values.filled("NA"), vars_attrs)
+            data_vars[name] = (['time'], values.filled("NA"), _attrs)
         else:
-            data_vars[name] = (['time'], values.filled(np.nan) * vars_scale, vars_attrs)
+            data_vars[name] = (['time'], values.filled(np.nan) * _scales, _attrs)
 
     _global_attrs = {}
     if tag in GLOBAL_ATTRS:
         for var, name in GLOBAL_ATTRS[tag].items():
             index = np.where(tag_data[var].mask == False)[0]
-            _global_attrs[name] = str([var].data[index][0])
+            _global_attrs[name] = str(tag_data[var].data[index][0])
 
     return xr.Dataset(data_vars, coords=coords, attrs=_global_attrs)
 
