@@ -71,6 +71,7 @@ from magtogoek.viking.raw_dat_reader import VikingReader, VikingData
 import matplotlib
 import numpy as np
 import xarray as xr
+import pint
 
 from magtogoek.utils import get_files_from_expression, nans
 
@@ -78,7 +79,7 @@ matplotlib.use('Qt5Agg')
 
 # FILL_VALUE = -32768  # Reusing the same fill value as teledyne (RDI) -(2**15)
 
-KNOTS_PER_METER_S = 1.94384  # knots per meter/per
+#KNOTS_PER_METER_S = 1.94384  # knots per meter/per
 
 DAT_TAGS = ['comp', 'triplet', 'par_digi', 'suna', 'gps', 'ctd', 'ctdo', 'rti', 'rdi',
             'wave_m', 'wave_s', 'wxt520', 'wmt700', 'wph', 'co2_w', 'co2_a', 'debit', 'vemco']
@@ -125,13 +126,13 @@ VARIABLES_NAMES = {
               'irga_temperature': 'irga_temperature', 'humidity_mbar': 'humidity',
               'humidity_sensor_temperature': 'humidity_sensor_temperature',
               'cell_gas_pressure_mbar': 'cell_gas_pressure'},
-    'debit': {'flow_ms': 'flow'},
+    'debit': {'flow': 'flow'},
     'vemco': {'time': '_time', 'protocol': 'protocol', 'serial_number': 'serial_number'}
 }
 VARIABLES_ATTRS = {
-    'suna': {'nitrate': {'units': 'uMol'}, 'nitrogen': {'units': 'mgN/L'}, 'bromide': {'units': 'mg/L'}},
+    'suna': {'nitrate': {'units': 'micromole'}, 'nitrogen': {'units': 'mgN/L'}, 'bromide': {'units': 'mg/L'}},
     'gps': {'speed': {'units': 'meters per second'}},
-    'rti': {'position_cm': {'units': 'meters'},
+    'rti': {'position': {'units': 'meters'},
             'u': {'units': 'meters per second'}, 'v': {'units': 'meters per second'},
             'w': {'units': 'meters per second'}, 'e': {'units': 'meters per second'},
             'bt_u': {'units': 'meters per second'}, 'bt_v': {'units': 'meters per second'},
@@ -146,17 +147,9 @@ VARIABLES_ATTRS = {
               'humidity_mbar': {'units': 'mbar'}, 'cell_gas_pressure_mbar': {'units': 'mbar'}},
     'co2_a': {'current': {'units': 'counts'}, 'co2_ppm': {'units': 'ppm'},
               'humidity_mbar': {'units': 'mbar'}, 'cell_gas_pressure_mbar': {'units': 'mbar'}},
-    'debit': {'flow_ms': {'units': 'meter per second'}}
+    'debit': {'flow': {'units': 'meter per second'}}
 }
-VARIABLES_SCALES = {
-    'rti': {'position_cm': 1 / 100,
-            'u': 1 / 1000, 'v': 1 / 1000, 'w': 1 / 1000, 'e': 1 / 1000,
-            'bt_u': 1 / 1000, 'bt_v': 1 / 1000, 'bt_w': 1 / 1000, 'bt_e': 1 / 1000},
-    'rdi': {'u': 1 / 1000, 'v': 1 / 1000, 'w': 1 / 1000, 'e': 1 / 1000},
-    'wxt': {'Sn': 1 / KNOTS_PER_METER_S, 'Sx': 1 / KNOTS_PER_METER_S, 'Sm': 1 / KNOTS_PER_METER_S},
-    'wmt': {'Sn': 1 / KNOTS_PER_METER_S, 'Sx': 1 / KNOTS_PER_METER_S, 'Sm': 1 / KNOTS_PER_METER_S}
 
-}
 GLOBAL_ATTRS = {'triplet': {'model_number': 'model_number', 'serial_number': 'serial_number'},
                 'par_digi': {'model_number': 'model_number', 'serial_number': 'serial_number'},
                 'wph': {'serial_number': 'serial_number'},
@@ -192,20 +185,20 @@ def load_viking_dat(viking_data: VikingData) -> xr.Dataset:
 
 
 def _load_tag_data_to_dataset(tag: str, tag_data: dict, coords: dict) -> xr.Dataset:
-    vars_attrs = VARIABLES_ATTRS[tag] if tag in VARIABLES_ATTRS else {}
-    vars_scales = VARIABLES_SCALES[tag] if tag in VARIABLES_SCALES else {}
-
     data_vars = {}
+    vars_attrs = VARIABLES_ATTRS[tag] if tag in VARIABLES_ATTRS else {}
     for var, name in VARIABLES_NAMES[tag].items():
         values = tag_data[var]
+
         _attrs = vars_attrs[var] if var in vars_attrs else None
-        _scales = vars_scales[var] if var in vars_scales else 1
+        if isinstance(values, pint.Quantity) and _attrs is not None:
+            values = values.to(_attrs['units'])
         if var == 'time':
             data_vars[name] = (['time'], values.filled(np.datetime64('NaT')).astype('datetime64[s]'), _attrs)
         elif np.issubdtype(values.dtype, str):
             data_vars[name] = (['time'], values.filled("NA"), _attrs)
         else:
-            data_vars[name] = (['time'], values.filled(np.nan) * _scales, _attrs)
+            data_vars[name] = (['time'], values.filled(np.nan), _attrs)
 
     _global_attrs = {}
     if tag in GLOBAL_ATTRS:
@@ -214,7 +207,6 @@ def _load_tag_data_to_dataset(tag: str, tag_data: dict, coords: dict) -> xr.Data
             _global_attrs[name] = str(tag_data[var].data[index][0])
 
     return xr.Dataset(data_vars, coords=coords, attrs=_global_attrs)
-
 
 
 def _average_duplicates(dataset: xr.Dataset, coord: str) -> xr.Dataset:

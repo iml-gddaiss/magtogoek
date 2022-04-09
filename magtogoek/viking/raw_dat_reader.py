@@ -160,9 +160,13 @@ from math import atan2, sqrt, pi
 from typing import List, Dict, Union
 
 import numpy as np
-import xarray as xr
 
-from magtogoek.utils import get_files_from_expression, nans
+from magtogoek.utils import get_files_from_expression
+
+from pint import UnitRegistry
+
+ureg = UnitRegistry()
+Q_ = ureg.Quantity
 
 FILL_VALUE = -32768  # Reusing the same fill value as teledyne (RDI) -(2**15)
 
@@ -174,42 +178,100 @@ DATA_BLOCK_REGEX = re.compile(r"(\[NOM].+?)\[FIN]", re.DOTALL)
 DATA_TAG_REGEX = re.compile(rf"\[({'|'.join(TAGS)})],?((?:(?!\[).)*)", re.DOTALL)
 
 ### Tag keys ###
-
-COMP_KEYS = ['heading', 'pitch', 'roll', 'tilt', 'pitch_std', 'roll_std', 'tilt_std']
-TRIPLET_KEYS = ['time', 'model_number', 'serial_number',
-                'wavelength_1', 'raw_value_1', 'calculated_value_1',
-                'wavelength_2', 'raw_value_2', 'calculated_value_2',
-                'wavelength_3', 'raw_value_3', 'calculated_value_3']
-PAR_DIGI_KEYS = ['time', 'model_number', 'serial_number', 'timer_s', 'PAR', 'pitch', 'roll', 'intern_temperature']
-SUNA_KEYS = ["time", "model_number", "serial_number", 'nitrate', 'nitrogen',
-             'absorbance_254_31', 'absorbance_350_16', 'bromide', 'spectrum_average']
-GPS_KEYS = ['time', 'latitude_N', 'longitude_E', 'speed', 'course', 'variation_E', 'validity']
-CTD_KEYS = ['temperature', 'conductivity', 'salinity', 'density']
-CTDO_KEYS = ['temperature', 'conductivity', 'oxygen', 'salinity']
-RTI_KEYS = ['bin', 'position_cm',
-            'beam1', 'beam2', 'beam3', 'beam4',
-            'u', 'v', 'w', 'e',
-            'corr1', 'corr2', 'corr3', 'corr4',
-            'amp1', 'amp2', 'amp3', 'amp4',
-            'bt_beam1', 'bt_beam2', 'bt_beam3', 'bt_beam4',
-            'bt_u', 'bt_v', 'bt_w', 'bt_e',
-            'bt_corr1', 'bt_corr2', 'bt_corr3', 'bt_corr4',
-            'bt_amp1', 'bt_amp2', 'bt_amp3', 'bt_amp4']
-RDI_KEYS = ['time', 'u', 'v', 'w', 'e']
-WAVE_M_KEYS = ['time', "period", "average_height", "significant_height", "maximal_height"]
-WAVE_S_KEYS = ['time', 'heading', 'average_height', 'dominant_period', 'wave_direction',
-               'Hmax', 'Hmax2', 'pmax', 'roll', 'pitch']
-WXT520_KEYS = ['Dn', 'Dm', 'Dx', 'Sn', 'Sm', 'Sx', 'Rc', 'Rd', 'Ri', 'Hc', 'Hd', 'Hi',
-               'Ta', 'Ua', 'Pa', 'Th', 'Vh', 'Vs', 'Vr']
-WMT700_KEYS = ['Dn', 'Dm', 'Dx', 'Sn', 'Sm', 'Sx']
-WPH_KEYS = ['time', 'model', 'serial_number', 'sample_number', 'error_flag',
-            'ext_ph', 'int_ph', 'int_volt', 'ext_volt', 'ph_temperature', 'rel_humidity', 'int_temperature']
-CO2_W_KEYS = ["time", "auto_zero", "current", "co2_ppm", "irga_temperature", "humidity_mbar",
-              "humidity_sensor_temperature", "cell_gas_pressure_mbar"]
-CO2_A_KEYS = ['time', 'auto_zero', 'current', "co2_ppm", 'irga_temperature', 'humidity_mbar',
-              'humidity_sensor_temperature', "cell_gas_pressure_mbar"]
-DEBIT_KEYS = ['flow_ms']
-VEMCO_KEYS = ['time', 'protocol', 'serial_number']
+TAG_VARS = dict(
+    COMP_KEYS=['heading', 'pitch', 'roll', 'tilt', 'pitch_std', 'roll_std', 'tilt_std'],
+    TRIPLET_KEYS=['time', 'model_number', 'serial_number',
+                  'wavelength_1', 'raw_value_1', 'calculated_value_1',
+                  'wavelength_2', 'raw_value_2', 'calculated_value_2',
+                  'wavelength_3', 'raw_value_3', 'calculated_value_3'],
+    PAR_DIGI_KEYS=['time', 'model_number', 'serial_number', 'timer_s', 'PAR', 'pitch', 'roll', 'intern_temperature'],
+    SUNA_KEYS=["time", "model_number", "serial_number", 'nitrate', 'nitrogen',
+               'absorbance_254_31', 'absorbance_350_16', 'bromide', 'spectrum_average'],
+    GPS_KEYS={'time': None,
+              'latitude_N': None,
+              'longitude_E': None,
+              'speed': 'knot',
+              'course': None,
+              'variation_E': None,
+              'validity': None},
+    CTD_KEYS=['temperature', 'conductivity', 'salinity', 'density'],
+    CTDO_KEYS=['temperature', 'conductivity', 'oxygen', 'salinity'],
+    RTI_KEYS={'bin': None,
+              'position': 'cm',
+              'beam1': 'mm/s',
+              'beam2': 'mm/s',
+              'beam3': 'mm/s',
+              'beam4': 'mm/s',
+              'u': 'mm/s',
+              'v': 'mm/s',
+              'w': 'mm/s',
+              'e': 'mm/s',
+              'corr1': None,
+              'corr2': None,
+              'corr3': None,
+              'corr4': None,
+              'amp1': 'decibel',
+              'amp2': 'decibel',
+              'amp3': 'decibel',
+              'amp4': 'decibel',
+              'bt_beam1': 'mm/s',
+              'bt_beam2': 'mm/s',
+              'bt_beam3': 'mm/s',
+              'bt_beam4': 'mm/s',
+              'bt_u': 'mm/s',
+              'bt_v': 'mm/s',
+              'bt_w': 'mm/s',
+              'bt_e': 'mm/s',
+              'bt_corr1': None,
+              'bt_corr2': None,
+              'bt_corr3': None,
+              'bt_corr4': None,
+              'bt_amp1': 'decibel',
+              'bt_amp2': 'decibel',
+              'bt_amp3': 'decibel',
+              'bt_amp4': 'decibel'},
+    RDI_KEYS={'time': None,
+              'u': 'mm/s',
+              'v': 'mm/s',
+              'w': 'mm/s',
+              'e': 'mm/s'},
+    WAVE_M_KEYS=['time', "period", "average_height", "significant_height", "maximal_height"],
+    WAVE_S_KEYS=['time', 'heading', 'average_height', 'dominant_period', 'wave_direction',
+                 'Hmax', 'Hmax2', 'pmax', 'roll', 'pitch'],
+    WXT520_KEYS={'Dn': None,
+                 'Dm': None,
+                 'Dx': None,
+                 'Sn': 'knot',
+                 'Sm': 'knot',
+                 'Sx': 'knot',
+                 'Rc': None,
+                 'Rd': None,
+                 'Ri': None,
+                 'Hc': None,
+                 'Hd': None,
+                 'Hi': None,
+                 'Ta': None,
+                 'Ua': None,
+                 'Pa': None,
+                 'Th': None,
+                 'Vh': None,
+                 'Vs': None,
+                 'Vr': None},
+    WMT700_KEYS={'Dn': None,
+                 'Dm': None,
+                 'Dx': None,
+                 'Sn': 'knot',
+                 'Sm': 'knot',
+                 'Sx': 'knot'},
+    WPH_KEYS=['time', 'model', 'serial_number', 'sample_number', 'error_flag',
+              'ext_ph', 'int_ph', 'int_volt', 'ext_volt', 'ph_temperature', 'rel_humidity', 'int_temperature'],
+    CO2_W_KEYS=["time", "auto_zero", "current", "co2_ppm", "irga_temperature", "humidity_mbar",
+                "humidity_sensor_temperature", "cell_gas_pressure_mbar"],
+    CO2_A_KEYS=['time', 'auto_zero', 'current', "co2_ppm", 'irga_temperature', 'humidity_mbar',
+                'humidity_sensor_temperature', "cell_gas_pressure_mbar"],
+    DEBIT_KEYS={'flow': 'meter per second'},
+    VEMCO_KEYS=['time', 'protocol', 'serial_number'],
+)
 
 
 class VikingData():
@@ -224,24 +286,24 @@ class VikingData():
         self.latitude: Union[list, np.ma.MaskedArray] = []
         self.longitude: Union[list, np.ma.MaskedArray] = []
 
-        self.comp: dict = {key: [] for key in COMP_KEYS}
-        self.triplet: dict = {key: [] for key in TRIPLET_KEYS}
-        self.par_digi: dict = {key: [] for key in PAR_DIGI_KEYS}
-        self.suna: dict = {key: [] for key in SUNA_KEYS}
-        self.gps: dict = {key: [] for key in GPS_KEYS}
-        self.ctd: dict = {key: [] for key in CTD_KEYS}
-        self.ctdo: dict = {key: [] for key in CTDO_KEYS}
-        self.rti: dict = {key: [] for key in RTI_KEYS}
-        self.rdi: dict = {key: [] for key in RDI_KEYS}
-        self.wave_m: dict = {key: [] for key in WAVE_M_KEYS}
-        self.wave_s: dict = {key: [] for key in WAVE_S_KEYS}
-        self.wxt520: dict = {key: [] for key in WXT520_KEYS}
-        self.wmt700: dict = {key: [] for key in WMT700_KEYS}
-        self.wph: dict = {key: [] for key in WPH_KEYS}
-        self.co2_w: dict = {key: [] for key in CO2_W_KEYS}
-        self.co2_a: dict = {key: [] for key in CO2_A_KEYS}
-        self.debit: dict = {key: [] for key in DEBIT_KEYS}
-        self.vemco: dict = {key: [] for key in VEMCO_KEYS}
+        self.comp: dict = {key: [] for key in TAG_VARS['COMP_KEYS']}
+        self.triplet: dict = {key: [] for key in TAG_VARS['TRIPLET_KEYS']}
+        self.par_digi: dict = {key: [] for key in TAG_VARS['PAR_DIGI_KEYS']}
+        self.suna: dict = {key: [] for key in TAG_VARS['SUNA_KEYS']}
+        self.gps: dict = {key: [] for key in TAG_VARS['GPS_KEYS']}
+        self.ctd: dict = {key: [] for key in TAG_VARS['CTD_KEYS']}
+        self.ctdo: dict = {key: [] for key in TAG_VARS['CTDO_KEYS']}
+        self.rti: dict = {key: [] for key in TAG_VARS['RTI_KEYS']}
+        self.rdi: dict = {key: [] for key in TAG_VARS['RDI_KEYS']}
+        self.wave_m: dict = {key: [] for key in TAG_VARS['WAVE_M_KEYS']}
+        self.wave_s: dict = {key: [] for key in TAG_VARS['WAVE_S_KEYS']}
+        self.wxt520: dict = {key: [] for key in TAG_VARS['WXT520_KEYS']}
+        self.wmt700: dict = {key: [] for key in TAG_VARS['WMT700_KEYS']}
+        self.wph: dict = {key: [] for key in TAG_VARS['WPH_KEYS']}
+        self.co2_w: dict = {key: [] for key in TAG_VARS['CO2_W_KEYS']}
+        self.co2_a: dict = {key: [] for key in TAG_VARS['CO2_A_KEYS']}
+        self.debit: dict = {key: [] for key in TAG_VARS['DEBIT_KEYS']}
+        self.vemco: dict = {key: [] for key in TAG_VARS['VEMCO_KEYS']}
 
     def __repr__(self):
         repr = f"""{self.__class__} 
@@ -266,8 +328,9 @@ data: (length: {len(self)})
     def reformat(self):
         self._squeeze_empty_tag()
         self._to_numpy_masked_array()
-        if self.triplet is not None: # This Could be done directly during the decoding
-            _convert_triplet_wavelength(self.triplet) # This Could be done directly during the decoding
+        if self.triplet is not None:  # This Could be done directly during the decoding
+            _convert_triplet_wavelength(self.triplet)  # This Could be done directly during the decoding
+        self._add_units()
 
     def _to_numpy_masked_array(self):
         self.time = np.array(self.time, dtype='datetime64[s]')
@@ -287,6 +350,14 @@ data: (length: {len(self)})
             if len(uniques_values) == 1 and list(uniques_values)[0] == FILL_VALUE:
                 self.__dict__[tag] = None
 
+    def _add_units(self):
+        for tag in self.tags:
+            variables = TAG_VARS[tag.upper()+'_KEYS']
+            if isinstance(variables, dict):
+                for var, units in variables.items():
+                    if units is not None and self.__dict__[tag] is not None:
+                        self.__dict__[tag][var] = Q_(self.__dict__[tag][var], units)
+
 
 def _to_numpy_masked_array(data: list):
     """
@@ -299,6 +370,48 @@ def _to_numpy_masked_array(data: list):
         data_array = np.ma.masked_where(_data == FILL_VALUE, _data)
 
     return data_array
+
+
+def _convert_triplet_wavelength(triplet_data: dict):
+    """
+    700 nm: Scattering
+    695 nm: Chlorophyll
+    460 nm: FDOM
+
+    Returns
+    -------
+
+    Notes
+    -----
+    For other wave lengths: The code will to be modified
+    """
+    _shape = triplet_data['time'].shape
+
+    scatter_raw, scatter_calc = np.ma.masked_all(_shape), np.ma.masked_all(_shape)
+    chloro_raw, chloro_calc = np.ma.masked_all(_shape), np.ma.masked_all(_shape)
+    fdom_raw, fdom_calc = np.ma.masked_all(_shape), np.ma.masked_all(_shape)
+
+    for i in ("1", "2", "3"):
+        index700 = triplet_data['wavelength_' + i] == 700
+        scatter_raw[index700] = triplet_data['raw_value_' + i][index700]
+        scatter_calc[index700] = triplet_data['calculated_value_' + i][index700]
+
+        index695 = triplet_data['wavelength_' + i] == 695
+        chloro_raw[index695] = triplet_data['raw_value_' + i][index695]
+        chloro_calc[index695] = triplet_data['calculated_value_' + i][index695]
+
+        index460 = triplet_data['wavelength_' + i] == 460
+        fdom_raw[index460] = triplet_data['raw_value_' + i][index460]
+        fdom_calc[index460] = triplet_data['calculated_value_' + i][index460]
+
+    triplet_data.update({
+        'scatter_raw': scatter_raw,
+        'scatter_calculated': scatter_calc,
+        'chloro_raw': chloro_raw,
+        'chloro_calculated': chloro_calc,
+        'fdom_raw': fdom_raw,
+        'fdom_calculated': fdom_calc
+    })
 
 
 class VikingReader():
@@ -376,46 +489,7 @@ buoys:\n"""
         return buoy_info
 
 
-def _convert_triplet_wavelength(triplet_data: dict):
-    """
-    700 nm: Scattering
-    695 nm: Chlorophyll
-    460 nm: FDOM
 
-    Returns
-    -------
-
-    Notes
-    -----
-    For other wave lengths: The code will to be modified
-    """
-    _shape = triplet_data['time'].shape
-
-    scatter_raw, scatter_calc = np.ma.masked_all(_shape), np.ma.masked_all(_shape)
-    chloro_raw, chloro_calc = np.ma.masked_all(_shape), np.ma.masked_all(_shape)
-    fdom_raw, fdom_calc = np.ma.masked_all(_shape), np.ma.masked_all(_shape)
-
-    for i in ("1", "2", "3"):
-        index700 = triplet_data['wavelength_' + i] == 700
-        scatter_raw[index700] = triplet_data['raw_value_' + i][index700]
-        scatter_calc[index700] = triplet_data['calculated_value_' + i][index700]
-
-        index695 = triplet_data['wavelength_' + i] == 695
-        chloro_raw[index695] = triplet_data['raw_value_' + i][index695]
-        chloro_calc[index695] = triplet_data['calculated_value_' + i][index695]
-
-        index460 = triplet_data['wavelength_' + i] == 460
-        fdom_raw[index460] = triplet_data['raw_value_' + i][index460]
-        fdom_calc[index460] = triplet_data['calculated_value_' + i][index460]
-
-    triplet_data.update({
-        'scatter_raw':  scatter_raw,
-        'scatter_calculated': scatter_calc,
-        'chloro_raw':  chloro_raw,
-        'chloro_calculated':  chloro_calc,
-        'fdom_raw': fdom_raw,
-        'fdom_calculated': fdom_calc
-            })
 
 
 def _decode_transmitted_data(data_received: str, century: int = 21) -> dict:
@@ -726,9 +800,9 @@ def _decode_CO2_A(data: str) -> dict:
 
 def _decode_Debit(data: str) -> dict:
     if "#" in data:
-        return {'flow_mcs': FILL_VALUE}
+        return {'flow': FILL_VALUE}
     else:
-        return {'flow_ms': round(int(data.strip('\n'), 16) * 0.001543, 4)}
+        return {'flow': round(int(data.strip('\n'), 16) * 0.001543, 4)}
 
 
 def _decode_VEMCO(data: str) -> dict:
@@ -769,9 +843,12 @@ def main():
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
+
+
     def find_duplicates(array: np.ndarray):
         index = np.where(array[:-1] == array[1:])[0]
-        return sorted(list(set(list(index) + list(index+1))))
+        return sorted(list(set(list(index) + list(index + 1))))
+
 
     # viking_data = main()
     vr = VikingReader().read('/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat')
