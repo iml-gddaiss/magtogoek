@@ -12,13 +12,6 @@ Data That Need Processing
 
     - METEOCE BODC:
 
-      meteoc_variables = ['lon', 'lat',
-                          'wind_mean', 'wind_direction_mean', 'wind_max', 'wind_direction_max',
-                          'atm_temperature', 'atm_humidity', 'atm_pressure',
-                          'temperature', 'conductivity', 'salinity', 'density',
-                          'ph', 'fluorescence', 'co2_a', 'co2_w',
-                          'averaged_height', 'maximal_height', 'wave_period']
-
         Time                                                 : SYTM_01 : SDN:P01::
         Longitude (East +ve)                                 : LOND_01 : SDN:P01::
         Latitude (North +ve)                                 : LATD_01 : SDN:P01::
@@ -35,7 +28,7 @@ Data That Need Processing
         Hydrogen Ion Concentration (pH)                      : PHPH_01 : SDN:P01::PHXXZZXX
         Fluorescence                                         : FLOR_01 : SDN:P01::FLUOZZZZ
         Partial pressure of carbon dioxide in the atmosphere : ACO2_01 : SDN:P01::ACO2XXXX
-        Partial pressure of carbon dioxide in the water boby : PCO2_01 : SDN:P01::PCO2XXXX
+        Partial pressure of carbon dioxide in the water body : PCO2_01 : SDN:P01::PCO2XXXX
         Wave mean height                                     : VRMS_01 : SDN:P01::
         Wave maximum height                                  : VMXL_01 : SDN:P01::GMXLZZ01
         Wave period                                          : VTCA_01 : SDN:P01::
@@ -77,84 +70,223 @@ from magtogoek.utils import get_files_from_expression, nans
 
 matplotlib.use('Qt5Agg')
 
-# FILL_VALUE = -32768  # Reusing the same fill value as teledyne (RDI) -(2**15)
-
-#KNOTS_PER_METER_S = 1.94384  # knots per meter/per
 
 DAT_TAGS = ['comp', 'triplet', 'par_digi', 'suna', 'gps', 'ctd', 'ctdo', 'rti', 'rdi',
             'wave_m', 'wave_s', 'wxt520', 'wmt700', 'wph', 'co2_w', 'co2_a', 'debit', 'vemco']
 
 VARIABLES_NAMES = {
-    'comp': {'heading': 'heading', 'pitch': 'pitch', 'roll': '_roll', 'tilt': 'tilt',
-             'pitch_std': 'pitch_std', 'roll_std': 'roll_std', 'tilt_std': 'tilt_std'},
-    'triplet': {'time': '_time', 'scatter_calculated': 'scatter', 'chloro_calculated': 'chloro',
-                'fdom_calculated': 'fdom'},
-    'par_digi': {'time': '_time', 'timer_s': 'timer', 'PAR': 'PAR', 'intern_temperature': 'intern_temperature'},
-    'suna': {'time': '_time', 'nitrate': 'nitrate', 'nitrogen': 'nitrogen', 'absorbance_254_31': 'absorbance_254_31',
-             'absorbance_350_16': 'absorbance_350_16', 'bromide': 'bromide',
-             'spectrum_average': 'spectrum_average'},
-    'gps': {'time': '_time', 'longitude_E': 'lon', 'latitude_N': 'lat', 'speed': 'speed', 'course': 'course',
-            'variation_E': 'magnetic_variation'},
-    'ctd': {'temperature': 'temperature', 'conductivity': 'conductivity',
-            'salinity': 'salinity', 'density': 'density'},
-    'ctdo': {'temperature': 'temperature', 'conductivity': 'conductivity',
-             'salinity': 'salinity', 'oxygen': 'oxygen'},
-    'rti': {'bin': 'bin', 'position_cm': 'position',
-            'beam1': 'beam1', 'beam2': 'beam2', 'beam3': 'beam3', 'beam4': 'beam4',
-            'u': 'u', 'v': 'v', 'w': 'w', 'e': 'e',
-            'corr1': 'corr1', 'corr2': 'corr2', 'corr3': 'corr3', 'corr4': 'corr4',
-            'amp1': 'amp1', 'amp2': 'amp2', 'amp3': 'amp3', 'amp4': 'amp4',
-            'bt_beam1': 'bt_beam1', 'bt_beam2': 'bt_beam2', 'bt_beam3': 'bt_beam3', 'bt_beam4': 'bt_beam4',
-            'bt_u': 'bt_u', 'bt_v': 'bt_v', 'bt_w': 'bt_w', 'bt_e': 'bt_e',
-            'bt_corr1': 'bt_corr1', 'bt_corr2': 'bt_corr2', 'bt_corr3': 'bt_corr3', 'bt_corr4': 'bt_corr4',
-            'bt_amp1': 'bt_amp1', 'bt_amp2': 'bt_amp2', 'bt_amp3': 'bt_amp3', 'bt_amp4': 'bt_amp4'},
-    'rdi': {'time': '_time', 'u': 'u', 'v': 'v', 'w': 'w', 'e': 'e'},
-    'wave_m': {'time': '_time', 'period': 'period', 'average_height': 'average_height',
-               'significant_height': 'significant_height', 'maximal_height': 'maximal_height'},
-    'wave_s': {'time': '_time', 'dominant_period': 'period', 'pmax2': 'period_max', 'wave_direction': 'direction',
-               'average_height': 'average_height', 'Hmax': 'maximal_height', 'Hmax2': 'maximal2_height'},
-    'wxt520': {'Dm': 'wind_direction', 'Sn': 'wind_min', 'Sx': 'wind_max', 'Sm': 'wind_mean',
-               'Ta': 'temperature', 'Ua': 'humidity', 'Pa': 'pressure'},
-    'wmt700': {'Dm': 'wind_direction', 'Sn': 'wind_min', 'Sx': 'wind_max', 'Sm': 'wind_mean'},
-    'wph': {'time': '_time', 'ext_ph': 'ext_ph', 'ext_volt': 'ext_volt', 'ph_temperature': 'temperature',
-            'error_flag': 'error_flag'},
-    'co2_w': {'time': '_time', 'auto_zero': 'auto_zero', 'current': 'current', 'co2_ppm': 'co2',
-              'irga_temperature': 'irga_temperature', 'humidity_mbar': 'humidity',
-              'humidity_sensor_temperature': 'humidity_sensor_temperature',
-              'cell_gas_pressure_mbar': 'cell_gas_pressure'},
-    'co2_a': {'time': '_time', 'auto_zero': 'auto_zero', 'current': 'current', 'co2_ppm': 'co2',
-              'irga_temperature': 'irga_temperature', 'humidity_mbar': 'humidity',
-              'humidity_sensor_temperature': 'humidity_sensor_temperature',
-              'cell_gas_pressure_mbar': 'cell_gas_pressure'},
-    'debit': {'flow': 'flow'},
-    'vemco': {'time': '_time', 'protocol': 'protocol', 'serial_number': 'serial_number'}
+    'comp': {
+        'heading': 'heading',
+        'pitch': 'pitch',
+        'roll': '_roll',
+        'tilt': 'tilt',
+        'pitch_std': 'pitch_std',
+        'roll_std': 'roll_std',
+        'tilt_std': 'tilt_std'
+    },
+    'triplet': {
+        'time': '_time',
+        'scatter_calculated': 'scatter',
+        'chloro_calculated': 'chloro',
+        'fdom_calculated': 'fdom'
+    },
+    'par_digi': {
+        'time': '_time',
+        'timer_s': 'timer',
+        'PAR': 'PAR',
+        'intern_temperature': 'intern_temperature'
+    },
+    'suna': {
+        'time': '_time',
+        'nitrate': 'nitrate',
+        'nitrogen': 'nitrogen',
+        'absorbance_254_31': 'absorbance_254_31',
+        'absorbance_350_16': 'absorbance_350_16',
+        'bromide': 'bromide',
+        'spectrum_average': 'spectrum_average'
+    },
+    'gps': {
+        'time': '_time',
+        'longitude_E': 'lon',
+        'latitude_N': 'lat',
+        'speed': 'speed',
+        'course': 'course',
+        'variation_E': 'magnetic_variation'
+    },
+    'ctd': {
+        'temperature': 'temperature',
+        'conductivity': 'conductivity',
+        'salinity': 'salinity',
+        'density': 'density'
+    },
+    'ctdo': {
+        'temperature': 'temperature',
+        'conductivity': 'conductivity',
+        'salinity': 'salinity',
+        'oxygen': 'oxygen'
+    },
+    'rti': {
+        'bin': 'bin',
+        'position_cm': 'position',
+        'beam1': 'beam1',
+        'beam2': 'beam2',
+        'beam3': 'beam3',
+        'beam4': 'beam4',
+        'u': 'u',
+        'v': 'v',
+        'w': 'w',
+        'e': 'e',
+        'corr1': 'corr1',
+        'corr2': 'corr2',
+        'corr3': 'corr3',
+        'corr4': 'corr4',
+        'amp1': 'amp1',
+        'amp2': 'amp2',
+        'amp3': 'amp3',
+        'amp4': 'amp4',
+        'bt_beam1': 'bt_beam1',
+        'bt_beam2': 'bt_beam2',
+        'bt_beam3': 'bt_beam3',
+        'bt_beam4': 'bt_beam4',
+        'bt_u': 'bt_u',
+        'bt_v': 'bt_v',
+        'bt_w': 'bt_w',
+        'bt_e': 'bt_e',
+        'bt_corr1': 'bt_corr1',
+        'bt_corr2': 'bt_corr2',
+        'bt_corr3': 'bt_corr3',
+        'bt_corr4': 'bt_corr4',
+        'bt_amp1': 'bt_amp1',
+        'bt_amp2': 'bt_amp2',
+        'bt_amp3': 'bt_amp3',
+        'bt_amp4': 'bt_amp4'
+    },
+    'rdi': {
+        'time': '_time',
+        'u': 'u',
+        'v': 'v',
+        'w': 'w',
+        'e': 'e'
+    },
+    'wave_m': {
+        'time': '_time',
+        'period': 'period',
+        'average_height': 'average_height',
+        'significant_height': 'significant_height',
+        'maximal_height': 'maximal_height'
+    },
+    'wave_s': {
+        'time': '_time',
+        'dominant_period': 'period',
+        'pmax2': 'period_max',
+        'wave_direction': 'direction',
+        'average_height': 'average_height',
+        'Hmax': 'maximal_height',
+        'Hmax2': 'maximal2_height'
+    },
+    'wxt520': {
+        'Dm': 'wind_direction',
+        'Dx': 'wind_direction_max',
+        'Sn': 'wind_min',
+        'Sx': 'wind_max',
+        'Sm': 'wind_mean',
+        'Ta': 'temperature',
+        'Ua': 'humidity',
+        'Pa': 'pressure'
+    },
+    'wmt700': {
+        'Dm': 'wind_direction',
+        'Dx': 'wind_direction_max',
+        'Sn': 'wind_min',
+        'Sx': 'wind_max',
+        'Sm': 'wind_mean'
+    },
+    'wph': {
+        'time': '_time',
+        'ext_ph': 'ext_ph',
+        'ext_volt': 'ext_volt',
+        'ph_temperature': 'temperature',
+        'error_flag': 'error_flag'
+    },
+    'co2_w': {
+        'time': '_time',
+        'auto_zero': 'auto_zero',
+        'current': 'current', 'co2_ppm': 'co2',
+        'irga_temperature': 'irga_temperature',
+        'humidity_mbar': 'humidity',
+        'humidity_sensor_temperature': 'humidity_sensor_temperature',
+        'cell_gas_pressure_mbar': 'cell_gas_pressure'
+    },
+    'co2_a': {
+        'time': '_time',
+        'auto_zero': 'auto_zero',
+        'current': 'current',
+        'co2_ppm': 'co2',
+        'irga_temperature':
+        'irga_temperature',
+        'humidity_mbar': 'humidity',
+        'humidity_sensor_temperature': 'humidity_sensor_temperature',
+        'cell_gas_pressure_mbar': 'cell_gas_pressure'
+    },
+    'debit': {
+        'flow': 'flow'
+    },
+    'vemco': {
+        'time': '_time',
+        'protocol': 'protocol',
+        'serial_number': 'serial_number'
+    }
 }
-VARIABLES_ATTRS = {
-    'suna': {'nitrate': {'units': 'micromole'}, 'nitrogen': {'units': 'mgN/L'}, 'bromide': {'units': 'mg/L'}},
-    'gps': {'speed': {'units': 'meters per second'}},
-    'rti': {'position': {'units': 'meters'},
-            'u': {'units': 'meters per second'}, 'v': {'units': 'meters per second'},
-            'w': {'units': 'meters per second'}, 'e': {'units': 'meters per second'},
-            'bt_u': {'units': 'meters per second'}, 'bt_v': {'units': 'meters per second'},
-            'bt_w': {'units': 'meters per second'}, 'bt_e': {'units': 'meters per second'}},
-    'rdi': {'u': {'units': 'meters per second'}, 'v': {'units': 'meters per second'},
-            'w': {'units': 'meters per second'}, 'e': {'units': 'meters per second'}},
-    'wxt': {'Sn': {'units': 'meters per second'}, 'Sx': {'units': 'meters per second'},
-            'Sm': {'units': 'meters per second'}},
-    'wmt': {'Sn': {'units': 'meters per second'}, 'Sx': {'units': 'meters per second'},
-            'Sm': {'units': 'meters per second'}},
-    'co2_w': {'current': {'units': 'counts'}, 'co2_ppm': {'units': 'ppm'},
-              'humidity_mbar': {'units': 'mbar'}, 'cell_gas_pressure_mbar': {'units': 'mbar'}},
-    'co2_a': {'current': {'units': 'counts'}, 'co2_ppm': {'units': 'ppm'},
-              'humidity_mbar': {'units': 'mbar'}, 'cell_gas_pressure_mbar': {'units': 'mbar'}},
-    'debit': {'flow': {'units': 'meter per second'}}
+VARIABLES_UNITS = {
+    'gps': {'speed': 'meters per second'},
+    'rti': {'position': 'meters',
+            'u': 'meters per second', 'v': 'meters per second', 'w': 'meters per second', 'e': 'meters per second',
+            'bt_u': 'meters per second', 'bt_v': 'meters per second',
+            'bt_w': 'meters per second', 'bt_e': 'meters per second'},
+    'rdi': {'u': 'meters per second', 'v': 'meters per second', 'w': 'meters per second', 'e': 'meters per second'},
+    'wxt': {'Sn': 'meters per second', 'Sx': 'meters per second', 'Sm': 'meters per second'},
+    'wmt': {'Sn': 'meters per second', 'Sx': 'meters per second', 'Sm': 'meters per second'}
 }
+    #'suna': {'nitrate': {'units': 'micro mole'}, 'nitrogen': {'units': 'mgN/L'}, 'bromide': {'units': 'mg/L'}},
+    #'co2_w': {'current': {'units': 'counts'}, 'co2_ppm': {'units': 'ppm'},
+    #          'humidity_mbar': {'units': 'mbar'}, 'cell_gas_pressure_mbar': {'units': 'mbar'}},
+    #'co2_a': {'current': {'units': 'counts'}, 'co2_ppm': {'units': 'ppm'},
+    #          'humidity_mbar': {'units': 'mbar'}, 'cell_gas_pressure_mbar': {'units': 'mbar'}},
+    #'debit': {'flow': {'units': 'meter per second'}}
 
 GLOBAL_ATTRS = {'triplet': {'model_number': 'model_number', 'serial_number': 'serial_number'},
                 'par_digi': {'model_number': 'model_number', 'serial_number': 'serial_number'},
                 'wph': {'serial_number': 'serial_number'},
                 }
 
+meteoc_variables = {
+    'lon': ('nom', 'lon'),
+    'lat': ('nom', 'lat'),
+    'wind_mean': [('wxt520', 'Sm'),
+                  ('wmt700', 'Sm')],
+    'wind_direction_mean': [('wxt520', 'Dm'),
+                            ('wmt700', 'Dm')],
+    'wind_max': [('wxt520', 'Sx'),
+                 ('wmt700', 'Sx')],
+    'wind_direction_max': [('wxt520', 'Sx'),
+                           ('wmt700', 'Sx')],
+    'atm_temperature': ('wxt520', 'Ta'),
+    'atm_humidity': ('wxt520', 'Ua'),
+    'atm_pressure': ('wxt520', 'Pa'),
+    'temperature' : [('ctd','temperature'),
+                     ('ctdo','temperature')],
+    'conductivity': [('ctd','conductivity'),
+                     ('ctdo','conductivity')],
+    'salinity': ('ctd', 'salinity'),
+    'density': ('ctdo','density'),
+    'ph',
+    'fluorescence',
+    'co2_a',
+    'co2_w',
+    'averaged_height',
+    'maximal_height',
+    'wave_period'
+}
 
 def load_viking_dat(viking_data: VikingData) -> xr.Dataset:
     """
@@ -186,19 +318,19 @@ def load_viking_dat(viking_data: VikingData) -> xr.Dataset:
 
 def _load_tag_data_to_dataset(tag: str, tag_data: dict, coords: dict) -> xr.Dataset:
     data_vars = {}
-    vars_attrs = VARIABLES_ATTRS[tag] if tag in VARIABLES_ATTRS else {}
+    vars_units = VARIABLES_UNITS[tag] if tag in VARIABLES_UNITS else {}
     for var, name in VARIABLES_NAMES[tag].items():
         values = tag_data[var]
 
-        _attrs = vars_attrs[var] if var in vars_attrs else None
-        if isinstance(values, pint.Quantity) and _attrs is not None:
-            values = values.to(_attrs['units'])
+        units = vars_units[var] if var in vars_units else None
+        if isinstance(values, pint.Quantity) and units is not None:
+            values = values.to(units)
         if var == 'time':
-            data_vars[name] = (['time'], values.filled(np.datetime64('NaT')).astype('datetime64[s]'), _attrs)
+            data_vars[name] = (['time'], values.filled(np.datetime64('NaT')).astype('datetime64[s]'))
         elif np.issubdtype(values.dtype, str):
-            data_vars[name] = (['time'], values.filled("NA"), _attrs)
+            data_vars[name] = (['time'], values.filled("NA"))
         else:
-            data_vars[name] = (['time'], values.filled(np.nan), _attrs)
+            data_vars[name] = (['time'], values.filled(np.nan))
 
     _global_attrs = {}
     if tag in GLOBAL_ATTRS:
