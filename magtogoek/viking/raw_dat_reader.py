@@ -15,7 +15,7 @@ The Buoy Data
 [Triplet]: Water Surface Fluorescence
                                             L1, Raw1,   Calc1,      L2, Raw2,   Calc2,  L3, Raw3,   Calc3
     'BBFL2W-1688	05/24/21	10:59:03	700	1376	2.786E-03	695	190	1.066E+00	460	85	3.454E+00'
-    700 nm: Scattering
+    700 nm: (fluoresence) scattering
     695 nm: Chlorophyll
     460 nm: FDOM
 [Par_digi]: PAR (Photosynthetic Active Radiation)
@@ -150,7 +150,7 @@ Notes
     - Everything is loaded as float since nans are not available for int type in numpy
 
     - Triplets Data Decoding: The code will to be modified for other wave lengths.
-          700 nm: Scattering, 695 nm: Chlorophyll, 460 nm: FDOM
+          700 nm: Fluoresnce Scattering, 695 nm: Chlorophyll, 460 nm: FDOM
 """
 
 import re
@@ -374,7 +374,7 @@ def _to_numpy_masked_array(data: list):
 
 def _convert_triplet_wavelength(triplet_data: dict):
     """
-    700 nm: Scattering
+    700 nm: Fluoresence Scattering
     695 nm: Chlorophyll
     460 nm: FDOM
 
@@ -387,14 +387,14 @@ def _convert_triplet_wavelength(triplet_data: dict):
     """
     _shape = triplet_data['time'].shape
 
-    scatter_raw, scatter_calc = np.ma.masked_all(_shape), np.ma.masked_all(_shape)
+    fluo_raw, fluo_calc = np.ma.masked_all(_shape), np.ma.masked_all(_shape)
     chloro_raw, chloro_calc = np.ma.masked_all(_shape), np.ma.masked_all(_shape)
     fdom_raw, fdom_calc = np.ma.masked_all(_shape), np.ma.masked_all(_shape)
 
     for i in ("1", "2", "3"):
         index700 = triplet_data['wavelength_' + i] == 700
-        scatter_raw[index700] = triplet_data['raw_value_' + i][index700]
-        scatter_calc[index700] = triplet_data['calculated_value_' + i][index700]
+        fluo_raw[index700] = triplet_data['raw_value_' + i][index700]
+        fluo_calc[index700] = triplet_data['calculated_value_' + i][index700]
 
         index695 = triplet_data['wavelength_' + i] == 695
         chloro_raw[index695] = triplet_data['raw_value_' + i][index695]
@@ -405,8 +405,8 @@ def _convert_triplet_wavelength(triplet_data: dict):
         fdom_calc[index460] = triplet_data['calculated_value_' + i][index460]
 
     triplet_data.update({
-        'scatter_raw': scatter_raw,
-        'scatter_calculated': scatter_calc,
+        'fluo_raw': fluo_raw,
+        'fluo_calculated': fluo_calc,
         'chloro_raw': chloro_raw,
         'chloro_calculated': chloro_calc,
         'fdom_raw': fdom_raw,

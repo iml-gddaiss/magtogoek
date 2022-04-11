@@ -86,7 +86,7 @@ VARIABLES_NAMES = {
     },
     'triplet': {
         'time': '_time',
-        'scatter_calculated': 'scatter',
+        'fluo_calculated': 'fluo',
         'chloro_calculated': 'chloro',
         'fdom_calculated': 'fdom'
     },
@@ -211,7 +211,8 @@ VARIABLES_NAMES = {
     'co2_w': {
         'time': '_time',
         'auto_zero': 'auto_zero',
-        'current': 'current', 'co2_ppm': 'co2',
+        'current': 'current',
+        'co2_ppm': 'co2',
         'irga_temperature': 'irga_temperature',
         'humidity_mbar': 'humidity',
         'humidity_sensor_temperature': 'humidity_sensor_temperature',
@@ -273,19 +274,22 @@ meteoc_variables = {
     'atm_temperature': ('wxt520', 'Ta'),
     'atm_humidity': ('wxt520', 'Ua'),
     'atm_pressure': ('wxt520', 'Pa'),
-    'temperature' : [('ctd','temperature'),
-                     ('ctdo','temperature')],
-    'conductivity': [('ctd','conductivity'),
-                     ('ctdo','conductivity')],
+    'temperature': [('ctd', 'temperature'),
+                     ('ctdo', 'temperature')],
+    'conductivity': [('ctd', 'conductivity'),
+                     ('ctdo', 'conductivity')],
     'salinity': ('ctd', 'salinity'),
-    'density': ('ctdo','density'),
-    'ph',
-    'fluorescence',
-    'co2_a',
-    'co2_w',
-    'averaged_height',
-    'maximal_height',
-    'wave_period'
+    'density': ('ctdo', 'density'),
+    'ph': ('wph', "PH CORRECTION") , #COMPUTATION NEEDED
+    'fluorescence': ('triplet', 'fluo'),
+    'co2_a': ('co2_a', 'co2_ppm'), # COMPUTATION NEEDED
+    'co2_w': ('co2_w', 'co2_ppm'), # COMPUTATION NEEDED,
+    'averaged_height': [('wave_m', 'averaged_height'),
+                        ('wave_s', 'averaged_height')],
+    'maximal_height': [('wave_m', 'maximal_height'),
+                       ('wave_s', 'Hmax')],
+    'wave_period': [('wave_m', 'period'),
+                    ('wave_s', 'dominant_period')],
 }
 
 def load_viking_dat(viking_data: VikingData) -> xr.Dataset:
