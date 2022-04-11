@@ -403,6 +403,10 @@ def _new_flags_bin_regrid(flags: xr.DataArray,
     good = grouped.map(_isin_any, args=(8, dim,)).rename({f"{dim}_bins": dim})  # contains 8 flags
     changed = grouped.map(_isin_any, args=(5, dim,)).rename({f"{dim}_bins": dim})  # contains 5 flags
 
+    # Set bins outside data from NaN to False (-> missing)
+    good = good.where(np.isfinite(good), False).astype(bool)
+    changed = changed.where(np.isfinite(changed), False).astype(bool)
+
     return good*8 + (changed & ~good)*5 + (~changed & ~good)*9
 
 

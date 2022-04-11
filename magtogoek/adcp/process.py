@@ -425,11 +425,11 @@ def _process_adcp_data(pconfig: ProcessConfig):
         dataset.attrs["magnetic_declination"] = pconfig.magnetic_declination
         l.log(f"Absolute magnetic declination: {dataset.attrs['magnetic_declination']} degree east.")
 
-    # ----------- #
-    # RE-GRIDDING #
-    # ----------- #
-    if pconfig.grid_depth is not None:
-        dataset = _regrid_dataset(dataset, pconfig)
+    # # ----------- #
+    # # RE-GRIDDING #
+    # # ----------- #
+    # if pconfig.grid_depth is not None:
+    #     dataset = _regrid_dataset(dataset, pconfig)
 
     if any(x is True for x in [pconfig.drop_percent_good, pconfig.drop_correlation, pconfig.drop_amplitude]):
         dataset = _drop_beam_data(dataset, pconfig)
@@ -480,6 +480,13 @@ def _process_adcp_data(pconfig: ProcessConfig):
 
     if "platform_name" in dataset.attrs:
         dataset.attrs["platform"] = dataset.attrs.pop("platform_name")
+
+    # ----------- #
+    # RE-GRIDDING #
+    # ----------- #
+    l.section("Post-processing")
+    if pconfig.grid_depth is not None:
+        dataset = _regrid_dataset(dataset, pconfig)
 
     # ----------- #
     # ODF OUTPUTS #
@@ -674,18 +681,21 @@ def _regrid_dataset(dataset: xr.Dataset, pconfig: ProcessConfig) -> xr.Dataset:
     """
     # Pre-process flags
     for var_ in 'uvw':
-        dataset[f"{var_}_QC"].values = _prepare_flags_for_regrid(dataset[f"{var_}_QC"].data)
+        _flag_name = dataset[var_].attrs['ancillary_variables']
+        dataset[_flag_name].values = _prepare_flags_for_regrid(dataset[_flag_name].data)
 
     # Make new quality flags if grid_method is `bin`. Must happen before averaging.
     if pconfig.grid_method == 'bin':
         _bin_depths, _new_flags = np.loadtxt(pconfig.grid_depth), dict()
         for var_ in 'uvw':
-            _new_flags[f"{var_}_QC"] = _new_flags_bin_regrid(dataset[f"{var_}_QC"], _bin_depths)
+            _flag_name = dataset[var_].attrs['ancillary_variables']
+            _new_flags[_flag_name] = _new_flags_bin_regrid(dataset[_flag_name], _bin_depths)
         new_flags = xr.Dataset(_new_flags)
 
     # Apply quality control
     for var_ in 'uvw':
-        dataset[var_] = dataset[var_].where(dataset[f"{var_}_QC"] == 8)
+        _flag_name = dataset[var_].attrs['ancillary_variables']
+        dataset[var_] = dataset[var_].where(dataset[_flag_name] == 8)
 
     # Regridding
     msg = f"to grid from file: {pconfig.grid_depth}"
@@ -697,10 +707,11 @@ def _regrid_dataset(dataset: xr.Dataset, pconfig: ProcessConfig) -> xr.Dataset:
 
     # Make new flags and replace interpolated/binned values
     for var_ in 'uvw':
+        _flag_name = dataset[var_].attrs['ancillary_variables']
         if pconfig.grid_method == 'bin':
-            dataset[f"{var_}_QC"] = new_flags[f"{var_}_QC"]
+            dataset[_flag_name] = new_flags[_flag_name]
         elif pconfig.grid_method == 'interp':
-            dataset[f"{var_}_QC"] = _new_flags_interp_regrid(dataset, var_)
+            dataset[_flag_name] = _new_flags_interp_regrid(dataset, var_)
 
     # Change min and max values
     _add_data_min_max_to_var_attrs(dataset)
