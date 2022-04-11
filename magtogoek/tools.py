@@ -377,8 +377,7 @@ def _isin_any(array: tp.Union[np.ndarray, xr.DataArray],
 
 def _new_flags_bin_regrid(flags: xr.DataArray,
                           bin_depths: np.ndarray,
-                          dim: str = 'depth',
-                          axis: int = 0) -> xr.DataArray:
+                          dim: str = 'depth') -> xr.DataArray:
     """
     Quality flag transfer function for bin average regridding.
 
@@ -390,8 +389,6 @@ def _new_flags_bin_regrid(flags: xr.DataArray,
         Center of the regridding averaging bins (meters).
     dim :
         Name of the dimension along which the binning is done.
-    axis :
-        Index of the dimension along which the binning is done.
 
     Returns
     -------
