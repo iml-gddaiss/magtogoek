@@ -679,6 +679,9 @@ def _regrid_dataset(dataset: xr.Dataset, pconfig: ProcessConfig) -> xr.Dataset:
     and with equal weights for all data inside each bin.
  
     """
+    # Read new depths
+    _new_depths = np.loadtxt(pconfig.grid_depth)
+
     # Pre-process flags
     for var_ in 'uvw':
         _flag_name = dataset[var_].attrs['ancillary_variables']
@@ -686,10 +689,10 @@ def _regrid_dataset(dataset: xr.Dataset, pconfig: ProcessConfig) -> xr.Dataset:
 
     # Make new quality flags if grid_method is `bin`. Must happen before averaging.
     if pconfig.grid_method == 'bin':
-        _bin_depths, _new_flags = np.loadtxt(pconfig.grid_depth), dict()
+        _new_flags = dict()
         for var_ in 'uvw':
             _flag_name = dataset[var_].attrs['ancillary_variables']
-            _new_flags[_flag_name] = _new_flags_bin_regrid(dataset[_flag_name], _bin_depths)
+            _new_flags[_flag_name] = _new_flags_bin_regrid(dataset[_flag_name], _new_depths)
         new_flags = xr.Dataset(_new_flags)
 
     # Apply quality control
@@ -701,7 +704,7 @@ def _regrid_dataset(dataset: xr.Dataset, pconfig: ProcessConfig) -> xr.Dataset:
     msg = f"to grid from file: {pconfig.grid_depth}"
     l.log(f"Regridded dataset with method {pconfig.grid_method} {msg}")
     dataset = regrid_dataset(dataset,
-                             grid=pconfig.grid_depth,
+                             grid=_new_depths,
                              dim='depth',
                              method=pconfig.grid_method)
 
