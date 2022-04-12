@@ -425,12 +425,6 @@ def _process_adcp_data(pconfig: ProcessConfig):
         dataset.attrs["magnetic_declination"] = pconfig.magnetic_declination
         l.log(f"Absolute magnetic declination: {dataset.attrs['magnetic_declination']} degree east.")
 
-    # # ----------- #
-    # # RE-GRIDDING #
-    # # ----------- #
-    # if pconfig.grid_depth is not None:
-    #     dataset = _regrid_dataset(dataset, pconfig)
-
     if any(x is True for x in [pconfig.drop_percent_good, pconfig.drop_correlation, pconfig.drop_amplitude]):
         dataset = _drop_beam_data(dataset, pconfig)
 
