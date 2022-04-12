@@ -292,6 +292,7 @@ meteoc_variables = {
                     ('wave_s', 'dominant_period')],
 }
 
+
 def load_viking_dat(viking_data: VikingData) -> xr.Dataset:
     """
     Deals with duplicate Time in NOM.
