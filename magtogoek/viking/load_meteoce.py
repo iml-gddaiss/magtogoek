@@ -91,6 +91,8 @@ meteoc_variables = {
 }
 
 VARIABLES_UNITS = {
+    'par_digi': {'PAR': 'micromoles photons per meter squared per second'}
+    'triplet': {'fluo': 'milligramme per meter squared'},
     'gps': {'speed': 'meters per second'},
     'rti': {'position': 'meters',
             'u': 'meters per second', 'v': 'meters per second', 'w': 'meters per second', 'e': 'meters per second',
@@ -104,8 +106,92 @@ VARIABLES_UNITS = {
 
 def make_meteoce_dataset(viking_data: VikingData) -> xr.Dataset:
     _coords = {'time': np.asarray(viking_data.time)}
-    _data = {'lon': (['time'], viking_data.longitude.filled(np.nan)),
-             'lat': (['time'], viking_data.latitude.filled(np.nan))}
+    _data = {'lon': viking_data.longitude,
+             'lat': viking_data.latitude,
+             }
+
+    if viking_data.wmt700 is not None:
+        _data.update(
+            {'wind_mean': viking_data.wmt700['Sm'],
+             'wind_direction_mean': viking_data.wmt700['Dm'],
+             'wind_max': viking_data.wmt700['Sx'],
+             'wind_direction_max': viking_data.wmt700['Dx']}
+        )
+    if viking_data.wxt520 is not None:
+        _data.update(
+            {'atm_temperature': viking_data.wxt520['Ta'],
+             'atm_humidity': viking_data.wxt520['Ua'],
+             'atm_pressure': viking_data.wxt520['Pa']}
+        )
+        for key, value in {'wind_mean': 'Sm', 'wind_direction_mean': 'Dm',
+                           'wind_max': 'Sx', 'wind_direction_max': 'Dx'}:
+            if key in _data:
+                if not (~_data[key].mask).any():
+                    _data[key] = viking_data.wxt520[value]
+
+    if viking_data.ctd is not None:
+        _data.update(
+            {'temperature': viking_data.ctd['temperature'],
+             'salinity': viking_data.ctd['salinity'],
+             'oxygen': viking_data.ctd['oxygen'],
+             'density': viking_data.ctd['density']}
+        )# TODO needs to be computed
+
+    elif viking_data.ctdo is not None:
+        _data.update(
+            {'temperature': viking_data.ctdo['temperature'],
+             'salinity': viking_data.ctdo['salinity'],
+             'oxygen': viking_data.ctd['oxygen']}
+        )
+         # TODO 'density' needs to be computed
+
+    if viking_data.wph is not None:
+        _data.update(
+            {'ph': viking_data.wph['ph']}
+        )# TODO needs to be corrected
+
+    if viking_data.triplet is not None:
+        _data.update(
+            {'fluorescence': viking_data.triplet['fluo_calculated']}
+        )
+
+    if viking_data.co2_a is not None:
+        _data.update({})
+
+    if viking_data.co2_w is not None:
+        _data.update({})
+
+    if viking_data.wave_m is not None:
+        _data.update({})
+
+    elif viking_data.wave_s is not None:
+        _data.update({})
+
+    if viking_data.rdi is not None:
+        _data.update({})
+
+    elif viking_data.rti is not None:
+        _data.update({})
+
+
+
+
+def _get_wind_data(viking_data:VikingData)->dict:
+    data_map = {'wind_mean': [('wmt700', 'Sm'), ('wxt520', 'Sm')],
+                'wind_direction_mean': [('wmt700', 'Dm'), ('wxt520', 'Dm')],
+                'wind_max': [('wmt700', 'Sx'), ('wxt520', 'Sx')],
+                'wind_direction_max': [('wmt700', 'Sx'), ('wxt520', 'Sx')]}
+    _data = dict().fromkeys(data_map.keys())
+    for key, value in data_map.items():
+        for (tag, varname) in value:
+            if viking_data.__dict__[tag]
+            if (~viking_data.__dict__[tag][varname].mask).any():
+                _data[key] = viking_data.__dict__[tag][varname]
+    return _data
+
+
+
+def _get_atmospheric_data(viking_data:VikingData)->dict:
 
 
 
