@@ -60,9 +60,11 @@ from magtogoek.adcp.loader import load_adcp_binary
 from magtogoek.adcp.odf_exporter import make_odf
 from magtogoek.adcp.quality_control import (adcp_quality_control,
                                             no_adcp_quality_control)
-from magtogoek.tools import rotate_2d_vector
+from magtogoek.tools import (
+    rotate_2d_vector, regrid_dataset, _prepare_flags_for_regrid, _new_flags_bin_regrid,
+    _new_flags_interp_regrid)
 from magtogoek.attributes_formatter import (
-    compute_global_attrs, format_variables_names_and_attributes)
+    compute_global_attrs, format_variables_names_and_attributes, _add_data_min_max_to_var_attrs)
 from magtogoek.navigation import load_navigation
 from magtogoek.platforms import _add_platform
 from magtogoek.utils import Logger, ensure_list_format, json2dict
@@ -239,6 +241,9 @@ class ProcessConfig:
     odf_path: str = None
     log_path: str = None
 
+    grid_depth: str = None
+    grid_method: str = None
+
     def __init__(self, config_dict: dict = None):
         self.metadata: dict = {}
         self.platform_metadata: dict = {}
@@ -388,6 +393,19 @@ def _process_adcp_data(pconfig: ProcessConfig):
     if not dataset.attrs["source"]:
         dataset.attrs["source"] = pconfig.platform_type
 
+    # --------------- #
+    # QUALITY CONTROL #
+    # --------------- #
+
+    dataset.attrs["logbook"] += l.logbook
+
+    if pconfig.quality_control:
+        _quality_control(dataset, pconfig)
+    else:
+        no_adcp_quality_control(dataset)
+
+    l.reset()
+
     # ----------------------------------- #
     # CORRECTION FOR MAGNETIC DECLINATION #
     # ----------------------------------- #
@@ -406,19 +424,6 @@ def _process_adcp_data(pconfig: ProcessConfig):
         _apply_magnetic_correction(dataset, angle)
         dataset.attrs["magnetic_declination"] = pconfig.magnetic_declination
         l.log(f"Absolute magnetic declination: {dataset.attrs['magnetic_declination']} degree east.")
-
-    # --------------- #
-    # QUALITY CONTROL #
-    # --------------- #
-
-    dataset.attrs["logbook"] += l.logbook
-
-    if pconfig.quality_control:
-        _quality_control(dataset, pconfig)
-    else:
-        no_adcp_quality_control(dataset)
-
-    l.reset()
 
     if any(x is True for x in [pconfig.drop_percent_good, pconfig.drop_correlation, pconfig.drop_amplitude]):
         dataset = _drop_beam_data(dataset, pconfig)
@@ -469,6 +474,13 @@ def _process_adcp_data(pconfig: ProcessConfig):
 
     if "platform_name" in dataset.attrs:
         dataset.attrs["platform"] = dataset.attrs.pop("platform_name")
+
+    # ----------- #
+    # RE-GRIDDING #
+    # ----------- #
+    l.section("Post-processing")
+    if pconfig.grid_depth is not None:
+        dataset = _regrid_dataset(dataset, pconfig)
 
     # ----------- #
     # ODF OUTPUTS #
@@ -648,6 +660,59 @@ def _load_navigation(dataset: xr.Dataset, navigation_files: str):
             nav_ds.close()
             return dataset
     l.warning('Could not load navigation data file.')
+    return dataset
+
+
+def _regrid_dataset(dataset: xr.Dataset, pconfig: ProcessConfig) -> xr.Dataset:
+    """ Wrapper for regrid_dataset
+ 
+    Note
+    ----
+    The `interp` method performs linear interpolation. The `bin` method
+    performs averaging of input data strictly within the bin boundaries
+    and with equal weights for all data inside each bin.
+ 
+    """
+    # Read new depths
+    _new_depths = np.loadtxt(pconfig.grid_depth)
+
+    # Pre-process flags
+    for var_ in 'uvw':
+        _flag_name = dataset[var_].attrs['ancillary_variables']
+        dataset[_flag_name].values = _prepare_flags_for_regrid(dataset[_flag_name].data)
+
+    # Make new quality flags if grid_method is `bin`. Must happen before averaging.
+    if pconfig.grid_method == 'bin':
+        _new_flags = dict()
+        for var_ in 'uvw':
+            _flag_name = dataset[var_].attrs['ancillary_variables']
+            _new_flags[_flag_name] = _new_flags_bin_regrid(dataset[_flag_name], _new_depths)
+        new_flags = xr.Dataset(_new_flags)
+
+    # Apply quality control
+    for var_ in 'uvw':
+        _flag_name = dataset[var_].attrs['ancillary_variables']
+        dataset[var_] = dataset[var_].where(dataset[_flag_name] == 8)
+
+    # Regridding
+    msg = f"to grid from file: {pconfig.grid_depth}"
+    l.log(f"Regridded dataset with method {pconfig.grid_method} {msg}")
+    dataset = regrid_dataset(dataset,
+                             grid=_new_depths,
+                             dim='depth',
+                             method=pconfig.grid_method)
+
+    # Make new flags and replace interpolated/binned values
+    for var_ in 'uvw':
+        _flag_name = dataset[var_].attrs['ancillary_variables']
+        if pconfig.grid_method == 'bin':
+            dataset[_flag_name] = new_flags[_flag_name]
+        elif pconfig.grid_method == 'interp':
+            dataset[_flag_name] = _new_flags_interp_regrid(dataset, var_)
+
+    # Change min and max values
+    _add_data_min_max_to_var_attrs(dataset)
+
     return dataset
 
 

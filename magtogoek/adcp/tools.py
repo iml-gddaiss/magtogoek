@@ -5,6 +5,7 @@ import typing as tp
 from datetime import datetime
 
 import numpy as np
+import xarray as xr
 from nptyping import NDArray
 from pandas import Timestamp, to_datetime
 
@@ -72,3 +73,4 @@ def get_datetime_and_count(trim_arg: str):
             return (None, int(trim_arg))
     else:
         return (None, None)
+
