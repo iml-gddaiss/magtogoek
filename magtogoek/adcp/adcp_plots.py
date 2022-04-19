@@ -10,6 +10,7 @@ This modules contains the essential figure to do a visual inspection of the data
 """
 from itertools import cycle
 from typing import List, Union, Dict
+from pathlib import Path
 
 import cmocean as cmo
 import matplotlib.colorbar as clb
@@ -47,7 +48,12 @@ def get_extent(dataset: xr.Dataset) -> List:
     ]
 
 
-def make_adcp_figure(dataset: xr.Dataset, single: bool = False, flag_thres=2, vel_only:bool = False):
+def make_adcp_figure(dataset: xr.Dataset,
+                     single: bool = False,
+                     flag_thres: int = 2,
+                     vel_only: bool = False,
+                     path: str = None,
+                     save: bool = False):
     """
 
     Looks for 'ancillary_variables' attributes on variables for QC flagging.
@@ -59,13 +65,17 @@ def make_adcp_figure(dataset: xr.Dataset, single: bool = False, flag_thres=2, ve
         If True, figures are plotted one at a time.
     flag_thres :
         Value with QC flag of `flag_thres` or lower will be plotted ([0, ..., flag_thres])
+    vel_only :
+        Make only velocity data figures.
+    save :
+        Write figures to file next to data output.
 
     Returns
     -------
 
     """
 
-    figs = []
+    figs, names = [], []
 
     varname_map = {}
     for var in dataset:
@@ -76,14 +86,17 @@ def make_adcp_figure(dataset: xr.Dataset, single: bool = False, flag_thres=2, ve
         geo_var = map_varname(GEO_VAR, varname_map)
         if len(geo_var) > 0:
             figs.append(plot_sensor_data(dataset, varnames=geo_var))
+            names.append(f'sensor_data_geo')
 
         anc_var = map_varname(ANC_VAR, varname_map)
         if len(anc_var) > 0:
             figs.append(plot_sensor_data(dataset, varnames=anc_var))
+            names.append(f'sensor_data_anc')
 
         bt_uvw_var = map_varname(BT_UVW_VAR, varname_map)
         if len(bt_uvw_var) > 0 and all(v in dataset for v in bt_uvw_var):
             figs.append(plot_bt_vel(dataset, uvw=bt_uvw_var))
+            names.append(f'bt_vel')
 
     uvw_var = map_varname(UVW_VAR, varname_map)
     if len(uvw_var) > 0:
@@ -93,18 +106,26 @@ def make_adcp_figure(dataset: xr.Dataset, single: bool = False, flag_thres=2, ve
                 depths = dataset.depth.data[-3:]
             figs.append(plot_vel_series(dataset, depths=depths, uvw=uvw_var, flag_thres=flag_thres))
             figs.append(plot_pearson_corr(dataset, uvw=uvw_var, flag_thres=flag_thres))
+            names.extend(('vel_series', 'pearson_corr'))
 
         figs.append(plot_velocity_polar_hist(dataset, nrows=2, ncols=3, uv=uvw_var[:2], flag_thres=flag_thres))
-
         figs.append(plot_velocity_fields(dataset, uvw=uvw_var, flag_thres=flag_thres))
+        names.extend(('velocity_polar_hist', 'velocity_fields'))
 
     if "binary_mask" in dataset:
         figs.append(plot_test_fields(dataset))
+        names.append('test_fields')
 
     if single is True:
         for count, fig in enumerate(figs):
             fig.show()
             input(f"({count + 1}/{len(figs)}) Press [enter] to plot the next figure.\033[1A \033[9C")
+
+    if save is True:
+        if path != '':
+            path = f'{Path(path).stem}_'
+        for name, fig in zip(names, figs):
+            fig.savefig(f'{path}{name}.png')
 
     plt.show()
 

@@ -199,6 +199,7 @@ class ProcessConfig:
     sensor_id: str = None
     netcdf_output: tp.Union[str, bool] = None
     odf_output: tp.Union[str, bool] = None
+    figures_output: tp.Union[str, bool] = None
     yearbase: int = None
     adcp_orientation: str = None
     sonar: str = None
@@ -240,6 +241,7 @@ class ProcessConfig:
     netcdf_path: str = None
     odf_path: str = None
     log_path: str = None
+    figures_path: str = None
 
     grid_depth: str = None
     grid_method: str = None
@@ -452,7 +454,10 @@ def _process_adcp_data(pconfig: ProcessConfig):
     # ------------ #
 
     if pconfig.make_figures:
-        make_adcp_figure(dataset, flag_thres=2)
+        make_adcp_figure(dataset,
+                         flag_thres=2,
+                         path=pconfig.figures_path,
+                         save=pconfig.figures_output)
 
     dataset["time"].assign_attrs(TIME_ATTRS)
 
@@ -1022,6 +1027,22 @@ def _outputs_path_handler(pconfig: ProcessConfig):
         if not pconfig.netcdf_output:
             default_path = _odf_path.parent
             default_filename = _odf_path.stem
+
+    if isinstance(pconfig.make_figures, bool):
+        pconfig.figures_output = False
+    elif isinstance(pconfig.make_figures, str):
+        _figures_output = Path(pconfig.make_figures)
+        if Path(_figures_output.name) == _figures_output:
+            _figures_path = default_path.joinpath(_figures_output).resolve()
+        elif _odf_output.is_dir():
+            _figures_path = _figures_output
+        elif _odf_output.parent.is_dir():
+            _figures_path = _figures_output
+        else:
+            raise ValueError(f'Path to {_figures_output} does not exists.')
+
+        pconfig.figures_path = str(_figures_path)
+        pconfig.figures_output = True
 
     pconfig.log_path = str(default_path.joinpath(default_filename))
 
