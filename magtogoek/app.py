@@ -54,8 +54,7 @@ TERMINAL_WIDTH = 80
 def _print_info(ctx, callback, info_called):
     """Show command information"""
     if info_called is True:
-        subp_run(["printf", r"\e[8;40;" +
-                  str(TERMINAL_WIDTH + 1) + "t"], check=True)
+        subp_run(["printf", r"\e[8;40;" + str(TERMINAL_WIDTH + 1) + "t"], check=True)
         click.clear()
         _print_logo(logo_path=LOGO_PATH, group=ctx.info_name)
         click.secho("\nDescriptions:", fg="red")
@@ -74,8 +73,7 @@ def _print_info(ctx, callback, info_called):
 
 
 common_options = [
-    click.option("--info", is_flag=True, callback=_print_info,
-                 help="Show command information"),
+    click.option("--info", is_flag=True, callback=_print_info, help="Show command information"),
     click.version_option(VERSION)
 ]
 
@@ -113,8 +111,7 @@ def process(info, config_file: str, **options):
         cli_options['mk_fig'] = options['mk_fig']
 
     try:
-        configuration, sensor_type = load_configfile(
-            config_file, cli_options=cli_options)
+        configuration, sensor_type = load_configfile(config_file, cli_options=cli_options)
     except (ParsingError, UnicodeDecodeError):
         print("Failed to open the given configfile.\n mtgk process aborted.")
         sys.exit()
@@ -170,8 +167,7 @@ def config_platform(ctx, info, filename):
 
     filename = is_valid_filename(filename, ext=".json")
     make_platform_template(filename)
-    click.echo(click.style(
-        f"Platform file created for -> {filename}", bold=True))
+    click.echo(click.style(f"Platform file created for -> {filename}", bold=True))
 
 
 @config.command("adcp")
@@ -192,13 +188,10 @@ def config_adcp(
     _print_passed_options(options)
     config_name = is_valid_filename(config_name, ext=".ini")
     options['sensor_type'] = 'adcp'
-    options.update({k: v for k, v in zip(
-        ("platform_file", "platform_id", "sensor_id"), options.pop('platform'))})
+    options.update({k: v for k, v in zip(("platform_file", "platform_id", "sensor_id"), options.pop('platform'))})
 
-    write_configfile(filename=config_name,
-                     sensor_type="adcp", cli_options=options)
-    click.secho(
-        f"Config file created for adcp processing -> {config_name}", bold=True)
+    write_configfile(filename=config_name, sensor_type="adcp", cli_options=options)
+    click.secho(f"Config file created for adcp processing -> {config_name}", bold=True)
 
 
 # --------------------------- #
@@ -228,11 +221,9 @@ def quick_adcp(ctx, info, input_files: tuple, sonar: str, yearbase: int, **optio
     # TODO TEST. So far not crashing
     from magtogoek.config_handler import cli_options_to_config
     from magtogoek.adcp.process import process_adcp
-    options.update({"input_files": input_files,
-                    "sensor_type": "adcp", "yearbase": yearbase, "sonar": sonar})
+    options.update({"input_files": input_files, "sensor_type": "adcp", "yearbase": yearbase, "sonar": sonar})
     _print_passed_options(options)
-    configuration = cli_options_to_config(
-        'adcp', options, cwd=str(Path().cwd()))
+    configuration = cli_options_to_config('adcp', options, cwd=str(Path().cwd()))
 
     process_adcp(configuration,
                  drop_empty_attrs=True,
@@ -320,8 +311,7 @@ def plot_adcp(ctx, info, input_file, **options):
     import xarray as xr
     from magtogoek.adcp.adcp_plots import make_adcp_figure
     dataset = xr.open_dataset(input_file)
-    make_adcp_figure(
-        dataset, flag_thres=options['flag_thres'], vel_only=options["vel_only"])
+    make_adcp_figure(dataset, flag_thres=options['flag_thres'], vel_only=options["vel_only"])
 
 
 # ------------------------ #
@@ -361,14 +351,9 @@ def _print_logo(logo_path: str = "files/logo.json", group: str = ""):
     except FileNotFoundError:
         click.echo(click.style("WARNING: logo.json not found", fg="yellow"))
     except KeyError:
-        click.echo(click.style(
-            "WARNING: key in logo.json not found", fg="yellow"))
+        click.echo(click.style("WARNING: key in logo.json not found", fg="yellow"))
 
-    click.echo(
-        click.style(
-            f"version: {VERSION}" + f" {group} ".rjust(67, " "), fg="green", bold=True,
-        )
-    )
+    click.echo(click.style(f"version: {VERSION}" + f" {group} ".rjust(67, " "), fg="green", bold=True,))
     click.echo(click.style("=" * TERMINAL_WIDTH, fg="white", bold=True))
 
 
@@ -376,12 +361,9 @@ def _print_arguments(group, parent):
     """print group(command) command(arguments)"""
     _parent = parent.info_name if parent else ""
     messages = {"mtgk": '\n'.join(["  config".ljust(20, " ") + "Command to make configuration files",
-                                   "  process".ljust(
-                                       20, " ") + "Command to process data with configuration files",
-                                   "  quick".ljust(
-                                       20, " ") + "Command to quickly process data files",
-                                   "  check".ljust(
-                                       20, " ") + "Command to check the information on some file type",
+                                   "  process".ljust(20, " ") + "Command to process data with configuration files",
+                                   "  quick".ljust(20, " ") + "Command to quickly process data files",
+                                   "  check".ljust(20, " ") + "Command to check the information on some file type",
                                    "  compute".ljust(20, " ") + "Command to compute certain quantities"]),
                 "config":
                     '\n'.join(["  adcp".ljust(20, " ") + "Config file for adcp data. ",
@@ -399,11 +381,11 @@ def _print_arguments(group, parent):
                         "  [file_name]".ljust(20, " ")
                         + "Filename (path/to/file, or expression) of the GPS files."
 
-    ),
-        "check": "  rti".ljust(20, " ") + "Print information on the rti .ens files. ",
+                ),
+                "check": "  rti".ljust(20, " ") + "Print information on the rti .ens files. ",
 
-        "adcp": "  [config_name]".ljust(20, " ")
-        + "Filename (path/to/file) for the new configuration file.",
+                "adcp": "  [config_name]".ljust(20, " ")
+                        + "Filename (path/to/file) for the new configuration file.",
                 "platform": "  [filename]".ljust(20, " ")
                             + "Filename (path/to/file) for the new platform file.",
     }
@@ -425,46 +407,46 @@ def _print_description(group):
             " processing configuration for different types of sensor (adcp, ctd, etc). Once"
             " created the configuration file   can be filled in any text editor or via"
             " optional arguments. Platform files are used to store platform metadata."
-    ),
+        ),
         "quick": "Quick way to process files.",
         "process": (
             "Command to execute the processing orders from a configuration file. If"
             " relative path where used in the configuration file, they are relative to directory"
             " where the command is called and not where the configuration file is located."
-    ),
+        ),
         "check": (
             "Print some raw files information. Only available for adcp RTI .ENS files."
-    ),
+        ),
         "adcp": (
-        "\n"
-        "        sonar\n"
-        "        -----\n"
-        "           os : OceanSurveyor (RDI)\n"
-        "           wh : WorkHorse (RDI)\n"
-        "           sv : SentinelV (RDI)\n"
-        "           sw : SeaWatch (RTI)\n"
-        "           sw_pd0 : SeaWatch (RTI in RDI pd0 file format)\n"
-        "\n"
-        "        quality control\n"
-        "        ---------------\n"
-        "           - velocity, amplitude, correlation, percentgood, roll, pitch, \n"
-        "             side_lobe.\n"
-        "           - Temperatures outside [-2, 32] Celsius. \n"
-        "           - Pressures outside [0, 180] dbar.\n"
-        "\n"
-        "        plots\n"
-        "        -----\n"
-        "           - 2D velocity fields (u,v), time-series,\n"
-        "           - Polar Histogram of the Velocities amplitude and direction,\n"
-        "           - Pearson Correlation of velocity for consecutive bins,\n"
-    ),
+                "\n"
+                "        sonar\n"
+                "        -----\n"
+                "           os : OceanSurveyor (RDI)\n"
+                "           wh : WorkHorse (RDI)\n"
+                "           sv : SentinelV (RDI)\n"
+                "           sw : SeaWatch (RTI)\n"
+                "           sw_pd0 : SeaWatch (RTI in RDI pd0 file format)\n"
+                "\n"
+                "        quality control\n"
+                "        ---------------\n"
+                "           - velocity, amplitude, correlation, percentgood, roll, pitch, \n"
+                "             side_lobe.\n"
+                "           - Temperatures outside [-2, 32] Celsius. \n"
+                "           - Pressures outside [0, 180] dbar.\n"
+                "\n"
+                "        plots\n"
+                "        -----\n"
+                "           - 2D velocity fields (u,v), time-series,\n"
+                "           - Polar Histogram of the Velocities amplitude and direction,\n"
+                "           - Pearson Correlation of velocity for consecutive bins,\n"
+        ),
         "nav": (
             " Compute u_ship (eastward velocity), v_ship (northward velocity) and the bearing"
             " of the input gps data. The GPS input files can be nmea text file, gpx XML files or"
             " a netcdf files with `lon`, `lat` variables and `time` coordinates. Using the command"
             " `-w`, an averaging window can be use to smooth the computed navigation data."
             " A matplotlib plot is made after each computation."
-    ),
+        ),
         "platform": "Creates an empty platform.json file",
         "odf2nc": "Converts odf files to netcdf",
     }
@@ -472,8 +454,7 @@ def _print_description(group):
         if "\n" in messages[group]:
             click.echo(messages[group])
         else:
-            click.echo(click.wrap_text(
-                messages[group], width=TERMINAL_WIDTH, initial_indent=''))
+            click.echo(click.wrap_text(messages[group], width=TERMINAL_WIDTH, initial_indent=''))
 
 
 def _print_usage(group, parent):
@@ -494,8 +475,7 @@ def _print_usage(group, parent):
         if _parent == "config":
             click.echo("  mtgk config adcp [CONFIG_NAME] [OPTIONS]")
         if _parent == "quick":
-            click.echo(
-                "  mtgk quick adcp [INPUT_FILES] [SONAR] [YEARBASE] [OPTIONS]")
+            click.echo("  mtgk quick adcp [INPUT_FILES] [SONAR] [YEARBASE] [OPTIONS]")
     if group == "check":
         click.echo("  mtgk check [rti,] [INPUT_FILES] ")
     if group == "rti":
