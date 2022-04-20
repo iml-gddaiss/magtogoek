@@ -353,7 +353,11 @@ def _print_logo(logo_path: str = "files/logo.json", group: str = ""):
     except KeyError:
         click.echo(click.style("WARNING: key in logo.json not found", fg="yellow"))
 
-    click.echo(click.style(f"version: {VERSION}" + f" {group} ".rjust(67, " "), fg="green", bold=True,))
+    click.echo(
+        click.style(
+            f"version: {VERSION}" + f" {group} ".rjust(67, " "), fg="green", bold=True,
+        )
+    )
     click.echo(click.style("=" * TERMINAL_WIDTH, fg="white", bold=True))
 
 
@@ -449,7 +453,7 @@ def _print_description(group):
         ),
         "platform": "Creates an empty platform.json file",
         "odf2nc": "Converts odf files to netcdf",
-    }
+        }
     if group in messages:
         if "\n" in messages[group]:
             click.echo(messages[group])
