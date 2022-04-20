@@ -491,7 +491,7 @@ def _process_adcp_data(pconfig: ProcessConfig):
     # RE-GRIDDING #
     # ----------- #
     l.section("Post-processing")
-    if pconfig.grid_depth is not None:
+    if pconfig.grid_depth != "":
         dataset = _regrid_dataset(dataset, pconfig)
 
     # ----------- #
