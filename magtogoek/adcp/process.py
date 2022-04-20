@@ -238,6 +238,7 @@ class ProcessConfig:
     platform_metadata: dict = None
 
     drop_empty_attrs: bool = False
+    showfig: bool = True
     netcdf_path: str = None
     odf_path: str = None
     log_path: str = None
@@ -291,7 +292,9 @@ class ProcessConfig:
                 l.warning(f"platform_type set to `{DEFAULT_PLATFORM_TYPE}` for platform_type.")
 
 
-def process_adcp(config: dict, drop_empty_attrs: bool = False):
+def process_adcp(config: dict,
+                 drop_empty_attrs: bool = False,
+                 showfig: bool = True):
     """Process adcp data with parameters from a config file.
 
     Parameters
@@ -301,12 +304,15 @@ def process_adcp(config: dict, drop_empty_attrs: bool = False):
     drop_empty_attrs :
         If true, all netcdf empty ('') global attributes will be drop from
         the output.
+    showfig :
+        If true, display figures to the screen.
 
     The actual data processing is carried out by _process_adcp_data.
     """
 
     pconfig = ProcessConfig(config)
     pconfig.drop_empty_attrs = drop_empty_attrs
+    pconfig.showfig = showfig
 
     if pconfig.merge_output_files:
         _process_adcp_data(pconfig)
@@ -457,7 +463,8 @@ def _process_adcp_data(pconfig: ProcessConfig):
         make_adcp_figure(dataset,
                          flag_thres=2,
                          path=pconfig.figures_path,
-                         save=pconfig.figures_output)
+                         save=pconfig.figures_output,
+                         show=pconfig.showfig)
 
     dataset["time"].assign_attrs(TIME_ATTRS)
 

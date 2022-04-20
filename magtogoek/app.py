@@ -210,6 +210,10 @@ def config_adcp(
               help="""year when the adcp sampling started. ex: `1970`""", required=True)
 @click.option("-T", "--platform_type", type=click.Choice(["buoy", "mooring", "ship"]),
               help="Used for Proper BODC variables names", default="buoy")
+@click.option("--show-fig", "showfig",
+              type=bool,
+              help="""Display figures to inspect the data.""",
+              default=True)
 @click.pass_context
 def quick_adcp(ctx, info, input_files: tuple, sonar: str, yearbase: int, **options: dict):
     """Command to make an quickly process adcp files. The [OPTIONS] can be added
@@ -221,7 +225,7 @@ def quick_adcp(ctx, info, input_files: tuple, sonar: str, yearbase: int, **optio
     _print_passed_options(options)
     configuration = cli_options_to_config('adcp', options, cwd=str(Path().cwd()))
 
-    process_adcp(configuration, drop_empty_attrs=True)
+    process_adcp(configuration, drop_empty_attrs=True, showfig=configuration.showfig)
 
 
 # --------------------------- #
