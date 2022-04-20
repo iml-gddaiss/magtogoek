@@ -107,16 +107,12 @@ def make_adcp_figure(dataset: xr.Dataset,
             depths = dataset.depth.data[0:3]
             if dataset.attrs['orientation'] == "up":
                 depths = dataset.depth.data[-3:]
-            figs.append(plot_vel_series(dataset, depths=depths,
-                                        uvw=uvw_var, flag_thres=flag_thres))
-            figs.append(plot_pearson_corr(
-                dataset, uvw=uvw_var, flag_thres=flag_thres))
+            figs.append(plot_vel_series(dataset, depths=depths, uvw=uvw_var, flag_thres=flag_thres))
+            figs.append(plot_pearson_corr(dataset, uvw=uvw_var, flag_thres=flag_thres))
             names.extend(('vel_series', 'pearson_corr'))
 
-        figs.append(plot_velocity_polar_hist(dataset, nrows=2,
-                                             ncols=3, uv=uvw_var[:2], flag_thres=flag_thres))
-        figs.append(plot_velocity_fields(
-            dataset, uvw=uvw_var, flag_thres=flag_thres))
+        figs.append(plot_velocity_polar_hist(dataset, nrows=2, ncols=3, uv=uvw_var[:2], flag_thres=flag_thres))
+        figs.append(plot_velocity_fields(dataset, uvw=uvw_var, flag_thres=flag_thres))
         names.extend(('velocity_polar_hist', 'velocity_fields'))
 
     if "binary_mask" in dataset:
@@ -126,8 +122,7 @@ def make_adcp_figure(dataset: xr.Dataset,
     if single is True and show is True:
         for count, fig in enumerate(figs):
             fig.show()
-            input(
-                f"({count + 1}/{len(figs)}) Press [enter] to plot the next figure.\033[1A \033[9C")
+            input(f"({count + 1}/{len(figs)}) Press [enter] to plot the next figure.\033[1A \033[9C")
 
     if save is True:
         if path != '':
@@ -149,8 +144,7 @@ def plot_velocity_polar_hist(dataset: xr.Dataset, nrows: int = 3, ncols: int = 3
     r_max = round_up(r_max, 0.2)
     r_ticks = np.round(np.linspace(0, r_max, 6), 2)[1:]
 
-    bin_depths = np.linspace(
-        dataset.depth.min(), dataset.depth.max(), naxes + 1)
+    bin_depths = np.linspace(dataset.depth.min(), dataset.depth.max(), naxes + 1)
 
     fig, axes = plt.subplots(figsize=(12, 8), nrows=nrows, ncols=ncols,
                              subplot_kw={"projection": "polar"}, constrained_layout=True)
@@ -164,8 +158,7 @@ def plot_velocity_polar_hist(dataset: xr.Dataset, nrows: int = 3, ncols: int = 3
         if np.isfinite(histo).any():
             histo /= np.nanmax(histo)
             axes[index].grid(False)
-            axes[index].pcolormesh(
-                a_edges, r_edges, histo.T, cmap=cmo.cm.amp, shading="flat")
+            axes[index].pcolormesh(a_edges, r_edges, histo.T, cmap=cmo.cm.amp, shading="flat")
         axes[index].set_title(
             f"depth: {round((bin_depths[index] + bin_depths[index + 1]) / 2, 0)} m", fontdict=FONT, loc="left"
         )
@@ -179,8 +172,7 @@ def plot_velocity_polar_hist(dataset: xr.Dataset, nrows: int = 3, ncols: int = 3
         rlabels_tpos = np.arctan2(1.3 * r_max, r_ticks)
 
         for label, rpos, tpos, rtick in zip(r_ticks, rlabels_rpos, rlabels_tpos, r_ticks):
-            axes[index].text(
-                tpos, rpos, f"{label:.2f}", fontsize=10, clip_on=False, va="center", rotation=0)
+            axes[index].text(tpos, rpos, f"{label:.2f}", fontsize=10, clip_on=False, va="center", rotation=0)
             axes[index].plot(
                 (0, tpos), (rtick, rpos), "--", lw=0.6, c="k", clip_on=False
             )
@@ -222,15 +214,13 @@ def plot_test_fields(dataset: xr.Dataset):
     """
     """
     extent = get_extent(dataset)
-    fig, axes = plt.subplots(figsize=(12, 8), nrows=3,
-                             ncols=3, sharex=True, sharey=True)
+    fig, axes = plt.subplots(figsize=(12, 8), nrows=3, ncols=3, sharex=True, sharey=True)
     axes = axes.flatten()
     for index, test_name in enumerate(dataset.attrs["binary_mask_tests"]):
         value = dataset.attrs["binary_mask_tests_values"][index]
         if value is not None:
             mask = (dataset.binary_mask.astype(int) & 2 ** index).astype(bool)
-            axes[index].imshow(mask, aspect="auto", cmap=BINARY_CMAP,
-                               extent=extent, interpolation='none', )
+            axes[index].imshow(mask, aspect="auto", cmap=BINARY_CMAP, extent=extent, interpolation='none', )
             axes[index].xaxis_date()
             axes[index].set_title(test_name + f": {value}", fontdict=FONT)
         axes[index].tick_params(labelleft=False, labelbottom=False)
@@ -252,8 +242,7 @@ def plot_test_fields(dataset: xr.Dataset):
 
 def plot_vel_series(dataset: xr.Dataset, depths: Union[float, List[float]],
                     uvw: List[str] = ("u", "v", "w"), flag_thres: int = 2):
-    fig, axes = plt.subplots(figsize=(12, 8), nrows=3,
-                             ncols=1, sharex=True, sharey=True)
+    fig, axes = plt.subplots(figsize=(12, 8), nrows=3, ncols=1, sharex=True, sharey=True)
     axes[0].tick_params(labelbottom=False)
     axes[1].tick_params(labelbottom=False)
 
@@ -262,8 +251,7 @@ def plot_vel_series(dataset: xr.Dataset, depths: Union[float, List[float]],
         da = flag_data(dataset=dataset, var=var, flag_thres=flag_thres)
         clines = cycle(["solid", "dotted", "dashed", "dashdotted"])
         for depth, c in zip(depths, colors):
-            ax.plot(dataset.time, da.sel(depth=depth), linestyle=next(
-                clines), c=c, label=str(depth) + " m")
+            ax.plot(dataset.time, da.sel(depth=depth), linestyle=next(clines), c=c, label=str(depth) + " m")
         ax.set_ylabel(f"{var}\n[{dataset[var].units}]", fontdict=FONT)
     axes[2].set_xlabel("time", fontdict=FONT)
     axes[2].legend(title="depth")
@@ -293,8 +281,7 @@ def plot_pearson_corr(dataset: xr.Dataset, uvw: List[str] = ("u", "v", "w"), fla
 
 def plot_sensor_data(dataset: xr.Dataset, varnames: List[str], flag_thres: int = 2):
     varnames = [var for var in varnames if var in dataset.variables]
-    fig, axes = plt.subplots(figsize=(12, 8), nrows=len(
-        varnames), ncols=1, sharex=True, squeeze=False)
+    fig, axes = plt.subplots(figsize=(12, 8), nrows=len(varnames), ncols=1, sharex=True, squeeze=False)
     axes = axes.flatten()
     for var, ax in zip(varnames, axes):
         da = dataset[var]
@@ -311,8 +298,7 @@ def plot_sensor_data(dataset: xr.Dataset, varnames: List[str], flag_thres: int =
 
 
 def plot_bt_vel(dataset: xr.Dataset, uvw: List[str] = ("bt_u", "bt_v", "bt_w")):
-    fig, axes = plt.subplots(figsize=(12, 8), nrows=3,
-                             ncols=1, sharex=True, sharey=True)
+    fig, axes = plt.subplots(figsize=(12, 8), nrows=3, ncols=1, sharex=True, sharey=True)
     axes[0].tick_params(labelbottom=False)
     axes[1].tick_params(labelbottom=False)
     for var, ax in zip(uvw, axes):
@@ -345,7 +331,6 @@ if __name__ == "__main__":
     ]
     _dataset = xr.open_dataset(nc_file)
     _dataset.attrs["binary_mask_tests"] = test
-    _dataset.attrs["binary_mask_tests_values"] = [
-        0, 64, 90, 5.0, 5.0, 5.0, 20, 20, None]
+    _dataset.attrs["binary_mask_tests_values"] = [0, 64, 90, 5.0, 5.0, 5.0, 20, 20, None]
 
     make_adcp_figure(_dataset, single=False)
