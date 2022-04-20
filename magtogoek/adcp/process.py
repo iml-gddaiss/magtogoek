@@ -99,8 +99,7 @@ GLOBAL_ATTRS_TO_DROP = [
     "binary_mask_tests_values",
     "bodc_name"
 ]
-CONFIG_GLOBAL_ATTRS_SECTIONS = ["NETCDF_CF",
-                                "PROJECT", "CRUISE", "GLOBAL_ATTRIBUTES"]
+CONFIG_GLOBAL_ATTRS_SECTIONS = ["NETCDF_CF", "PROJECT", "CRUISE", "GLOBAL_ATTRIBUTES"]
 PLATFORM_TYPES = ["buoy", "mooring", "ship"]
 DEFAULT_PLATFORM_TYPE = "buoy"
 DATA_TYPES = {"buoy": "madcp", "mooring": "madcp", "ship": "adcp"}
@@ -281,8 +280,7 @@ class ProcessConfig:
     def _get_platform_metadata(self):
         if self.platform_file is not None:
             if Path(self.platform_file).is_file():
-                self.platform_metadata = _load_platform(
-                    self.platform_file, self.platform_id, self.sensor_id)
+                self.platform_metadata = _load_platform(self.platform_file, self.platform_id, self.sensor_id)
             else:
                 l.warning(f"platform_file, {self.platform_file}, not found")
         elif self.platform_type is not None:
@@ -291,10 +289,8 @@ class ProcessConfig:
                 self.platform_metadata["platform"]['platform_type'] = self.platform_type
             else:
                 self.platform_metadata["platform"]['platform_type'] = DEFAULT_PLATFORM_TYPE
-                l.warning(
-                    f"platform_type invalid or no specified. Must be one of {PLATFORM_TYPES}")
-                l.warning(
-                    f"platform_type set to `{DEFAULT_PLATFORM_TYPE}` for platform_type.")
+                l.warning(f"platform_type invalid or no specified. Must be one of {PLATFORM_TYPES}")
+                l.warning(f"platform_type set to `{DEFAULT_PLATFORM_TYPE}` for platform_type.")
 
 
 def process_adcp(config: dict,
@@ -315,11 +311,9 @@ def process_adcp(config: dict,
     The actual data processing is carried out by _process_adcp_data.
     """
     pconfig = ProcessConfig(config)
-    print("Top of process_adcp", pconfig.showfig)
     pconfig.drop_empty_attrs = drop_empty_attrs
     if showfig is not None:
         pconfig.showfig = showfig
-    print("Still in process_adcp", pconfig.showfig)
 
     if pconfig.merge_output_files:
         _process_adcp_data(pconfig)
@@ -331,14 +325,11 @@ def process_adcp(config: dict,
                 if isinstance(netcdf_output, bool):
                     pconfig.netcdf_output = filename
                 else:
-                    pconfig.netcdf_output = Path(
-                        netcdf_output).absolute().resolve()
+                    pconfig.netcdf_output = Path(netcdf_output).absolute().resolve()
                     if pconfig.netcdf_output.is_dir():
-                        pconfig.netcdf_output = str(
-                            pconfig.netcdf_output.joinpath(filename))
+                        pconfig.netcdf_output = str(pconfig.netcdf_output.joinpath(filename))
                     else:
-                        pconfig.netcdf_output = str(
-                            pconfig.netcdf_output.with_suffix("")) + f"_{count}"
+                        pconfig.netcdf_output = str(pconfig.netcdf_output.with_suffix("")) + f"_{count}"
             pconfig.input_files = [filename]
 
             _process_adcp_data(pconfig)
@@ -399,8 +390,7 @@ def _process_adcp_data(pconfig: ProcessConfig):
 
     if pconfig.platform_metadata["platform"]["platform_type"] in ["mooring", "buoy"]:
         if "bt_depth" in dataset:
-            dataset.attrs["sounding"] = np.round(
-                np.median(dataset.bt_depth.data), 2)
+            dataset.attrs["sounding"] = np.round(np.median(dataset.bt_depth.data), 2)
 
     _set_xducer_depth_as_sensor_depth(dataset)
 
@@ -431,21 +421,17 @@ def _process_adcp_data(pconfig: ProcessConfig):
     l.section("Data transformation")
 
     if dataset.attrs['magnetic_declination'] is not None:
-        l.log(
-            f"Magnetic declination found in the raw file: {dataset.attrs['magnetic_declination']} degree east.")
+        l.log(f"Magnetic declination found in the raw file: {dataset.attrs['magnetic_declination']} degree east.")
     else:
         l.log(f"No magnetic declination found in the raw file.")
     if pconfig.magnetic_declination:
         angle = pconfig.magnetic_declination
         if dataset.attrs["magnetic_declination"]:
-            angle = round((pconfig.magnetic_declination -
-                           dataset.attrs["magnetic_declination"]), 4)
-            l.log(
-                f"An additional correction of {angle} degree east was applied.")
+            angle = round((pconfig.magnetic_declination - dataset.attrs["magnetic_declination"]), 4)
+            l.log(f"An additional correction of {angle} degree east was applied.")
         _apply_magnetic_correction(dataset, angle)
         dataset.attrs["magnetic_declination"] = pconfig.magnetic_declination
-        l.log(
-            f"Absolute magnetic declination: {dataset.attrs['magnetic_declination']} degree east.")
+        l.log(f"Absolute magnetic declination: {dataset.attrs['magnetic_declination']} degree east.")
 
     if any(x is True for x in [pconfig.drop_percent_good, pconfig.drop_correlation, pconfig.drop_amplitude]):
         dataset = _drop_beam_data(dataset, pconfig)
@@ -464,8 +450,7 @@ def _process_adcp_data(pconfig: ProcessConfig):
         **P01_VEL_CODES[pconfig.platform_type],
         **P01_CODES,
     }
-    dataset.attrs["variables_gen_name"] = [
-        var for var in dataset.variables]  # For Odf outputs
+    dataset.attrs["variables_gen_name"] = [var for var in dataset.variables]  # For Odf outputs
 
     l.section("Variables attributes")
     dataset = format_variables_names_and_attributes(dataset)
@@ -517,8 +502,7 @@ def _process_adcp_data(pconfig: ProcessConfig):
     if pconfig.odf_output is True:
         if pconfig.odf_data is None:
             pconfig.odf_data = 'both'
-        odf_data = {'both': ['VEL', 'ANC'], 'vel': [
-            'VEL'], 'anc': ['ANC']}[pconfig.odf_data]
+        odf_data = {'both': ['VEL', 'ANC'], 'vel': ['VEL'], 'anc': ['ANC']}[pconfig.odf_data]
         for qualifier in odf_data:
             _ = make_odf(
                 dataset=dataset,
@@ -623,8 +607,7 @@ def _set_platform_metadata(dataset: xr.Dataset, pconfig: ProcessConfig):
     dataset :
         Dataset to which add the navigation data.
     """
-    metadata = {**pconfig.platform_metadata['platform'],
-                **pconfig.platform_metadata[pconfig.sensor_type]}
+    metadata = {**pconfig.platform_metadata['platform'], **pconfig.platform_metadata[pconfig.sensor_type]}
     metadata['sensor_comments'] = metadata['comments']
     if pconfig.force_platform_metadata:
         for key, value in metadata.items():
@@ -708,16 +691,14 @@ def _regrid_dataset(dataset: xr.Dataset, pconfig: ProcessConfig) -> xr.Dataset:
     # Pre-process flags
     for var_ in 'uvw':
         _flag_name = dataset[var_].attrs['ancillary_variables']
-        dataset[_flag_name].values = _prepare_flags_for_regrid(
-            dataset[_flag_name].data)
+        dataset[_flag_name].values = _prepare_flags_for_regrid(dataset[_flag_name].data)
 
     # Make new quality flags if grid_method is `bin`. Must happen before averaging.
     if pconfig.grid_method == 'bin':
         _new_flags = dict()
         for var_ in 'uvw':
             _flag_name = dataset[var_].attrs['ancillary_variables']
-            _new_flags[_flag_name] = _new_flags_bin_regrid(
-                dataset[_flag_name], _new_depths)
+            _new_flags[_flag_name] = _new_flags_bin_regrid(dataset[_flag_name], _new_depths)
         new_flags = xr.Dataset(_new_flags)
 
     # Apply quality control
@@ -972,10 +953,8 @@ def _default_platform_metadata() -> dict:
     platform_metadata = {'platform': _add_platform(), 'adcp_id': 'ADCP_01'}
     platform_metadata['platform']["platform_type"] = DEFAULT_PLATFORM_TYPE
     platform_metadata['sensors'] = platform_metadata['platform'].pop('sensors')
-    platform_metadata['adcp'] = platform_metadata['sensors'].pop(
-        '__enter_a_sensor_ID_here')
-    platform_metadata['buoy_specs'] = platform_metadata['platform'].pop(
-        'buoy_specs')
+    platform_metadata['adcp'] = platform_metadata['sensors'].pop('__enter_a_sensor_ID_here')
+    platform_metadata['buoy_specs'] = platform_metadata['platform'].pop('buoy_specs')
 
     return platform_metadata
 
@@ -992,21 +971,16 @@ def _load_platform(platform_file: str, platform_id: str, sensor_id: str) -> tp.D
     if platform_id in json_dict:
         platform_metadata['platform'].update(json_dict[platform_id])
         if 'buoy_specs' in platform_metadata['platform']:
-            platform_metadata['buoy_specs'].update(
-                platform_metadata['platform'].pop('buoy_specs'))
+            platform_metadata['buoy_specs'].update(platform_metadata['platform'].pop('buoy_specs'))
         if 'sensors' in platform_metadata['platform']:
-            platform_metadata['sensors'].update(
-                platform_metadata['platform'].pop('sensors'))
+            platform_metadata['sensors'].update(platform_metadata['platform'].pop('sensors'))
             if sensor_id in platform_metadata["sensors"]:
                 platform_metadata['adcp_id'] = sensor_id
-                platform_metadata['adcp'].update(
-                    platform_metadata["sensors"].pop(sensor_id))
+                platform_metadata['adcp'].update(platform_metadata["sensors"].pop(sensor_id))
             else:
-                l.warning(
-                    f"{sensor_id} not found in the {platform_id}['sensor'] section of the platform file.")
+                l.warning(f"{sensor_id} not found in the {platform_id}['sensor'] section of the platform file.")
         else:
-            l.warning(
-                f'sensors section missing in the {platform_id} section of the platform file.')
+            l.warning(f'sensors section missing in the {platform_id} section of the platform file.')
     else:
         l.warning(f"{platform_id} not found in platform file.")
     return platform_metadata
