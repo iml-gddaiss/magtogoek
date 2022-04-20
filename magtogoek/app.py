@@ -217,7 +217,7 @@ def config_adcp(
               help="""year when the adcp sampling started. ex: `1970`""", required=True)
 @click.option("-T", "--platform_type", type=click.Choice(["buoy", "mooring", "ship"]),
               help="Used for Proper BODC variables names", default="buoy")
-@click.option("--show-fig", "showfig",
+@click.option("--show-fig/--hide-fig", "showfig",
               type=bool,
               help="""Display figures to inspect the data.""",
               default=True)
@@ -234,8 +234,9 @@ def quick_adcp(ctx, info, input_files: tuple, sonar: str, yearbase: int, **optio
     configuration = cli_options_to_config(
         'adcp', options, cwd=str(Path().cwd()))
 
-    process_adcp(configuration, drop_empty_attrs=True,
-                 showfig=configuration.showfig)
+    process_adcp(configuration,
+                 drop_empty_attrs=True,
+                 showfig=options['showfig'])
 
 
 # --------------------------- #
