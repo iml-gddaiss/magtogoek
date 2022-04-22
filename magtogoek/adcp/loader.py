@@ -82,6 +82,7 @@ def load_adcp_binary(
     bad_pressure: bool = False,
     start_time: str = None,
     time_step: float = None,
+    magnetic_declination_setting: float = None,
 ) -> xr.Dataset:
     """Load RDI and RTI adcp data.
 
@@ -118,6 +119,12 @@ def load_adcp_binary(
         Use the parameter `time_step` to use a different time step than the one found in the adcp raw adcp file.
     time_step:
         Time step in seconds. Only use if a `start_time` value is provided.
+    magnetic_declination_setting :
+        RTI binaries do not contain the magnetic declination set in the ADCPs
+        program before deployment, so the value read is always null. Overwrite
+        this (e.g., with the value from the program commands) by setting this
+        parameter.
+
     Returns
     -------
         Dataset with the loaded adcp data
@@ -145,6 +152,8 @@ def load_adcp_binary(
         data = RtiReader(filenames=filenames).read(
             start_index=leading_index, stop_index=trailing_index
         )
+        if magnetic_declination_setting:
+            data.FL['EV'] = magnetic_declination_setting * 100
         l.logbook += rti_log.logbook
     elif sonar in RDI_SONAR:
         if sonar == "sw_pd0":

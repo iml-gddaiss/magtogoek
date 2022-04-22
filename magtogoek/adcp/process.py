@@ -208,6 +208,7 @@ class ProcessConfig:
     sensor_depth: float = None
     depth_range: list = None
     magnetic_declination: float = None
+    magnetic_declination_setting: float = None
     keep_bt: bool = None
     bad_pressure: bool = None
     start_time: str = None
@@ -557,6 +558,7 @@ def _load_adcp_data(pconfig: ProcessConfig) -> xr.Dataset:
         bad_pressure=pconfig.bad_pressure,
         start_time=pconfig.start_time,
         time_step=pconfig.time_step,
+        magnetic_declination_setting=pconfig.magnetic_declination_setting,
     )
 
     dataset = cut_bin_depths(dataset, pconfig.depth_range)
