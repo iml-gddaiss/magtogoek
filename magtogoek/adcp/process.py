@@ -239,7 +239,7 @@ class ProcessConfig:
     platform_metadata: dict = None
 
     drop_empty_attrs: bool = False
-    showfig: bool = True
+    headless: bool = False
     netcdf_path: str = None
     odf_path: str = None
     log_path: str = None
@@ -295,7 +295,7 @@ class ProcessConfig:
 
 def process_adcp(config: dict,
                  drop_empty_attrs: bool = False,
-                 showfig: bool = None):
+                 headless: bool = False):
     """Process adcp data with parameters from a config file.
 
     Parameters
@@ -305,15 +305,14 @@ def process_adcp(config: dict,
     drop_empty_attrs :
         If true, all netcdf empty ('') global attributes will be drop from
         the output.
-    showfig :
-        If true, display figures to the screen.
+    headless :
+        If true, figures are not displayed.
 
     The actual data processing is carried out by _process_adcp_data.
     """
     pconfig = ProcessConfig(config)
     pconfig.drop_empty_attrs = drop_empty_attrs
-    if showfig is not None:
-        pconfig.showfig = showfig
+    pconfig.headless = headless
 
     if pconfig.merge_output_files:
         _process_adcp_data(pconfig)
@@ -458,13 +457,14 @@ def _process_adcp_data(pconfig: ProcessConfig):
     # ------------ #
     # MAKE FIGURES #
     # ------------ #
-
     if pconfig.make_figures:
+        if pconfig.headless is True and pconfig.figures_output is False:
+            pconfig.figures_output = True
         make_adcp_figure(dataset,
                          flag_thres=2,
                          path=pconfig.figures_path,
                          save=pconfig.figures_output,
-                         show=pconfig.showfig)
+                         headless=pconfig.headless)
 
     dataset["time"].assign_attrs(TIME_ATTRS)
 
@@ -492,6 +492,7 @@ def _process_adcp_data(pconfig: ProcessConfig):
     # ----------- #
     l.section("Post-processing")
     if pconfig.grid_depth != "":
+        print('IN REGRIDDING', pconfig.grid_depth)
         dataset = _regrid_dataset(dataset, pconfig)
 
     # ----------- #
@@ -1037,13 +1038,14 @@ def _outputs_path_handler(pconfig: ProcessConfig):
 
     if isinstance(pconfig.make_figures, bool):
         pconfig.figures_output = False
+        pconfig.figures_path = str(default_path.joinpath(default_filename))
     elif isinstance(pconfig.make_figures, str):
         _figures_output = Path(pconfig.make_figures)
         if Path(_figures_output.name) == _figures_output:
             _figures_path = default_path.joinpath(_figures_output).resolve()
-        elif _odf_output.is_dir():
+        elif _figures_output.is_dir():
             _figures_path = _figures_output
-        elif _odf_output.parent.is_dir():
+        elif _figures_output.parent.is_dir():
             _figures_path = _figures_output
         else:
             raise ValueError(f'Path to {_figures_output} does not exists.')

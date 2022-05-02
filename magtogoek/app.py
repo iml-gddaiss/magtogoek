@@ -97,6 +97,9 @@ def magtogoek(info):
               type=bool,
               help="""Make figures to inspect the data. Use to overwrite the value in the config_file""",
               default=None)
+@click.option("--headless",
+              is_flag=True,
+              help="""Using remotely with no display capability""")
 def process(info, config_file: str, **options):
     """Process data by reading configfile"""
     # NOTE This could be update as a group with sensor specific command.
@@ -119,7 +122,7 @@ def process(info, config_file: str, **options):
     if sensor_type == "adcp":
         from magtogoek.adcp.process import process_adcp
 
-        process_adcp(configuration)
+        process_adcp(configuration, headless=options['headless'])
 
 
 # --------------------------- #
@@ -210,10 +213,9 @@ def config_adcp(
               help="""year when the adcp sampling started. ex: `1970`""", required=True)
 @click.option("-T", "--platform_type", type=click.Choice(["buoy", "mooring", "ship"]),
               help="Used for Proper BODC variables names", default="buoy")
-@click.option("--show-fig/--hide-fig", "showfig",
-              type=bool,
-              help="""Display figures to inspect the data.""",
-              default=True)
+@click.option("--headless",
+              is_flag=True,
+              help="""Using remotely with no display capability""")
 @click.pass_context
 def quick_adcp(ctx, info, input_files: tuple, sonar: str, yearbase: int, **options: dict):
     """Command to make an quickly process adcp files. The [OPTIONS] can be added
@@ -227,7 +229,7 @@ def quick_adcp(ctx, info, input_files: tuple, sonar: str, yearbase: int, **optio
 
     process_adcp(configuration,
                  drop_empty_attrs=True,
-                 showfig=options['showfig'])
+                 headless=options['headless'])
 
 
 # --------------------------- #

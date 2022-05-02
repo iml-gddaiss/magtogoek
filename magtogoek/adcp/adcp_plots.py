@@ -54,7 +54,7 @@ def make_adcp_figure(dataset: xr.Dataset,
                      vel_only: bool = False,
                      path: str = None,
                      save: bool = False,
-                     show: bool = True):
+                     headless: bool = False):
     """
 
     Looks for 'ancillary_variables' attributes on variables for QC flagging.
@@ -70,8 +70,8 @@ def make_adcp_figure(dataset: xr.Dataset,
         Make only velocity data figures.
     save :
         Write figures to file.
-    show :
-        Display figures on screen.
+    headless :
+        Disable figure display when True.
 
     Returns
     -------
@@ -119,7 +119,7 @@ def make_adcp_figure(dataset: xr.Dataset,
         figs.append(plot_test_fields(dataset))
         names.append('test_fields')
 
-    if single is True and show is True:
+    if single is True and headless is False:
         for count, fig in enumerate(figs):
             fig.show()
             input(f"({count + 1}/{len(figs)}) Press [enter] to plot the next figure.\033[1A \033[9C")
@@ -130,7 +130,8 @@ def make_adcp_figure(dataset: xr.Dataset,
         for name, fig in zip(names, figs):
             fig.savefig(f'{path}{name}.png')
 
-    if show is True:
+    print("JUST BEFORE SHOW", headless)
+    if headless is False:
         plt.show()
 
 
