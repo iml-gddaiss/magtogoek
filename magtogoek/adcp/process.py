@@ -303,11 +303,8 @@ def process_adcp(config: dict, drop_empty_attrs: bool = False):
 
     The actual data processing is carried out by _process_adcp_data.
     """
-    print("TOP OF process_adcp: grid_depth = '%s'" % config.grid_depth)
-
     pconfig = ProcessConfig(config)
     pconfig.drop_empty_attrs = drop_empty_attrs
-    print("AFTER PROCESSCONFIG in process_adcp: grid_depth = ", type(pconfig.grid_depth), pconfig.grid_depth)
 
     if pconfig.merge_output_files:
         _process_adcp_data(pconfig)
@@ -353,7 +350,6 @@ def _process_adcp_data(pconfig: ProcessConfig):
 
     """
     l.reset()
-    print("TOP OF _process_adcp_data: grid_depth = ", type(pconfig.grid_depth), pconfig.grid_depth)
     # ----------------- #
     # LOADING ADCP DATA #
     # ----------------- #
