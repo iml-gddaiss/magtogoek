@@ -208,7 +208,7 @@ class ProcessConfig:
     sensor_depth: float = None
     depth_range: list = None
     magnetic_declination: float = None
-    magnetic_declination_setting: float = None
+    magnetic_declination_preset: float = None
     keep_bt: bool = None
     bad_pressure: bool = None
     start_time: str = None
@@ -242,7 +242,7 @@ class ProcessConfig:
     odf_path: str = None
     log_path: str = None
 
-    grid_depth: str = None
+    grid_depth: tp.Union[str, bool] = None
     grid_method: str = None
 
     def __init__(self, config_dict: dict = None):
@@ -303,9 +303,11 @@ def process_adcp(config: dict, drop_empty_attrs: bool = False):
 
     The actual data processing is carried out by _process_adcp_data.
     """
+    print("TOP OF process_adcp: grid_depth = '%s'" % config.grid_depth)
 
     pconfig = ProcessConfig(config)
     pconfig.drop_empty_attrs = drop_empty_attrs
+    print("AFTER PROCESSCONFIG in process_adcp: grid_depth = ", type(pconfig.grid_depth), pconfig.grid_depth)
 
     if pconfig.merge_output_files:
         _process_adcp_data(pconfig)
@@ -351,7 +353,7 @@ def _process_adcp_data(pconfig: ProcessConfig):
 
     """
     l.reset()
-
+    print("TOP OF _process_adcp_data: grid_depth = ", type(pconfig.grid_depth), pconfig.grid_depth)
     # ----------------- #
     # LOADING ADCP DATA #
     # ----------------- #
@@ -558,7 +560,7 @@ def _load_adcp_data(pconfig: ProcessConfig) -> xr.Dataset:
         bad_pressure=pconfig.bad_pressure,
         start_time=pconfig.start_time,
         time_step=pconfig.time_step,
-        magnetic_declination_setting=pconfig.magnetic_declination_setting,
+        magnetic_declination_preset=pconfig.magnetic_declination_preset,
     )
 
     dataset = cut_bin_depths(dataset, pconfig.depth_range)
