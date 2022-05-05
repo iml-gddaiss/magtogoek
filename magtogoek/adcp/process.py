@@ -996,6 +996,16 @@ def _outputs_path_handler(pconfig: ProcessConfig):
     if not pconfig.odf_output and not pconfig.netcdf_output:
         pconfig.netcdf_output = True
 
+    default_path, default_filename = _netcdf_output_handler(pconfig, default_path, default_filename)
+
+    default_path, default_filename = _odf_output_handler(pconfig, default_path, default_filename)
+
+    _figure_output_handler(pconfig, default_path, default_filename)
+
+    pconfig.log_path = str(default_path.joinpath(default_filename))
+
+
+def _netcdf_output_handler(pconfig: ProcessConfig, default_path: Path, default_filename: Path) -> tp.Tuple[Path, Path]:
     if isinstance(pconfig.netcdf_output, bool):
         if pconfig.netcdf_output is True:
             pconfig.netcdf_path = str(default_path.joinpath(default_filename))
@@ -1014,6 +1024,10 @@ def _outputs_path_handler(pconfig: ProcessConfig):
         pconfig.netcdf_path = str(netcdf_path)
         pconfig.netcdf_output = True
 
+    return default_path, default_filename
+
+
+def _odf_output_handler(pconfig: ProcessConfig, default_path: Path, default_filename: Path) -> tp.Tuple[Path, Path]:
     if isinstance(pconfig.odf_output, bool):
         if pconfig.odf_output is True:
             pconfig.odf_path = str(default_path)
@@ -1035,6 +1049,10 @@ def _outputs_path_handler(pconfig: ProcessConfig):
             default_path = _odf_path.parent
             default_filename = _odf_path.stem
 
+    return default_path, default_filename
+
+
+def _figure_output_handler(pconfig: ProcessConfig, default_path: Path, default_filename: Path):
     if isinstance(pconfig.make_figures, bool):
         pconfig.figures_output = False
         pconfig.figures_path = str(default_path.joinpath(default_filename))
@@ -1052,4 +1070,5 @@ def _outputs_path_handler(pconfig: ProcessConfig):
         pconfig.figures_path = str(_figures_path)
         pconfig.figures_output = True
 
-    pconfig.log_path = str(default_path.joinpath(default_filename))
+
+
