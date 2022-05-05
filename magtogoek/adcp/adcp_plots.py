@@ -52,9 +52,8 @@ def make_adcp_figure(dataset: xr.Dataset,
                      single: bool = False,
                      flag_thres: int = 2,
                      vel_only: bool = False,
-                     path: str = None,
-                     save: bool = False,
-                     headless: bool = False):
+                     save_path: str = None,
+                     show_fig: bool = True):
     """
 
     Looks for 'ancillary_variables' attributes on variables for QC flagging.
@@ -68,9 +67,9 @@ def make_adcp_figure(dataset: xr.Dataset,
         Value with QC flag of `flag_thres` or lower will be plotted ([0, ..., flag_thres])
     vel_only :
         Make only velocity data figures.
-    save :
+    save_path :
         Write figures to file.
-    headless :
+    show_fig :
         Disable figure display when True.
 
     Returns
@@ -119,19 +118,25 @@ def make_adcp_figure(dataset: xr.Dataset,
         figs.append(plot_test_fields(dataset))
         names.append('test_fields')
 
-    if single is True and headless is False:
+    if single is True and show_fig is True:
         for count, fig in enumerate(figs):
             fig.show()
             input(f"({count + 1}/{len(figs)}) Press [enter] to plot the next figure.\033[1A \033[9C")
 
-    if save is True:
-        if path != '':
-            path = f'{Path(path).stem}_'
+    if save_path is not None:
+        stem = ''
+        if Path(save_path).is_dir():
+            path = Path(save_path)
+        else:
+            path = Path(save_path).parent
+            stem = str(Path(save_path).stem) + '_'
         for name, fig in zip(names, figs):
-            fig.savefig(f'{path}{name}.png')
+            fig.savefig(path.joinpath(stem + f'{name}.png'))
 
-    if headless is False:
+    if show_fig is True:
         plt.show()
+    else:
+        plt.close('all')
 
 
 def plot_velocity_polar_hist(dataset: xr.Dataset, nrows: int = 3, ncols: int = 3,

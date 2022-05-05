@@ -200,7 +200,6 @@ class ProcessConfig:
     sensor_id: str = None
     netcdf_output: tp.Union[str, bool] = None
     odf_output: tp.Union[str, bool] = None
-    figures_output: tp.Union[str, bool] = None
     yearbase: int = None
     adcp_orientation: str = None
     sonar: str = None
@@ -238,15 +237,17 @@ class ProcessConfig:
     metadata: dict = None
     platform_metadata: dict = None
 
-    drop_empty_attrs: bool = False
-    headless: bool = False
     netcdf_path: str = None
     odf_path: str = None
     log_path: str = None
     figures_path: str = None
+    figures_output: tp.Union[str, bool] = None
 
     grid_depth: str = None
     grid_method: str = None
+
+    drop_empty_attrs: bool = False
+    headless: bool = False
 
     def __init__(self, config_dict: dict = None):
         self.metadata: dict = {}
@@ -265,7 +266,7 @@ class ProcessConfig:
         self._get_platform_metadata()
         self.platform_type = self.platform_metadata["platform"]['platform_type']
 
-        _outputs_path_handler(self)
+        _outputs_handler(self)
 
     def _load_config_dict(self, config: dict) -> dict:
         """Split and flattens"""
@@ -457,14 +458,11 @@ def _process_adcp_data(pconfig: ProcessConfig):
     # ------------ #
     # MAKE FIGURES #
     # ------------ #
-    if pconfig.make_figures:
-        if pconfig.headless is True and pconfig.figures_output is False:
-            pconfig.figures_output = True
+    if pconfig.odf_output is True:
         make_adcp_figure(dataset,
                          flag_thres=2,
-                         path=pconfig.figures_path,
-                         save=pconfig.figures_output,
-                         headless=pconfig.headless)
+                         save_path=pconfig.figures_path,
+                         show_fig=~pconfig.headless)
 
     dataset["time"].assign_attrs(TIME_ATTRS)
 
@@ -544,8 +542,6 @@ def _process_adcp_data(pconfig: ProcessConfig):
         with open(log_path, "w") as log_file:
             log_file.write(dataset.attrs["history"])
             print(f"log file made -> {log_path.resolve()}")
-
-    # MAKE_FIG TODO
 
     click.echo(click.style("=" * TERMINAL_WIDTH, fg="white", bold=True))
 
@@ -986,7 +982,7 @@ def _load_platform(platform_file: str, platform_id: str, sensor_id: str) -> tp.D
     return platform_metadata
 
 
-def _outputs_path_handler(pconfig: ProcessConfig):
+def _outputs_handler(pconfig: ProcessConfig):
     """ Figure out the outputs to make and their path.
     """
     input_path = pconfig.input_files[0]
@@ -1054,8 +1050,8 @@ def _odf_output_handler(pconfig: ProcessConfig, default_path: Path, default_file
 
 def _figure_output_handler(pconfig: ProcessConfig, default_path: Path, default_filename: Path):
     if isinstance(pconfig.make_figures, bool):
-        pconfig.figures_output = False
-        pconfig.figures_path = str(default_path.joinpath(default_filename))
+        if pconfig.figures_output is True:
+            pconfig.figures_path = str(default_path.joinpath(default_filename))
     elif isinstance(pconfig.make_figures, str):
         _figures_output = Path(pconfig.make_figures)
         if Path(_figures_output.name) == _figures_output:
