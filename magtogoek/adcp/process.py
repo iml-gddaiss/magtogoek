@@ -231,7 +231,7 @@ class ProcessConfig:
     drop_percent_good: bool = None
     drop_correlation: bool = None
     drop_amplitude: bool = None
-    make_figures: bool = None
+    make_figures: tp.Union[str,bool] = None
     make_log: bool = None
     odf_data: str = None
     metadata: dict = None
@@ -241,7 +241,7 @@ class ProcessConfig:
     odf_path: str = None
     log_path: str = None
     figures_path: str = None
-    figures_output: tp.Union[str, bool] = None
+    figures_output: bool = None
 
     grid_depth: str = None
     grid_method: str = None
@@ -1050,14 +1050,16 @@ def _odf_output_handler(pconfig: ProcessConfig, default_path: Path, default_file
 
 def _figure_output_handler(pconfig: ProcessConfig, default_path: Path, default_filename: Path):
     if isinstance(pconfig.make_figures, bool):
-        if pconfig.figures_output is True:
-            pconfig.figures_path = str(default_path.joinpath(default_filename))
+        if pconfig.make_figures is True:
+            pconfig.figures_output = True
+            if pconfig.headless is True:
+                pconfig.figures_path = str(default_path.joinpath(default_filename))
     elif isinstance(pconfig.make_figures, str):
         _figures_output = Path(pconfig.make_figures)
         if Path(_figures_output.name) == _figures_output:
             _figures_path = default_path.joinpath(_figures_output).resolve()
         elif _figures_output.is_dir():
-            _figures_path = _figures_output
+            _figures_path = _figures_output.joinpath(default_filename)
         elif _figures_output.parent.is_dir():
             _figures_path = _figures_output
         else:
