@@ -130,7 +130,6 @@ def make_adcp_figure(dataset: xr.Dataset,
         for name, fig in zip(names, figs):
             fig.savefig(f'{path}{name}.png')
 
-    print("JUST BEFORE SHOW", headless)
     if headless is False:
         plt.show()
 
