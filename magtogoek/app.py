@@ -307,13 +307,16 @@ def odf2nc(ctx, info, input_files, output_name, **options):
 @click.option("-t", "--flag-thres", help="""Set threshold value for flagging""", default=2, show_default=True)
 @click.option("-v", "--vel-only", help="""Only plots 2D velocity fields and polar histogram.""", is_flag=True,
               default=False)
+@click.option("-s", "--save_fig", help="""Path to save figures to.""", type=click.Path(exists=True), default=None)
+@click.option("--headless", help="""If True, figures en displayed""", is_flag=True, default=False)
 @click.pass_context
 def plot_adcp(ctx, info, input_file, **options):
     """Command to compute u_ship, v_ship, bearing from gsp data."""
     import xarray as xr
     from magtogoek.adcp.adcp_plots import make_adcp_figure
     dataset = xr.open_dataset(input_file)
-    make_adcp_figure(dataset, flag_thres=options['flag_thres'], vel_only=options["vel_only"])
+    make_adcp_figure(dataset, flag_thres=options['flag_thres'], vel_only=options["vel_only"],
+                     save_path=options['save_fig'], show_fig=~options['headless'])
 
 
 # ------------------------ #
