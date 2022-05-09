@@ -487,8 +487,7 @@ def load_adcp_binary(
     dataset.attrs["magnetic_declination"] = None
     if "FL" in data:
         if "EV" in data.FL:
-            if data.FL["EV"] != 0:
-                dataset.attrs["magnetic_declination"] = data.FL["EV"] / 100
+            dataset.attrs["magnetic_declination"] = data.FL["EV"] / 100
     dataset.attrs["magnetic_declination_units"] = "degree east"
 
     dataset.attrs["orientation"] = orientation
