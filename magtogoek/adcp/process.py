@@ -461,7 +461,6 @@ def _process_adcp_data(pconfig: ProcessConfig):
     # ------------ #
     # MAKE FIGURES #
     # ------------ #
-    print(pconfig.figures_output, pconfig.figures_path, pconfig.headless)
     if pconfig.figures_output is True:
         make_adcp_figure(dataset,
                          flag_thres=2,
