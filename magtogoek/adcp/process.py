@@ -182,7 +182,8 @@ DEPTH_ENCODING = {
     "dtype": "float32",
 }
 
-DATE_STRING_FILL_VALUE = "17-NOV-1858 00:00:00.00"  # filled value used by ODF format
+# filled value used by ODF format
+DATE_STRING_FILL_VALUE = "17-NOV-1858 00:00:00.00"
 QC_FILL_VALUE = 127
 QC_ENCODING = {"dtype": "int8", "_FillValue": QC_FILL_VALUE}
 
@@ -230,19 +231,23 @@ class ProcessConfig:
     drop_percent_good: bool = None
     drop_correlation: bool = None
     drop_amplitude: bool = None
-    make_figures: bool = None
+    make_figures: tp.Union[str,bool] = None
     make_log: bool = None
     odf_data: str = None
     metadata: dict = None
     platform_metadata: dict = None
 
-    drop_empty_attrs: bool = False
     netcdf_path: str = None
     odf_path: str = None
     log_path: str = None
+    figures_path: str = None
+    figures_output: bool = None
 
     grid_depth: str = None
     grid_method: str = None
+
+    drop_empty_attrs: bool = False
+    headless: bool = False
 
     def __init__(self, config_dict: dict = None):
         self.metadata: dict = {}
@@ -260,8 +265,6 @@ class ProcessConfig:
 
         self._get_platform_metadata()
         self.platform_type = self.platform_metadata["platform"]['platform_type']
-
-        _outputs_path_handler(self)
 
     def _load_config_dict(self, config: dict) -> dict:
         """Split and flattens"""
@@ -288,8 +291,13 @@ class ProcessConfig:
                 l.warning(f"platform_type invalid or no specified. Must be one of {PLATFORM_TYPES}")
                 l.warning(f"platform_type set to `{DEFAULT_PLATFORM_TYPE}` for platform_type.")
 
+    def resolve_outputs(self):
+        _outputs_handler(self)
 
-def process_adcp(config: dict, drop_empty_attrs: bool = False):
+
+def process_adcp(config: dict,
+                 drop_empty_attrs: bool = False,
+                 headless: bool = False):
     """Process adcp data with parameters from a config file.
 
     Parameters
@@ -299,12 +307,16 @@ def process_adcp(config: dict, drop_empty_attrs: bool = False):
     drop_empty_attrs :
         If true, all netcdf empty ('') global attributes will be drop from
         the output.
+    headless :
+        If true, figures are not displayed.
 
     The actual data processing is carried out by _process_adcp_data.
     """
 
     pconfig = ProcessConfig(config)
     pconfig.drop_empty_attrs = drop_empty_attrs
+    pconfig.headless = headless
+    pconfig.resolve_outputs()
 
     if pconfig.merge_output_files:
         _process_adcp_data(pconfig)
@@ -350,7 +362,6 @@ def _process_adcp_data(pconfig: ProcessConfig):
 
     """
     l.reset()
-
     # ----------------- #
     # LOADING ADCP DATA #
     # ----------------- #
@@ -450,12 +461,13 @@ def _process_adcp_data(pconfig: ProcessConfig):
     # ------------ #
     # MAKE FIGURES #
     # ------------ #
-
-    if pconfig.make_figures:
-        make_adcp_figure(dataset, flag_thres=2)
+    if pconfig.figures_output is True:
+        make_adcp_figure(dataset,
+                         flag_thres=2,
+                         save_path=pconfig.figures_path,
+                         show_fig=not pconfig.headless)
 
     dataset["time"].assign_attrs(TIME_ATTRS)
-
     l.log("Variables attributes added.")
 
     # --------------------------- #
@@ -533,8 +545,6 @@ def _process_adcp_data(pconfig: ProcessConfig):
             log_file.write(dataset.attrs["history"])
             print(f"log file made -> {log_path.resolve()}")
 
-    # MAKE_FIG TODO
-
     click.echo(click.style("=" * TERMINAL_WIDTH, fg="white", bold=True))
 
 
@@ -565,17 +575,17 @@ def _load_adcp_data(pconfig: ProcessConfig) -> xr.Dataset:
 
     l.log(
         (
-                f"Bin counts : {len(dataset.depth.data)}, "
-                + f"Min depth : {np.round(dataset.depth.min().data, 3)} m, "
-                + f"Max depth : {np.round(dataset.depth.max().data, 3)} m, "
-                + f"Bin size : {dataset.attrs['bin_size_m']} m"
+            f"Bin counts : {len(dataset.depth.data)}, "
+            + f"Min depth : {np.round(dataset.depth.min().data, 3)} m, "
+            + f"Max depth : {np.round(dataset.depth.max().data, 3)} m, "
+            + f"Bin size : {dataset.attrs['bin_size_m']} m"
         )
     )
     l.log(
         (
-                f"Ensemble counts : {len(dataset.time.data)}, "
-                + f"Start time : {np.datetime_as_string(dataset.time.min().data, unit='s')}, "
-                + f"End time : {np.datetime_as_string(dataset.time.max().data, unit='s')}"
+            f"Ensemble counts : {len(dataset.time.data)}, "
+            + f"Start time : {np.datetime_as_string(dataset.time.min().data, unit='s')}, "
+            + f"End time : {np.datetime_as_string(dataset.time.max().data, unit='s')}"
         )
     )
     if not pconfig.keep_bt:
@@ -665,13 +675,13 @@ def _load_navigation(dataset: xr.Dataset, navigation_files: str):
 
 def _regrid_dataset(dataset: xr.Dataset, pconfig: ProcessConfig) -> xr.Dataset:
     """ Wrapper for regrid_dataset
- 
+
     Note
     ----
     The `interp` method performs linear interpolation. The `bin` method
     performs averaging of input data strictly within the bin boundaries
     and with equal weights for all data inside each bin.
- 
+
     """
     # Read new depths
     _new_depths = np.loadtxt(pconfig.grid_depth)
@@ -768,8 +778,8 @@ def _apply_magnetic_correction(dataset: xr.Dataset, magnetic_declination: float)
     # heading goes from -180 to 180
     if "heading" in dataset:
         dataset.heading.values = (
-                                         dataset.heading.data + 180 + magnetic_declination
-                                 ) % 360 - 180
+            dataset.heading.data + 180 + magnetic_declination
+        ) % 360 - 180
         l.log(f"Heading transformed to true north.")
 
 
@@ -974,7 +984,7 @@ def _load_platform(platform_file: str, platform_id: str, sensor_id: str) -> tp.D
     return platform_metadata
 
 
-def _outputs_path_handler(pconfig: ProcessConfig):
+def _outputs_handler(pconfig: ProcessConfig):
     """ Figure out the outputs to make and their path.
     """
     input_path = pconfig.input_files[0]
@@ -984,6 +994,16 @@ def _outputs_path_handler(pconfig: ProcessConfig):
     if not pconfig.odf_output and not pconfig.netcdf_output:
         pconfig.netcdf_output = True
 
+    default_path, default_filename = _netcdf_output_handler(pconfig, default_path, default_filename)
+
+    default_path, default_filename = _odf_output_handler(pconfig, default_path, default_filename)
+
+    _figure_output_handler(pconfig, default_path, default_filename)
+
+    pconfig.log_path = str(default_path.joinpath(default_filename))
+
+
+def _netcdf_output_handler(pconfig: ProcessConfig, default_path: Path, default_filename: Path) -> tp.Tuple[Path, Path]:
     if isinstance(pconfig.netcdf_output, bool):
         if pconfig.netcdf_output is True:
             pconfig.netcdf_path = str(default_path.joinpath(default_filename))
@@ -998,10 +1018,14 @@ def _outputs_path_handler(pconfig: ProcessConfig):
         else:
             raise ValueError(f'Path path to {_netcdf_output} does not exists.')
         default_path = netcdf_path.parent
-        default_filename = netcdf_path.name
+        default_filename = netcdf_path.stem
         pconfig.netcdf_path = str(netcdf_path)
         pconfig.netcdf_output = True
 
+    return default_path, default_filename
+
+
+def _odf_output_handler(pconfig: ProcessConfig, default_path: Path, default_filename: Path) -> tp.Tuple[Path, Path]:
     if isinstance(pconfig.odf_output, bool):
         if pconfig.odf_output is True:
             pconfig.odf_path = str(default_path)
@@ -1023,6 +1047,30 @@ def _outputs_path_handler(pconfig: ProcessConfig):
             default_path = _odf_path.parent
             default_filename = _odf_path.stem
 
-    pconfig.log_path = str(default_path.joinpath(default_filename))
+    return default_path, default_filename
+
+
+def _figure_output_handler(pconfig: ProcessConfig, default_path: Path, default_filename: Path):
+    if isinstance(pconfig.make_figures, bool):
+        if pconfig.make_figures is True:
+            pconfig.figures_output = True
+            if pconfig.headless is True:
+                pconfig.figures_path = str(default_path.joinpath(default_filename))
+    elif isinstance(pconfig.make_figures, str):
+        _figures_output = Path(pconfig.make_figures)
+        if Path(_figures_output.name) == _figures_output:
+            _figures_path = default_path.joinpath(_figures_output).resolve()
+        elif _figures_output.is_dir():
+            _figures_path = _figures_output.joinpath(default_filename)
+        elif _figures_output.parent.is_dir():
+            _figures_path = _figures_output
+        else:
+            raise ValueError(f'Path to {_figures_output} does not exists.')
+
+        pconfig.figures_path = str(_figures_path)
+        pconfig.figures_output = True
+
+
+
 
 

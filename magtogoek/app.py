@@ -97,6 +97,9 @@ def magtogoek(info):
               type=bool,
               help="""Make figures to inspect the data. Use to overwrite the value in the config_file""",
               default=None)
+@click.option("--headless",
+              is_flag=True,
+              help="""Using remotely with no display capability""")
 def process(info, config_file: str, **options):
     """Process data by reading configfile"""
     # NOTE This could be update as a group with sensor specific command.
@@ -119,7 +122,7 @@ def process(info, config_file: str, **options):
     if sensor_type == "adcp":
         from magtogoek.adcp.process import process_adcp
 
-        process_adcp(configuration)
+        process_adcp(configuration, headless=options['headless'])
 
 
 # --------------------------- #
@@ -210,6 +213,9 @@ def config_adcp(
               help="""year when the adcp sampling started. ex: `1970`""", required=True)
 @click.option("-T", "--platform_type", type=click.Choice(["buoy", "mooring", "ship"]),
               help="Used for Proper BODC variables names", default="buoy")
+@click.option("--headless",
+              is_flag=True,
+              help="""Using remotely with no display capability""")
 @click.pass_context
 def quick_adcp(ctx, info, input_files: tuple, sonar: str, yearbase: int, **options: dict):
     """Command to make an quickly process adcp files. The [OPTIONS] can be added
@@ -221,7 +227,9 @@ def quick_adcp(ctx, info, input_files: tuple, sonar: str, yearbase: int, **optio
     _print_passed_options(options)
     configuration = cli_options_to_config('adcp', options, cwd=str(Path().cwd()))
 
-    process_adcp(configuration, drop_empty_attrs=True)
+    process_adcp(configuration,
+                 drop_empty_attrs=True,
+                 headless=options['headless'])
 
 
 # --------------------------- #
@@ -299,13 +307,16 @@ def odf2nc(ctx, info, input_files, output_name, **options):
 @click.option("-t", "--flag-thres", help="""Set threshold value for flagging""", default=2, show_default=True)
 @click.option("-v", "--vel-only", help="""Only plots 2D velocity fields and polar histogram.""", is_flag=True,
               default=False)
+@click.option("-s", "--save_fig", help="""Path to save figures to.""", type=click.Path(exists=True), default=None)
+@click.option("--headless", help="""If True, figures en displayed""", is_flag=True, default=False)
 @click.pass_context
 def plot_adcp(ctx, info, input_file, **options):
     """Command to compute u_ship, v_ship, bearing from gsp data."""
     import xarray as xr
     from magtogoek.adcp.adcp_plots import make_adcp_figure
     dataset = xr.open_dataset(input_file)
-    make_adcp_figure(dataset, flag_thres=options['flag_thres'], vel_only=options["vel_only"])
+    make_adcp_figure(dataset, flag_thres=options['flag_thres'], vel_only=options["vel_only"],
+                     save_path=options['save_fig'], show_fig=~options['headless'])
 
 
 # ------------------------ #
@@ -386,7 +397,7 @@ def _print_arguments(group, parent):
                         + "Filename (path/to/file) for the new configuration file.",
                 "platform": "  [filename]".ljust(20, " ")
                             + "Filename (path/to/file) for the new platform file.",
-                }
+    }
     if group in messages:
         click.secho(messages[group], fg="white")
 
@@ -447,7 +458,7 @@ def _print_description(group):
         ),
         "platform": "Creates an empty platform.json file",
         "odf2nc": "Converts odf files to netcdf",
-    }
+        }
     if group in messages:
         if "\n" in messages[group]:
             click.echo(messages[group])

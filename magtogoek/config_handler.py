@@ -117,7 +117,7 @@ def load_configfile(filename: str, cli_options: Optional[dict] = None) -> Parser
         cli_config = _format_cli_options_to_config_dict(sensor_type, tparser, cli_options)
 
     config = tparser.load(filename, add_missing=True, new_values_dict=cli_config, format_options=True)
- 
+
     return config, sensor_type
 
 
@@ -209,8 +209,7 @@ def get_config_taskparser(sensor_type: Optional[str] = None):
         section = "ADCP_PROCESSING"
         tparser.add_option(section, "yearbase", dtypes=["int"], default="", is_required=True)
         tparser.add_option(section, "adcp_orientation", dtypes=["str"], default="down", choice=["up", "down"], comments='up or down')
-        tparser.add_option(section, "sonar", dtypes=["str"], choice=["wh", "sv", "os", "sw", "sw_pd0"], comments='[wh, sv, os, sw, sw_pd0, ]',
-                           is_required=True)
+        tparser.add_option(section, "sonar", dtypes=["str"], choice=["wh", "sv", "os", "sw", "sw_pd0"], comments='[wh, sv, os, sw, sw_pd0, ]', is_required=True)
         tparser.add_option(section, "navigation_file", dtypes=["str"], default="", is_file=True)
         tparser.add_option(section, "leading_trim", dtypes=["int", "str"], default="", is_time_stamp=True)
         tparser.add_option(section, "trailing_trim", dtypes=["int", "str"], default="", is_time_stamp=True)
@@ -246,7 +245,7 @@ def get_config_taskparser(sensor_type: Optional[str] = None):
         tparser.add_option(section, "drop_correlation", dtypes=["bool"], default=True, null_value=False)
         tparser.add_option(section, "drop_amplitude", dtypes=["bool"], default=True, null_value=False)
         tparser.add_option(section, "odf_data", dtypes=["str"], default="both", choice=["vel", "anc", "both"], comments='One of [vel, anc, both,].')
-        tparser.add_option(section, "make_figures", dtypes=["bool"], default=True, null_value=False)
+        tparser.add_option(section, "make_figures", dtypes=["bool", "str"], default=True, null_value=False)
         tparser.add_option(section, "make_log", dtypes=["bool"], default=True, null_value=False)
 
     return tparser
