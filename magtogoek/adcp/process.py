@@ -266,8 +266,6 @@ class ProcessConfig:
         self._get_platform_metadata()
         self.platform_type = self.platform_metadata["platform"]['platform_type']
 
-        _outputs_handler(self)
-
     def _load_config_dict(self, config: dict) -> dict:
         """Split and flattens"""
         for section, options in config.items():
@@ -293,6 +291,9 @@ class ProcessConfig:
                 l.warning(f"platform_type invalid or no specified. Must be one of {PLATFORM_TYPES}")
                 l.warning(f"platform_type set to `{DEFAULT_PLATFORM_TYPE}` for platform_type.")
 
+    def resolve_outputs(self):
+        _outputs_handler(self)
+
 
 def process_adcp(config: dict,
                  drop_empty_attrs: bool = False,
@@ -311,9 +312,11 @@ def process_adcp(config: dict,
 
     The actual data processing is carried out by _process_adcp_data.
     """
+
     pconfig = ProcessConfig(config)
     pconfig.drop_empty_attrs = drop_empty_attrs
     pconfig.headless = headless
+    pconfig.resolve_outputs()
 
     if pconfig.merge_output_files:
         _process_adcp_data(pconfig)
@@ -458,14 +461,14 @@ def _process_adcp_data(pconfig: ProcessConfig):
     # ------------ #
     # MAKE FIGURES #
     # ------------ #
-    if pconfig.odf_output is True:
+    print(pconfig.figures_output, pconfig.figures_path, pconfig.headless)
+    if pconfig.figures_output is True:
         make_adcp_figure(dataset,
                          flag_thres=2,
                          save_path=pconfig.figures_path,
-                         show_fig=~pconfig.headless)
+                         show_fig=not pconfig.headless)
 
     dataset["time"].assign_attrs(TIME_ATTRS)
-
     l.log("Variables attributes added.")
 
     # --------------------------- #
@@ -489,7 +492,7 @@ def _process_adcp_data(pconfig: ProcessConfig):
     # RE-GRIDDING #
     # ----------- #
     l.section("Post-processing")
-    if pconfig.grid_depth != "":
+    if pconfig.grid_depth is not None:
         dataset = _regrid_dataset(dataset, pconfig)
 
     # ----------- #
@@ -1016,7 +1019,7 @@ def _netcdf_output_handler(pconfig: ProcessConfig, default_path: Path, default_f
         else:
             raise ValueError(f'Path path to {_netcdf_output} does not exists.')
         default_path = netcdf_path.parent
-        default_filename = netcdf_path.name
+        default_filename = netcdf_path.stem
         pconfig.netcdf_path = str(netcdf_path)
         pconfig.netcdf_output = True
 
@@ -1067,6 +1070,8 @@ def _figure_output_handler(pconfig: ProcessConfig, default_path: Path, default_f
 
         pconfig.figures_path = str(_figures_path)
         pconfig.figures_output = True
+
+
 
 
 
