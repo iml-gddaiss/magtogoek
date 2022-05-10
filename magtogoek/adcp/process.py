@@ -209,6 +209,7 @@ class ProcessConfig:
     sensor_depth: float = None
     depth_range: list = None
     magnetic_declination: float = None
+    magnetic_declination_preset: float = None
     keep_bt: bool = None
     bad_pressure: bool = None
     start_time: str = None
@@ -243,7 +244,7 @@ class ProcessConfig:
     figures_path: str = None
     figures_output: bool = None
 
-    grid_depth: str = None
+    grid_depth: tp.Union[str, bool] = None
     grid_method: str = None
 
     drop_empty_attrs: bool = False
@@ -312,7 +313,6 @@ def process_adcp(config: dict,
 
     The actual data processing is carried out by _process_adcp_data.
     """
-
     pconfig = ProcessConfig(config)
     pconfig.drop_empty_attrs = drop_empty_attrs
     pconfig.headless = headless
@@ -567,6 +567,7 @@ def _load_adcp_data(pconfig: ProcessConfig) -> xr.Dataset:
         bad_pressure=pconfig.bad_pressure,
         start_time=pconfig.start_time,
         time_step=pconfig.time_step,
+        magnetic_declination_preset=pconfig.magnetic_declination_preset,
     )
 
     dataset = cut_bin_depths(dataset, pconfig.depth_range)

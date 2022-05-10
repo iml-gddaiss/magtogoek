@@ -217,10 +217,11 @@ def get_config_taskparser(sensor_type: Optional[str] = None):
         tparser.add_option(section, "depth_range", dtypes=["float"], nargs_min=0, nargs_max=2)
         tparser.add_option(section, "bad_pressure", dtypes=["bool"], default=False, null_value=False)
         tparser.add_option(section, "magnetic_declination", dtypes=["float"], default="")
+        tparser.add_option(section, "magnetic_declination_preset", dtypes=["float"], default=None, comments="Found in the ADCP configuration file.")
         tparser.add_option(section, "keep_bt", dtypes=["bool"], default=True, null_value=False)
         tparser.add_option(section, "start_time", dtypes=["str"], default="", is_time_stamp=True)
         tparser.add_option(section, "time_step", dtypes=["float"], default="")
-        tparser.add_option(section, "grid_depth", dtypes=["str"], default="", comments='Path to column grid file (m).', is_path=True, nargs_min=1)
+        tparser.add_option(section, "grid_depth", dtypes=["str"], default="", null_value=None, comments='Path to column grid file (m).', is_path=True)
         tparser.add_option(section, "grid_method", dtypes=["str"], default="interp", choice=["interp", "bin"], comments='[interp, bin].')
 
         section = "ADCP_QUALITY_CONTROL"
