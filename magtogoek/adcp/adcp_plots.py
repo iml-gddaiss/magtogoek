@@ -8,6 +8,7 @@ This modules contains the essential figure to do a visual inspection of the data
 
 # Use ancillary_variables for QC. modify on the flag data function tools.
 """
+import logging
 from itertools import cycle
 from typing import List, Union, Dict
 from pathlib import Path
@@ -70,7 +71,7 @@ def make_adcp_figure(dataset: xr.Dataset,
     save_path :
         Write figures to file.
     show_fig :
-        Disable figure display when True.
+         Show figure if True.
 
     Returns
     -------
@@ -134,6 +135,7 @@ def make_adcp_figure(dataset: xr.Dataset,
             fig.savefig(path.joinpath(stem + f'{name}.png'))
 
     if show_fig is True:
+        logging.info(f'make adcp_figure show fig: {show_fig}')
         plt.show()
     else:
         plt.close('all')

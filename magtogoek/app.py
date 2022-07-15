@@ -20,6 +20,8 @@ Notes:
     Some module are imported by function since loading pandas, for example, is time consuming. Doing makes the
     navigation in the app quicker.
 """
+
+import logging
 import sys
 import typing as tp
 from pathlib import Path
@@ -40,6 +42,7 @@ from magtogoek.version import VERSION
 # from magtogoek.adcp.utils import Logger
 # from magtogoek.adcp.process import process_adcp, quick_process_adcp
 # --------------------------------------------------------------- #
+
 
 LOGO_PATH = resolve_relative_path("files/logo.json", __file__)
 
@@ -83,7 +86,10 @@ common_options = [
 # --------------------------- #
 @click.group(context_settings=CONTEXT_SETTINGS)
 @add_options(common_options)
-def magtogoek(info):
+@click.option('-v', '--verbosis', is_flag=True, default=False)
+def magtogoek(info, verbosis):
+    if verbosis is True:
+        logging.basicConfig(format='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',level=logging.INFO)
     pass
 
 
@@ -312,11 +318,12 @@ def odf2nc(ctx, info, input_files, output_name, **options):
 @click.pass_context
 def plot_adcp(ctx, info, input_file, **options):
     """Command to compute u_ship, v_ship, bearing from gsp data."""
+    logging.info(f"plot adcp function reached. headless:{options['headless']}, save_fig:{options['save_fig']}")
     import xarray as xr
     from magtogoek.adcp.adcp_plots import make_adcp_figure
     dataset = xr.open_dataset(input_file)
     make_adcp_figure(dataset, flag_thres=options['flag_thres'], vel_only=options["vel_only"],
-                     save_path=options['save_fig'], show_fig=~options['headless'])
+                     save_path=options['save_fig'], show_fig=not options['headless'])
 
 
 # ------------------------ #
