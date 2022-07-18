@@ -25,6 +25,7 @@ CONFIG_PATH = Path().cwd()
 def test_outputs(config_dict, netcdf_output, odf_output, netcdf_path, odf_path, log_path):
     config_dict = {'input': {**{'input_files': INPUT_FILES}, **config_dict}}
     pconfig = ProcessConfig(config_dict=config_dict)
+    pconfig.resolve_outputs()
 
     assert pconfig.netcdf_output == netcdf_output
     assert pconfig.odf_output == odf_output
@@ -38,7 +39,8 @@ def test_outputs_error():
     config_dict = {'input': {**{'input_files': INPUT_FILES},
                              **{'netcdf_output': '../notafolder/filename', 'odf_output': False}}}
     with pytest.raises(ValueError):
-        ProcessConfig(config_dict=config_dict)
+        pconfig = ProcessConfig(config_dict=config_dict)
+        pconfig.resolve_outputs()
 
 
 @pytest.mark.parametrize(
@@ -56,5 +58,6 @@ def test_outputs_error():
 def test_figures_outputs(config_dict, figure_output, figure_path):
     config_dict = {'input': {**{'input_files': INPUT_FILES}, **config_dict}}
     pconfig = ProcessConfig(config_dict=config_dict)
+    pconfig.resolve_outputs()
     assert pconfig.figures_output == figure_output
     assert pconfig.figures_path == figure_path

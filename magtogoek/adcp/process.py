@@ -293,7 +293,7 @@ class ProcessConfig:
                 l.warning(f"platform_type set to `{DEFAULT_PLATFORM_TYPE}` for platform_type.")
 
     def resolve_outputs(self):
-        _outputs_handler(self)
+        _resolve_outputs(self)
 
 
 def process_adcp(config: dict,
@@ -985,7 +985,7 @@ def _load_platform(platform_file: str, platform_id: str, sensor_id: str) -> tp.D
     return platform_metadata
 
 
-def _outputs_handler(pconfig: ProcessConfig):
+def _resolve_outputs(pconfig: ProcessConfig):
     """ Figure out the outputs to make and their path.
     """
     input_path = pconfig.input_files[0]
