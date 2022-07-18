@@ -155,7 +155,10 @@ def plot_velocity_polar_hist(dataset: xr.Dataset, nrows: int = 3, ncols: int = 3
 
     fig, axes = plt.subplots(figsize=(12, 8), nrows=nrows, ncols=ncols,
                              subplot_kw={"projection": "polar"}, constrained_layout=True)
-    axes = axes.flatten()
+    if naxes > 1:
+        axes = axes.flatten()
+    else:
+        axes = [axes]
     grid_subplot(axes[0], nrows, ncols)
     for index in range(naxes):
         histo, a_edges, r_edges = polar_histo(
