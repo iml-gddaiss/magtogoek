@@ -46,7 +46,7 @@ TODO FIXME:
 time are printed with singles quotes
 move odf specific config in .ini to separate header
 """
-
+import logging
 import typing as tp
 from pathlib import Path
 
@@ -422,20 +422,27 @@ class Odf:
             Specify which variable is to be converted into datetime64. The variable
             "SYTM_01" will be converted to datetime64 automatically.
         """
+        logging.info(f'to_dataset params. dims: {dims}, time: {time}')
         if isinstance(dims, tuple):
             dims = list(dims)
 
-        times = {'SYTM_01'}
+        if isinstance(dims, list):
+            if len(dims) == 0:
+                dims = None
+        logging.info(f'to_dataset params. dims: {dims}, time: {time}')
+        _time = {'SYTM_01'}
         if time is not None:
-            times.update({time})
-        for t in times:
+            _time.update({time})
+
+        for t in _time:
             if time in self.data:
                 self.data[t] = pd.to_datetime(self.data[t], format="%d-%b-%Y %H:%M:%S.%f")
 
         if dims is not None:
             [dims.remove(dim) for dim in dims if dim not in self.data]
-
-        dataset = xr.Dataset.from_dataframe(self.data.set_index(dims))
+            dataset = xr.Dataset.from_dataframe(self.data.set_index(dims))
+        else:
+            dataset = xr.Dataset.from_dataframe(self.data)
 
         for p in self.parameter:
             dataset[p].attrs.update(self.parameter[p])
@@ -884,10 +891,11 @@ def convert_odf_to_nc(
 ) -> None:
     """
     """
+    logging.info(f"convert_odf_to_nc params. dims: {dims}, time: {time}, input_files: {input_files}, output_name: {output_name}")
     input_files = get_files_from_expression(input_files)
     datasets = []
     for fn in input_files:
-        datasets.append(Odf().read(fn).to_dataset(dims=list(dims), time=time))
+        datasets.append(Odf().read(fn).to_dataset(dims=dims, time=time))
     if merge is True:
         output = Path(output_name if output_name is not None else input_files[0]).with_suffix('.nc')
         try:
