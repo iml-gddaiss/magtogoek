@@ -1,7 +1,8 @@
 """
-DateL April 6 2022
+Date April 6 2022
 Made by jeromejguay
-This script is used to decode the data send by Viking as of February 2022 format version.
+
+Module that contains function to load meteoc variable into a dataset.
 
 Data That Need Processing
 -------------------------
@@ -62,6 +63,7 @@ import numpy as np
 import xarray as xr
 #import pint
 
+# data_variable : (tag, name)
 meteoc_variables = {
     'lon': ('nom', 'lon'),
     'lat': ('nom', 'lat'),

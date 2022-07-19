@@ -1,7 +1,9 @@
 """
-DateL April 6 2022
+Date April 6 2022
+
 Made by jeromejguay
-This script is used to decode the data send by Viking as of February 2022 format version.
+
+Module that contains function to load all the data into a dataset. ( I think )
 
 Data That Need Processing
 -------------------------
