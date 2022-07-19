@@ -4,8 +4,8 @@ Made by: jeromejguay
 
 This script is used to decode the data send by Viking as of February 2022 format version.
 
-The Buoy Data
--------------
+The Buoy Data `.dat` files
+--------------------------
 [NOM]: Buoy information
     'PMZA-RIKI,110000,240521,8.3.1,000018C0D36B,00.3,00.0,48 39.71N,068 34.90W'
 [COMP]: Compass data
@@ -129,13 +129,13 @@ The Buoy Data
     [W]Voltage is too low
 
 
-    Generated winch files.
-    --------------
-    <buoy name>_WCH_<date>.dat
-    #1 Date GPS
-    #2 Hour GPS
-    #3 The message received of the Mini-Winch controller. It can be text if it begins with [W]94> you got the data
-    received by the CTD when it was at it lowest; or the temperature (°C), Conductivity (S/m), Pressure (decibars), salinity (PSU).
+Generated winch files.
+--------------
+<buoy name>_WCH_<date>.dat
+#1 Date GPS
+#2 Hour GPS
+#3 The message received of the Mini-Winch controller. It can be text if it begins with [W]94> you got the data
+received by the CTD when it was at it lowest; or the temperature (°C), Conductivity (S/m), Pressure (decibars), salinity (PSU).
 
 Data That Need Processing
 -------------------------
