@@ -70,10 +70,10 @@ meteoc_variables = {
                      ('ctdo', 'conductivity')],
     'salinity': ('ctd', 'salinity'),
     'density': ('ctdo', 'density'),
-    'ph': ('wph', "PH CORRECTION"), #COMPUTATION NEEDED
+    'ph': ('wph', "PH CORRECTION"), #COMPUTATION NEEDED TODO
     'fluorescence': ('triplet', 'fluo'),
-    'co2_a': ('co2_a', 'co2_ppm'), # COMPUTATION NEEDED
-    'co2_w': ('co2_w', 'co2_ppm'), # COMPUTATION NEEDED,
+    'co2_a': ('co2_a', 'co2_ppm'), # COMPUTATION NEEDED TODO
+    'co2_w': ('co2_w', 'co2_ppm'), # COMPUTATION NEEDED, TODO
     'wave_mean_height': [('wave_m', 'mean_height'),
                         ('wave_s', 'mean_height')],
     'wave_maximal_height': [('wave_m', 'maximal_height'),
