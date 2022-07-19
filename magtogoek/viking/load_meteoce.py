@@ -31,21 +31,9 @@ METEOCE BODC:
         Fluorescence                                         : FLOR_01 : SDN:P01::FLUOZZZZ
         Partial pressure of carbon dioxide in the atmosphere : ACO2_01 : SDN:P01::ACO2XXXX
         Partial pressure of carbon dioxide in the water body : PCO2_01 : SDN:P01::PCO2XXXX
-        Wave mean height                                     : VRMS_01 : SDN:P01::
-        Wave maximum height                                  : VMXL_01 : SDN:P01::GMXLZZ01
-        Wave period                                          : VTCA_01 : SDN:P01::
-
-    - OTHER NAMES BODC:
-
-        wave period                         : SDN:P01::GTAMZZ01
-        average wave height                 : SDN:P01::
-        average wave height one third       : SDN:P01::GAVHZZ01
-        average wave height dominant period : SDN:P01::
-        max wave height                     : SDN:P01::GCMXZZ01
-        wave direction                      : SDN:P01::
-        Hmax                                : SDN:P01::
-        Hmax2                               : SDN:P01::
-        Pmax                                : SDN:P01::
+        Wave mean height                                     : VRMS_01 : SDN:P01::GAVHZZ01
+        Wave maximum height                                  : VMXL_01 : SDN:P01::GCMXZZ01
+        Wave period                                          : VTCA_01 : SDN:P01::GTAMZZ01
 
     - VARIABLES NOT IN METEOCE odf.
       PAR
@@ -73,8 +61,6 @@ meteoc_variables = {
                             ('wmt700', 'Dm')],
     'wind_max': [('wxt520', 'Sx'),
                  ('wmt700', 'Sx')],
-    'wind_direction_max': [('wxt520', 'Sx'),
-                           ('wmt700', 'Sx')],
     'atm_temperature': ('wxt520', 'Ta'),
     'atm_humidity': ('wxt520', 'Ua'),
     'atm_pressure': ('wxt520', 'Pa'),
@@ -84,13 +70,13 @@ meteoc_variables = {
                      ('ctdo', 'conductivity')],
     'salinity': ('ctd', 'salinity'),
     'density': ('ctdo', 'density'),
-    'ph': ('wph', "PH CORRECTION") , #COMPUTATION NEEDED
+    'ph': ('wph', "PH CORRECTION"), #COMPUTATION NEEDED
     'fluorescence': ('triplet', 'fluo'),
     'co2_a': ('co2_a', 'co2_ppm'), # COMPUTATION NEEDED
     'co2_w': ('co2_w', 'co2_ppm'), # COMPUTATION NEEDED,
-    'averaged_height': [('wave_m', 'averaged_height'),
-                        ('wave_s', 'averaged_height')],
-    'maximal_height': [('wave_m', 'maximal_height'),
+    'wave_mean_height': [('wave_m', 'mean_height'),
+                        ('wave_s', 'mean_height')],
+    'wave_maximal_height': [('wave_m', 'maximal_height'),
                        ('wave_s', 'Hmax')],
     'wave_period': [('wave_m', 'period'),
                     ('wave_s', 'dominant_period')],
@@ -196,15 +182,15 @@ def make_meteoce_dataset(viking_data: VikingData) -> xr.Dataset:
 
     if viking_data.wave_m is not None:
         _data.update(
-            {'average_height': (viking_data.wave_m['average_height'], {}),
-             'maximal_height': (viking_data.wave_m['maximal_height'], {}),
+            {'wave_mean_height': (viking_data.wave_m['mean_height'], {}),
+             'wave_maximal_height': (viking_data.wave_m['maximal_height'], {}),
              'wave_period': (viking_data.wave_m['period'], {})}
         )
 
     elif viking_data.wave_s is not None:
         _data.update(
-            {'average_height': (viking_data.wave_s['average_height'], {}),
-             'maximal_height': (viking_data.wave_s['Hmax'], {}),
+            {'wave_mean_height': (viking_data.wave_s['mean_height'], {}),
+             'wave_maximal_height': (viking_data.wave_s['Hmax'], {}),
              'wave_period': (viking_data.wave_s['dominant_period'], {})}
         )
 

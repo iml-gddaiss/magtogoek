@@ -172,19 +172,19 @@ VARIABLES_NAMES = {
     },
     'wave_m': {
         'time': '_time',
-        'period': 'period',
-        'average_height': 'average_height',
-        'significant_height': 'significant_height',
-        'maximal_height': 'maximal_height'
+        'period': 'wave_period',
+        'average_height': 'wave_mean_height',
+        'significant_height': 'wave_significant_height',
+        'maximal_height': 'wave_maximal_height'
     },
     'wave_s': {
         'time': '_time',
-        'dominant_period': 'period',
-        'pmax2': 'period_max',
-        'wave_direction': 'direction',
-        'average_height': 'average_height',
-        'Hmax': 'maximal_height',
-        'Hmax2': 'maximal2_height'
+        'dominant_period': 'wave_period',
+        'pmax2': 'wave_period_max',
+        'wave_direction': 'wave_direction',
+        'average_height': 'wave_mean_height',
+        'Hmax': 'wave_maximal_height',
+        'Hmax2': 'wave_maximal2_height'
     },
     'wxt520': {
         'Dm': 'wind_direction',
@@ -286,9 +286,9 @@ meteoc_variables = {
     'fluorescence': ('triplet', 'fluo'),
     'co2_a': ('co2_a', 'co2_ppm'), # COMPUTATION NEEDED
     'co2_w': ('co2_w', 'co2_ppm'), # COMPUTATION NEEDED,
-    'averaged_height': [('wave_m', 'averaged_height'),
+    'wave_mean_height': [('wave_m', 'averaged_height'),
                         ('wave_s', 'averaged_height')],
-    'maximal_height': [('wave_m', 'maximal_height'),
+    'wave_maximal_height': [('wave_m', 'maximal_height'),
                        ('wave_s', 'Hmax')],
     'wave_period': [('wave_m', 'period'),
                     ('wave_s', 'dominant_period')],
