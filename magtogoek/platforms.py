@@ -13,12 +13,12 @@ def make_platform_template(filename):
     dict2json(filename, platform_template())
 
 
-def platform_template():
+def platform_template() -> dict:
     """FIXME"""
     return dict(__enter_a_platform_id_here__=_add_platform())
 
 
-def _add_platform():
+def _add_platform() -> dict:
     return dict(
         platform_name=None,
         platform_type=None,
@@ -32,7 +32,7 @@ def _add_platform():
     )
 
 
-def _add_buoy_specs():
+def _add_buoy_specs() -> dict:
     return dict(
         type=None,
         model=None,
@@ -43,7 +43,7 @@ def _add_buoy_specs():
     )
 
 
-def _add_sensors():
+def _add_sensors() -> dict:
     return dict(
         sensor_type=None,
         sensor_depth=None,
