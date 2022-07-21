@@ -288,7 +288,7 @@
     },
     "PTCHGP01": {
         "standard_name": "platform_pitch",
-        "units": "degree",
+        "units": "degree_true",
         "long_name": "pitch",
         "sdn_parameter_urn": "SDN:P01::PTCHGP01",
         "sdn_parameter_name": "Orientation (pitch) of measurement platform by inclinometer",
@@ -302,8 +302,8 @@
         "long_name": "heading",
         "sdn_parameter_urn": "SDN:P01::HEADCM01",
         "sdn_parameter_name": "Orientation (horizontal relative to true north) of measurement device {heading}",
-        "sdn_uom_urn": "SDN:P06::UAAA",
-        "sdn_uom_name": "Degrees",
+        "sdn_uom_urn": "SDN:P06::UABB",
+        "sdn_uom_name": "Degrees True",
         "legacy_GF3_code": "SDN:GF3::HEAD"
     },
     "ROLLGP01": {
@@ -411,7 +411,7 @@
     "APNSBT01": {
         "units": "m s-1",
         "sensor_type": "adcp",
-        "long_name": "northward velocity of the measurment platform by bottom tracking",
+        "long_name": "northward velocity of the measurement platform by bottom tracking",
         "sdn_parameter_urn": "SDN:P01::",
         "sdn_parameter_name": "Northward velocity of measurement platform relative to ground surface by ADCP bottom tracking.",
         "sdn_uom_urn": "SDN:P06::UVAA",
@@ -420,7 +420,7 @@
     "APEWBT01": {
         "units": "m s-1",
         "sensor_type": "adcp",
-        "long_name": "eastward velocity of the measurment platform by bottom tracking",
+        "long_name": "eastward velocity of the measurement platform by bottom tracking",
         "sdn_parameter_urn": "SDN:P01::APEWBT01",
         "sdn_parameter_name": "Eastward velocity of measurement platform relative to ground surface by ADCP bottom tracking.",
         "sdn_uom_urn": "SDN:P06::UVAA",
@@ -429,7 +429,7 @@
     "APZABT01": {
         "units": "m s-1",
         "sensor_type": "adcp",
-        "long_name": "upward velocity of the measurment platform by bottom tracking",
+        "long_name": "upward velocity of the measurement platform by bottom tracking",
         "sdn_parameter_urn": "SDN:P01::APZABT01",
         "sdn_parameter_name": "Upward velocity of measurement platform by ADCP bottom tracking.",
         "sdn_uom_urn": "SDN:P06::UVAA",
@@ -438,9 +438,11 @@
     "APERBT01": {
         "units": "m s-1",
         "sensor_type": "adcp",
-        "long_name": "error velocity of the measurment platform by bottom tracking",
+        "long_name": "error velocity of the measurement platform by bottom tracking",
         "sdn_parameter_urn": "SDN:P01::APERBT01",
-        "sdn_parameter_name": "Error velocity of measurement platform relative to ground surface by ADCP bottom tracking."
+        "sdn_parameter_name": "Error velocity of measurement platform relative to ground surface by ADCP bottom tracking.",
+        "sdn_uom_urn": "SDN:P06::UVAA",
+        "sdn_uom_name": "Metres per second"
     },
     "BATHDPTH": {
         "units": "m s-1",
@@ -449,5 +451,149 @@
         "sdn_parameter_name": "Sea-floor depth (below mean sea level) {bathymetric depth}",
         "sdn_uom_urn": "SDN:P06::ULAA",
         "sdn_uom_name": "Metres"
+    },
+    "EWSBZZ01": {
+        "units": "m s-1",
+        "long_name": "Speed of wind in the atmosphere",
+        "sdn_parameter_urn": "SDN:P01::EWSBZZ01",
+        "sdn_parameter_name": "Speed of wind {wind speed} in the atmosphere",
+        "sdn_uom_urn": "SDN:P06:UVAA",
+        "sdn_uom_name": "Metres per second",
+        "legacy_GF3_code": "WSPD"
+    },
+    "EGTSZZ01": {
+        "units": "m s-1",
+        "long_name": "Speed of wind (gust) in the atmosphere",
+        "sdn_parameter_urn": "SDN:P01::EGTSZZ01",
+        "sdn_parameter_name": "Speed of wind (gust) {wind speed} in the atmosphere",
+        "sdn_uom_urn": "SDN:P06:UVAA",
+        "sdn_uom_name": "Metres per second",
+        "legacy_GF3_code": "GSPD"
+    },
+    "EWDAZZ01": {
+        "units": "degree_true",
+        "long_name": "Direction (from) of wind relative to True North in the atmosphere",
+        "sdn_parameter_urn": "SDN:P01::EWDASS01",
+        "sdn_parameter_name": "Direction (from) of wind relative to True North {wind direction} in the atmosphere",
+        "sdn_uom_urn": "SDN:P06:UABB",
+        "sdn_uom_name": "Degrees True",
+        "legacy_GF3_code": "WDIR"
+    },
+    "CTMPZZ01": {
+        "units": "degree_C",
+        "long_name": "Temperature of the atmosphere",
+        "sdn_parameter_urn": "SDN:P01::CTMPZZ01",
+        "sdn_parameter_name": "Temperature of the atmosphere",
+        "sdn_uom_urn": "SDN:P06::UPAA",
+        "sdn_uom_name": "Celsius degree",
+        "legacy_GF3_code": "DRYT"
+    },
+    "CRELZZ01": {
+        "units": "",
+        "long_name": "",
+        "sdn_parameter_urn": "SDN:P01::CRELZZ01",
+        "sdn_parameter_name": "",
+        "sdn_uom_urn": "",
+        "sdn_uom_name": "",
+        "legacy_GF3_code": "RELH"
+    },
+    "CAPHZZ01": {
+        "units": "",
+        "long_name": "",
+        "sdn_parameter_urn": "SDN:P01::CAPHZZ01",
+        "sdn_parameter_name": "",
+        "sdn_uom_urn": "",
+        "sdn_uom_name": "",
+        "legacy_GF3_code": "ATMP"
+    },
+    "CNDCZZ01": {
+        "units": "",
+        "long_name": "",
+        "sdn_parameter_urn": "SDN:P01::CNDCZZ01",
+        "sdn_parameter_name": "",
+        "sdn_uom_urn": "",
+        "sdn_uom_name": "",
+        "legacy_GF3_code": "CNDC"
+    },
+    "PSLTZZ01": {
+        "units": "",
+        "long_name": "",
+        "sdn_parameter_urn": "SDN:P01::PSLTZZ01",
+        "sdn_parameter_name": "PSAL",
+        "sdn_uom_urn": "",
+        "sdn_uom_name": "",
+        "legacy_GF3_code": ""
+    },
+    "SIGTEQ01": {
+        "units": "",
+        "long_name": "",
+        "sdn_parameter_urn": "SDN:P01::SIGTEQ01",
+        "sdn_parameter_name": "DENS",
+        "sdn_uom_urn": "",
+        "sdn_uom_name": "",
+        "legacy_GF3_code": ""
+    },
+    "PHXXZZXX": {
+        "units": "",
+        "long_name": "",
+        "sdn_parameter_urn": "SDN:P01::PHXXZZXX",
+        "sdn_parameter_name": "",
+        "sdn_uom_urn": "",
+        "sdn_uom_name": "",
+        "legacy_GF3_code": "PHPH"
+    },
+    "FLUOZZZZ": {
+        "units": "",
+        "long_name": "",
+        "sdn_parameter_urn": "SDN:P01::FLUOZZZZ",
+        "sdn_parameter_name": "",
+        "sdn_uom_urn": "",
+        "sdn_uom_name": "",
+        "legacy_GF3_code": "FLOR"
+    },
+    "ACO2XXXX": {
+        "units": "",
+        "long_name": "",
+        "sdn_parameter_urn": "SDN:P01::ACO2XXXX",
+        "sdn_parameter_name": "",
+        "sdn_uom_urn": "",
+        "sdn_uom_name": "",
+        "legacy_GF3_code": "ACO2"
+    },
+    "PCO2XXXX": {
+        "units": "",
+        "long_name": "",
+        "sdn_parameter_urn": "SDN:P01::PCO2XXXX",
+        "sdn_parameter_name": "",
+        "sdn_uom_urn": "",
+        "sdn_uom_name": "",
+        "legacy_GF3_code": "PCO2"
+    },
+    "GAVHZZ01": {
+        "units": "",
+        "long_name": "",
+        "sdn_parameter_urn": "SDN:P01::GAVHZZ01",
+        "sdn_parameter_name": "",
+        "sdn_uom_urn": "",
+        "sdn_uom_name": "",
+        "legacy_GF3_code": "VRMS"
+    },
+    "GCMXZZ01": {
+        "units": "",
+        "long_name": "",
+        "sdn_parameter_urn": "SDN:P01::GCMXZZ01",
+        "sdn_parameter_name": "",
+        "sdn_uom_urn": "",
+        "sdn_uom_name": "",
+        "legacy_GF3_code": "VMXL"
+    },
+    "GTAMZZ01": {
+        "units": "",
+        "long_name": "",
+        "sdn_parameter_urn": "SDN:P01::GTAMZZ01",
+        "sdn_parameter_name": "",
+        "sdn_uom_urn": "",
+        "sdn_uom_name": "",
+        "legacy_GF3_code": "VTCA"
     }
 }

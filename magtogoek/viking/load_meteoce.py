@@ -19,7 +19,7 @@ METEOCE BODC:
         Latitude (North +ve)                                 : LATD_01 : SDN:P01::
         Horizontal Wind Speed                                : WSPD_01 : SDN:P01::EWSBZZ01
         Gust Wind Speed                                      : GSPD_01 : SDN:P01::EGTSZZ01
-        Wind Direction relative to North (T)                 : WDIR_01 : SDN:P01::EWDASS01
+        Wind Direction relative to North (T)                 : WDIR_01 : SDN:P01::EWDAZZ01
         Dry Bulb Temperature                                 : DRYT_01 : SDN:P01::CTMPZZ01
         Relative Humidity                                    : RELH_01 : SDN:P01::CRELZZ01
         Atmospheric pressure                                 : ATMP_01 : SDN:P01::CAPHZZ01
