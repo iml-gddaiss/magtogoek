@@ -207,7 +207,10 @@ def load_meteoce_data(viking_data: VikingData) -> xr.Dataset:
             _data[_name] = (viking_data.rti[_name], _attrs)
             _data["bt_"+_name] = (viking_data.rti["bt_"+_name], _attrs)
 
-    return xr.Dataset(_data, coords=_coords, attrs=_global_attrs)
+    for key, item in _data.items():
+        _data[key] = ('time', item[0].filled(), item[1])
+
+    return _average_duplicates(xr.Dataset(_data, coords=_coords, attrs=_global_attrs), 'time')
 
 
 def _average_duplicates(dataset: xr.Dataset, coord: str) -> xr.Dataset:

@@ -330,6 +330,7 @@ data: (length: {len(self)})
     def reformat(self):
         self._squeeze_empty_tag()
         self._to_numpy_masked_array()
+        # Notes:
         if self.triplet is not None:  # This Could be done directly during the decoding
             _convert_triplet_wavelength(self.triplet)  # This Could be done directly during the decoding
         self._add_units()
@@ -418,7 +419,21 @@ def _convert_triplet_wavelength(triplet_data: dict):
 
 class VikingReader():
     """Use to read RAW dat files from viking buoy.
-    The data are puts in VikingData object and are accessible as attributes."""
+    The data are puts in VikingData object and are accessible as attributes."
+
+    Methods
+    -------
+    read:
+        1) Parse through the files looking for data between the tags [NOM] and [FIN]
+           - For each data block found over all the files, data are put into dictionaries
+             and append to list.
+        2) The data is then sorted according to their buoy name and put into VikingData
+           objets.
+           Data transformed from:
+               List( {tags: { var1: value, ..., varN: value} } )
+           to
+               VikingData(var1: MaskedArray, ..., varN: MaskedArray)
+    """
 
     def __init__(self):
         self._buoys_data: Dict[str: VikingData] = None
@@ -491,7 +506,25 @@ buoys:\n"""
         return buoy_info
 
 
-def _decode_transmitted_data(data_received: str, century: int = 21) -> dict:
+def _decode_transmitted_data(data_received: str, century: int = 21) -> list:
+    """ Decode the data received.
+
+    Parse through the data and iter over each block between the tags [NOM] and [FIN].
+    - Select the appropriate decoder for each tag.
+    -- Each decoder return the data in a dictionary.
+    - Put each data dictionary into a dictionary except for the data in the NOM tag which
+       are place in the root dict (time, lon, lat, ...).
+    - Data from each block are append to a list
+
+    Returns
+    -------
+    List[
+        {
+        time: []
+        tag: {var1: [], ... var2:[]},
+        },
+    ]
+    """
     decoded_data = []
     tag_key = ['comp', 'triplet', 'par_digi', 'suna', 'gps', 'ctd', 'ctdo', 'rti', 'rdi',
                'wave_m', 'wave_s', 'wxt520', 'wmt700', 'wph', 'co2_w', 'co2_a', 'debit', 'vemco']
