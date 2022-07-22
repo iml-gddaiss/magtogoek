@@ -96,7 +96,7 @@ VARIABLES_UNITS = {
 }
 
 
-def make_meteoce_dataset(viking_data: VikingData) -> xr.Dataset:
+def load_meteoce_data(viking_data: VikingData) -> xr.Dataset:
     _coords = {'time': np.asarray(viking_data.time)}
     _data = {'lon': (viking_data.longitude, {}),
              'lat': (viking_data.latitude, {}),
@@ -182,14 +182,14 @@ def make_meteoce_dataset(viking_data: VikingData) -> xr.Dataset:
 
     if viking_data.wave_m is not None:
         _data.update(
-            {'wave_mean_height': (viking_data.wave_m['mean_height'], {}),
+            {'wave_mean_height': (viking_data.wave_m['average_height'], {}),
              'wave_maximal_height': (viking_data.wave_m['maximal_height'], {}),
              'wave_period': (viking_data.wave_m['period'], {})}
         )
 
     elif viking_data.wave_s is not None:
         _data.update(
-            {'wave_mean_height': (viking_data.wave_s['mean_height'], {}),
+            {'wave_mean_height': (viking_data.wave_s['average_height'], {}),
              'wave_maximal_height': (viking_data.wave_s['Hmax'], {}),
              'wave_period': (viking_data.wave_s['dominant_period'], {})}
         )
@@ -207,7 +207,7 @@ def make_meteoce_dataset(viking_data: VikingData) -> xr.Dataset:
             _data[_name] = (viking_data.rti[_name], _attrs)
             _data["bt_"+_name] = (viking_data.rti["bt_"+_name], _attrs)
 
-    return _data
+    return xr.Dataset(_data, coords=_coords, attrs=_global_attrs)
 
 
 def _average_duplicates(dataset: xr.Dataset, coord: str) -> xr.Dataset:
@@ -223,3 +223,11 @@ def _average_duplicates(dataset: xr.Dataset, coord: str) -> xr.Dataset:
 
     return _dataset
 
+
+if __name__ == "__main__":
+    vr = VikingReader()
+    buoys_data = vr.read('/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat')
+
+    v_data = buoys_data['pmza_riki']
+
+    dataset = load_meteoce_data(v_data)

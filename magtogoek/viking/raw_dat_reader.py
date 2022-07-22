@@ -421,8 +421,8 @@ class VikingReader():
     The data are puts in VikingData object and are accessible as attributes."""
 
     def __init__(self):
-        self._buoys_data: Dict[str: VikingData] = {}
-        self.buoys: list = []
+        self._buoys_data: Dict[str: VikingData] = None
+        self.buoys: list = None
 
     def __repr__(self):
         repr = f"""{self.__class__} 
@@ -439,13 +439,13 @@ buoys:\n"""
                 data_received = f.read()
                 decoded_data += _decode_transmitted_data(data_received=data_received, century=century)
 
-        self._make_viking_data(decoded_data)
+        self._load_viking_data(decoded_data)
 
-        return self
+        return self._buoys_data
 
-    def _make_viking_data(self, decoded_data: dict):
+    def _load_viking_data(self, decoded_data: dict):
         """Put the data in  VikingData object"""
-
+        self._buoys_data = {}
         self.buoys = self._get_buoys_info(decoded_data)
 
         for key, value in self.buoys.items():
@@ -489,9 +489,6 @@ buoys:\n"""
             buoy_info[buoy_name] = {'firmware': firmware, 'controller_sn': controller_sn}
 
         return buoy_info
-
-
-
 
 
 def _decode_transmitted_data(data_received: str, century: int = 21) -> dict:
@@ -839,7 +836,7 @@ def multiple_test():
 
 
 def main():
-    viking_data = single_test()._buoys_data['pmza_riki']
+    viking_data = single_test().buoys_data['pmza_riki']
     return viking_data
 
 
@@ -855,4 +852,4 @@ if __name__ == "__main__":
     # viking_data = main()
     vr = VikingReader().read('/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat')
 
-    viking_data = vr._buoys_data['pmza_riki']
+    viking_data = vr.buoys_data['pmza_riki']
