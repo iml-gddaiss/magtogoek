@@ -565,8 +565,8 @@
         "long_name": "partial_pressure_of_carbon_dioxide_in_the_water_body",
         "sdn_parameter_urn": "SDN:P01::PCO2XXXX",
         "sdn_parameter_name": "Partial pressure of carbon dioxide {CO2 CAS 124-38-9} {pCO2} in the water body",
-        "sdn_uom_urn": "SDN:P06:",
-        "sdn_uom_name": "SDN:P06:UATM",
+        "sdn_uom_urn": "SDN:P06:UATM",
+        "sdn_uom_name": "Microatmospheres",
         "legacy_GF3_code": "PCO2"
     },
     "GAVHZZ01": {
