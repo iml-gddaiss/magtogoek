@@ -440,11 +440,11 @@ class VikingReader():
         self.buoys: list = None
 
     def __repr__(self):
-        repr = f"""{self.__class__} 
+        _repr = f"""{self.__class__} 
 buoys:\n"""
-        for buoy, viking_data in self._buoys_data.items():
-            repr += f"  {buoy}: (length = {len(viking_data)})\n"
-        return repr
+        for buoy_name, viking_data in self._buoys_data.items():
+            _repr += f"  {buoy_name}: (length = {len(viking_data)})\n"
+        return _repr
 
     def read(self, filenames, century=21):
         filenames = get_files_from_expression(filenames)
@@ -885,4 +885,4 @@ if __name__ == "__main__":
     # viking_data = main()
     vr = VikingReader().read('/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat')
 
-    viking_data = vr.buoys_data['pmza_riki']
+    v_data = vr.buoys_data['pmza_riki']
