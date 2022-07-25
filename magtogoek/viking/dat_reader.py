@@ -859,7 +859,7 @@ def _make_timestamp(Y: str, M: str, D: str, h: str, m: str, s: str) -> str:
     return str(FILL_VALUE) if "#" in time else time
 
 
-##### TEST FUNCTION #####
+##### FIXME TEST FUNCTION #####
 def single_test():
     return VikingReader().read('/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat')
 

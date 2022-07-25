@@ -231,8 +231,6 @@ meteoc_variables = {
                             ('wmt700', 'Dm')],
     'wind_max': [('wxt520', 'Sx'),
                  ('wmt700', 'Sx')],
-    'wind_direction_max': [('wxt520', 'Sx'),
-                           ('wmt700', 'Sx')],
     'atm_temperature': ('wxt520', 'Ta'),
     'atm_humidity': ('wxt520', 'Ua'),
     'atm_pressure': ('wxt520', 'Pa'),
