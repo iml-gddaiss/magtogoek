@@ -65,7 +65,7 @@ from magtogoek.attributes_formatter import (
 from magtogoek.navigation import load_navigation
 from magtogoek.platforms import _add_platform
 from magtogoek.utils import Logger, ensure_list_format, json2dict
-from magtogoek.adcp.adcp_plots import make_adcp_figure
+from magtogoek.adcp.plots import make_adcp_figure
 
 l = Logger(level=0)
 

@@ -1,59 +1,21 @@
 """
-Date April 6 2022
+(July 25 2022, jeromejguay):
+    Module not currently used and not up-to-date. See `loader.py`.
 
 Made by jeromejguay
 
-Module that contains function to load all the data into a dataset. ( I think )
+This module contains function to load all the data into a dataset.
 
 Data That Need Processing
 -------------------------
-    WpH -> Algorithm in magtogoek/viking/tools.py
-
-
-    - BODC NAMES: https://vocab.nerc.ac.uk/search_nvs/P01/
-
-    - METEOCE BODC:
-
-        Time                                                 : SYTM_01 : SDN:P01::
-        Longitude (East +ve)                                 : LOND_01 : SDN:P01::
-        Latitude (North +ve)                                 : LATD_01 : SDN:P01::
-        Horizontal Wind Speed                                : WSPD_01 : SDN:P01::EWSBZZ01
-        Gust Wind Speed                                      : GSPD_01 : SDN:P01::EGTSZZ01
-        Wind Direction relative to North (T)                 : WDIR_01 : SDN:P01::EWDASS01
-        Dry Bulb Temperature                                 : DRYT_01 : SDN:P01::CTMPZZ01
-        Relative Humidity                                    : RELH_01 : SDN:P01::CRELZZ01
-        Atmospheric pressure                                 : ATMP_01 : SDN:P01::CAPHZZ01
-        Temperature (1990 scale)                             : TE90_01 : SDN:P01::TEMPPR01
-        Electrical Conductivity                              : CNDC_01 : SDN:P01::CNDCZZ01
-        Practical Salinity                                   : PSAL_01 : SDN:P01::PSLTZZ01
-        Sea Density                                          : DENS_01 : SDN:P01::SIGTEQ01
-        Hydrogen Ion Concentration (pH)                      : PHPH_01 : SDN:P01::PHXXZZXX
-        Fluorescence                                         : FLOR_01 : SDN:P01::FLUOZZZZ
-        Partial pressure of carbon dioxide in the atmosphere : ACO2_01 : SDN:P01::ACO2XXXX
-        Partial pressure of carbon dioxide in the water body : PCO2_01 : SDN:P01::PCO2XXXX
-        Wave mean height                                     : VRMS_01 : SDN:P01::
-        Wave maximum height                                  : VMXL_01 : SDN:P01::GMXLZZ01
-        Wave period                                          : VTCA_01 : SDN:P01::
-
-    - OTHER NAMES BODC:
-
-        wave period                         : SDN:P01::GTAMZZ01
-        average wave height                 : SDN:P01::
-        average wave height one third       : SDN:P01::GAVHZZ01
-        average wave height dominant period : SDN:P01::
-        max wave height                     : SDN:P01::GCMXZZ01
-        wave direction                      : SDN:P01::
-        Hmax                                : SDN:P01::
-        Hmax2                               : SDN:P01::
-        Pmax                                : SDN:P01::
+    - WpH:
+        Algorithm in magtogoek/viking/tools.py
 
     - DO computation:
         https://github.com/TEOS-10/python-gsw/blob/master/gsw/gibbs/conversions.py
         https://github.com/ooici/ion-functions/blob/master/ion_functions/data/do2_functions.py
 
     - Everything is loaded as float since nans are not available for int type in numpy
-
-
 """
 
 import re
@@ -62,15 +24,13 @@ import re
 # from math import atan2, sqrt, pi
 from typing import List, Dict, Union
 
-from magtogoek.viking.raw_dat_reader import VikingReader, VikingData
+from magtogoek.viking.dat_reader import VikingReader, VikingData
 import matplotlib
 import numpy as np
 import xarray as xr
 import pint
 
 from magtogoek.utils import get_files_from_expression, nans
-
-matplotlib.use('Qt5Agg')
 
 
 DAT_TAGS = ['comp', 'triplet', 'par_digi', 'suna', 'gps', 'ctd', 'ctdo', 'rti', 'rdi',

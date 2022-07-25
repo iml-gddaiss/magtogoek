@@ -45,14 +45,17 @@ METEOCE BODC:
         https://github.com/ooici/ion-functions/blob/master/ion_functions/data/do2_functions.py
 
 """
-from magtogoek.viking.raw_dat_reader import VikingReader, VikingData
+from magtogoek.viking.dat_reader import VikingReader, VikingData
 import matplotlib
 import numpy as np
 import xarray as xr
+from typing import *
 #import pint
 
-# data_variable : (tag, name)
-meteoc_variables = {
+matplotlib.use('Qt5Agg')
+
+
+METEOC_VARIABLES = {
     'lon': ('nom', 'lon'),
     'lat': ('nom', 'lat'),
     'wind_mean': [('wxt520', 'Sm'),
@@ -97,14 +100,25 @@ VARIABLES_UNITS = {
 
 
 def load_meteoce_data(viking_data: VikingData) -> xr.Dataset:
-    _coords = {'time': np.asarray(viking_data.time)}
+    data = get_meteoce_data(viking_data)
+
+    coords = {'time': np.asarray(viking_data.time)}
+
+    global_attrs = {'buoy_name': viking_data.buoy_name,
+                    'firmware': viking_data.firmware,
+                    'controller_serial_number': viking_data.controller_sn}
+
+    data = _fill_data(data)
+
+    dataset = xr.Dataset(data, coords=coords, attrs=global_attrs)
+
+    return _average_duplicates(dataset, 'time')
+
+
+def get_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.MaskedArray, dict]]:
     _data = {'lon': (viking_data.longitude, {}),
              'lat': (viking_data.latitude, {}),
              }
-    _global_attrs = {'buoy_name': viking_data.buoy_name,
-                     'firmware': viking_data.firmware,
-                     'controller_serial_number': viking_data.controller_sn}
-
     if viking_data.comp is not None:
         _data.update(
             {'heading': (viking_data.comp['heading'], {}),
@@ -207,10 +221,24 @@ def load_meteoce_data(viking_data: VikingData) -> xr.Dataset:
             _data[_name] = (viking_data.rti[_name], _attrs)
             _data["bt_"+_name] = (viking_data.rti["bt_"+_name], _attrs)
 
-    for key, item in _data.items():
-        _data[key] = ('time', item[0].filled(), item[1])
+    return _data
 
-    return _average_duplicates(xr.Dataset(_data, coords=_coords, attrs=_global_attrs), 'time')
+
+def _fill_data(data: Dict[str, Tuple[np.ma.MaskedArray, dict]]) -> Dict[str, Tuple[List[str], np.ndarray, dict]]:
+    """
+
+    Parameters
+    ----------
+    data
+
+    Returns
+    -------
+
+    """
+    for key, item in data.items():
+        data[key] = ('time', item[0].filled(), item[1])
+
+    return data
 
 
 def _average_duplicates(dataset: xr.Dataset, coord: str) -> xr.Dataset:
@@ -234,3 +262,5 @@ if __name__ == "__main__":
     v_data = buoys_data['pmza_riki']
 
     dataset = load_meteoce_data(v_data)
+
+    dataset.to_netcdf('/home/jeromejguay/Desktop/viking_test.nc')
