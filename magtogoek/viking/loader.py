@@ -22,41 +22,31 @@ Data That Need Processing
         https://github.com/TEOS-10/python-gsw/blob/master/gsw/gibbs/conversions.py
         https://github.com/ooici/ion-functions/blob/master/ion_functions/data/do2_functions.py
 
+TODO DO SOME LOGGINGS
 """
 from magtogoek.viking.dat_reader import VikingReader, VikingData
 import matplotlib
 import numpy as np
 import xarray as xr
 from typing import *
+from magtogoek.utils import Logger
+
 #import pint
 
 matplotlib.use('Qt5Agg')
 
-
-# VARIABLES_LOCATIONS = {
-#     'lon': {'nom': 'lon'},
-#     'lat': {'nom': 'lat'},
-#     'wind_mean': {'wxt520': 'Sm', 'wmt700': 'Sm'},
-#     'wind_direction_mean': {'wxt520': 'Dm', 'wmt700': 'Dm'},
-#     'wind_max': {'wxt520': 'Sx', 'wmt700': 'Sx'},
-#     'atm_temperature': {'wxt520': 'Ta'},
-#     'atm_humidity': {'wxt520': 'Ua'},
-#     'atm_pressure': {'wxt520': 'Pa'},
-#     'temperature': {'ctd': 'temperature', 'ctdo': 'temperature'},
-#     'conductivity': {'ctd': 'conductivity', 'ctdo': 'conductivity'},
-#     'salinity': {'ctd': 'salinity'},
-#     'density': {'ctdo': 'density'},
-#     'ph': {'wph': "PH CORRECTION"}, #COMPUTATION NEEDED TODO
-#     'fluorescence': {'triplet': 'fluo'},
-#     'co2_a': {'co2_a': 'co2_ppm'}, # COMPUTATION NEEDED TODO
-#     'co2_w': {'co2_w': 'co2_ppm'}, # COMPUTATION NEEDED, TODO
-#     'wave_mean_height': {'wave_m': 'mean_height', 'wave_s': 'mean_height'},
-#     'wave_maximal_height': {'wave_m': 'maximal_height', 'wave_s': 'Hmax'},
-#     'wave_period': {'wave_m': 'period', 'wave_s': 'dominant_period'},
-# }
+l = Logger()
+l.reset()
 
 
-def load_meteoce_data(viking_data: VikingData) -> xr.Dataset:
+def load_meteoce_data(filenames: Tuple[str, List[str]], buoy_name: str) -> xr.Dataset:
+    dat_reader = VikingReader()
+
+    buoys_data = dat_reader.read(filenames)
+
+    #if buoy_name in buoys_data:
+    viking_data = buoys_data[buoy_name]
+
     data = get_meteoce_data(viking_data)
 
     coords = {'time': np.asarray(viking_data.time)}
@@ -69,7 +59,13 @@ def load_meteoce_data(viking_data: VikingData) -> xr.Dataset:
 
     dataset = xr.Dataset(data, coords=coords, attrs=global_attrs)
 
-    return _average_duplicates(dataset, 'time')
+    dataset = _average_duplicates(dataset, 'time')
+
+    # else:
+    #     #Raise Error ?
+    #     dataset = None
+
+    return dataset
 
 
 def get_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.MaskedArray, dict]]:
@@ -206,10 +202,10 @@ def _average_duplicates(dataset: xr.Dataset, coord: str) -> xr.Dataset:
 
 if __name__ == "__main__":
     vr = VikingReader()
-    buoys_data = vr.read('/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat')
+    _buoys_data = vr.read('/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat')
 
-    v_data = buoys_data['pmza_riki']
+    v_data = _buoys_data['pmza_riki']
 
-    dataset = load_meteoce_data(v_data)
+    ds = load_meteoce_data(v_data)
 
-    dataset.to_netcdf('/home/jeromejguay/Desktop/viking_test.nc')
+    ds.to_netcdf('/home/jeromejguay/Desktop/viking_test.nc')
