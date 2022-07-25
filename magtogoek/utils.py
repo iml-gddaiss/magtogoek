@@ -119,8 +119,11 @@ class Logger:
 def ensure_list_format(value: tp.Union[str, int, float, tp.List[tp.Union[str, int, float]]]) -> tp.List[str]:
     """
     """
-    if not isinstance(value, (list, set, tuple)):
+    if isinstance(value, (set, tuple)):
+        value = list(value)
+    elif not isinstance(value, list):
         value = [value]
+
     return value
 
 

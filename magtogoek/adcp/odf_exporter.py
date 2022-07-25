@@ -7,7 +7,7 @@ from datetime import datetime
 
 import pandas as pd
 import xarray as xr
-from typing import List, Union, Tuple, Dict
+from typing import List, Union, Tuple, Dict, Optional
 from magtogoek.odf_format import Odf, odf_time_format
 from magtogoek.utils import json2dict, resolve_relative_path
 
@@ -46,8 +46,9 @@ def make_odf(
         dataset: xr.Dataset,
         platform_metadata: dict,
         config_attrs: dict,
+        bodc_name: bool = True,
         event_qualifier2: str = 'VEL',
-        output_path: str = None, ):
+        output_path: Optional[str] = None, ):
     """
     Parameters
     ----------
@@ -57,9 +58,14 @@ def make_odf(
         Metadata from the platform file.
     config_attrs :
         Global attributes parameter from the configFile.
-    output_path:
+    bodc_name:
+        If True, map from the generic to the BODC p01 variables names.
     event_qualifier2:
         Either `'VEL'` or `'ANC'`.
+    output_path:
+        If a path(str) is provided, there is two possibilities: is the path is only a directory, the file name
+        will be made from the odf['file_specification']. If a file name is also provided, the 'event_qualifier2'
+        will be appended if its not present in the `ouput_path`.
 
     """
     odf = Odf()
@@ -75,7 +81,7 @@ def make_odf(
         _make_instrument_header(odf, dataset)
     _make_quality_header(odf, dataset)
     _make_history_header(odf, dataset)
-    _make_parameter_headers(odf, dataset, PARAMETERS[event_qualifier2])
+    _make_parameter_headers(odf, dataset, PARAMETERS[event_qualifier2], bodc_name)
 
     if output_path is not None:
         output_path = Path(output_path)
@@ -385,7 +391,7 @@ def _make_history_header(odf, dataset):
     odf.add_history({"creation_date": creation_date, "process": process})
 
 
-def _make_parameter_headers(odf, dataset, variables: List[str]):
+def _make_parameter_headers(odf, dataset, variables: List[str], bodc_name=False):
     """
     Parameters
     ----------
@@ -394,6 +400,8 @@ def _make_parameter_headers(odf, dataset, variables: List[str]):
         Dataset to which add the navigation data.
     variables:
        variables to put in the ODF.
+    bodc_name:
+        If True, map from the generic to the BODC p01 variables names.
     Notes
     -----
     The variable order in the ODF will be the same as in the variables list parameter.
@@ -405,7 +413,7 @@ def _make_parameter_headers(odf, dataset, variables: List[str]):
 
     for var in variables:
         dataset_variable_name = var
-        if dataset.attrs['bodc_name'] is True and var not in ('time', 'depth'):
+        if bodc_name is True and not var in ('time', 'depth'):
             dataset_variable_name = dataset.attrs["P01_CODES"][var]
         if dataset_variable_name in dataset.variables:
             parameters_metadata[dataset_variable_name] = PARAMETERS_METADATA[var]
