@@ -18,6 +18,7 @@
 ** Rotation command.
 
 * Improvements
+** Make DataClasses from loaded platform file.
 ** Put navigation and Odf in their own sub package.
 ** Imports configuration files.
    + P01, GF3, CF, etc.
