@@ -63,21 +63,19 @@ TERMINAL_WIDTH = 80
 STANDARD_ADCP_GLOBAL_ATTRIBUTES = {
     "sensor_type": "viking_buoy",
     "featureType": "timeSeriesProfile",
+    "data_type": "meteoce", #TODO CHECK IF ITS RIGHTS
+    "data_subtype": "BUOY",
+    "source": None,
+
 }
-DEFAULT_CONFIG_ATTRIBUTES = {
-    "date_created": pd.Timestamp.now().strftime("%Y-%m-%d"),
-    "publisher_name": getpass.getuser(),
-    "source": "viking_buoy",
-}
+
 VARIABLES_TO_DROP = []
 GLOBAL_ATTRS_TO_DROP = []
 
 CONFIG_GLOBAL_ATTRS_SECTIONS = ["NETCDF_CF", "PROJECT", "CRUISE", "GLOBAL_ATTRIBUTES"]
 
-PLATFORM_TYPES = ['buoy']
+PLATFORM_TYPE = 'buoy'
 DEFAULT_PLATFORM_TYPE = "buoy"
-DATA_TYPE = 'meteoce'  # TODO VERIFY
-DATA_SUBTYPE = 'BUOY'
 
 P01_CODES = dict(
     wind_mean="EWSBZZ01",
@@ -133,10 +131,6 @@ TIME_ENCODING = {
     "_FillValue": None,
 }
 TIME_STRING_ENCODING = {"dtype": "S1"}
-DEPTH_ENCODING = {
-    "_FillValue": -9999.0,
-    "dtype": "float32",
-}
 
 DATE_STRING_FILL_VALUE = "17-NOV-1858 00:00:00.00"  # filled value used by ODF format
 QC_FILL_VALUE = 127
@@ -149,32 +143,47 @@ l = Logger()
 
 
 class ProcessConfig:
+    # HEADER
     sensor_type: str = None
     platform_type: str = None
+
+    # INPUT
     input_files: str = None
     platform_file: str = None
     platform_id: str = None
 
+    #NETCDF:
+    #source: str: None
+
+    # OUTPUT
     netcdf_output: Union[str, bool] = None
     odf_output: Union[str, bool] = None
 
+    # PROCESSING
+    buoy_name: str = None
+    data_format: str = None
+    sensor_depth: float = None
     navigation_file: str = None
     leading_trim: Union[int, str] = None
     trailing_trim: Union[int, str] = None
     magnetic_declination: float = None
+    magnetic_declination_preset: float = None
 
+    # QUALITY_CONTROL
     quality_control: bool = None
-
     # motion_correction_mode: str = None
+
+    # OUTPUT
     merge_output_files: bool = None
     bodc_name: bool = None
-    # force_platform_metadata: bool = None
-
+    force_platform_metadata: bool = None
+    odf_data: str = None
     make_figures: bool = None
     make_log: bool = None
-    odf_data: str = None
+
+    # computed
     metadata: dict = {}
-    # platform_metadata: dict = {}
+    platform_metadata: dict = {}
 
     netcdf_path: str = None
     odf_path: str = None
@@ -182,6 +191,7 @@ class ProcessConfig:
     figures_path: str = None
     figures_output: bool = None
 
+    # application
     drop_empty_attrs: bool = False
     headless: bool = False
 
@@ -200,7 +210,7 @@ class ProcessConfig:
             raise ValueError("No adcp file was provided in the configfile.")
 
         self._get_platform_metadata()
-        self.platform_type = self.platform_metadata["platform"]['platform_type']
+        self.platform_type = PLATFORM_TYPE
 
     def _load_config_dict(self, config: dict) -> dict:
         """Split and flattens"""
@@ -242,8 +252,9 @@ def process_viking(config: dict,
                     else:
                         pconfig.netcdf_output = str(pconfig.netcdf_output.with_suffix("")) + f"_{count}"
             pconfig.input_files = [filename]
-
-            _process_viking_data(pconfig)
+            #FIXME
+            ds=_process_viking_data(pconfig)
+            return ds
 
 
 def _process_viking_data(pconfig: ProcessConfig):
@@ -251,6 +262,7 @@ def _process_viking_data(pconfig: ProcessConfig):
 
     """
     l.reset()
+
     # ------------------- #
     # LOADING VIKING DATA #
     # ------------------- #
@@ -270,13 +282,13 @@ def _process_viking_data(pconfig: ProcessConfig):
 
     dataset = dataset.assign_attrs(STANDARD_ADCP_GLOBAL_ATTRIBUTES)
 
-    dataset.attrs["data_type"] = DATA_TYPE
-    dataset.attrs["data_subtype"] = DATA_SUBTYPE
+    dataset.attrs['sensor_depth'] = pconfig.sensor_depth
+    dataset.attrs['serial_number'] = dataset.attrs.pop('controller_serial_number')
 
-    # if pconfig.platform_metadata["platform"]["longitude"]:
-    #     dataset.attrs["longitude"] = pconfig.platform_metadata["platform"]["longitude"]
-    # if pconfig.platform_metadata["platform"]["latitude"]:
-    #     dataset.attrs["latitude"] = pconfig.platform_metadata["platform"]["latitude"]
+    if pconfig.platform_metadata["platform"]["longitude"]:
+         dataset.attrs["longitude"] = pconfig.platform_metadata["platform"]["longitude"]
+    if pconfig.platform_metadata["platform"]["latitude"]:
+         dataset.attrs["latitude"] = pconfig.platform_metadata["platform"]["latitude"]
 
     compute_global_attrs(dataset)
 
@@ -322,9 +334,7 @@ def _process_viking_data(pconfig: ProcessConfig):
     # -------------------- #
     dataset.attrs['bodc_name'] = pconfig.bodc_name
     dataset.attrs["VAR_TO_ADD_SENSOR_TYPE"] = VAR_TO_ADD_SENSOR_TYPE
-    dataset.attrs["P01_CODES"] = {
-        **P01_CODES,
-    }
+    dataset.attrs["P01_CODES"] = P01_CODES
     dataset.attrs["variables_gen_name"] = [var for var in dataset.variables]  # For Odf outputs
 
     l.section("Variables attributes")
@@ -351,66 +361,67 @@ def _process_viking_data(pconfig: ProcessConfig):
     # ODF OUTPUTS #
     # ----------- #
 
-    l.section("Output")
-    if pconfig.odf_output is True:
-        if pconfig.odf_data is None:
-            pconfig.odf_data = 'both'
-        #odf_data = {'both': ['VEL', 'ANC'], 'vel': ['VEL'], 'anc': ['ANC']}[pconfig.odf_data]
-        odf_data = "METEOCE" #?
-        for qualifier in odf_data:
-            _ = make_odf(
-                dataset=dataset,
-                platform_metadata=pconfig.platform_metadata,
-                config_attrs=pconfig.metadata,
-                bodc_name=pconfig.bodc_name,
-                event_qualifier2=qualifier,
-                output_path=pconfig.odf_path,
-            )
+    # l.section("Output")
+    # if pconfig.odf_output is True:
+    #     if pconfig.odf_data is None:
+    #         pconfig.odf_data = 'both'
+    #     #odf_data = {'both': ['VEL', 'ANC'], 'vel': ['VEL'], 'anc': ['ANC']}[pconfig.odf_data]
+    #     odf_data = "METEOCE" #?
+    #     for qualifier in odf_data:
+    #         _ = make_odf(
+    #             dataset=dataset,
+    #             platform_metadata=pconfig.platform_metadata,
+    #             config_attrs=pconfig.metadata,
+    #             bodc_name=pconfig.bodc_name,
+    #             event_qualifier2=qualifier,
+    #             output_path=pconfig.odf_path,
+    #         )
 
-        # ------------------------------------ #
-        # FORMATTING DATASET FOR NETCDF OUTPUT #
-        # ------------------------------------ #
-    for var in VARIABLES_TO_DROP:
-        if var in dataset.variables:
-            dataset = dataset.drop_vars([var])
+    # ------------------------------------ #
+    # FORMATTING DATASET FOR NETCDF OUTPUT #
+    # ------------------------------------ #
+    dataset = _drop_variables(dataset)
 
-    for attr in GLOBAL_ATTRS_TO_DROP:
-        if attr in dataset.attrs:
-            del dataset.attrs[attr]
+    dataset = _drop_global_attributes(dataset)
 
-    for attr in list(dataset.attrs.keys()):
-        if not dataset.attrs[attr]:
-            if pconfig.drop_empty_attrs is True:
-                del dataset.attrs[attr]
-            else:
-                dataset.attrs[attr] = ""
+    dataset = _handle_null_global_attributes(dataset, pconfig)
 
-        # ---------- #
-        # NC OUTPUTS #
-        # ---------- #
-    if pconfig.netcdf_output is True:
-        netcdf_path = Path(pconfig.netcdf_path).with_suffix('.nc')
-        dataset.to_netcdf(netcdf_path)
-        l.log(f"netcdf file made -> {netcdf_path.resolve()}")
-
-    if pconfig.make_log is True:
-        log_path = Path(pconfig.log_path).with_suffix(".log")
-        with open(log_path, "w") as log_file:
-            log_file.write(dataset.attrs["history"])
-            print(f"log file made -> {log_path.resolve()}")
+    # ---------- #
+    # NC OUTPUTS #
+    # ---------- #
+    # if pconfig.netcdf_output is True:
+    #     netcdf_path = Path(pconfig.netcdf_path).with_suffix('.nc')
+    #     dataset.to_netcdf(netcdf_path)
+    #     l.log(f"netcdf file made -> {netcdf_path.resolve()}")
+    #
+    # if pconfig.make_log is True:
+    #     log_path = Path(pconfig.log_path).with_suffix(".log")
+    #     with open(log_path, "w") as log_file:
+    #         log_file.write(dataset.attrs["history"])
+    #         print(f"log file made -> {log_path.resolve()}")
 
     click.echo(click.style("=" * TERMINAL_WIDTH, fg="white", bold=True))
+    # FIXME
+    return dataset
 
-def _load_viking_data():
-    pass
+
+def _load_viking_data(pconfig: ProcessConfig):
+    dataset = load_meteoce_data(
+        filenames=pconfig.input_files,
+        buoy_name=pconfig.buoy_name,
+        data_format=pconfig.data_format,
+    )
+    return dataset
 
 
-def _set_platform_metadata():
+def _set_platform_metadata(dataset: xr.Dataset, pconfig: ProcessConfig):
     pass
 
 
 def _quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
-    dataset = meteoce_quality_control(dataset)
+    dataset = meteoce_quality_control(
+        dataset
+        )
     return dataset
 
 
@@ -507,6 +518,34 @@ def _apply_magnetic_correction(dataset: xr.Dataset, magnetic_declination: float)
         l.log(f"Heading transformed to true north.")
 
 
+def _drop_variables(dataset):
+    """Drop variables in VARIABLES_TO_DROP from dataset"""
+    for var in VARIABLES_TO_DROP:
+        if var in dataset.variables:
+            dataset = dataset.drop_vars([var])
+    return dataset
+
+
+def _drop_global_attributes(dataset: xr.Dataset):
+    """Drop global attributes in GLOBAL_ATTRS_TO_DROP from dataset"""
+    for attr in GLOBAL_ATTRS_TO_DROP:
+        if attr in dataset.attrs:
+            del dataset.attrs[attr]
+    return dataset
+
+
+def _handle_null_global_attributes(dataset: xr.Dataset, pconfig: ProcessConfig):
+    """Drop or set to empty string global attributes depending
+    on the value of pconfig.drop_empty_attrs"""
+    for attr in list(dataset.attrs.keys()):
+        if not dataset.attrs[attr]:
+            if pconfig.drop_empty_attrs is True:
+                del dataset.attrs[attr]
+            else:
+                dataset.attrs[attr] = ""
+    return dataset
+
+
 def _resolve_outputs(pconfig: ProcessConfig):
     """ Figure out the outputs to make and their path.
     """
@@ -592,3 +631,50 @@ def _figure_output_handler(pconfig: ProcessConfig, default_path: Path, default_f
 
         pconfig.figures_path = str(_figures_path)
         pconfig.figures_output = True
+
+
+if __name__ == "__main__":
+    file_path = '/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat'
+    out_path = '/home/jeromejguay/Desktop/viking_test.nc'
+    config = dict(
+        header=dict(
+            sensor_type=None,
+            platform_type=None
+        ),
+        input=dict(
+            input_files=file_path,
+            platform_file=None,
+            platform_id=None
+        ),
+        output=dict(
+            netcdf_output=out_path,
+            odf_output=None
+        ),
+        NETCDF_CF=dict(
+            date_created = pd.Timestamp.now().strftime("%Y-%m-%d"),
+            publisher_name = getpass.getuser(),
+            source='viking_buoy'
+        ),
+
+        viking_processing=dict(
+            buoy_name="pmza_riki",
+            data_format="raw_dat",
+            sensor_depth=0,
+            navigation_file=None,
+            leading_trim=None,
+            trailing_trim=None,
+            magnetic_declination=None,
+            magnetic_declination_preset=None,
+        ),
+        viking_quality_control=dict(quality_control=None),
+        viking_output=dict(
+            merge_output_files=None,
+            bodc_name=None,
+            force_platform_metadata=None,
+            odf_data=False,
+            make_figures=False,
+            make_log=False
+        )
+    )
+
+    ds = process_viking(config)

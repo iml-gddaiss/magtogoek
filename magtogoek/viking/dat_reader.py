@@ -417,7 +417,7 @@ def _convert_triplet_wavelength(triplet_data: dict):
     })
 
 
-class VikingReader():
+class RawDatReader():
     """Use to read RAW dat files from viking buoy.
     The data are puts in VikingData object and are accessible as attributes."
 
@@ -436,7 +436,7 @@ class VikingReader():
     """
 
     def __init__(self):
-        self._buoys_data: Dict[str: VikingData] = None
+        self._buoys_data: Dict[str, VikingData] = None
         self.buoys: list = None
 
     def __repr__(self):
@@ -446,7 +446,7 @@ buoys:\n"""
             _repr += f"  {buoy_name}: (length = {len(viking_data)})\n"
         return _repr
 
-    def read(self, filenames, century=21):
+    def read(self, filenames, century=21) -> Dict[str, VikingData]:
         filenames = get_files_from_expression(filenames)
         decoded_data = []
         for _filename in filenames:
@@ -861,11 +861,11 @@ def _make_timestamp(Y: str, M: str, D: str, h: str, m: str, s: str) -> str:
 
 ##### FIXME TEST FUNCTION #####
 def single_test():
-    return VikingReader().read('/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat')
+    return RawDatReader().read('/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat')
 
 
 def multiple_test():
-    return VikingReader().read('/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_[0-9]*.dat')
+    return RawDatReader().read('/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_[0-9]*.dat')
 
 
 def main():
@@ -883,6 +883,6 @@ if __name__ == "__main__":
 
 
     # viking_data = main()
-    vr = VikingReader().read('/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat')
+    vr = RawDatReader().read('/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat')
 
     v_data = vr.buoys_data['pmza_riki']

@@ -22,38 +22,74 @@ Data That Need Processing
         https://github.com/TEOS-10/python-gsw/blob/master/gsw/gibbs/conversions.py
         https://github.com/ooici/ion-functions/blob/master/ion_functions/data/do2_functions.py
 
+TODOS
+-----
 TODO DO SOME LOGGINGS
+TODO make it choose a file format.
 """
-from magtogoek.viking.dat_reader import VikingReader, VikingData
+from magtogoek.viking.dat_reader import RawDatReader, VikingData
 import matplotlib
 import numpy as np
 import xarray as xr
 from typing import *
 from magtogoek.utils import Logger
 
-#import pint
-
 matplotlib.use('Qt5Agg')
 
 l = Logger()
-l.reset()
 
 
-def load_meteoce_data(filenames: Tuple[str, List[str]], buoy_name: str) -> xr.Dataset:
-    dat_reader = VikingReader()
+def load_meteoce_data(
+        filenames: Tuple[str, List[str]],
+        buoy_name: str,
+        data_format: str,
+) -> xr.Dataset:
+    """
+
+    Parameters
+    ----------
+    filenames
+    buoy_name
+    data_format :
+        One of [raw_dat]
+
+    Returns
+    -------
+
+    """
+    l.reset()
+    if data_format == "raw_dat":
+        dat_reader = RawDatReader()
+    else:
+        l.warning('Invalid data_format.')
+        raise ValueError
 
     buoys_data = dat_reader.read(filenames)
 
-    #if buoy_name in buoys_data:
+    if buoy_name is None:
+        if len(buoys_data.keys()) == 1:
+            buoy_name = buoys_data.keys()[0]
+        else:
+            l.warning(f'More than one buoy was found in the file {filenames}. Exiting')
+            raise ValueError
+
+    elif buoy_name in buoys_data:
+        pass
+    else:
+        l.warning(f'Buoy Name was not found in the file {filenames}. Exiting')
+        raise ValueError
+
     viking_data = buoys_data[buoy_name]
 
     data = get_meteoce_data(viking_data)
 
     coords = {'time': np.asarray(viking_data.time)}
 
-    global_attrs = {'buoy_name': viking_data.buoy_name,
-                    'firmware': viking_data.firmware,
-                    'controller_serial_number': viking_data.controller_sn}
+    global_attrs = {
+        'buoy_name': viking_data.buoy_name,
+        'firmware': viking_data.firmware,
+        'controller_serial_number': viking_data.controller_sn
+    }
 
     data = _fill_data(data)
 
@@ -61,9 +97,7 @@ def load_meteoce_data(filenames: Tuple[str, List[str]], buoy_name: str) -> xr.Da
 
     dataset = _average_duplicates(dataset, 'time')
 
-    # else:
-    #     #Raise Error ?
-    #     dataset = None
+    dataset.attrs['logbook'] = l.logbook
 
     return dataset
 
@@ -201,7 +235,7 @@ def _average_duplicates(dataset: xr.Dataset, coord: str) -> xr.Dataset:
 
 
 if __name__ == "__main__":
-    vr = VikingReader()
+    vr = RawDatReader()
     _buoys_data = vr.read('/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat')
 
     v_data = _buoys_data['pmza_riki']

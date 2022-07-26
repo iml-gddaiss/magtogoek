@@ -24,7 +24,7 @@ import re
 # from math import atan2, sqrt, pi
 from typing import List, Dict, Union
 
-from magtogoek.viking.dat_reader import VikingReader, VikingData
+from magtogoek.viking.dat_reader import RawDatReader, VikingData
 import matplotlib
 import numpy as np
 import xarray as xr
@@ -330,7 +330,7 @@ if __name__ == "__main__":
 
 
     # viking_data = main()
-    vr = VikingReader().read('/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat')
+    vr = RawDatReader().read('/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat')
 
     viking_data = vr._buoys_data['pmza_riki']
 
