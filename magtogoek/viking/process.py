@@ -269,6 +269,12 @@ def _process_viking_data(pconfig: ProcessConfig):
 
     dataset = _load_viking_data(pconfig)
 
+    # --------------- #
+    # Compute density #
+    # --------------- #
+
+    _compute_density(dataset)
+
     # ----------------------------------------- #
     # ADDING THE NAVIGATION DATA TO THE DATASET #
     # ----------------------------------------- #
@@ -412,6 +418,11 @@ def _load_viking_data(pconfig: ProcessConfig):
         data_format=pconfig.data_format,
     )
     return dataset
+
+
+def _compute_density(dataset: xr.Dataset):
+
+    pass
 
 
 def _set_platform_metadata(dataset: xr.Dataset, pconfig: ProcessConfig):

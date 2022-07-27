@@ -1,6 +1,8 @@
 """
 This modules contains mathematical and scientific functions.
 They are separated from utils.py due to longer import time.
+
+# Move some function to a scientific toolbox ?
 """
 import typing as tp
 
@@ -106,7 +108,7 @@ def circular_distance(a1, a2, units="rad"):
 def vincenty(p0: tp.Tuple[float, float], p1: tp.Tuple[float, float]) -> float:
     """Calculate the distance between 2 coordinates with pygeodesy.ellipsoidalVincenty.LatLon
 
-    Great Circule Distance with Datum = WGS84
+    Great Circle Distance with Datum = WGS84
 
     Parameters
     ----------

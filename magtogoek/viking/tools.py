@@ -6,10 +6,14 @@ pressure coeff : cp
 salinity coeff : b0, b1, b2, b3, b4
 winkler coeff  : d1, d2
 
-"""
 
+TODO move somewhere else ?
+
+"""
+from typing import *
 import numpy as np
 import xarray as xr
+from seawater import eos80 as eos
 
 GAS_CONSTANT = 8.31446261815324 # the constant in seabird docs differs 8.3144621 J/(K mol). Application Note 99
 
@@ -20,13 +24,41 @@ RINKO_COEFFS_KEYS = ('c0', 'c1', 'c2', 'd0', 'cp',
                      'd1', 'd2')
 
 
-def _compensation_pres_temp_psal_rinko(dataset: xr.Dataset, coeffs):
+def compute_density(
+        dataset: xr.Dataset,
+        pres: Union[float, List, np.ndarray] = None
+    ):
+    """
+    temperature (ITS-90)
+    salinity (pss-78)
+    depth
+    pres
+    Parameters
+    ----------
+    dataset :
+        variable needed: (temperature, salinity)
+    pres :
+        Vector or scalar. Will be used over a pressure variable in the dataset.
+    Returns
+    -------
+
+    """
+    if pres is not None:
+        return eos.dens(dataset.salinity, dataset.temperature, pres)
+    elif 'pres' in dataset:
+        return eos.dens(dataset.salinity, dataset.temperature, dataset.pres)
+    else:
+        return eos.dens0(dataset.salinity, dataset.temperature)
+
+
+def dissolved_oxygen_compensation(dataset: xr.Dataset, coeffs):
     """
     See compensation_pres_temp_psal_rinko
 
     Parameters
     ----------
-    dataset
+    dataset :
+        variables needed: (dissolved_oxygen, temperature, pres, salinity)
 
     """
     dataset['dissolved_oxygen'].values = compensation_pres_temp_psal_rinko(
@@ -38,11 +70,13 @@ def _compensation_pres_temp_psal_rinko(dataset: xr.Dataset, coeffs):
     )
 
 
-def compensation_pres_temp_psal_rinko(doxy: np.ndarray,
-                                      temp: np.ndarray,
-                                      pres: np.ndarray,
-                                      psal: np.ndarray,
-                                      coeffs: dict) -> np.ndarray:
+def compensation_pres_temp_psal_rinko(
+        doxy: np.ndarray,
+        temp: np.ndarray,
+        pres: np.ndarray,
+        psal: np.ndarray,
+        coeffs: dict
+    ) -> np.ndarray:
     f"""
     
 
@@ -94,8 +128,10 @@ def compensation_pres_temp_psal_rinko(doxy: np.ndarray,
     return doxy_sc * 44.66  # uM -> ml/L
 
 
-def voltExt_from_pHext(temp: np.ndarray, psal: float, ph: np.ndarray, k0: float, k2: float) -> np.ndarray:
+def voltEXT_from_pHEXT(temp: np.ndarray, psal: float, ph: np.ndarray, k0: float, k2: float) -> np.ndarray:
     """Based on Seabird documentations
+
+    Compute voltExt from the pHext value and the salinity value use by the probe.
 
     ```(Johnson et al. 2016)
     V_EXT = S_nernst*(pH_EXT
@@ -130,10 +166,16 @@ def voltExt_from_pHext(temp: np.ndarray, psal: float, ph: np.ndarray, k0: float,
     k2 :
         Exterior temperature slope coefficient (From Calibration).
 
-    Notes
-    -----
-    Johnson et al.2016, Analytical Chemistry, DeepSea DuraFET: A pressure tolerant pH sensor designed for global sensor networks.
-    Sea-Bird Scientific, Technical Note on Calculating pH, Application Note 99
+    Returns
+    -------
+    volt :
+        Exterior Voltage
+
+    References
+    ----------
+    .. [1] Johnson et al.2016, Analytical Chemistry, DeepSea DuraFET: A pressure tolerant pH sensor designed for global sensor networks.
+
+    .. [2] Sea-Bird Scientific, Technical Note on Calculating pH, Application Note 99
     """
     s_nernst = GAS_CONSTANT * (temp + 273.15) * np.log(10) / FARADAY_CONSTANT
     cl_t = total_chloride_in_seawater(psal=psal)
@@ -150,6 +192,9 @@ def voltExt_from_pHext(temp: np.ndarray, psal: float, ph: np.ndarray, k0: float,
 
 def pHEXT_from_voltEXT(temp: np.ndarray, psal: np.ndarray, volt: np.ndarray, k0: float, k2: float) -> np.ndarray:
     """Taken from Seabird documentations
+
+    Compute pH exterior from the exterior voltage using in-situ temperature and salinity.
+    pH exterior can be calculated from the pH value return by the probe with the `voltEXT_from_pHEXT`.
 
     ```(Johnson et al. 2016)
     pH_EXT = (V_EXT - k0_EXT - k2_EXT * t) / S_nernst
@@ -184,10 +229,16 @@ def pHEXT_from_voltEXT(temp: np.ndarray, psal: np.ndarray, volt: np.ndarray, k0:
     k2 :
         Exterior temperature slope coefficient (From Calibration).
 
-    Notes
-    -----
-    Johnson et al.2016, Analytical Chemistry, DeepSea DuraFET: A pressure tolerant pH sensor designed for global sensor networks.
-    Sea-Bird Scientific, Technical Note on Calculating pH, Application Note 99
+    Returns
+    -------
+    ph :
+        Exterior pH
+
+    References
+    ----------
+    .. [1] Johnson et al.2016, Analytical Chemistry, DeepSea DuraFET: A pressure tolerant pH sensor designed for global sensor networks.
+
+    .. [2] Sea-Bird Scientific, Technical Note on Calculating pH, Application Note 99
 
     """
     s_nernst = GAS_CONSTANT * (temp + 273.15) * np.log(10) / FARADAY_CONSTANT
@@ -217,10 +268,11 @@ def total_chloride_in_seawater(psal: np.ndarray) -> np.ndarray:
     psal :
         practical salinity
 
-    Notes
-    -----
-    Dickson et al. 2007, IOCCP Report No.8, Guide to Best Practices for Ocean CO2 Measurements
-    Sea-Bird Scientific, Technical Note on Calculating pH, Application Note 99
+    References
+    ----------
+    .. [1] Dickson et al. 2007, IOCCP Report No.8, Guide to Best Practices for Ocean CO2 Measurements
+
+    .. [2] Sea-Bird Scientific, Technical Note on Calculating pH, Application Note 99
     """
     return (0.99889 / 35.453) * (psal / 1.80655) * (1000 / (1000 - 1.005 * psal))
 
@@ -239,10 +291,11 @@ def sample_ionic_strength(psal: np.ndarray) -> np.ndarray:
     psal :
         practical salinity
 
-    Notes
-    -----
-    Dickson et al. 2007, IOCCP Report No.8, Guide to Best Practices for Ocean CO2 Measurements
-    Sea-Bird Scientific, Technical Note on Calculating pH, Application Note 99
+    References
+    ----------
+    .. [1] Dickson et al. 2007, IOCCP Report No.8, Guide to Best Practices for Ocean CO2 Measurements
+
+    .. [2] Sea-Bird Scientific, Technical Note on Calculating pH, Application Note 99
     """
     return (19.924 * psal) / (1000 - 1.005 * psal)
 
@@ -260,11 +313,13 @@ def debye_huckel_HCl_activity_constant(temp: np.ndarray) -> np.ndarray:
     ----------
     temp :
         temperature in Celsius
-    Notes
-    -----
-    Khoo et al. 1977, Analytical Chemistry,
+
+    References
+    ----------
+    .. [1] Khoo et al. 1977, Analytical Chemistry,
         Determination of hydrogen ion concentrations in seawater from 5C to 40C: standard potentials at salinities 20 to 45%
-    Sea-Bird Scientific, Technical Note on Calculating pH, Application Note 99
+
+    .. [2] Sea-Bird Scientific, Technical Note on Calculating pH, Application Note 99
     """
     return 0.0000034286 * temp ** 2 + 0.00067524 * temp + 0.49172143
 
@@ -289,11 +344,12 @@ def log_of_HCl_activity_as_temperature_function(temp: np.ndarray, psal: np.ndarr
     temp :
         temperature in Celsius
 
-    Notes
-    -----
-    Khoo et al. 1977, Analytical Chemistry,
+    References
+    ----------
+    .. [1] Khoo et al. 1977, Analytical Chemistry,
         Determination of hydrogen ion concentrations in seawater from 5C to 40C: standard potentials at salinities 20 to 45%
-    Sea-Bird Scientific, Technical Note on Calculating pH, Application Note 99
+
+    .. [2] Sea-Bird Scientific, Technical Note on Calculating pH, Application Note 99
     """
     a_dh = debye_huckel_HCl_activity_constant(temp=temp)
     ionic_s = sample_ionic_strength(psal=psal)
@@ -315,10 +371,11 @@ def total_sulfate_in_seawater(psal: np.ndarray) -> np.ndarray:
     psal :
         practical salinity
 
-    Notes
-    -----
-    Dickson et al. 2007, IOCCP Report No.8, Guide to Best Practices for Ocean CO2 Measurements
-    Sea-Bird Scientific, Technical Note on Calculating pH, Application Note 99
+    References
+    ----------
+    .. [1]  Dickson et al. 2007, IOCCP Report No.8, Guide to Best Practices for Ocean CO2 Measurements
+
+    .. [2]  Sea-Bird Scientific, Technical Note on Calculating pH, Application Note 99
     """
 
     return (0.1400 / 96.062) * (psal / 1.80655)
@@ -348,10 +405,11 @@ def acid_dissociation_constant_HSO4(temp: np.ndarray, psal: np.ndarray) -> np.nd
     temp :
         temperature in Celsius
 
-    Notes
-    -----
-    Dickson et al. 2007, IOCCP Report No.8, Guide to Best Practices for Ocean CO2 Measurements
-    Sea-Bird Scientific, Technical Note on Calculating pH, Application Note 99
+    References
+    ----------
+    .. [1] Dickson et al. 2007, IOCCP Report No.8, Guide to Best Practices for Ocean CO2 Measurements
+
+    .. [2] Sea-Bird Scientific, Technical Note on Calculating pH, Application Note 99
     """
     temp_k = temp + 273.15
     ionic_s = sample_ionic_strength(psal=psal)
