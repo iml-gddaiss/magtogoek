@@ -51,25 +51,6 @@ def compute_density(
         return eos.dens0(dataset.salinity, dataset.temperature)
 
 
-def dissolved_oxygen_compensation(dataset: xr.Dataset, coeffs):
-    """
-    See compensation_pres_temp_psal_rinko
-
-    Parameters
-    ----------
-    dataset :
-        variables needed: (dissolved_oxygen, temperature, pres, salinity)
-
-    """
-    dataset['dissolved_oxygen'].values = compensation_pres_temp_psal_rinko(
-        doxy=dataset['dissolved_oxygen'],
-        temp=dataset['temperature'],
-        pres=dataset['pres'],
-        psal=dataset['salinity'],
-        coeffs=coeffs
-    )
-
-
 def compensation_pres_temp_psal_rinko(
         doxy: np.ndarray,
         temp: np.ndarray,
@@ -131,7 +112,8 @@ def compensation_pres_temp_psal_rinko(
 def voltEXT_from_pHEXT(temp: np.ndarray, psal: float, ph: np.ndarray, k0: float, k2: float) -> np.ndarray:
     """Based on Seabird documentations
 
-    Compute voltExt from the pHext value and the salinity value use by the probe.
+    Compute voltExt from the pHext, the temperature measured by the pH probe, the salinity used in the probe configuration
+    and the K0 and K2 exterior calibration coefficient.
 
     ```(Johnson et al. 2016)
     V_EXT = S_nernst*(pH_EXT

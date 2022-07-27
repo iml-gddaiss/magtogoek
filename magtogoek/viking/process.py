@@ -69,7 +69,7 @@ STANDARD_ADCP_GLOBAL_ATTRIBUTES = {
 
 }
 
-VARIABLES_TO_DROP = []
+VARIABLES_TO_DROP = ['ph_temperature']
 GLOBAL_ATTRS_TO_DROP = []
 
 CONFIG_GLOBAL_ATTRS_SECTIONS = ["NETCDF_CF", "PROJECT", "CRUISE", "GLOBAL_ATTRIBUTES"]
@@ -171,6 +171,7 @@ class ProcessConfig:
 
     # QUALITY_CONTROL
     quality_control: bool = None
+    ph_coeff: Tuple[float, float, float] = None # psal, k0, k2
     # motion_correction_mode: str = None
 
     # OUTPUT
