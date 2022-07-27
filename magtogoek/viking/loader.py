@@ -68,7 +68,7 @@ def load_meteoce_data(
 
     if buoy_name is None:
         if len(buoys_data.keys()) == 1:
-            buoy_name = buoys_data.keys()[0]
+            buoy_name = list(buoys_data.keys())[0]
         else:
             l.warning(f'More than one buoy was found in the file {filenames}. Exiting')
             raise ValueError
@@ -157,7 +157,8 @@ def get_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.MaskedArr
             'model_number': viking_data.wph['model'][~viking_data.wph['model'].mask][0]
         }
         _data.update(
-            {'ph': (viking_data.wph['ext_ph'], _attrs)}
+            {'ph': (viking_data.wph['ext_ph'], _attrs),
+             'ph_temperature': (viking_data.wph['ext_ph'], _attrs)}
         )# TODO needs to be corrected
 
     if viking_data.triplet is not None:
