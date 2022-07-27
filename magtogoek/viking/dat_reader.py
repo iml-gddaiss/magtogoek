@@ -869,7 +869,7 @@ def multiple_test():
 
 
 def main():
-    viking_data = single_test().buoys_data['pmza_riki']
+    viking_data = single_test()['pmza_riki']
     return viking_data
 
 
@@ -883,6 +883,6 @@ if __name__ == "__main__":
 
 
     # viking_data = main()
-    vr = RawDatReader().read('/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat')
+    buoys_data = RawDatReader().read('/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat')
 
-    v_data = vr.buoys_data['pmza_riki']
+    v_data = buoys_data['pmza_riki']
