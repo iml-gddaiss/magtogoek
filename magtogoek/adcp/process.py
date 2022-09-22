@@ -285,12 +285,16 @@ class ProcessConfig:
                 l.warning(f"platform_file, {self.platform_file}, not found")
         elif self.platform_type is not None:
             self.platform_metadata = _default_platform_metadata()
-            if self.platform_type in DEFAULT_PLATFORM_TYPE:
+            if self.platform_type in PLATFORM_TYPES:
                 self.platform_metadata["platform"]['platform_type'] = self.platform_type
             else:
                 self.platform_metadata["platform"]['platform_type'] = DEFAULT_PLATFORM_TYPE
-                l.warning(f"platform_type invalid or no specified. Must be one of {PLATFORM_TYPES}")
+                l.warning(f"platform_type invalid. Must be one of {PLATFORM_TYPES}")
                 l.warning(f"platform_type set to `{DEFAULT_PLATFORM_TYPE}` for platform_type.")
+        else:
+            self.platform_metadata["platform"]['platform_type'] = DEFAULT_PLATFORM_TYPE
+            l.warning(f"platform_type not specified.")
+            l.warning(f"platform_type set to `{DEFAULT_PLATFORM_TYPE}` for platform_type.")
 
     def resolve_outputs(self):
         _resolve_outputs(self)
