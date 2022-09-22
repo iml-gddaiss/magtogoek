@@ -5,6 +5,8 @@
 ** Motion Correction in Adcp adcp/quality_control.py and load_navigation in navigation.
    The load_navigation can return None if lon, lat are missing from the files which will crash in quality_control.py. Furthermore, the motion_correction function in quality_control.py needs to have longitude (and latitude) data to check for finite values. The code can crash there also since there is no if or else. A fix has been added in vicking_dat branche.
   
+ * Functionnality
+ ** Tool to merge dataset and recompute metadata / format existing data.
 
 * Commands to add.
 ** Navigation command.
@@ -18,6 +20,8 @@
 ** Rotation command.
 
 * Improvements
+** Make a sci_tools.py module for the scientific function.
+** Make DataClasses from loaded platform file.
 ** Put navigation and Odf in their own sub package.
 ** Imports configuration files.
    + P01, GF3, CF, etc.
