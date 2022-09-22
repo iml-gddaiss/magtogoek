@@ -34,7 +34,7 @@ METEOCE BODC:
         bt_v
         bt_w
         bt_e
-TODO DO SOME LOGGINS
+TODO DO SOME LOGGINGS
 """
 
 import numpy as np
@@ -169,6 +169,9 @@ class ProcessConfig:
     magnetic_declination: float = None
     magnetic_declination_preset: float = None
 
+    ph_coeffs: Tuple[float] = None
+    oxy_coeffs: Tuple[float] = None
+
     # QUALITY_CONTROL
     quality_control: bool = None
     ph_coeff: Tuple[float, float, float] = None # psal, k0, k2
@@ -293,9 +296,9 @@ def _process_viking_data(pconfig: ProcessConfig):
     dataset.attrs['serial_number'] = dataset.attrs.pop('controller_serial_number')
 
     if pconfig.platform_metadata["platform"]["longitude"]:
-         dataset.attrs["longitude"] = pconfig.platform_metadata["platform"]["longitude"]
+        dataset.attrs["longitude"] = pconfig.platform_metadata["platform"]["longitude"]
     if pconfig.platform_metadata["platform"]["latitude"]:
-         dataset.attrs["latitude"] = pconfig.platform_metadata["platform"]["latitude"]
+        dataset.attrs["latitude"] = pconfig.platform_metadata["platform"]["latitude"]
 
     compute_global_attrs(dataset)
 
