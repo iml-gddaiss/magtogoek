@@ -442,7 +442,7 @@ def amplitude_test(dataset: xr.Dataset, threshold: int):
             & (dataset.amp4 < threshold)
         ).data
     else:
-        l.warning("Amplitude test aborted. Missing one or more corr data")
+        l.warning("Amplitude test aborted. Missing one or more amp data")
         return np.full(dataset.depth.shape + dataset.time.shape, False)
 
 
@@ -453,7 +453,7 @@ def percentgood_test(dataset: xr.Dataset, threshold: int):
     if "pg" in dataset:
         return (dataset.pg < threshold).data
     else:
-        l.warning("Percent Good test aborted. Missing one or more corr data")
+        l.warning("Percent Good test aborted. Missing one or more pg data")
         return np.full(dataset.depth.shape + dataset.time.shape, False)
 
 
@@ -466,8 +466,8 @@ def roll_test(dataset: xr.Dataset, threshold: float) -> tp.Type[np.array]:
         roll_from_mean = circular_distance(dataset.roll_.values, roll_mean, units="deg")
         return roll_from_mean > threshold
     else:
-        l.warning("Roll test aborted. Missing one or more corr data")
-        return np.full(dataset.depth.shape + dataset.time.shape, False)
+        l.warning("Roll test aborted. Missing roll data")
+        return np.full(dataset.time.shape, False)
 
 
 def pitch_test(dataset: xr.Dataset, threshold: float) -> tp.Type[np.array]:
@@ -483,8 +483,8 @@ def pitch_test(dataset: xr.Dataset, threshold: float) -> tp.Type[np.array]:
         return pitch_from_mean > threshold
 
     else:
-        l.warning("Pitch test aborted. Missing one or more corr data")
-        return np.full(dataset.depth.shape + dataset.time.shape, False)
+        l.warning("Pitch test aborted. Missing pitch data")
+        return np.full(dataset.time.shape, False)
 
 
 def horizontal_vel_test(dataset: xr.Dataset, threshold: float) -> tp.Type[np.array]:
