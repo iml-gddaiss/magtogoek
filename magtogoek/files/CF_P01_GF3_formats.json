@@ -443,7 +443,7 @@
         "sdn_parameter_name": "Error velocity of measurement platform relative to ground surface by ADCP bottom tracking."
     },
     "BATHDPTH": {
-        "units": "m s-1",
+        "units": "m",
         "long_name": "bottom depth",
         "sdn_parameter_urn": "SDN:P01::BATHDPTH",
         "sdn_parameter_name": "Sea-floor depth (below mean sea level) {bathymetric depth}",
