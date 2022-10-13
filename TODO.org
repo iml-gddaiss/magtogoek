@@ -20,6 +20,7 @@
 ** Rotation command.
 
 * Improvements
+** Add BODC name de compute nav variables (lon, lat)
 ** Make a sci_tools.py module for the scientific function.
 ** Make DataClasses from loaded platform file.
 ** Put navigation and Odf in their own sub package.
