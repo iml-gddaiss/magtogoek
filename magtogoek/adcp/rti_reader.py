@@ -192,7 +192,7 @@ class RtiReader:
             if np.sum(self.files_ens_count) < self.stop_index:
                 raise ValueError("Stop_index is greater than the number of ensemble")
         if self.start_index and self.stop_index:
-            if np.sum(self.files_ens_count) < self.start_index + self.stop_index:
+            if np.sum(self.files_ens_count) <= self.start_index + self.stop_index:
                 raise ValueError(
                     "Start_index + stop_index is greater than the number of ensemble"
                 )
@@ -214,11 +214,11 @@ class RtiReader:
     def get_files_ens_count(self):
         """Read each files to find the number of ensemble in each file."""
         self.files_ens_count = []
-        buff = bytes()
         self.ens_chunks = []
 
         for filename in self.filenames:
             count = 0
+            buff = bytes()
             with open(filename, "rb") as f:
                 data = f.read(BLOCK_SIZE)
                 while data:
@@ -263,15 +263,18 @@ class RtiReader:
             start_file = np.array(self.filenames)[diff_start > 0][0]
             # remove files with less leading ens than start_index
             self.filenames = np.array(self.filenames)[diff_start > 0].tolist()
+            # Recompute counts and cumsum(counts)
+            counts = counts[diff_start > 0]
+            self.files_ens_count = np.array(counts)
 
         if self.stop_index:
             # finds the first files with enough ens and the start index
-            diff_stop = cumsum - cumsum.max() + self.stop_index
-            stop_index = counts[diff_stop > 0][0] - diff_stop[diff_stop > 0][0] + 1
-            stop_file = np.array(self.filenames)[diff_stop > 0][0]
+            diff_stop = counts[::-1].cumsum()[::-1] - self.stop_index#reverses array before and after cumsum
+            stop_index = diff_stop[diff_stop > 0][-1]
+            stop_file = np.array(self.filenames)[diff_stop > 0][-1]
             # keep files with more trailing ens than stop_index
-            self.filenames = np.array(self.filenames)[diff_stop < 0].tolist()
-            self.filenames.append(stop_file)
+            self.filenames = np.array(self.filenames)[diff_stop > 0].tolist()
+            self.files_ens_count = np.array(counts[diff_stop > 0])
 
         self.files_start_stop_index = dict()
         for filename in self.filenames:

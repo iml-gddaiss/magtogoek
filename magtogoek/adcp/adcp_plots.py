@@ -32,7 +32,7 @@ plt.style.use("seaborn-dark-palette")
 
 GEO_VAR = ["heading", "roll_", "pitch", "lon", "lat"]
 ANC_VAR = ["xducer_depth", "temperature", "pres"]
-BT_UVW_VAR = ["bt_u", "bt_v", "bt_w"]
+BT_UVW_VAR = ["bt_u", "bt_v", "bt_w", "bt_depth"]
 UVW_VAR = ["u", "v", "w"]
 
 
@@ -307,8 +307,8 @@ def plot_sensor_data(dataset: xr.Dataset, varnames: List[str], flag_thres: int =
     return fig
 
 
-def plot_bt_vel(dataset: xr.Dataset, uvw: List[str] = ("bt_u", "bt_v", "bt_w")):
-    fig, axes = plt.subplots(figsize=(12, 8), nrows=3, ncols=1, sharex=True, sharey=True)
+def plot_bt_vel(dataset: xr.Dataset, uvw: List[str] = ("bt_u", "bt_v", "bt_w", "bt_depth")):
+    fig, axes = plt.subplots(figsize=(12, 8), nrows=4, ncols=1, sharex=True, sharey=True)
     axes[0].tick_params(labelbottom=False)
     axes[1].tick_params(labelbottom=False)
     for var, ax in zip(uvw, axes):
