@@ -43,7 +43,6 @@ Notes
 
 Notes
 -----
-TODO TEST NAVIGATION FILES ! Seems to be working.
 Note DATA_TYPES: Missing for ship adcp. Set to adcp for now
 FIXME SOURCE : moored adcp ?
 """
