@@ -2,7 +2,6 @@ hg+https://currents.soest.hawaii.edu/hgstage/pycurrents
 
 pytest~=6.2.3
 xarray~=0.17.0
-magtogoek~=0.0.1
 datetime~=4.3
 pip~=21.0.1
 configparser~=5.0.2
