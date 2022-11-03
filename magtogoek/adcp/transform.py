@@ -40,9 +40,8 @@ def coordsystem2earth(dataset: xr.Dataset, orientation: str):
     """
 
     if dataset.attrs["coord_system"] not in ["beam", "xyz"]:
-        l.log(
-            f"Coordsystem value of {dataset.attrs['coord_system']} not recognized. Conversion to enu not available."
-        )
+        pass
+        # l.log(f"Coordsystem value of {dataset.attrs['coord_system']} not recognized. Conversion to enu not available.")
 
     beam_pattern = dataset.attrs["beam_pattern"]
 
@@ -56,7 +55,8 @@ def coordsystem2earth(dataset: xr.Dataset, orientation: str):
             xyze = trans.beam_to_xyz(data.vel)
             bt_xyze = trans.beam_to_xyz(data.bt_vel)
         else:
-            l.log("Beam angle missing. Could not convert from beam coordinate.")
+            pass
+            # l.log("Beam angle missing. Could not convert from beam coordinate.")
 
     if (data.heading == 0).all() or (dataset['roll_'] == 0).all() or (dataset['pitch'] == 0).all():
         dataset.attrs["coord_system"] = "xyz"
@@ -78,5 +78,5 @@ def coordsystem2earth(dataset: xr.Dataset, orientation: str):
             data.bt_vel[:, i] = np.round(bt_enu[:, i], decimals=3)
 
 
-    def reshape_velocity(dataset: xr.Dataset):
-        pass
+def reshape_velocity(dataset: xr.Dataset):
+    pass

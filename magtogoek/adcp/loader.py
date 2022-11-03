@@ -724,8 +724,6 @@ def _get_time_step(dday: np.ndarray) -> pd.Timedelta:
 
 
 if __name__ == "__main__":
-    import matplotlib.pyplot as plt
-
     path = "/home/jeromejguay/ImlSpace/Data/MPO/iml42020/"
 
     ds = load_adcp_binary(filenames=path + "*4.ENS", sonar="sw", yearbase=2020)
