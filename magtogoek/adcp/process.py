@@ -319,24 +319,35 @@ def process_adcp(config: dict,
     pconfig = ProcessConfig(config)
     pconfig.drop_empty_attrs = drop_empty_attrs
     pconfig.headless = headless
-    pconfig.resolve_outputs()
+
+    input_files = list(pconfig.input_files)
+    odf_output = pconfig.odf_output
+    netcdf_output = pconfig.netcdf_output
+    event_qualifier1 = pconfig.metadata['event_qualifier1']
 
     if pconfig.merge_output_files:
+        pconfig.resolve_outputs()
         _process_adcp_data(pconfig)
     else:
-        netcdf_output = pconfig.netcdf_output
-        input_files = pconfig.input_files
-        for filename, count in zip(input_files, range(len(input_files))):
-            if netcdf_output:
-                if isinstance(netcdf_output, bool):
-                    pconfig.netcdf_output = filename
-                else:
-                    pconfig.netcdf_output = Path(netcdf_output).absolute().resolve()
-                    if pconfig.netcdf_output.is_dir():
-                        pconfig.netcdf_output = str(pconfig.netcdf_output.joinpath(filename))
-                    else:
-                        pconfig.netcdf_output = str(pconfig.netcdf_output.with_suffix("")) + f"_{count}"
+        for count, filename in enumerate(input_files):
             pconfig.input_files = [filename]
+            if isinstance(netcdf_output, str):
+                if not Path(netcdf_output).is_dir():
+                    pconfig.netcdf_output = str(Path(netcdf_output).with_suffix("")) + f"_{count}"
+                else:
+                    pconfig.netcdf_output = netcdf_output
+
+            if isinstance(odf_output, str):
+                if not Path(odf_output).is_dir():
+                    pconfig.odf_output = str(Path(odf_output).with_suffix("")) + f"_{count}"
+                else:
+                    pconfig.metadata['event_qualifier1'] = event_qualifier1 + f"_{Path(filename).name}"  # PREVENTS FROM OVERWRITING THE SAME FILE
+                    pconfig.odf_output = odf_output
+            else:
+                pconfig.metadata['event_qualifier1'] = event_qualifier1 + f"_{Path(filename).name}" # PREVENTS FROM OVERWRITING THE SAME FILE
+                pconfig.odf_output = odf_output
+
+            pconfig.resolve_outputs()
 
             _process_adcp_data(pconfig)
 
@@ -1015,7 +1026,7 @@ def _netcdf_output_handler(pconfig: ProcessConfig, default_path: Path, default_f
         _netcdf_output = Path(pconfig.netcdf_output)
         if Path(_netcdf_output.name) == _netcdf_output:
             netcdf_path = default_path.joinpath(_netcdf_output).resolve()
-        elif _netcdf_output.absolute().is_dir():
+        elif _netcdf_output.is_dir():
             netcdf_path = _netcdf_output.joinpath(default_filename)
         elif _netcdf_output.parent.is_dir():
             netcdf_path = _netcdf_output
