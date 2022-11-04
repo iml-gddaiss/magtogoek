@@ -25,11 +25,6 @@ Notes
 file will be processed but a warning will be raised. The cause was not investigated.
 - This should probably be turned into an object.
 
-TODO
-----
-- Change PG good test for beam coord. each should be greater than 25% sum > 100.
-
-
 
 See Also
 --------

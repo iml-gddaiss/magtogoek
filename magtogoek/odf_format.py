@@ -41,10 +41,6 @@ Writing ODF files.
       - list elements are printed with the same headers key.
       - coefficients, directions and corrections items need to be stored as tuple for the correct formatting
         field width of 12 and 8 decimals precision.
-
-TODO FIXME:
-time are printed with singles quotes
-move odf specific config in .ini to separate header
 """
 import logging
 import typing as tp
