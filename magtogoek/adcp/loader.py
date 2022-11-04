@@ -31,6 +31,9 @@ See Also
    * pycurrents.adcp.rdiraw.Multiread
    * rti_python
 
+TODO if  coord_system == 'BEAM' v1, v2, v3, v4 instead of u, v, w, e
+TODO ADD VARIABLES PARAMETER CODES FOR BEAM AND XYZE
+
 """
 import logging
 import sys
@@ -288,6 +291,8 @@ def load_adcp_binary(
     # --------------------------- #
     # Loading the transducer data #
     # --------------------------- #
+    # TODO if  coord_system == 'BEAM' v1, v2, v3, v4 instead of u, v, w, e
+    # TODO ADD VARIABLES PARAMETER CODES FOR BEAM AND XYZE
     data.vel[data.vel == VEL_FILL_VALUE] = np.nan
     # WATER VELOCITIES
     dataset["u"] = (["depth", "time"], data.vel[:, :, 0].T)
