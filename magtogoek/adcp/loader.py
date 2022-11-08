@@ -285,8 +285,12 @@ def load_adcp_binary(
     # TODO if  coord_system == 'BEAM' v1, v2, v3, v4 instead of u, v, w, e
     # TODO ADD VARIABLES PARAMETER CODES FOR BEAM AND XYZE
     data.vel[data.vel == VEL_FILL_VALUE] = np.nan
-    vels = {'earth': ("u", "v", "w", "e"), 'xyz': ("u", "v", "w", "e"), 'beam': ("v1", "v2", "v3", "v4")}
-    for i, v in enumerate(vels):
+    if data.trans["coordsystem"] in ['earth', 'xyz']:
+        velocities_name = ("u", "v", "w", "e")
+    else:
+        velocities_name = ("v1", "v2", "v3", "v4")
+
+    for i, v in enumerate(velocities_name):
         dataset[v] = (["depth", "time"], data.vel[:, :, i].T)
     l.log("Velocity data loaded")
 
@@ -308,7 +312,7 @@ def load_adcp_binary(
 
         else:
             data.bt_vel[data.bt_vel == VEL_FILL_VALUE] = np.nan
-            for i, v in enumerate(vels):
+            for i, v in enumerate(velocities_name):
                 dataset["bt_"+v] = (["depth", "time"], data.bt_vel[:, :, i].T)
             l.log("Bottom track data loaded")
 
@@ -345,7 +349,7 @@ def load_adcp_binary(
         if data.trans["coordsystem"] == "beam":
             dataset["pg"] = (["depth", "time"], np.asarray(np.mean(data.pg, axis=2).T))
             l.log(
-                "Percent good was computed by averaging each beam PercentGood. The raw data were in beam coordinate."
+                "Percent good was computed by averaging each beam PercentGood. The raw data were in beam coordinates."
             )
         else:
             dataset["pg"] = (["depth", "time"], np.asarray(data.pg4.T))

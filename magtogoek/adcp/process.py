@@ -394,13 +394,13 @@ def _process_adcp_data(pconfig: ProcessConfig):
     # -------------- #
     # Transformation #
     # -------------- #
-    if dataset['coord_system'] != 'earth':
+    if dataset.attrs['coord_system'] != 'earth':
         l.section('Data Transformation')
-        if dataset['coord_system'] not in ["beam", "xyz"]:
-            l.log(f"Coordsystem value of {dataset['coord_system']} not recognized. Conversion to enu not available.")
+        if dataset.attrs['coord_system'] not in ["beam", "xyz"]:
+            l.log(f"Coordsystem value of {dataset.attrs['coord_system']} not recognized. Conversion to enu not available.")
         else:
             dataset.attrs["logbook"] += l.logbook
-            coordsystem2earth(dataset)
+            dataset = coordsystem2earth(dataset)
             l.reset()
 
     if pconfig.motion_correction_mode in ["bt", "nav"]:
@@ -724,7 +724,7 @@ def _quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
                          horizontal_vel_th=pconfig.horizontal_velocity_threshold,
                          vertical_vel_th=pconfig.vertical_velocity_threshold,
                          error_vel_th=pconfig.error_velocity_threshold,
-                         motion_correction_mode=pconfig.motion_correction_mode,
+                         #motion_correction_mode=pconfig.motion_correction_mode,
                          sidelobes_correction=pconfig.sidelobes_correction,
                          bottom_depth=pconfig.bottom_depth,
                          bad_pressure=pconfig.bad_pressure)
