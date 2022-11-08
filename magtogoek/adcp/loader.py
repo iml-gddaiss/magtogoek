@@ -270,35 +270,24 @@ def load_adcp_binary(
     if (depth < 0).all():
         l.warning("Bin depths are all negative, ADCP orientation is probably wrong.")
 
-    # --------------------- #
+    # ------------------------ #
     # Initializing the dataset #
-    # --------------------- #
+    # ------------------------ #
     dataset = xr.Dataset(coords={"depth": depth, "time": time})
-
-    # --------------------------------------- #
-    # Dealing with the coordinates system     #
-    # --------------------------------------- #
-    original_coordsystem = data.trans["coordsystem"]
-    if original_coordsystem != "earth":
-        l.log(f"The velocity data are in {data.trans['coordsystem']} coordinate")
-
-        coordsystem2earth(data=data, orientation=orientation)
-
-        if data.trans["coordsystem"] == "xyz":
-            l.warning("Roll, Pitch or Heading seems to be missing from the data file.")
-        l.log(f"The velocity data were transformed to {data.trans['coordsystem']}")
 
     # --------------------------- #
     # Loading the transducer data #
     # --------------------------- #
+
+    l.log(f"The velocity data are in {data.trans['coordsystem']} coordinate")
+
+    # Water Velocities
     # TODO if  coord_system == 'BEAM' v1, v2, v3, v4 instead of u, v, w, e
     # TODO ADD VARIABLES PARAMETER CODES FOR BEAM AND XYZE
     data.vel[data.vel == VEL_FILL_VALUE] = np.nan
-    # WATER VELOCITIES
-    dataset["u"] = (["depth", "time"], data.vel[:, :, 0].T)
-    dataset["v"] = (["depth", "time"], data.vel[:, :, 1].T)
-    dataset["w"] = (["depth", "time"], data.vel[:, :, 2].T)
-    dataset["e"] = (["depth", "time"], data.vel[:, :, 3].T)
+    vels = {'earth': ("u", "v", "w", "e"), 'xyz': ("u", "v", "w", "e"), 'beam': ("v1", "v2", "v3", "v4")}
+    for i, v in enumerate(vels):
+        dataset[v] = (["depth", "time"], data.vel[:, :, i].T)
     l.log("Velocity data loaded")
 
     if sonar == "sv":
@@ -313,32 +302,22 @@ def load_adcp_binary(
     # BOTTOM VELOCITIES
     if "bt_vel" in data:
         if (data.bt_vel == 0).all():
-            l.log(
-                "Bottom track values were all `0`, therefore they were dropped from the output."
-            )
+            l.log("Bottom track values were all `0`, therefore they were dropped from the output.")
         elif not np.isfinite(data.bt_vel).all():
-            l.log(
-                "Bottom track values were all `nan`, therefore they were dropped from the output."
-            )
+            l.log("Bottom track values were all `nan`, therefore they were dropped from the output.")
 
         else:
             data.bt_vel[data.bt_vel == VEL_FILL_VALUE] = np.nan
-            dataset["bt_u"] = (["time"], data.bt_vel[:, 0])
-            dataset["bt_v"] = (["time"], data.bt_vel[:, 1])
-            dataset["bt_w"] = (["time"], data.bt_vel[:, 2])
-            dataset["bt_e"] = (["time"], data.bt_vel[:, 3])
+            for i, v in enumerate(vels):
+                dataset["bt_"+v] = (["depth", "time"], data.bt_vel[:, :, i].T)
             l.log("Bottom track data loaded")
 
     # BOTTOM DEPTH
     if "bt_depth" in data:
         if (data.bt_depth == 0).all():
-            l.log(
-                "Bottom depth values were all `0`, therefore they were dropped from the output."
-            )
+            l.log("Bottom depth values were all `0`, therefore they were dropped from the output.")
         elif not np.isfinite(data.bt_depth).all():
-            l.log(
-                "Bottom depth values were all `nan`, therefore they were dropped from the output."
-            )
+            l.log("Bottom depth values were all `nan`, therefore they were dropped from the output.")
         else:
             dataset["bt_depth"] = (
                 ["time"],
@@ -363,7 +342,7 @@ def load_adcp_binary(
 
     # QUALITY
     if "pg" in data:
-        if original_coordsystem == "beam":
+        if data.trans["coordsystem"] == "beam":
             dataset["pg"] = (["depth", "time"], np.asarray(np.mean(data.pg, axis=2).T))
             l.log(
                 "Percent good was computed by averaging each beam PercentGood. The raw data were in beam coordinate."
@@ -500,72 +479,72 @@ def load_adcp_binary(
     return dataset
 
 
-def coordsystem2earth(data: Bunch, orientation: str):
-    """Transforms beam and xyz coordinates to enu coordinates
-
-    NOTE: not properly tested. But it should work.
-
-    Replace the values of data.vel, data.bt_vel with East, North and Up velocities
-    and the velocity error for 4 beams ADCP. UHDAS transform functions are used to
-    transform for beam coordinates and xyz to east-north-up (enu). These function
-    can use a three-beam solution by faking a fourth beam.
-
-    Also change the values of of `coordinates` in data.trans.
-
-    beam coordinates : Velocity measured along beam axis.
-    xyz coordinates : Velocity in a cartesian coordinate system in the ADCP frame of reference.
-    enu coordinates : East North Up measured using the heading, pitch, roll of the ADCP.
-
-    Parameters
-    ----------
-    data:
-        pycurrents.adcp.rdiraw.Bunche object containing: vel[time, depth, beams], bt_vel[time, beams],
-        heading, roll, pitch sysconfig.convex, sysconfig.angle  and trans.coordsystem.
-
-    orientation:
-        adcp orientation. Either `up` or `down`.
-    Notes
-    -----
-    Move the prints outside
-    """
-
-    if data.trans.coordsystem not in ["beam", "xyz"]:
-        l.log(
-            f"Coordsystem value of {data.sysconfig.coordsystem} not recognized. Conversion to enu not available."
-        )
-
-    beam_pattern = "convex" if data.sysconfig["convex"] else "concave"
-
-    xyze, bt_xyze = data.vel, data.bt_vel
-
-    if data.trans.coordsystem == "beam":
-        if data.sysconfig.angle:
-            trans = transform.Transform(
-                angle=data.sysconfig.angle, geometry=beam_pattern
-            )
-            xyze = trans.beam_to_xyz(data.vel)
-            bt_xyze = trans.beam_to_xyz(data.bt_vel)
-        else:
-            l.log("Beam angle missing. Could not convert from beam coordinate.")
-
-    if (data.heading == 0).all() or (data.roll == 0).all() or (data.pitch == 0).all():
-        data.trans["coordsystem"] = "xyz"
-
-        for i in range(4):
-            data.vel[:, :, i] = np.round(xyze[:, :, i], decimals=3)
-            data.bt_vel[:, i] = np.round(bt_xyze[:, i], decimals=3)
-    else:
-        enu = transform.rdi_xyz_enu(
-            xyze, data.heading, data.pitch, data.roll, orientation=orientation,
-        )
-        bt_enu = transform.rdi_xyz_enu(
-            bt_xyze, data.heading, data.pitch, data.roll, orientation=orientation,
-        )
-        data.trans["coordsystem"] = "earth"
-
-        for i in range(4):
-            data.vel[:, :, i] = np.round(enu[:, :, i], decimals=3)
-            data.bt_vel[:, i] = np.round(bt_enu[:, i], decimals=3)
+# def coordsystem2earth(data: Bunch, orientation: str):
+#     """Transforms beam and xyz coordinates to enu coordinates
+#
+#     NOTE: not properly tested. But it should work.
+#
+#     Replace the values of data.vel, data.bt_vel with East, North and Up velocities
+#     and the velocity error for 4 beams ADCP. UHDAS transform functions are used to
+#     transform for beam coordinates and xyz to east-north-up (enu). These function
+#     can use a three-beam solution by faking a fourth beam.
+#
+#     Also change the values of of `coordinates` in data.trans.
+#
+#     beam coordinates : Velocity measured along beam axis.
+#     xyz coordinates : Velocity in a cartesian coordinate system in the ADCP frame of reference.
+#     enu coordinates : East North Up measured using the heading, pitch, roll of the ADCP.
+#
+#     Parameters
+#     ----------
+#     data:
+#         pycurrents.adcp.rdiraw.Bunche object containing: vel[time, depth, beams], bt_vel[time, beams],
+#         heading, roll, pitch sysconfig.convex, sysconfig.angle  and trans.coordsystem.
+#
+#     orientation:
+#         adcp orientation. Either `up` or `down`.
+#     Notes
+#     -----
+#     Move the prints outside
+#     """
+#
+#     if data.trans.coordsystem not in ["beam", "xyz"]:
+#         l.log(
+#             f"Coordsystem value of {data.sysconfig.coordsystem} not recognized. Conversion to enu not available."
+#         )
+#
+#     beam_pattern = "convex" if data.sysconfig["convex"] else "concave"
+#
+#     xyze, bt_xyze = data.vel, data.bt_vel
+#
+#     if data.trans.coordsystem == "beam":
+#         if data.sysconfig.angle:
+#             trans = transform.Transform(
+#                 angle=data.sysconfig.angle, geometry=beam_pattern
+#             )
+#             xyze = trans.beam_to_xyz(data.vel)
+#             bt_xyze = trans.beam_to_xyz(data.bt_vel)
+#         else:
+#             l.log("Beam angle missing. Could not convert from beam coordinate.")
+#
+#     if (data.heading == 0).all() or (data.roll == 0).all() or (data.pitch == 0).all():
+#         data.trans["coordsystem"] = "xyz"
+#
+#         for i in range(4):
+#             data.vel[:, :, i] = np.round(xyze[:, :, i], decimals=3)
+#             data.bt_vel[:, i] = np.round(bt_xyze[:, i], decimals=3)
+#     else:
+#         enu = transform.rdi_xyz_enu(
+#             xyze, data.heading, data.pitch, data.roll, orientation=orientation,
+#         )
+#         bt_enu = transform.rdi_xyz_enu(
+#             bt_xyze, data.heading, data.pitch, data.roll, orientation=orientation,
+#         )
+#         data.trans["coordsystem"] = "earth"
+#
+#         for i in range(4):
+#             data.vel[:, :, i] = np.round(enu[:, :, i], decimals=3)
+#             data.bt_vel[:, i] = np.round(bt_enu[:, i], decimals=3)
 
 
 def check_pd0_fixed_leader(

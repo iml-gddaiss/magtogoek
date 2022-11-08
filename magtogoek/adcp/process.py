@@ -49,26 +49,28 @@ FIXME SOURCE : moored adcp ?
 
 import getpass
 import sys
-import typing as tp
 
 import click
 import numpy as np
 import pandas as pd
+import typing as tp
 import xarray as xr
+from pathlib import Path
+
+from magtogoek.adcp.adcp_plots import make_adcp_figure
 from magtogoek.adcp.loader import load_adcp_binary
+from magtogoek.adcp.transform import coordsystem2earth, motion_correction
 from magtogoek.adcp.odf_exporter import make_odf
 from magtogoek.adcp.quality_control import (adcp_quality_control,
                                             no_adcp_quality_control)
-from magtogoek.tools import (
-    rotate_2d_vector, regrid_dataset, _prepare_flags_for_regrid, _new_flags_bin_regrid,
-    _new_flags_interp_regrid)
 from magtogoek.attributes_formatter import (
     compute_global_attrs, format_variables_names_and_attributes, _add_data_min_max_to_var_attrs)
 from magtogoek.navigation import load_navigation
 from magtogoek.platforms import _add_platform
+from magtogoek.tools import (
+    rotate_2d_vector, regrid_dataset, _prepare_flags_for_regrid, _new_flags_bin_regrid,
+    _new_flags_interp_regrid)
 from magtogoek.utils import Logger, ensure_list_format, json2dict
-from magtogoek.adcp.adcp_plots import make_adcp_figure
-from pathlib import Path
 
 l = Logger(level=0)
 
@@ -389,9 +391,51 @@ def _process_adcp_data(pconfig: ProcessConfig):
         l.section("Navigation data")
         dataset = _load_navigation(dataset, pconfig.navigation_file)
 
+    # -------------- #
+    # Transformation #
+    # -------------- #
+    if dataset['coord_system'] != 'earth':
+        l.section('Data Transformation')
+        if dataset['coord_system'] not in ["beam", "xyz"]:
+            l.log(f"Coordsystem value of {dataset['coord_system']} not recognized. Conversion to enu not available.")
+        else:
+            dataset.attrs["logbook"] += l.logbook
+            coordsystem2earth(dataset)
+            l.reset()
+
+    if pconfig.motion_correction_mode in ["bt", "nav"]:
+        l.section('Motion Correction')
+        dataset.attrs["logbook"] += l.logbook
+        motion_correction(dataset, pconfig.motion_correction_mode)
+        l.reset()
+
+    # ----------------------------------- #
+    # CORRECTION FOR MAGNETIC DECLINATION #
+    # ----------------------------------- #
+
+    l.section("Data Correction")
+
+    if dataset.attrs['magnetic_declination'] is not None:
+        l.log(f"Magnetic declination found in the raw file: {dataset.attrs['magnetic_declination']} degree east.")
+    else:
+        l.log(f"No magnetic declination found in the raw file.")
+    if pconfig.magnetic_declination:
+        angle = pconfig.magnetic_declination
+        if dataset.attrs["magnetic_declination"]:
+            angle = round((pconfig.magnetic_declination - dataset.attrs["magnetic_declination"]), 4)
+            l.log(f"An additional correction of {angle} degree east was applied.")
+        _apply_magnetic_correction(dataset, angle)
+        dataset.attrs["magnetic_declination"] = pconfig.magnetic_declination
+        l.log(f"Absolute magnetic declination: {dataset.attrs['magnetic_declination']} degree east.")
+
+    if any(x is True for x in [pconfig.drop_percent_good, pconfig.drop_correlation, pconfig.drop_amplitude]):
+        dataset = _drop_beam_data(dataset, pconfig)
+
     # ----------------------------- #
     # ADDING SOME GLOBAL ATTRIBUTES #
     # ----------------------------- #
+
+    l.section("Adding Global Attributes")
 
     dataset = dataset.assign_attrs(STANDARD_ADCP_GLOBAL_ATTRIBUTES)
 
@@ -430,28 +474,6 @@ def _process_adcp_data(pconfig: ProcessConfig):
         no_adcp_quality_control(dataset)
 
     l.reset()
-
-    # ----------------------------------- #
-    # CORRECTION FOR MAGNETIC DECLINATION #
-    # ----------------------------------- #
-
-    l.section("Data transformation")
-
-    if dataset.attrs['magnetic_declination'] is not None:
-        l.log(f"Magnetic declination found in the raw file: {dataset.attrs['magnetic_declination']} degree east.")
-    else:
-        l.log(f"No magnetic declination found in the raw file.")
-    if pconfig.magnetic_declination:
-        angle = pconfig.magnetic_declination
-        if dataset.attrs["magnetic_declination"]:
-            angle = round((pconfig.magnetic_declination - dataset.attrs["magnetic_declination"]), 4)
-            l.log(f"An additional correction of {angle} degree east was applied.")
-        _apply_magnetic_correction(dataset, angle)
-        dataset.attrs["magnetic_declination"] = pconfig.magnetic_declination
-        l.log(f"Absolute magnetic declination: {dataset.attrs['magnetic_declination']} degree east.")
-
-    if any(x is True for x in [pconfig.drop_percent_good, pconfig.drop_correlation, pconfig.drop_amplitude]):
-        dataset = _drop_beam_data(dataset, pconfig)
 
     # ------------- #
     # DATA ENCODING #
@@ -609,47 +631,6 @@ def _load_adcp_data(pconfig: ProcessConfig) -> xr.Dataset:
     return dataset
 
 
-def _set_platform_metadata(dataset: xr.Dataset, pconfig: ProcessConfig):
-    """Add metadata from platform_metadata files to dataset.attrs.
-
-    Values that are dictionary instances are not added.
-
-    Parameters
-    ----------
-    pconfig
-    dataset :
-        Dataset to which add the navigation data.
-    """
-    metadata = {**pconfig.platform_metadata['platform'], **pconfig.platform_metadata[pconfig.sensor_type]}
-    metadata['sensor_comments'] = metadata['comments']
-    if pconfig.force_platform_metadata:
-        for key, value in metadata.items():
-            dataset.attrs[key] = value
-        if "sensor_depth" in metadata:
-            l.log(
-                f"`sensor_depth` value ({pconfig.platform_metadata['sensor_depth']} was set by the user."
-            )
-
-    else:
-        for key, value in metadata.items():
-            if key in dataset.attrs:
-                if not dataset.attrs[key]:
-                    dataset.attrs[key] = value
-            else:
-                dataset.attrs[key] = value
-
-
-def _set_xducer_depth_as_sensor_depth(dataset: xr.Dataset):
-    """Set xducer_depth value to dataset attributes sensor_depth"""
-    if "xducer_depth" in dataset.attrs:  # OCEAN SURVEYOR
-        dataset.attrs["sensor_depth"] = dataset.attrs["xducer_depth"]
-
-    if "xducer_depth" in dataset:
-        dataset.attrs["sensor_depth"] = np.round(
-            np.median(dataset["xducer_depth"].data), 2
-        )
-
-
 def _load_navigation(dataset: xr.Dataset, navigation_files: str):
     """Load navigation data from nmea, gpx or netcdf files.
 
@@ -688,57 +669,45 @@ def _load_navigation(dataset: xr.Dataset, navigation_files: str):
     return dataset
 
 
-def _regrid_dataset(dataset: xr.Dataset, pconfig: ProcessConfig) -> xr.Dataset:
-    """ Wrapper for regrid_dataset
+def _set_xducer_depth_as_sensor_depth(dataset: xr.Dataset):
+    """Set xducer_depth value to dataset attributes sensor_depth"""
+    if "xducer_depth" in dataset.attrs:  # OCEAN SURVEYOR
+        dataset.attrs["sensor_depth"] = dataset.attrs["xducer_depth"]
 
-    Note
-    ----
-    The `interp` method performs linear interpolation. The `bin` method
-    performs averaging of input data strictly within the bin boundaries
-    and with equal weights for all data inside each bin.
+    if "xducer_depth" in dataset:
+        dataset.attrs["sensor_depth"] = np.round(
+            np.median(dataset["xducer_depth"].data), 2
+        )
 
+
+def _set_platform_metadata(dataset: xr.Dataset, pconfig: ProcessConfig):
+    """Add metadata from platform_metadata files to dataset.attrs.
+
+    Values that are dictionary instances are not added.
+
+    Parameters
+    ----------
+    pconfig
+    dataset :
+        Dataset to which add the navigation data.
     """
-    # Read new depths
-    _new_depths = np.loadtxt(pconfig.grid_depth)
+    metadata = {**pconfig.platform_metadata['platform'], **pconfig.platform_metadata[pconfig.sensor_type]}
+    metadata['sensor_comments'] = metadata['comments']
+    if pconfig.force_platform_metadata:
+        for key, value in metadata.items():
+            dataset.attrs[key] = value
+        if "sensor_depth" in metadata:
+            l.log(
+                f"`sensor_depth` value ({pconfig.platform_metadata['sensor_depth']} was set by the user."
+            )
 
-    # Pre-process flags
-    for var_ in 'uvw':
-        _flag_name = dataset[var_].attrs['ancillary_variables']
-        dataset[_flag_name].values = _prepare_flags_for_regrid(dataset[_flag_name].data)
-
-    # Make new quality flags if grid_method is `bin`. Must happen before averaging.
-    if pconfig.grid_method == 'bin':
-        _new_flags = dict()
-        for var_ in 'uvw':
-            _flag_name = dataset[var_].attrs['ancillary_variables']
-            _new_flags[_flag_name] = _new_flags_bin_regrid(dataset[_flag_name], _new_depths)
-        new_flags = xr.Dataset(_new_flags)
-
-    # Apply quality control
-    for var_ in 'uvw':
-        _flag_name = dataset[var_].attrs['ancillary_variables']
-        dataset[var_] = dataset[var_].where(dataset[_flag_name] == 8)
-
-    # Regridding
-    msg = f"to grid from file: {pconfig.grid_depth}"
-    l.log(f"Regridded dataset with method {pconfig.grid_method} {msg}")
-    dataset = regrid_dataset(dataset,
-                             grid=_new_depths,
-                             dim='depth',
-                             method=pconfig.grid_method)
-
-    # Make new flags and replace interpolated/binned values
-    for var_ in 'uvw':
-        _flag_name = dataset[var_].attrs['ancillary_variables']
-        if pconfig.grid_method == 'bin':
-            dataset[_flag_name] = new_flags[_flag_name]
-        elif pconfig.grid_method == 'interp':
-            dataset[_flag_name] = _new_flags_interp_regrid(dataset, var_)
-
-    # Change min and max values
-    _add_data_min_max_to_var_attrs(dataset)
-
-    return dataset
+    else:
+        for key, value in metadata.items():
+            if key in dataset.attrs:
+                if not dataset.attrs[key]:
+                    dataset.attrs[key] = value
+            else:
+                dataset.attrs[key] = value
 
 
 def _quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
@@ -863,6 +832,59 @@ def _format_data_encoding(dataset: xr.Dataset):
 
     l.log(f"Data _FillValue: {DATA_FILL_VALUE}")
     l.log(f"Ancillary Data _FillValue: {QC_FILL_VALUE}")
+
+
+def _regrid_dataset(dataset: xr.Dataset, pconfig: ProcessConfig) -> xr.Dataset:
+    """ Wrapper for regrid_dataset
+
+    Note
+    ----
+    The `interp` method performs linear interpolation. The `bin` method
+    performs averaging of input data strictly within the bin boundaries
+    and with equal weights for all data inside each bin.
+
+    """
+    # Read new depths
+    _new_depths = np.loadtxt(pconfig.grid_depth)
+
+    # Pre-process flags
+    for var_ in 'uvw':
+        _flag_name = dataset[var_].attrs['ancillary_variables']
+        dataset[_flag_name].values = _prepare_flags_for_regrid(dataset[_flag_name].data)
+
+    # Make new quality flags if grid_method is `bin`. Must happen before averaging.
+    if pconfig.grid_method == 'bin':
+        _new_flags = dict()
+        for var_ in 'uvw':
+            _flag_name = dataset[var_].attrs['ancillary_variables']
+            _new_flags[_flag_name] = _new_flags_bin_regrid(dataset[_flag_name], _new_depths)
+        new_flags = xr.Dataset(_new_flags)
+
+    # Apply quality control
+    for var_ in 'uvw':
+        _flag_name = dataset[var_].attrs['ancillary_variables']
+        dataset[var_] = dataset[var_].where(dataset[_flag_name] == 8)
+
+    # Regridding
+    msg = f"to grid from file: {pconfig.grid_depth}"
+    l.log(f"Regridded dataset with method {pconfig.grid_method} {msg}")
+    dataset = regrid_dataset(dataset,
+                             grid=_new_depths,
+                             dim='depth',
+                             method=pconfig.grid_method)
+
+    # Make new flags and replace interpolated/binned values
+    for var_ in 'uvw':
+        _flag_name = dataset[var_].attrs['ancillary_variables']
+        if pconfig.grid_method == 'bin':
+            dataset[_flag_name] = new_flags[_flag_name]
+        elif pconfig.grid_method == 'interp':
+            dataset[_flag_name] = _new_flags_interp_regrid(dataset, var_)
+
+    # Change min and max values
+    _add_data_min_max_to_var_attrs(dataset)
+
+    return dataset
 
 
 def _drop_bottom_track(dataset: xr.Dataset) -> xr.Dataset:
