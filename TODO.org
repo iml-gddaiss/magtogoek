@@ -24,6 +24,7 @@
 ** Rotation command.
 
 * Improvements
+** ADCP PROCESS CONFIG
 ** ADCP QUALITY CONTROL
 *** Change PG good test for beam coord. each should be greater than 25% sum > 100.
 *** ADCP figures
