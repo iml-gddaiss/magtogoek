@@ -123,7 +123,6 @@ def adcp_quality_control(
     horizontal_vel_th: float = 5,
     vertical_vel_th: float = 5,
     error_vel_th: float = 5,
-    # motion_correction_mode: str = "",
     sidelobes_correction: bool = False,
     bottom_depth: float = None,
     bad_pressure: bool = False
@@ -153,10 +152,6 @@ def adcp_quality_control(
         Require w values be smaller than this value (meter per seconds).
     error_vel_th :
         Require e values be smaller than this value (meter per seconds).
-    # motion_correction_mode :
-    #     If 'nav' or 'bt' will corrected velocities from the platform motion,
-    #     will either correct u,v,w with navigation ('nav') or bottom track ('bt')
-    #     data. No motion correction si carried out if motion_correction == 'off'.
     sidelobes_correction :
         Use fixed depth or bottom track range to remove side lobe
         contamination. Set to either "dep" or "bt" or None.
@@ -196,9 +191,6 @@ def adcp_quality_control(
     """
     l.reset()
     l.section("Quality Control")
-
-    # if motion_correction_mode in ["bt", "nav"]:
-    #     motion_correction(dataset, motion_correction_mode)
 
     vel_flags = np.ones(dataset.depth.shape + dataset.time.shape).astype(int)
     binary_mask = np.zeros(dataset.depth.shape + dataset.time.shape).astype(int)
@@ -365,43 +357,6 @@ def adcp_quality_control(
         "sidelobe",
     ]
     dataset.attrs["binary_mask_tests_values"] = binary_mask_tests_value
-
-
-# def motion_correction(dataset: xr.Dataset, mode: str):
-#     """Carry motion correction on velocities.
-#
-#     If mode is 'bt' the motion correction is along x, y, z.
-#     If mode is 'nav' the motion correction is along x, y.
-#     """
-#     if mode == "bt":
-#         if all(f"bt_{v}" in dataset for v in ["u", "v", "w"]):
-#             for field in ["u", "v", "w"]:
-#                 dataset[field].values -= dataset[f"bt_{field}"].values
-#             l.log("Motion correction carried out with bottom track")
-#         else:
-#             l.warning(
-#                 "Motion correction aborted. Bottom velocity (bt_u, bt_v, bt_w) missing"
-#             )
-#     elif mode == "nav":
-#         if all(f"{v}_ship" in dataset for v in ["u", "v"]):
-#             for field in ["u", "v"]:
-#                 if all([v in dataset for v in ['lon', 'lat']]):
-#                     velocity_correction = dataset[field + "_ship"].where(np.isfinite(dataset.lon.values), 0)
-#                 else:
-#                     velocity_correction = dataset[field + "_ship"]
-#                 dataset[field] += np.tile(
-#                     velocity_correction,
-#                     (dataset.depth.size, 1),
-#                 )
-#             l.log("Motion correction carried out with navigation")
-#         else:
-#             l.warning(
-#                 "Motion correction aborted. Navigation velocity (u_ship, v_ship) missing"
-#             )
-#     else:
-#         l.warning(
-#             "Motion correction aborted. Motion correction mode invalid. ('bt' or 'nav')"
-#         )
 
 
 def flag_implausible_vel(
@@ -658,7 +613,6 @@ if __name__ == "__main__":
         pitch_th=20,
         horizontal_vel_th=2,
         vertical_vel_th=0.1,
-        motion_correction_mode="bt",
         sidelobes_correction=True,
         bottom_depth=None,
     )

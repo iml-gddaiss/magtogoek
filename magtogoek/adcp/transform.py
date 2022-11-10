@@ -1,18 +1,5 @@
 """Module that contains transformation function for adcp data.
 
-TODO
-----
-
-
-
-Notes
------
--> Seems to work just fine
--> Move Coordinate transformation here.
--> Move motion correction to here.
-
--> qc_variables will not be transformed. Qc need to be run afterward.
-
 """
 from typing import *
 import numpy as np
@@ -249,20 +236,5 @@ if __name__ == "__main__":
     filename = "D60K_000.nc"
     #
     ds = xr.open_dataset(path + filename)
-    # ds = ds.sel(time=slice('2018-10-01T00:00:00', '2018-10-01T01:00:00'))
-    #
-    # compute_beam2xyze(ds, vels)
-    # fig, axes = plt.subplots(3, 1)
-    # axes[0].imshow(ds.u, aspect='auto')
-    # axes[1].imshow(ds.v, aspect='auto')
-    # axes[2].imshow(ds.w, aspect='auto')
-    #
-    # u = ds.u.values
-    # compute_xyze2beam(ds, vels)
-    # compute_beam2xyze(ds, vels)
-    # fig2, axes = plt.subplots(3, 1)
-    # axes[0].imshow(ds.u, aspect='auto')
-    # axes[1].imshow(ds.v, aspect='auto')
-    # axes[2].imshow(ds.w, aspect='auto')
-    #
-    # du = abs(ds.u.values - u)
+
+

@@ -24,18 +24,26 @@ from magtogoek.tools import get_gps_bearing, vincenty
 from magtogoek.utils import get_files_from_expression
 
 FILE_FORMATS = (".log", ".gpx", ".nc")
-NAVIGATION_VARIABLES_NAME = ("lon", "lat", "time",'u_ship', 'v_ship')
+NAVIGATION_VARIABLES_NAME = ("lon", "lat", "time", 'u_ship', 'v_ship', 'heading', 'roll_', 'pitch')
 VARIABLE_NAME_MAPPING = dict(
     time=("Time", "TIME", "T", "t"),
     lon=("LON", "Lon", "longitude", "LONGITUDE", "Longitude", "X", "x"),
     lat=("LAT", "Lat", "latitude", "LATITUDE", "Latitude", "Y", "y"),
     u_ship=(),
     v_ship=(),
+    heading=(),
+    roll_=(),
+    pitch=()
+
 )
 
 
 def load_navigation(filenames):
     """Load gps data from  `nmea`, `gpx` or `netcdf` file format.
+
+    For netcdf files, additional data can also be loaded:
+        "heading", "pitch" and "roll_". FIXME NOT TESTED
+
     Returns a xarray.Dataset with the loaded data.
     """
 
@@ -70,11 +78,7 @@ def load_navigation(filenames):
             datasets.append(_dataset)
 
     if len(datasets) > 0:
-        flags = {'time_flag': False, 'lonlat_flag': False, 'uv_ship_flag': False}
-        for key in flags.keys():
-            flags[key] = all([ds.attrs[key] for ds in datasets])
         dataset = xr.merge(datasets)
-        dataset.attrs.update(flags)
         return dataset
     else:
         return None
@@ -295,16 +299,5 @@ def _check_variables_names(dataset):
                 if name in dataset:
                     dataset = dataset.rename({name: var})
                     found_variables.append(var)
-
-    dataset.attrs.update({'time_flag': False, 'lonlat_flag': False, 'uv_ship_flag': False})
-    if 'time' not in dataset.coords:
-        return dataset
-    else:
-        dataset.attrs['time_flag'] = True
-    if all([var in dataset for var in ('lon', 'lat')]):
-        dataset.attrs['lonlat_flag'] = True
-    if all([var in dataset for var in ('u_ship', 'v_ship')]):
-        dataset.attrs['uv_ship_flag'] = True
-
     return dataset
 

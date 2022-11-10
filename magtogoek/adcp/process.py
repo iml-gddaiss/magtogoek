@@ -637,6 +637,11 @@ def _load_navigation(dataset: xr.Dataset, navigation_files: str):
     Returns the dataset with the added navigation data. Data from the navigation file
     are interpolated on the dataset time vector.
 
+    Use to load:
+        `lon, `lat`,
+        `u_shp`, `v_ship`
+        `roll_`, `pitch`, `heading`
+
     Parameters
     ----------
     dataset :
@@ -649,23 +654,33 @@ def _load_navigation(dataset: xr.Dataset, navigation_files: str):
     Notes
     -----
         Using the magtogoek function `mtgk compute nav`, u_ship, v_ship can be computed from `lon`, `lat`
-    data to correct the data for the platform motion by setting the config parameter `m_corr` to `nav`.
+        data to correct the data for the platform motion by setting the config parameter `m_corr` to `nav`.
     """
     nav_ds = load_navigation(navigation_files)
+
     if nav_ds is not None:
-        if nav_ds.attrs['time_flag'] is True:
+        if 'time' in nav_ds.coords:
             nav_ds = nav_ds.interp(time=dataset.time)
-            if nav_ds.attrs['lonlat_flag']:
+            if all([var in nav_ds for var in ('lon', 'lat')]):
                 dataset['lon'] = nav_ds['lon']
                 dataset['lat'] = nav_ds['lat']
                 l.log("Platform GPS data loaded.")
-            if nav_ds.attrs['uv_ship_flag']:
+
+            if all([var in nav_ds for var in ('u_ship', 'v_ship')]):
                 dataset['u_ship'] = nav_ds['u_ship']
                 dataset['v_ship'] = nav_ds['v_ship']
                 l.log("Platform velocity data loaded.")
+
+            if all([var in nav_ds for var in ('heading', 'pitch', 'roll_')]):
+                dataset['heading'] = nav_ds['heading']
+                dataset['pitch'] = nav_ds['pitch']
+                dataset['roll_'] = nav_ds['roll_']
+                l.log("Platform inertial data loaded.")
             nav_ds.close()
-            return dataset
+        else:
+            l.warning('Could not load navigation data file. `time` coordinate was massing.')
     l.warning('Could not load navigation data file.')
+
     return dataset
 
 
@@ -723,8 +738,6 @@ def _quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
                          pitch_th=pconfig.pitch_threshold,
                          horizontal_vel_th=pconfig.horizontal_velocity_threshold,
                          vertical_vel_th=pconfig.vertical_velocity_threshold,
-                         error_vel_th=pconfig.error_velocity_threshold,
-                         #motion_correction_mode=pconfig.motion_correction_mode,
                          sidelobes_correction=pconfig.sidelobes_correction,
                          bottom_depth=pconfig.bottom_depth,
                          bad_pressure=pconfig.bad_pressure)
