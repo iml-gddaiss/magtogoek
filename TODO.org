@@ -3,46 +3,13 @@
 
 * New BODC parameters:
 
-** ADCP code for raw velocity (relative to moving platform)
-
-*** ADCP Inconsistency
- - moored accoustic doppler current profile (ADCP) beam X exist but not for shipborne or lowered.
- - ADCP vs acoustic doppler current profiler(ADCP).
- - (lower adcp/moored adcp/shipborne) OR (by ADCP bottom tracking).
- - (Eulerian measurement) missing for (relative to moving platform). LCN... C -> eurelien ? R-> relative
-
-** ADCP beam velocity S for ship, LW for lowered.
-
- - (LCRRAP01) Radial velocity (away from) of water current (Eulerian measurement) in the water body by moored acoustic doppler current profiler (ADCP) beam 1
- - (LCRRAP02) Radial velocity (away from) of water current (Eulerian measurement) in the water body by moored acoustic doppler current profiler (ADCP) beam 2
- - (LCRRAP03) Radial velocity (away from) of water current (Eulerian measurement) in the water body by moored acoustic doppler current profiler (ADCP) beam 3
- - (LCRRAP04) Radial velocity (away from) of water current (Eulerian measurement) in the water body by moored acoustic doppler current profiler (ADCP) beam 4
-
-** ADCP beam bt velocity
- - (LCRRBT01) Radial velocity (away from) of water current (Eulerian measurement) in the water body by ADCP bottom tracking beam 1
- - (LCRRBT02) Radial velocity (away from) of water current (Eulerian measurement) in the water body by ADCP bottom tracking beam 2
- - (LCRRBT03) Radial velocity (away from) of water current (Eulerian measurement) in the water body by ADCP bottom tracking beam 3
- - (LCRRBT04) Radial velocity (away from) of water current (Eulerian measurement) in the water body by ADCP bottom tracking beam 4
-
-** ADCP xyz velocity (shipeborne S, lowered LW)
- - (LCXAAP01) Velocity along x-axis of water current (Eulerian measurement) in the water body by moored acoustic doppler current profiler (ADCP)
- - (LCYAAP01) Velocity along y-axis of water current (Eulerian measurement) in the water body by moored acoustic doppler current profiler (ADCP)
- - (LCZAAP01) Upward current velocity of water current (Eulerian measurement) in the water body by moored acoustic doppler current profiler (ADCP)
- - (LERRAP01) Upward current velocity of water current (Eulerian measurement) in the water body by moored acoustic doppler current profiler (ADCP)
-
-** ADCP xyz bt velocity
- - (LCXABT01) Velocity along x-axis of water current (Eulerian measurement) in the water body by ADCP bottom tracking
- - (LCYABT01) Velocity along y-axis of water current (Eulerian measurement) in the water body by ADCP bottom tracking
- - (LCZABT01) Upward current velocity of water current (Eulerian measurement) in the water body by ADCP bottom tracking
- - (LERRBT01) Current velocity error the water body by ADCP bottom tracking
-
-** ADCP enu bt velocity
+** ADCP enu bt velocity. These CODE don't exist (yet)
  - (LRZABT01) Upward velocity of water current (Eulerian measurement) in the water body by ADCP bottom tracking
  - (LERRBT01) Upward velocity of water current (Eulerian measurement) in the water body by ADCP bottom tracking
 
 * Issues.
 ** Motion Correction in Adcp adcp/quality_control.py and load_navigation in navigation.
-   A fix has been added in vicking_dat branche.
+   A fix has been added in viking_dat branch.
    The load_navigation can return None if lon, lat are missing from the files which will crash in quality_control.py.
    Furthermore, the motion_correction function in quality_control.py needs to have longitude (and latitude) data to check for finite values.
    The code can crash there also since there is no if or else.
