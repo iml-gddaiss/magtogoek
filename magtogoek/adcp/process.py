@@ -108,26 +108,31 @@ BEAM_VEL_CODES = dict(
     u='vel_beam_1',
     v='vel_beam_2',
     w='vel_beam_3',
-    z='vel_beam_4',
+    e='vel_beam_4',
+    u_QC="vel_beam_1_QC",
+    v_QC="vel_beam_2_QC",
+    w_QC="vel_beam_3_QC",
+    e_QC="vel_beam_4_QC",
     bt_u='bt_vel_beam_1',
     bt_v='bt_vel_beam_2',
     bt_w='bt_vel_beam_3',
-    bt_z='bt_vel_beam_4',
+    bt_e='bt_vel_beam_4',
 )
 
 XYZ_VEL_CODES = dict(
     u='vel_x_axis',
     v='vel_y_axis',
     w='vel_z_axis',
-    z='vel_e',
+    u_QC="vel_x_axis_QC",
+    v_QC="vel_y_axis_QC",
+    w_QC="vel_z_axis_QC",
     bt_u='bt_vel_x_axis',
     bt_v='bt_vel_y_axis',
     bt_w='bt_vel_z_axis',
-    bt_z='bt_vel_e',
 )
 
 P01_VEL_CODES = dict(
-    lowered=dict( # FIXME does not exist as a platform type yet.
+    lowered=dict(
         u="LCEWLW01",
         v="LCNSLW01",
         w="LRZALW01",
@@ -146,9 +151,9 @@ P01_VEL_CODES = dict(
         w_QC="LRZAAP01_QC",
     ),
     ship=dict(
-        u="LCEWAS01",  # LREWAS01 if not motion corrected
-        v="LCNSAS01",  # LRNSAS01 if not motion corrected
-        w="LRZAAS01",  # DOES NOT EXIST FOR MOTION CORRECTED
+        u="LCEWAS01",
+        v="LCNSAS01",
+        w="LRZAAS01",
         e="LERRAS01",
         u_QC="LCEWAS01_QC",
         v_QC="LCNSAS01_QC",
@@ -496,11 +501,11 @@ def _process_adcp_data(pconfig: ProcessConfig):
     dataset.attrs["VAR_TO_ADD_SENSOR_TYPE"] = VAR_TO_ADD_SENSOR_TYPE
     dataset.attrs["P01_CODES"] = P01_CODES
     if dataset.attrs['coord_system'] == 'earth':
-        dataset.attrs.update((P01_VEL_CODES[pconfig.platform_type]))
+        dataset.attrs["P01_CODES"].update((P01_VEL_CODES[pconfig.platform_type]))
     elif dataset.attrs['coord_system'] == 'xyz':
-        dataset.attrs.update(XYZ_VEL_CODES)
+        dataset.attrs["P01_CODES"].update(XYZ_VEL_CODES)
     elif dataset.attrs['coord_system'] == 'beam':
-        dataset.attrs.update(BEAM_VEL_CODES)
+        dataset.attrs["P01_CODES"].update(BEAM_VEL_CODES)
 
     dataset.attrs["variables_gen_name"] = [var for var in dataset.variables]  # For Odf outputs
 
