@@ -101,12 +101,43 @@ GLOBAL_ATTRS_TO_DROP = [
     "bodc_name"
 ]
 CONFIG_GLOBAL_ATTRS_SECTIONS = ["NETCDF_CF", "PROJECT", "CRUISE", "GLOBAL_ATTRIBUTES"]
-PLATFORM_TYPES = ["buoy", "mooring", "ship"]
+PLATFORM_TYPES = ["buoy", "mooring", "ship", "lowered"]
 DEFAULT_PLATFORM_TYPE = "buoy"
-DATA_TYPES = {"buoy": "madcp", "mooring": "madcp", "ship": "adcp"}
-DATA_SUBTYPES = {"buoy": "BUOY", "mooring": "MOORED", "ship": "SHIPBORNE"}
+DATA_TYPES = {"buoy": "madcp", "mooring": "madcp", "ship": "adcp", "lowered": "adcp"}
+DATA_SUBTYPES = {"buoy": "BUOY", "mooring": "MOORED", "ship": "SHIPBORNE", 'lowered': 'LOWERED'}
+
+BEAM_VEL_CODES = dict(
+    u='vel_beam_1',
+    v='vel_beam_2',
+    w='vel_beam_3',
+    z='vel_beam_4',
+    bt_u='bt_vel_beam_1',
+    bt_v='bt_vel_beam_2',
+    bt_w='bt_vel_beam_3',
+    bt_z='bt_vel_beam_4',
+)
+
+XYZ_VEL_CODES = dict(
+    u='vel_x_axis',
+    v='vel_y_axis',
+    w='vel_z_axis',
+    z='vel_e',
+    bt_u='bt_vel_x_axis',
+    bt_v='bt_vel_y_axis',
+    bt_w='bt_vel_z_axis',
+    bt_z='bt_vel_e',
+)
 
 P01_VEL_CODES = dict(
+    lowered=dict( # FIXME does not exist as a platform type yet.
+        u="LCEWLW01",
+        v="LCNSLW01",
+        w="LRZALW01",
+        e="ERRVLDCP",
+        u_QC="LCEWAP01_QC",
+        v_QC="LCNSAP01_QC",
+        w_QC="LRZAAP01_QC",
+    ),
     buoy=dict(
         u="LCEWAP01",
         v="LCNSAP01",
@@ -117,9 +148,9 @@ P01_VEL_CODES = dict(
         w_QC="LRZAAP01_QC",
     ),
     ship=dict(
-        u="LCEWAS01",
-        v="LCNSAS01",
-        w="LRZAAS01",
+        u="LCEWAS01",  # LREWAS01 if not motion corrected
+        v="LCNSAS01",  # LRNSAS01 if not motion corrected
+        w="LRZAAS01",  # DOES NOT EXIST FOR MOTION CORRECTED
         e="LERRAS01",
         u_QC="LCEWAS01_QC",
         v_QC="LCNSAS01_QC",
@@ -143,10 +174,10 @@ P01_CODES = dict(
     amp2="TNIHCE02",
     amp3="TNIHCE03",
     amp4="TNIHCE04",
-    bt_u="APEWBT01",
-    bt_v="APNSBT01",
-    bt_w="APZABT01",
-    bt_e="APERBT01",
+    bt_u="LCEWBT01",
+    bt_v="LCNSBT01",
+    bt_w="LRZABT01", #FIXME Do not yet exist as a BODC sdn code
+    bt_e="LERRBT01", #FIXME Do not yet exist as a BODC sdn code
     vb_vel="LRZUVP01",
     vb_vel_QC="LRZUVP01_QC",
     vb_pg="PCGDAP05",
@@ -485,10 +516,14 @@ def _process_adcp_data(pconfig: ProcessConfig):
     # -------------------- #
     dataset.attrs['bodc_name'] = pconfig.bodc_name
     dataset.attrs["VAR_TO_ADD_SENSOR_TYPE"] = VAR_TO_ADD_SENSOR_TYPE
-    dataset.attrs["P01_CODES"] = {
-        **P01_VEL_CODES[pconfig.platform_type],
-        **P01_CODES,
-    }
+    dataset.attrs["P01_CODES"] = P01_CODES
+    if dataset.attrs['coord_system'] == 'earth':
+        dataset.attrs.update((P01_VEL_CODES[pconfig.platform_type]))
+    elif dataset.attrs['coord_system'] == 'xyz':
+        dataset.attrs.update(XYZ_VEL_CODES)
+    elif dataset.attrs['coord_system'] == 'beam':
+        dataset.attrs.update(BEAM_VEL_CODES)
+
     dataset.attrs["variables_gen_name"] = [var for var in dataset.variables]  # For Odf outputs
 
     l.section("Variables attributes")
