@@ -33,7 +33,7 @@ plt.style.use("seaborn-dark-palette")
 GEO_VAR = ["heading", "roll_", "pitch", "lon", "lat"]
 ANC_VAR = ["xducer_depth", "temperature", "pres"]
 BT_UVW_VAR = ["bt_u", "bt_v", "bt_w", "bt_depth"]
-UVW_VAR = ["u", "v", "w"]
+UVW_VAR = ["u", "v", "w"] # TODO PROBLEM v1,...v4
 
 
 def map_varname(varnames: List[str], varname_map: Dict) -> List[str]:
@@ -141,6 +141,7 @@ def make_adcp_figure(dataset: xr.Dataset,
         plt.close('all')
 
 
+# TODO PROBLEM IF VELOCITIES ARE V1,...,V4
 def plot_velocity_polar_hist(dataset: xr.Dataset, nrows: int = 3, ncols: int = 3,
                              uv: List[str] = ("u", "v"),  flag_thres: int = 2):
     naxes = int(nrows * ncols)

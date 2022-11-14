@@ -222,6 +222,7 @@ def adcp_quality_control(
         binary_mask[pg_flag] += 2 ** 2
         binary_mask_tests_value[2] = pg_th
 
+    # TODO SHOULD ONLY BE DONE I EARTH COORDINATE
     if horizontal_vel_th is not None:
         l.log(f"horizontal velocity threshold {horizontal_vel_th} m/s")
         horizontal_vel_flag = horizontal_vel_test(dataset, horizontal_vel_th)
@@ -230,6 +231,7 @@ def adcp_quality_control(
         binary_mask[horizontal_vel_flag] += 2 ** 3
         binary_mask_tests_value[3] = horizontal_vel_th
 
+    # TODO SHOULD ONLY BE DONE I EARTH COORDINATE
     if vertical_vel_th is not None:
         l.log(f"vertical velocity threshold {vertical_vel_th} m/s")
         vertical_vel_flag = vertical_vel_test(dataset, vertical_vel_th)
@@ -358,7 +360,7 @@ def adcp_quality_control(
     ]
     dataset.attrs["binary_mask_tests_values"] = binary_mask_tests_value
 
-
+# TODO PROBLEM IS VALUES ARE v1,...,v4
 def flag_implausible_vel(
     dataset: xr.Dataset, threshold: float = 15
 ) -> tp.Type[np.array]:
