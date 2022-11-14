@@ -104,6 +104,8 @@ DEFAULT_PLATFORM_TYPE = "buoy"
 DATA_TYPES = {"buoy": "madcp", "mooring": "madcp", "ship": "adcp"}
 DATA_SUBTYPES = {"buoy": "BUOY", "mooring": "MOORED", "ship": "SHIPBORNE"}
 
+# TODO FIXME lowered adcp SDNSLW01, LCEWLW01, SDZALW01, ERRVLDCP NEW BRANCHE NEEED
+
 P01_VEL_CODES = dict(
     buoy=dict(
         u="LCEWAP01",
@@ -115,9 +117,9 @@ P01_VEL_CODES = dict(
         w_QC="LRZAAP01_QC",
     ),
     ship=dict(
-        u="LCEWAS01",
-        v="LCNSAS01",
-        w="LRZAAS01",
+        u="LCEWAS01",  # LREWAS01 if not motion corrected
+        v="LCNSAS01",  # LRNSAS01 if not motion corrected
+        w="LRZAAS01",  # DOES NOT EXIST FOR MOTION CORRECTED
         e="LERRAS01",
         u_QC="LCEWAS01_QC",
         v_QC="LCNSAS01_QC",
@@ -141,10 +143,10 @@ P01_CODES = dict(
     amp2="TNIHCE02",
     amp3="TNIHCE03",
     amp4="TNIHCE04",
-    bt_u="APEWBT01",
-    bt_v="APNSBT01",
-    bt_w="APZABT01",
-    bt_e="APERBT01",
+    bt_u="LCEWBT01",
+    bt_v="LCNSBT01",
+    bt_w="LRZABT01", #FIXME Do not yet exist as a BODC sdn code
+    bt_e="LERRBT01", #FIXME Do not yet exist as a BODC sdn code
     vb_vel="LRZUVP01",
     vb_vel_QC="LRZUVP01_QC",
     vb_pg="PCGDAP05",
@@ -466,7 +468,7 @@ def _process_adcp_data(pconfig: ProcessConfig):
     dataset.attrs["P01_CODES"] = {
         **P01_VEL_CODES[pconfig.platform_type],
         **P01_CODES,
-    }
+    } # TODO MAKE DUMMY CODE FOR VEL NOT IN EARTH ?
     dataset.attrs["variables_gen_name"] = [var for var in dataset.variables]  # For Odf outputs
 
     l.section("Variables attributes")

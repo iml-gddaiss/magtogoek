@@ -1,6 +1,49 @@
 #+Author: jerome.guay@protonmail.com
 #+TITLE: Notes on Magtogoek
 
+* New BODC parameters:
+
+*** ADCP Inconsistency
+ - ADCP vs acoustic doppler current profiler(ADCP).
+ - (lower adcp/moored adcp/shipborne) not used for (by ADCP bottom tracking).
+ - (Eulerian measurement) missing for (relative to moving platform).
+
+** ADCP Lagrangian velocities for drift()
+ - (LRZALA01 ?) "Upward velocity of water current (Lagrangian measurement) in the water body by tracked drifting buoy"
+
+** ADCP beam velocity
+ - Radial velocity (away from) of water current in the water body by moored acoustic doppler current profiler (ADCP) beam 1
+ - Radial velocity (away from) of water current in the water body by moored acoustic doppler current profiler (ADCP) beam 2
+ - Radial velocity (away from) of water current in the water body by moored acoustic doppler current profiler (ADCP) beam 3
+ - Radial velocity (away from) of water current in the water body by moored acoustic doppler current profiler (ADCP) beam 4
+** ADCP beam velocity raw (maybe) ?
+- add 'relative to moving platform'
+
+** ADCP beam bt velocity
+ - Radial velocity (away from) of water current in the water body by ADCP bottom tracking beam 1
+ - Radial velocity (away from) of water current in the water body by ADCP bottom tracking beam 2
+ - Radial velocity (away from) of water current in the water body by ADCP bottom tracking beam 3
+ - Radial velocity (away from) of water current in the water body by ADCP bottom tracking beam 4
+
+** ADCP xyz velocity
+ - Velocity along x-axis of water current in the water body by acoustic doppler current profiler (ADCP)
+ - Velocity along y-axis of water current in the water body by acoustic doppler current profiler (ADCP)
+ - Upward current velocity of water current in the water body by acoustic doppler current profiler (ADCP)
+** ADCP xyz velocity raw
+ - add 'relative to moving platform'
+
+** ADCP xyz bt velocity
+ - Velocity along x-axis of water current in the water body by ADCP bottom tracking
+ - Velocity along y-axis of water current in the water body by ADCP bottom tracking
+ - Upward current velocity of water current in the water body by ADCP bottom tracking
+
+** ADCP enu velocity raw
+ - Upward velocity of water current relative to moving platform in the water body by shipborne acoustic doppler current profiler (ADCP)
+
+** ADCP enu bt velocity
+ - (LRZABT01) Upward velocity of water current (Eulerian measurement) in the water body by ADCP bottom tracking
+ - (LERRBT01) Upward velocity of water current (Eulerian measurement) in the water body by ADCP bottom tracking
+
 * Issues.
 ** Motion Correction in Adcp adcp/quality_control.py and load_navigation in navigation.
    A fix has been added in vicking_dat branche.
