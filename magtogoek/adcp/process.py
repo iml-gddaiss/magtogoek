@@ -99,14 +99,43 @@ GLOBAL_ATTRS_TO_DROP = [
     "bodc_name"
 ]
 CONFIG_GLOBAL_ATTRS_SECTIONS = ["NETCDF_CF", "PROJECT", "CRUISE", "GLOBAL_ATTRIBUTES"]
-PLATFORM_TYPES = ["buoy", "mooring", "ship"]
+PLATFORM_TYPES = ["buoy", "mooring", "ship", "lowered"]
 DEFAULT_PLATFORM_TYPE = "buoy"
-DATA_TYPES = {"buoy": "madcp", "mooring": "madcp", "ship": "adcp"}
-DATA_SUBTYPES = {"buoy": "BUOY", "mooring": "MOORED", "ship": "SHIPBORNE"}
+DATA_TYPES = {"buoy": "madcp", "mooring": "madcp", "ship": "adcp", "lowered": "adcp"}
+DATA_SUBTYPES = {"buoy": "BUOY", "mooring": "MOORED", "ship": "SHIPBORNE", 'lowered': 'LOWERED'}
 
-# TODO FIXME lowered adcp SDNSLW01, LCEWLW01, SDZALW01, ERRVLDCP NEW BRANCHE NEEED
+BEAM_VEL_CODES = dict(
+    u='vel_beam_1',
+    v='vel_beam_2',
+    w='vel_beam_3',
+    z='vel_beam_4',
+    bt_u='bt_vel_beam_1',
+    bt_v='bt_vel_beam_2',
+    bt_w='bt_vel_beam_3',
+    bt_z='bt_vel_beam_4',
+)
+
+XYZ_VEL_CODES = dict(
+    u='vel_x_axis',
+    v='vel_y_axis',
+    w='vel_z_axis',
+    z='vel_e',
+    bt_u='bt_vel_x_axis',
+    bt_v='bt_vel_y_axis',
+    bt_w='bt_vel_z_axis',
+    bt_z='bt_vel_e',
+)
 
 P01_VEL_CODES = dict(
+    lowered=dict( # FIXME does not exist as a platform type yet.
+        u="LCEWLW01",
+        v="LCNSLW01",
+        w="LRZALW01",
+        e="ERRVLDCP",
+        u_QC="LCEWAP01_QC",
+        v_QC="LCNSAP01_QC",
+        w_QC="LRZAAP01_QC",
+    ),
     buoy=dict(
         u="LCEWAP01",
         v="LCNSAP01",
@@ -465,10 +494,14 @@ def _process_adcp_data(pconfig: ProcessConfig):
     # -------------------- #
     dataset.attrs['bodc_name'] = pconfig.bodc_name
     dataset.attrs["VAR_TO_ADD_SENSOR_TYPE"] = VAR_TO_ADD_SENSOR_TYPE
-    dataset.attrs["P01_CODES"] = {
-        **P01_VEL_CODES[pconfig.platform_type],
-        **P01_CODES,
-    } # TODO MAKE DUMMY CODE FOR VEL NOT IN EARTH ?
+    dataset.attrs["P01_CODES"] = P01_CODES
+    if dataset.attrs['coord_system'] == 'earth':
+        dataset.attrs.update((P01_VEL_CODES[pconfig.platform_type]))
+    elif dataset.attrs['coord_system'] == 'xyz':
+        dataset.attrs.update(XYZ_VEL_CODES)
+    elif dataset.attrs['coord_system'] == 'beam':
+        dataset.attrs.update(BEAM_VEL_CODES)
+
     dataset.attrs["variables_gen_name"] = [var for var in dataset.variables]  # For Odf outputs
 
     l.section("Variables attributes")
