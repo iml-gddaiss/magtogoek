@@ -153,7 +153,7 @@ def get_config_taskparser(sensor_type: Optional[str] = None):
     tparser.add_option(section, "made_by", dtypes=["str"], default=getpass.getuser())
     tparser.add_option(section, "last_updated", dtypes=["str"], default=datetime.now().strftime("%Y-%m-%d"))
     tparser.add_option(section, "sensor_type", dtypes=["str"], default=sensor_type, is_required=True, choice=["adcp"], comments='One of [adcp, ].')
-    tparser.add_option(section, "platform_type", dtypes=["str"], choice=["buoy", "mooring", "ship"], comments='One of [buoy, mooring, ship, ].')
+    tparser.add_option(section, "platform_type", dtypes=["str"], choice=["buoy", "mooring", "ship", "lowered"], comments='One of [buoy, mooring, ship, ].')
 
     section = "INPUT"
     tparser.add_option(section, "input_files", dtypes=["str"], default="", nargs_min=1, is_file=True, is_required=True)
