@@ -102,7 +102,13 @@ def no_adcp_quality_control(dataset: xr.Dataset):
     l.section("No Quality Controlled", t=True)
 
     l.log("No quality control carried out")
-    variables = ["temperature", "pres", "u", "v", "w"]
+
+    variables = ["temperature", "pres"]
+    if dataset.attrs['coord_system'] == 'beam':
+        variables += ['v1', 'v2', 'v3', 'v4']
+    else:
+        variables += ["u", "v", "w"]
+
     for var in variables:
         if var in dataset:
             dataset[var + "_QC"] = dataset[var].copy().astype("int8") * 0
@@ -222,31 +228,31 @@ def adcp_quality_control(
         binary_mask[pg_flag] += 2 ** 2
         binary_mask_tests_value[2] = pg_th
 
-    # TODO SHOULD ONLY BE DONE I EARTH COORDINATE
-    if horizontal_vel_th is not None:
-        l.log(f"horizontal velocity threshold {horizontal_vel_th} m/s")
-        horizontal_vel_flag = horizontal_vel_test(dataset, horizontal_vel_th)
-        vel_flags[horizontal_vel_flag] = 3
-        vel_qc_test.append(f"horizontal_velocity_threshold:{horizontal_vel_th} m/s")
-        binary_mask[horizontal_vel_flag] += 2 ** 3
-        binary_mask_tests_value[3] = horizontal_vel_th
+    if dataset.attrs['coord_system'] == "earth":
+        if horizontal_vel_th is not None:
+            l.log(f"horizontal velocity threshold {horizontal_vel_th} m/s")
+            horizontal_vel_flag = horizontal_vel_test(dataset, horizontal_vel_th)
+            vel_flags[horizontal_vel_flag] = 3
+            vel_qc_test.append(f"horizontal_velocity_threshold:{horizontal_vel_th} m/s")
+            binary_mask[horizontal_vel_flag] += 2 ** 3
+            binary_mask_tests_value[3] = horizontal_vel_th
 
-    # TODO SHOULD ONLY BE DONE I EARTH COORDINATE
-    if vertical_vel_th is not None:
-        l.log(f"vertical velocity threshold {vertical_vel_th} m/s")
-        vertical_vel_flag = vertical_vel_test(dataset, vertical_vel_th)
-        vel_flags[vertical_vel_flag] = 3
-        vel_qc_test.append(f"vertical_velocity_threshold:{vertical_vel_th} m/s")
-        binary_mask[vertical_vel_flag] += 2 ** 4
-        binary_mask_tests_value[4] = vertical_vel_th
+        if vertical_vel_th is not None:
+            l.log(f"vertical velocity threshold {vertical_vel_th} m/s")
+            vertical_vel_flag = vertical_vel_test(dataset, vertical_vel_th)
+            vel_flags[vertical_vel_flag] = 3
+            vel_qc_test.append(f"vertical_velocity_threshold:{vertical_vel_th} m/s")
+            binary_mask[vertical_vel_flag] += 2 ** 4
+            binary_mask_tests_value[4] = vertical_vel_th
 
-    if error_vel_th is not None:
-        l.log(f"error velocity threshold {error_vel_th} m/s")
-        error_vel_flag = error_vel_test(dataset, error_vel_th)
-        vel_flags[error_vel_flag] = 3
-        vel_qc_test.append(f"velocity_error_threshold:{error_vel_th} m/s")
-        binary_mask[error_vel_flag] += 2 ** 5
-        binary_mask_tests_value[5] = error_vel_th
+    if dataset.attrs['coord_system'] in ["xyz", "earth"]:
+        if error_vel_th is not None:
+            l.log(f"error velocity threshold {error_vel_th} m/s")
+            error_vel_flag = error_vel_test(dataset, error_vel_th)
+            vel_flags[error_vel_flag] = 3
+            vel_qc_test.append(f"velocity_error_threshold:{error_vel_th} m/s")
+            binary_mask[error_vel_flag] += 2 ** 5
+            binary_mask_tests_value[5] = error_vel_th
 
     if roll_th is not None:
         l.log(f"roll threshold {roll_th} degree")
@@ -299,6 +305,7 @@ def adcp_quality_control(
         dataset["temperature_QC"].attrs[
             "quality_test"
         ] = f"temperature_threshold: less than {MIN_TEMPERATURE} Celsius and greater than {MAX_TEMPERATURE} celsius"
+
     if "vb_vel" in dataset:
         l.log(
             "Fifth beam quality control carried out with"
@@ -315,14 +322,26 @@ def adcp_quality_control(
             + f"percentgood_threshold: {pg_th}\n" * ("vb_pg" in dataset)
         )
 
-    vel_flags[flag_implausible_vel(dataset, threshold=IMPLAUSIBLE_VEL_TRESHOLD)] = 4
+    if dataset.attrs['coord_system'] != "beam":
+        vel_flags[flag_implausible_vel(dataset, threshold=IMPLAUSIBLE_VEL_TRESHOLD)] = 4
 
-    missing_vel = np.bitwise_or(
-        *(~np.isfinite(dataset[v].values) for v in ("u", "v", "w"))
-    )
+    if dataset.attrs['coord_system'] == "beam":
+        velocity_variables = ("v1", "v2", "v3", "v4")
+    else:
+        velocity_variables = ("u", "v", "w")
+
+    # missing_vel = np.bitwise_or(
+    #     *(~np.isfinite(dataset[v].values) for v in velocity_variables)
+    # )
+
+    missing_vel = np.sum(
+        np.stack(
+            (~np.isfinite(dataset[v].values) for v in velocity_variables)
+        ), axis=0, dtype=bool)
+
     vel_flags[missing_vel] = 9
 
-    for v in ("u", "v", "w"):
+    for v in velocity_variables:
         dataset[v + "_QC"] = (["depth", "time"], vel_flags)
         dataset[v + "_QC"].attrs["quality_test"] = "\n".join(vel_qc_test)
 
@@ -360,7 +379,7 @@ def adcp_quality_control(
     ]
     dataset.attrs["binary_mask_tests_values"] = binary_mask_tests_value
 
-# TODO PROBLEM IS VALUES ARE v1,...,v4
+
 def flag_implausible_vel(
     dataset: xr.Dataset, threshold: float = 15
 ) -> tp.Type[np.array]:

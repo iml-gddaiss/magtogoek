@@ -107,18 +107,18 @@ DATA_TYPES = {"buoy": "madcp", "mooring": "madcp", "ship": "adcp", "lowered": "a
 DATA_SUBTYPES = {"buoy": "BUOY", "mooring": "MOORED", "ship": "SHIPBORNE", 'lowered': 'LOWERED'}
 
 BEAM_VEL_CODES = dict(
-    u='vel_beam_1',
-    v='vel_beam_2',
-    w='vel_beam_3',
-    e='vel_beam_4',
-    u_QC="vel_beam_1_QC",
-    v_QC="vel_beam_2_QC",
-    w_QC="vel_beam_3_QC",
-    e_QC="vel_beam_4_QC",
-    bt_u='bt_vel_beam_1',
-    bt_v='bt_vel_beam_2',
-    bt_w='bt_vel_beam_3',
-    bt_e='bt_vel_beam_4',
+    v1='vel_beam_1',
+    v2='vel_beam_2',
+    v3='vel_beam_3',
+    v4='vel_beam_4',
+    v1_QC='vel_beam_1_QC',
+    v2_QC='vel_beam_2_QC',
+    v3_QC='vel_beam_3_QC',
+    v4_QC='vel_beam_4_QC',
+    bt_v1='bt_vel_beam_1',
+    bt_v2='bt_vel_beam_2',
+    bt_v3='bt_vel_beam_3',
+    bt_v4='bt_vel_beam_4',
 )
 
 XYZ_VEL_CODES = dict(
@@ -456,13 +456,16 @@ def _process_adcp_data(pconfig: ProcessConfig):
     else:
         l.log(f"No magnetic declination found in the raw file.")
     if pconfig.magnetic_declination:
-        angle = pconfig.magnetic_declination
-        if dataset.attrs["magnetic_declination"]:
-            angle = round((pconfig.magnetic_declination - dataset.attrs["magnetic_declination"]), 4)
-            l.log(f"An additional correction of {angle} degree east was applied.")
-        _apply_magnetic_correction(dataset, angle)
-        dataset.attrs["magnetic_declination"] = pconfig.magnetic_declination
-        l.log(f"Absolute magnetic declination: {dataset.attrs['magnetic_declination']} degree east.")
+        if dataset.attrs['coord_system'] == 'earth':
+            angle = pconfig.magnetic_declination
+            if dataset.attrs["magnetic_declination"]:
+                angle = round((pconfig.magnetic_declination - dataset.attrs["magnetic_declination"]), 4)
+                l.log(f"An additional correction of {angle} degree east was applied.")
+            _apply_magnetic_correction(dataset, angle)
+            dataset.attrs["magnetic_declination"] = pconfig.magnetic_declination
+            l.log(f"Absolute magnetic declination: {dataset.attrs['magnetic_declination']} degree east.")
+        else:
+            l.warning('Correction for magnetic declination was not carried out since the velocity data are not in earth coordinates.')
 
     if any(x is True for x in [pconfig.drop_percent_good, pconfig.drop_correlation, pconfig.drop_amplitude]):
         dataset = _drop_beam_data(dataset, pconfig)
