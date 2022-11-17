@@ -723,7 +723,8 @@ def _load_navigation(dataset: xr.Dataset, navigation_files: str):
             nav_ds.close()
         else:
             l.warning('Could not load navigation data file. `time` coordinate was massing.')
-    l.warning('Could not load navigation data file.')
+    else:
+        l.warning('Could not load navigation data file.')
 
     return dataset
 

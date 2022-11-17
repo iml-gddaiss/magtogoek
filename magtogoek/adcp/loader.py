@@ -400,13 +400,13 @@ def load_adcp_binary(
 
     if "heading" in data:
         if (data.heading == 0).all() or (np.diff(data.heading) == 0).all():
-            l.warning("ADCP Heading data are either all 0, or not varying.")
+            l.warning("Adcp heading data are either all 0, or not varying.")
             if "nav_heading" in data:
                 if (data.nav_heading == 0).all() or (np.diff(data.nav_heading) == 0).all():
-                    l.warning("Navigation Heading data are either all 0, or not varying.")
-            else:
-                l.warning("Heading loaded from navigation data.")
-                dataset["heading"] = (["time"], np.asarray(data.heading))
+                    l.warning("Navigation heading data are either all 0, or not varying.")
+                else:
+                    l.warning("Heading loaded from navigation data.")
+                    dataset["heading"] = (["time"], np.asarray(data.heading))
         else:
             dataset["heading"] = (["time"], np.asarray(data.heading))
     if "roll" in data:

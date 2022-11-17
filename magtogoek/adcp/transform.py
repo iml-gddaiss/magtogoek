@@ -86,9 +86,8 @@ def coordsystem2earth(dataset: xr.Dataset) -> xr.Dataset:
     if dataset.attrs['coord_system'] == 'xyz':
         if any([(dataset['heading'] == 0).all(), (dataset['roll_'] == 0).all(), (dataset['pitch'] == 0).all()]):
             l.warning(
-                "Roll, Pitch or Heading seems to be missing from the data file. Data not transformed to earth coordinates.")
-        else:
-            xyz2enu(dataset)
+                "One or more of Pitch, Roll and Heading values are all 0.")
+        xyz2enu(dataset)
 
     dataset.attrs["logbook"] += l.logbook
 
