@@ -262,6 +262,7 @@ class ProcessConfig:
     bottom_depth: float = None
     pitch_threshold: float = None
     roll_threshold: float = None
+    coord_transform: bool = None
     motion_correction_mode: str = None
     merge_output_files: bool = None
     bodc_name: bool = None
@@ -430,7 +431,7 @@ def _process_adcp_data(pconfig: ProcessConfig):
     # -------------- #
     # Transformation #
     # -------------- #
-    if dataset.attrs['coord_system'] != 'earth':
+    if dataset.attrs['coord_system'] != 'earth' and pconfig.coord_transform is True:
         l.section('Data Transformation')
         if dataset.attrs['coord_system'] not in ["beam", "xyz"]:
             l.log(f"Coordsystem value of {dataset.attrs['coord_system']} not recognized. Conversion to enu not available.")

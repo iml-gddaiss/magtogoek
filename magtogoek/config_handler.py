@@ -43,7 +43,8 @@ CONFIG_TO_CLI_MAPS = dict(
         drop_amplitude="drop_amp",
         make_figures="mk_fig",
         make_log="mk_log",
-        odf_data="odf_dtype"
+        odf_data="odf_dtype",
+        coord_transform="ct",
     )
 )
 
@@ -223,7 +224,7 @@ def get_config_taskparser(sensor_type: Optional[str] = None):
         tparser.add_option(section, "time_step", dtypes=["float"], default="")
         tparser.add_option(section, "grid_depth", dtypes=["str"], default="", null_value=None, comments='Path to column grid file (m).', is_path=True)
         tparser.add_option(section, "grid_method", dtypes=["str"], default="interp", choice=["interp", "bin"], comments='[interp, bin].')
-        tparser.add_option(section, "coord_transform", dtypes=["str"], default="earth", choice=["beam", "xyz", "earth"], comments="[earth, xyz, beam]. Won't do reverse transformation.")
+        tparser.add_option(section, "coord_transform", dtypes=["bool"], default=True, null_value=False, comments="Won't do reverse transformation.")
         tparser.add_option(section, "motion_correction_mode", dtypes=["str"], default="bt", choice=["bt", "nav", "off"], comments='[bt, nav, off].')
 
         section = "ADCP_QUALITY_CONTROL"

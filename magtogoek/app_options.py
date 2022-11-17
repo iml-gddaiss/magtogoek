@@ -225,8 +225,7 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
             default=None,
             multiple=True,
         ),
-        click.option("-C", "--coord_transformation", type=click.Choice(["earth", "xyz", "beam"]),
-                     help="Use to transform data if needed. Won't do reverse transformation.", default="earth"),
+        click.option("--ct/--no-ct", help="Use to do Coordinate Transformation (ct)", default=True),
         click.option(
             "-M",
             "--motion_correction_mode",

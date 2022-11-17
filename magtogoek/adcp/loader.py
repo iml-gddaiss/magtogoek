@@ -222,7 +222,7 @@ def load_adcp_binary(
     # Convert `dday` to datetime64 #
     # ---------------------------- #
 
-    time, time_string, bad_dday = _get_time(data.dday, yearbase, start_time, time_step)
+    time, time_string, bad_dday = _get_time(data.dday, data.yearbase, start_time, time_step)
 
     # ----------------------------------------------------------- #
     # Convert depth relative to the ADCP to depth below surface   #
