@@ -313,7 +313,7 @@ def load_adcp_binary(
         else:
             data.bt_vel[data.bt_vel == VEL_FILL_VALUE] = np.nan
             for i, v in enumerate(velocities_name):
-                dataset["bt_"+v] = (["depth", "time"], data.bt_vel[:, :, i].T)
+                dataset["bt_"+v] = (["time"], data.bt_vel[:, i].T)
             l.log("Bottom track data loaded")
 
     # BOTTOM DEPTH
@@ -400,7 +400,13 @@ def load_adcp_binary(
 
     if "heading" in data:
         if (data.heading == 0).all() or (np.diff(data.heading) == 0).all():
-            l.warning("Heading data are either all 0, or not varying.")
+            l.warning("ADCP Heading data are either all 0, or not varying.")
+            if "nav_heading" in data:
+                if (data.nav_heading == 0).all() or (np.diff(data.nav_heading) == 0).all():
+                    l.warning("Navigation Heading data are either all 0, or not varying.")
+            else:
+                l.warning("Heading loaded from navigation data.")
+                dataset["heading"] = (["time"], np.asarray(data.heading))
         else:
             dataset["heading"] = (["time"], np.asarray(data.heading))
     if "roll" in data:

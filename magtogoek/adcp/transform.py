@@ -115,29 +115,25 @@ def beam2xyze(dataset: xr.Dataset) -> xr.Dataset:
     trans = transform.Transform(angle=dataset.attrs['beam_angle'], geometry=dataset.attrs['beam_pattern'])
 
     beam_velocities = ('v1', 'v2', 'v3', 'v4')
-    _beam2xyz(dataset, trans, beam_velocities)
     xyze_velocities = ('u', 'v', 'w', 'e')
-    dataset = dataset.rename({b: v for b, v in zip(beam_velocities, xyze_velocities)})
+
+    trans_vel = trans.beam_to_xyz(np.stack([dataset[v].T for v in beam_velocities], axis=2))
+    for i, v in enumerate(xyze_velocities):
+        dataset[v] = (["depth", "time"], np.round(trans_vel[:, :, i].T, decimals=3))
     l.log('Water velocities transformed from beam to xyz coordinates.')
 
     bt_beam_velocities = ('bt_v1', 'bt_v2', 'bt_v3', 'bt_v4')
+    bt_xyze_velocities = ('bt_u', 'bt_v', 'bt_w', 'bt_e')
+
     if all(v in dataset for v in bt_beam_velocities):
-        _beam2xyz(dataset, trans, bt_beam_velocities)
-        bt_xyze_velocities = ('bt_u', 'bt_v', 'bt_w', 'bt_e')
-        dataset = dataset.rename({b: v for b, v in zip(bt_beam_velocities, bt_xyze_velocities)})
+        trans_vel = trans.beam_to_xyz(np.stack([dataset[v].T for v in bt_beam_velocities], axis=1))
+        for i, v in enumerate(bt_xyze_velocities):
+            dataset[v] = (["time"], np.round(trans_vel[:, i].T, decimals=3))
         l.log('Bottom velocities transformed from beam to xyz coordinates.')
 
     dataset.attrs['coord_system'] = "xyz"
 
     return dataset
-
-
-def _beam2xyz(dataset: xr.Dataset, trans: transform.Transform, velocities: Tuple[str]):
-    """See beam2xyze
-    """
-    trans_vel = trans.beam_to_xyz(np.stack([dataset[v].T for v in velocities], axis=2))
-    for i, v in enumerate(velocities):
-        dataset[v] = (["depth", "time"], np.round(trans_vel[:, :, i].T, decimals=3))
 
 
 def xyz2beam(dataset: xr.Dataset) -> xr.Dataset:
@@ -160,29 +156,27 @@ def xyz2beam(dataset: xr.Dataset) -> xr.Dataset:
     trans = transform.Transform(angle=dataset.attrs['beam_angle'], geometry=dataset.attrs['beam_pattern'])
 
     xyze_velocities = ('u', 'v', 'w', 'e')
-    _xyz2beam(dataset, trans, xyze_velocities)
     beam_velocities = ('v1', 'v2', 'v3', 'v4')
-    dataset = dataset.rename({v: b for v, b in zip(xyze_velocities, beam_velocities)})
+
+    trans_vel = trans.xyz_to_beam(np.stack([dataset[v].T for v in xyze_velocities], axis=2))
+    for i, v in enumerate(beam_velocities):
+        dataset[v] = (["depth", "time"], np.round(trans_vel[:, :, i].T, decimals=3))
+
     l.log('Water velocities transformed from xyz to beam coordinates.')
 
     bt_xyze_velocities = ('bt_u', 'bt_v', 'bt_w', 'bt_e')
+    bt_beam_velocities = ('bt_v1', 'bt_v2', 'bt_v3', 'bt_v4')
+
     if all(v in dataset for v in bt_xyze_velocities):
-        _xyz2beam(dataset, trans, bt_xyze_velocities)
-        bt_beam_velocities = ('bt_v1', 'bt_v2', 'bt_v3', 'bt_v4')
-        dataset = dataset.rename({v: b for v, b in zip(bt_xyze_velocities, bt_beam_velocities)})
+        trans_vel = trans.xyz_to_beam(np.stack([dataset[v].T for v in bt_xyze_velocities], axis=1))
+        for i, v in enumerate(bt_beam_velocities):
+            dataset[v] = (["time"], np.round(trans_vel[:, i].T, decimals=3))
+
         l.log('Bottom velocities transformed from xyz to beam coordinates.')
 
     dataset.attrs['coord_system'] = "beam"
 
     return dataset
-
-
-def _xyz2beam(dataset: xr.Dataset, trans: transform.Transform, velocities: Tuple[str]):
-    """See beam2xyze
-    """
-    trans_vel = trans.xyz_to_beam(np.stack([dataset[v].T for v in velocities], axis=2))
-    for i, v in enumerate(velocities):
-        dataset[v] = (["depth", "time"], np.round(trans_vel[:, :, i].T, decimals=3))
 
 
 def xyz2enu(dataset: xr.Dataset):
@@ -202,10 +196,23 @@ def xyz2enu(dataset: xr.Dataset):
     velocities = ('u', 'v', 'w', 'e')
     bt_velocities = ('bt_u', 'bt_v', 'bt_w', 'bt_e')
 
-    _xyz2enu(dataset, velocities)
+    enu = transform.rdi_xyz_enu(
+        np.stack([dataset[v].T for v in velocities], axis=2),
+        dataset['heading'], dataset['pitch'], dataset['roll_'],
+        orientation=dataset.attrs['orientation'],
+    )
+    for i, v in enumerate(velocities):
+        dataset[v].values = np.round(enu[:, :, i].T, decimals=3)
+
     l.log('Water velocities transformed from xyze to earth coordinates.')
     if all(v in dataset for v in bt_velocities):
-        _xyz2enu(dataset, bt_velocities)
+        bt_enu = transform.rdi_xyz_enu(
+            np.stack([dataset[v].T for v in bt_velocities], axis=1),
+            dataset['heading'], dataset['pitch'], dataset['roll_'],
+            orientation=dataset.attrs['orientation'],
+        )
+        for i, v in enumerate(bt_velocities):
+            dataset[v].values = np.round(bt_enu[:, i].T, decimals=3)
         l.log('Bottom velocities transformed from xyze to earth coordinates.')
 
     dataset.attrs['coord_system'] = "earth"
@@ -214,13 +221,7 @@ def xyz2enu(dataset: xr.Dataset):
 def _xyz2enu(dataset: xr.Dataset, velocities: Tuple[str]):
     """See xyze2enu
     """
-    enu = transform.rdi_xyz_enu(
-        np.stack([dataset[v].T for v in velocities], axis=2),
-        dataset['heading'], dataset['pitch'], dataset['roll_'],
-        orientation=dataset.attrs['orientation'],
-    )
-    for i, v in enumerate(velocities):
-        dataset[v].values = np.round(enu[:, :, i].T, decimals=3)
+
 
 
 if __name__ == "__main__":

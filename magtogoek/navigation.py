@@ -271,8 +271,6 @@ def compute_uv_ship(speed: np.ndarray, course: np.ndarray) -> tp.Tuple[np.ndarra
     return speed * np.sin(np.deg2rad(course)), speed * np.cos(np.deg2rad(course))
 
 
-
-
 def _plot_navigation(dataset: xr.Dataset):
     """plots bearing, speed, u_ship and v_ship from a dataset"""
 
