@@ -204,8 +204,7 @@ def _compute_navigation(
     """
     centered_time, course, speed = _compute_speed_and_course(dataset.time, dataset.lon.values, dataset.lat.values)
 
-    u_ship = speed * np.sin(np.deg2rad(course))
-    v_ship = speed * np.cos(np.deg2rad(course))
+    u_ship, v_ship = compute_uv_ship(speed, course)
 
     nav_dataset = xr.Dataset(
         {
@@ -252,6 +251,26 @@ def _compute_speed_and_course(time: tp.Union[list, np.ndarray],
     centered_time = time[:-1] + time_delta / 2
 
     return centered_time, course, speed
+
+
+def compute_uv_ship(speed: np.ndarray, course: np.ndarray) -> tp.Tuple[np.ndarray]:
+    """ Compute u_ship and v_ship from speed and course
+
+    Parameters
+    ----------
+    speed:
+        Speed of the vessel.
+    course:
+        course (direction) of the vessel.
+
+    Returns
+    -------
+    u_ship, v_ship
+
+    """
+    return speed * np.sin(np.deg2rad(course)), speed * np.cos(np.deg2rad(course))
+
+
 
 
 def _plot_navigation(dataset: xr.Dataset):
