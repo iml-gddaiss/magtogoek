@@ -32,8 +32,6 @@
 * Improvements
 ** ADCP QUALITY CONTROL
 *** Change PG good test for beam coord. each should be greater than 25% sum > 100.
-*** ADCP figures
-plt.show(block=False)
 ** ODF
 *** time are printed with singles quotes
 *** move odf specific config in .ini to separate header
