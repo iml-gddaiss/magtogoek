@@ -132,6 +132,7 @@ def beam2xyze(dataset: xr.Dataset) -> xr.Dataset:
         l.log('Bottom velocities transformed from beam to xyz coordinates.')
 
     dataset.attrs['coord_system'] = "xyz"
+    dataset = dataset.drop_vars(beam_velocities + bt_beam_velocities)
 
     return dataset
 
@@ -175,6 +176,7 @@ def xyz2beam(dataset: xr.Dataset) -> xr.Dataset:
         l.log('Bottom velocities transformed from xyz to beam coordinates.')
 
     dataset.attrs['coord_system'] = "beam"
+    dataset = dataset.drop_vars(xyze_velocities + bt_xyze_velocities)
 
     return dataset
 

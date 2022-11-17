@@ -8,6 +8,7 @@
  - (LERRBT01) Upward velocity of water current (Eulerian measurement) in the water body by ADCP bottom tracking
 
 * Issues.
+** OUTPUT DEFAULT NAME is not the CONFIG file when using process.
 ** Motion Correction in Adcp adcp/quality_control.py and load_navigation in navigation.
    A fix has been added in viking_dat branch.
    The load_navigation can return None if lon, lat are missing from the files which will crash in quality_control.py.
