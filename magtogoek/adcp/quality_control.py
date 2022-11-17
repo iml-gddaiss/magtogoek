@@ -336,7 +336,7 @@ def adcp_quality_control(
 
     missing_vel = np.sum(
         np.stack(
-            (~np.isfinite(dataset[v].values) for v in velocity_variables)
+            [~np.isfinite(dataset[v].values) for v in velocity_variables]
         ), axis=0, dtype=bool)
 
     vel_flags[missing_vel] = 9
