@@ -330,10 +330,6 @@ def adcp_quality_control(
     else:
         velocity_variables = ("u", "v", "w")
 
-    # missing_vel = np.bitwise_or(
-    #     *(~np.isfinite(dataset[v].values) for v in velocity_variables)
-    # )
-
     missing_vel = np.sum(
         np.stack(
             [~np.isfinite(dataset[v].values) for v in velocity_variables]
