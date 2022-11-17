@@ -216,7 +216,7 @@ def config_adcp(
     required=True,
 )
 @click.option("-y", "--yearbase", type=click.INT,
-              help="""year when the adcp sampling started. ex: `1970`""", required=True)
+              help="""year when the adcp sampling started. ex: `1970`""", required=False, default=None)
 @click.option("--headless",
               is_flag=True,
               help="""Using remotely with no display capability""")

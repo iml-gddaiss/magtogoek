@@ -72,7 +72,7 @@ class InvalidSonarError(Exception):
 def load_adcp_binary(
     filenames: tp.Union[str, tp.List[str]],
     sonar: str,
-    yearbase: int,
+    yearbase: int = None,
     orientation: str = None,
     leading_index: int = None,
     trailing_index: int = None,
@@ -97,27 +97,27 @@ def load_adcp_binary(
         Path/to/files
     sonar:
         Type of sonar (`os`, `wh`, `sv`, `sw`, `sw_pd0`)
-    yearbase:
+    yearbase: Optional
         year that the sampling begun.
-    orientation:
+    orientation: Optional
         Adcp orientation. Either `up` or `down`. Will overwrite the value
         of the binary file.
-    leading_index:
+    leading_index: Optional
         Number of ensemble to cut from the start.
-    trailing_index:
+    trailing_index: Optional
         Number of ensemble to cut from the end.
-    sensor_depth:
+    sensor_depth: Optional
         If provided, the adcp depth (meter) will be adjusted so that its median equal `sensor_depth`.
-    bad_pressure:
+    bad_pressure: Optional
         If True, XducerDepth is set to 0 or to `sensor_depth` if provided.
-    start_time:
+    start_time: Optional
         Format 'YYYY-MM-DDThh:mm:ss.ssss'.
         If provided, a new time coordinate vector, starting at `start_time`, is used instead of the
         one found in the raw adcp file.
         Use the parameter `time_step` to use a different time step than the one found in the adcp raw adcp file.
-    time_step:
+    time_step: Optional
         Time step in seconds. Only use if a `start_time` value is provided.
-    magnetic_declination_preset :
+    magnetic_declination_preset: Optional
         RTI binaries do not contain the magnetic declination set in the ADCPs
         program before deployment, so the value read is always null. Overwrite
         this (e.g., with the value from the program commands) by setting this
@@ -554,7 +554,7 @@ def load_adcp_binary(
 def check_pd0_fixed_leader(
     filenames: tp.Union[str, tp.List[str]],
     sonar: str,
-    yearbase: int,
+    yearbase: int = None,
     leading_index: int = None,
     trailing_index: int = None,
 ) -> tp.Tuple[bool, int]:
@@ -566,15 +566,15 @@ def check_pd0_fixed_leader(
 
     Parameters
     ----------
-    filenames :
+    filenames:  Optional
         File(s) to read.
-    sonar :
+    sonar:  Optional
         sonar type passed to pycurrents.Multiread.
         ('nb', 'bb', 'wh', 'sv', or 'os')
-    yearbase :
+    yearbase: Optional
         start year of the sampling.
-    leading_index :
-    trailing_index :
+    leading_index:  Optional
+    trailing_index:  Optional
 
     Returns
     -------
