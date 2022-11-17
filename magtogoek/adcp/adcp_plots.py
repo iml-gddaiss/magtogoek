@@ -143,7 +143,7 @@ def make_adcp_figure(dataset: xr.Dataset,
 
     if show_fig is True:
         logging.info(f'make adcp_figure show fig: {show_fig}')
-        plt.show()
+        plt.show(block=False)
     else:
         plt.close('all')
 
