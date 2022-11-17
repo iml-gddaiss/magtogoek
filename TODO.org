@@ -5,7 +5,7 @@
 
 ** ADCP enu bt velocity. These CODE don't exist (yet)
  - (LRZABT01) Upward velocity of water current (Eulerian measurement) in the water body by ADCP bottom tracking
- - (LERRBT01) Upward velocity of water current (Eulerian measurement) in the water body by ADCP bottom tracking
+ - (LERRBT01) Velocity Error water current (Eulerian measurement) in the water body by ADCP bottom tracking
 
 * Issues.
 ** Motion Correction in Adcp adcp/quality_control.py and load_navigation in navigation.
@@ -27,9 +27,9 @@
    -t time_dims_name
    -w length of the averaging window
 
-** Rotation command.
-
 * Improvements
+** MTGK
+** Better Logger Object. (global ?)
 ** ADCP QUALITY CONTROL
 *** Change PG good test for beam coord. each should be greater than 25% sum > 100.
 *** ADCP figures
@@ -55,7 +55,8 @@ plt.show(block=False)
      
 * Missing
 ** adcp
-   + rotate command: mtgk rotate NETCDF_FILES ANGLE -o [output_files]
- 
+   + rotate command: mtgk adcp rotate NETCDF_FILES ANGLE -o [output_files]
+   + transform command mtgk adcp transform NETCDF_FILES  COORD_SYSTEM -N [navigation_file] -o [output_files]
+
 * Others
 ** Review documentations
