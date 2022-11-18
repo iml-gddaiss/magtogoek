@@ -84,10 +84,14 @@ def coordsystem2earth(dataset: xr.Dataset) -> xr.Dataset:
         dataset = beam2xyze(dataset)
 
     if dataset.attrs['coord_system'] == 'xyz':
-        if any([(dataset['heading'] == 0).all(), (dataset['roll_'] == 0).all(), (dataset['pitch'] == 0).all()]):
+        if 'heading' in dataset and 'roll_' in dataset and 'pitch' in dataset:
+            if any([(dataset['heading'] == 0).all(), (dataset['roll_'] == 0).all(), (dataset['pitch'] == 0).all()]):
+                l.warning(
+                    "One or more of Pitch, Roll and Heading values are all 0.")
+            xyz2enu(dataset)
+        else:
             l.warning(
-                "One or more of Pitch, Roll and Heading values are all 0.")
-        xyz2enu(dataset)
+                "One or more of Pitch, Roll and Heading data are missing.")
 
     dataset.attrs["logbook"] += l.logbook
 

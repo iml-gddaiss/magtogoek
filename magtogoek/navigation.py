@@ -157,11 +157,11 @@ def compute_navigation(
     if dataset is None:
         print('Could not load navigation data from file(s).')
         'Loading files ... [Error]'
-    elif dataset.attrs['time_flag'] is False:
+    elif 'time' not in dataset:
         'Loading files ... [Error]'
         print(f"`time` in the coordinates. Valid time name {VARIABLE_NAME_MAPPING['time']}")
         sys.exit()
-    elif dataset.attrs['lonlat_flag'] is False:
+    elif 'lon' not in dataset or 'lat' not in dataset:
         print('Loading files ... [Error]')
         print(f"Either `lon` and/or `lat` variable not found the dataset. Valid `lon` name {VARIABLE_NAME_MAPPING['lon']}, Valid `lat` name {VARIABLE_NAME_MAPPING['lon']}")
         sys.exit()
