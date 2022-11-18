@@ -117,9 +117,13 @@ def make_adcp_figure(dataset: xr.Dataset,
             names.extend(('vel_series', 'pearson_corr'))
 
         if dataset.attrs['coord_system'] != 'beam':
-            figs.append(plot_velocity_polar_hist(dataset, nrows=2, ncols=3, uv=uvw_var[:2], flag_thres=flag_thres))
+            polar_fig = plot_velocity_polar_hist(dataset, nrows=2, ncols=3, uv=uvw_var[:2], flag_thres=flag_thres)
+            if polar_fig is not None:
+                figs.append(polar_fig)
 
-        figs.append(plot_velocity_fields(dataset, vel_var=uvw_var, flag_thres=flag_thres))
+        field_fig = plot_velocity_fields(dataset, vel_var=uvw_var, flag_thres=flag_thres)
+        if field_fig is not None:
+            figs.append(field_fig)
         names.extend(('velocity_polar_hist', 'velocity_fields'))
 
     if "binary_mask" in dataset:
@@ -155,10 +159,17 @@ def make_adcp_figure(dataset: xr.Dataset,
 def plot_velocity_polar_hist(dataset: xr.Dataset, nrows: int = 3, ncols: int = 3,
                              uv: List[str] = ("u", "v"),  flag_thres: int = 2):
     naxes = int(nrows * ncols)
+    flagged_u = flag_data(dataset, var=uv[0], flag_thres=flag_thres).data
+    flagged_v = flag_data(dataset, var=uv[1], flag_thres=flag_thres).data
+
+    if ~np.isfinite(flagged_u).all() or ~np.isfinite(flagged_v).all():
+        return None
+
     r_max = np.nanmax(np.hypot(
         flag_data(dataset, var=uv[0], flag_thres=flag_thres).data,
         flag_data(dataset, var=uv[1], flag_thres=flag_thres).data
     ))
+
     r_max = round_up(r_max, 0.2)
     r_ticks = np.round(np.linspace(0, r_max, 6), 2)[1:]
 
@@ -213,6 +224,8 @@ def plot_velocity_fields(dataset: xr.Dataset, vel_var: List[str] = ("u", "v", "w
     for var, axe in zip(vel_var, axes):
         vel_da = flag_data(dataset=dataset, var=var, flag_thres=flag_thres)
         vmax = round_up(np.max(np.abs(vel_da)), 0.1)
+        if not np.isfinite(vmax):
+            vmax=1
         extent = get_extent(dataset)
         im = axe.imshow(
             vel_da, aspect="auto", cmap=VEL_CMAP, extent=extent, vmin=-vmax, vmax=vmax, interpolation='none',

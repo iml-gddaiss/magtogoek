@@ -282,10 +282,10 @@ def adcp_quality_control(
     if "pres" in dataset:
         dataset["pres_QC"] = (["time"], np.ones(dataset.pres.shape))
         if bad_pressure is True:
-            l.log("Flag as bad (4) by the user.")
+            l.log("Pressure were flagged as bad (4) by the user.")
             dataset["pres_QC"].values *= 4
             dataset["pres_QC"].attrs[
-                "quality_test"] = "Flag as bad (4) by the user."
+                "quality_test"] = "Flagged as bad (4) by the user."
         else:
             l.log(f"Good pressure range {MIN_PRESSURE} to {MAX_PRESSURE} dbar")
             pressure_flags = pressure_test(dataset)
