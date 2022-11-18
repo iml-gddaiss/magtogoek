@@ -124,6 +124,7 @@ def beam2xyze(dataset: xr.Dataset) -> xr.Dataset:
     for i, v in enumerate(xyze_velocities):
         dataset[v] = (["depth", "time"], np.round(trans_vel[:, :, i].T, decimals=3))
     l.log('Water velocities transformed from beam to xyz coordinates.')
+    dataset = dataset.drop_vars(beam_velocities)
 
     bt_beam_velocities = ('bt_v1', 'bt_v2', 'bt_v3', 'bt_v4')
     bt_xyze_velocities = ('bt_u', 'bt_v', 'bt_w', 'bt_e')
@@ -133,9 +134,10 @@ def beam2xyze(dataset: xr.Dataset) -> xr.Dataset:
         for i, v in enumerate(bt_xyze_velocities):
             dataset[v] = (["time"], np.round(trans_vel[:, i].T, decimals=3))
         l.log('Bottom velocities transformed from beam to xyz coordinates.')
+        dataset.drop_vars(bt_beam_velocities)
 
     dataset.attrs['coord_system'] = "xyz"
-    dataset = dataset.drop_vars(beam_velocities + bt_beam_velocities)
+
 
     return dataset
 
@@ -167,6 +169,7 @@ def xyz2beam(dataset: xr.Dataset) -> xr.Dataset:
         dataset[v] = (["depth", "time"], np.round(trans_vel[:, :, i].T, decimals=3))
 
     l.log('Water velocities transformed from xyz to beam coordinates.')
+    dataset = dataset.drop_vars(xyze_velocities)
 
     bt_xyze_velocities = ('bt_u', 'bt_v', 'bt_w', 'bt_e')
     bt_beam_velocities = ('bt_v1', 'bt_v2', 'bt_v3', 'bt_v4')
@@ -177,9 +180,10 @@ def xyz2beam(dataset: xr.Dataset) -> xr.Dataset:
             dataset[v] = (["time"], np.round(trans_vel[:, i].T, decimals=3))
 
         l.log('Bottom velocities transformed from xyz to beam coordinates.')
+        dataset = dataset.drop_vars(bt_xyze_velocities)
 
     dataset.attrs['coord_system'] = "beam"
-    dataset = dataset.drop_vars(xyze_velocities + bt_xyze_velocities)
+
 
     return dataset
 
