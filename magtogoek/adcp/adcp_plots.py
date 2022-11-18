@@ -148,8 +148,6 @@ def make_adcp_figure(dataset: xr.Dataset,
         input("Press Enter to continue ...")
         plt.close('all')
 
-
-
     else:
         plt.close('all')
 
