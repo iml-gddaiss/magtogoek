@@ -282,8 +282,6 @@ def load_adcp_binary(
     l.log(f"The velocity data are in {data.trans['coordsystem']} coordinate")
 
     # Water Velocities
-    # TODO if  coord_system == 'BEAM' v1, v2, v3, v4 instead of u, v, w, e
-    # TODO ADD VARIABLES PARAMETER CODES FOR BEAM AND XYZE
     data.vel[data.vel == VEL_FILL_VALUE] = np.nan
     if data.trans["coordsystem"] in ['earth', 'xyz']:
         velocities_name = ("u", "v", "w", "e")
