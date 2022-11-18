@@ -49,26 +49,28 @@ FIXME SOURCE : moored adcp ?
 
 import getpass
 import sys
-import typing as tp
 
 import click
 import numpy as np
 import pandas as pd
+import typing as tp
 import xarray as xr
+from pathlib import Path
+
+from magtogoek.adcp.adcp_plots import make_adcp_figure
 from magtogoek.adcp.loader import load_adcp_binary
+from magtogoek.adcp.transform import coordsystem2earth, motion_correction
 from magtogoek.adcp.odf_exporter import make_odf
 from magtogoek.adcp.quality_control import (adcp_quality_control,
                                             no_adcp_quality_control)
-from magtogoek.tools import (
-    rotate_2d_vector, regrid_dataset, _prepare_flags_for_regrid, _new_flags_bin_regrid,
-    _new_flags_interp_regrid)
 from magtogoek.attributes_formatter import (
     compute_global_attrs, format_variables_names_and_attributes, _add_data_min_max_to_var_attrs)
 from magtogoek.navigation import load_navigation
 from magtogoek.platforms import _add_platform
+from magtogoek.tools import (
+    rotate_2d_vector, regrid_dataset, _prepare_flags_for_regrid, _new_flags_bin_regrid,
+    _new_flags_interp_regrid)
 from magtogoek.utils import Logger, ensure_list_format, json2dict
-from magtogoek.adcp.adcp_plots import make_adcp_figure
-from pathlib import Path
 
 l = Logger(level=0)
 
@@ -105,18 +107,18 @@ DATA_TYPES = {"buoy": "madcp", "mooring": "madcp", "ship": "adcp", "lowered": "a
 DATA_SUBTYPES = {"buoy": "BUOY", "mooring": "MOORED", "ship": "SHIPBORNE", 'lowered': 'LOWERED'}
 
 BEAM_VEL_CODES = dict(
-    u='vel_beam_1',
-    v='vel_beam_2',
-    w='vel_beam_3',
-    e='vel_beam_4',
-    u_QC="vel_beam_1_QC",
-    v_QC="vel_beam_2_QC",
-    w_QC="vel_beam_3_QC",
-    e_QC="vel_beam_4_QC",
-    bt_u='bt_vel_beam_1',
-    bt_v='bt_vel_beam_2',
-    bt_w='bt_vel_beam_3',
-    bt_e='bt_vel_beam_4',
+    v1='vel_beam_1',
+    v2='vel_beam_2',
+    v3='vel_beam_3',
+    v4='vel_beam_4',
+    v1_QC='vel_beam_1_QC',
+    v2_QC='vel_beam_2_QC',
+    v3_QC='vel_beam_3_QC',
+    v4_QC='vel_beam_4_QC',
+    bt_v1='bt_vel_beam_1',
+    bt_v2='bt_vel_beam_2',
+    bt_v3='bt_vel_beam_3',
+    bt_v4='bt_vel_beam_4',
 )
 
 XYZ_VEL_CODES = dict(
@@ -260,6 +262,7 @@ class ProcessConfig:
     bottom_depth: float = None
     pitch_threshold: float = None
     roll_threshold: float = None
+    coord_transform: bool = None
     motion_correction_mode: str = None
     merge_output_files: bool = None
     bodc_name: bool = None
@@ -425,9 +428,54 @@ def _process_adcp_data(pconfig: ProcessConfig):
         l.section("Navigation data")
         dataset = _load_navigation(dataset, pconfig.navigation_file)
 
+    # -------------- #
+    # Transformation #
+    # -------------- #
+    if dataset.attrs['coord_system'] != 'earth' and pconfig.coord_transform is True:
+        l.section('Data Transformation')
+        if dataset.attrs['coord_system'] not in ["beam", "xyz"]:
+            l.log(f"Coordsystem value of {dataset.attrs['coord_system']} not recognized. Conversion to enu not available.")
+        else:
+            dataset.attrs["logbook"] += l.logbook
+            dataset = coordsystem2earth(dataset)
+            l.reset()
+
+    if pconfig.motion_correction_mode in ["bt", "nav"]:
+        l.section('Motion Correction')
+        dataset.attrs["logbook"] += l.logbook
+        motion_correction(dataset, pconfig.motion_correction_mode)
+        l.reset()
+
+    # ----------------------------------- #
+    # CORRECTION FOR MAGNETIC DECLINATION #
+    # ----------------------------------- #
+
+    l.section("Data Correction")
+
+    if dataset.attrs['magnetic_declination'] is not None:
+        l.log(f"Magnetic declination found in the raw file: {dataset.attrs['magnetic_declination']} degree east.")
+    else:
+        l.log(f"No magnetic declination found in the raw file.")
+    if pconfig.magnetic_declination:
+        if dataset.attrs['coord_system'] == 'earth':
+            angle = pconfig.magnetic_declination
+            if dataset.attrs["magnetic_declination"]:
+                angle = round((pconfig.magnetic_declination - dataset.attrs["magnetic_declination"]), 4)
+                l.log(f"An additional correction of {angle} degree east was applied.")
+            _apply_magnetic_correction(dataset, angle)
+            dataset.attrs["magnetic_declination"] = pconfig.magnetic_declination
+            l.log(f"Absolute magnetic declination: {dataset.attrs['magnetic_declination']} degree east.")
+        else:
+            l.warning('Correction for magnetic declination was not carried out since the velocity data are not in earth coordinates.')
+
+    if any(x is True for x in [pconfig.drop_percent_good, pconfig.drop_correlation, pconfig.drop_amplitude]):
+        dataset = _drop_beam_data(dataset, pconfig)
+
     # ----------------------------- #
     # ADDING SOME GLOBAL ATTRIBUTES #
     # ----------------------------- #
+
+    l.section("Adding Global Attributes")
 
     dataset = dataset.assign_attrs(STANDARD_ADCP_GLOBAL_ATTRIBUTES)
 
@@ -466,28 +514,6 @@ def _process_adcp_data(pconfig: ProcessConfig):
         no_adcp_quality_control(dataset)
 
     l.reset()
-
-    # ----------------------------------- #
-    # CORRECTION FOR MAGNETIC DECLINATION #
-    # ----------------------------------- #
-
-    l.section("Data transformation")
-
-    if dataset.attrs['magnetic_declination'] is not None:
-        l.log(f"Magnetic declination found in the raw file: {dataset.attrs['magnetic_declination']} degree east.")
-    else:
-        l.log(f"No magnetic declination found in the raw file.")
-    if pconfig.magnetic_declination:
-        angle = pconfig.magnetic_declination
-        if dataset.attrs["magnetic_declination"]:
-            angle = round((pconfig.magnetic_declination - dataset.attrs["magnetic_declination"]), 4)
-            l.log(f"An additional correction of {angle} degree east was applied.")
-        _apply_magnetic_correction(dataset, angle)
-        dataset.attrs["magnetic_declination"] = pconfig.magnetic_declination
-        l.log(f"Absolute magnetic declination: {dataset.attrs['magnetic_declination']} degree east.")
-
-    if any(x is True for x in [pconfig.drop_percent_good, pconfig.drop_correlation, pconfig.drop_amplitude]):
-        dataset = _drop_beam_data(dataset, pconfig)
 
     # ------------- #
     # DATA ENCODING #
@@ -649,6 +675,71 @@ def _load_adcp_data(pconfig: ProcessConfig) -> xr.Dataset:
     return dataset
 
 
+def _load_navigation(dataset: xr.Dataset, navigation_files: str):
+    """Load navigation data from nmea, gpx or netcdf files.
+
+    Returns the dataset with the added navigation data. Data from the navigation file
+    are interpolated on the dataset time vector.
+
+    Use to load:
+        `lon, `lat`,
+        `u_shp`, `v_ship`
+        `roll_`, `pitch`, `heading`
+
+    Parameters
+    ----------
+    dataset :
+        Dataset to which add the navigation data.
+
+    navigation_files :
+        nmea(ascii), gpx(xml) or netcdf files containing the navigation data. For the
+        netcdf file, variable must be `lon`, `lat` and the coordinates `time`.
+
+    Notes
+    -----
+        Using the magtogoek function `mtgk compute nav`, u_ship, v_ship can be computed from `lon`, `lat`
+        data to correct the data for the platform motion by setting the config parameter `m_corr` to `nav`.
+    """
+    nav_ds = load_navigation(navigation_files)
+
+    if nav_ds is not None:
+        if 'time' in nav_ds.coords:
+            nav_ds = nav_ds.interp(time=dataset.time)
+            if all([var in nav_ds for var in ('lon', 'lat')]):
+                dataset['lon'] = nav_ds['lon']
+                dataset['lat'] = nav_ds['lat']
+                l.log("Platform GPS data loaded.")
+
+            if all([var in nav_ds for var in ('u_ship', 'v_ship')]):
+                dataset['u_ship'] = nav_ds['u_ship']
+                dataset['v_ship'] = nav_ds['v_ship']
+                l.log("Platform velocity data loaded.")
+
+            if all([var in nav_ds for var in ('heading', 'pitch', 'roll_')]):
+                dataset['heading'] = nav_ds['heading']
+                dataset['pitch'] = nav_ds['pitch']
+                dataset['roll_'] = nav_ds['roll_']
+                l.log("Platform inertial data loaded.")
+            nav_ds.close()
+        else:
+            l.warning('Could not load navigation data file. `time` coordinate was massing.')
+    else:
+        l.warning('Could not load navigation data file.')
+
+    return dataset
+
+
+def _set_xducer_depth_as_sensor_depth(dataset: xr.Dataset):
+    """Set xducer_depth value to dataset attributes sensor_depth"""
+    if "xducer_depth" in dataset.attrs:  # OCEAN SURVEYOR
+        dataset.attrs["sensor_depth"] = dataset.attrs["xducer_depth"]
+
+    if "xducer_depth" in dataset:
+        dataset.attrs["sensor_depth"] = np.round(
+            np.median(dataset["xducer_depth"].data), 2
+        )
+
+
 def _set_platform_metadata(dataset: xr.Dataset, pconfig: ProcessConfig):
     """Add metadata from platform_metadata files to dataset.attrs.
 
@@ -679,108 +770,6 @@ def _set_platform_metadata(dataset: xr.Dataset, pconfig: ProcessConfig):
                 dataset.attrs[key] = value
 
 
-def _set_xducer_depth_as_sensor_depth(dataset: xr.Dataset):
-    """Set xducer_depth value to dataset attributes sensor_depth"""
-    if "xducer_depth" in dataset.attrs:  # OCEAN SURVEYOR
-        dataset.attrs["sensor_depth"] = dataset.attrs["xducer_depth"]
-
-    if "xducer_depth" in dataset:
-        dataset.attrs["sensor_depth"] = np.round(
-            np.median(dataset["xducer_depth"].data), 2
-        )
-
-
-def _load_navigation(dataset: xr.Dataset, navigation_files: str):
-    """Load navigation data from nmea, gpx or netcdf files.
-
-    Returns the dataset with the added navigation data. Data from the navigation file
-    are interpolated on the dataset time vector.
-
-    Parameters
-    ----------
-    dataset :
-        Dataset to which add the navigation data.
-
-    navigation_files :
-        nmea(ascii), gpx(xml) or netcdf files containing the navigation data. For the
-        netcdf file, variable must be `lon`, `lat` and the coordinates `time`.
-
-    Notes
-    -----
-        Using the magtogoek function `mtgk compute nav`, u_ship, v_ship can be computed from `lon`, `lat`
-    data to correct the data for the platform motion by setting the config parameter `m_corr` to `nav`.
-    """
-    nav_ds = load_navigation(navigation_files)
-    if nav_ds is not None:
-        if nav_ds.attrs['time_flag'] is True:
-            nav_ds = nav_ds.interp(time=dataset.time)
-            if nav_ds.attrs['lonlat_flag']:
-                dataset['lon'] = nav_ds['lon']
-                dataset['lat'] = nav_ds['lat']
-                l.log("Platform GPS data loaded.")
-            if nav_ds.attrs['uv_ship_flag']:
-                dataset['u_ship'] = nav_ds['u_ship']
-                dataset['v_ship'] = nav_ds['v_ship']
-                l.log("Platform velocity data loaded.")
-            nav_ds.close()
-            return dataset
-    l.warning('Could not load navigation data file.')
-    return dataset
-
-
-def _regrid_dataset(dataset: xr.Dataset, pconfig: ProcessConfig) -> xr.Dataset:
-    """ Wrapper for regrid_dataset
-
-    Note
-    ----
-    The `interp` method performs linear interpolation. The `bin` method
-    performs averaging of input data strictly within the bin boundaries
-    and with equal weights for all data inside each bin.
-
-    """
-    # Read new depths
-    _new_depths = np.loadtxt(pconfig.grid_depth)
-
-    # Pre-process flags
-    for var_ in 'uvw':
-        _flag_name = dataset[var_].attrs['ancillary_variables']
-        dataset[_flag_name].values = _prepare_flags_for_regrid(dataset[_flag_name].data)
-
-    # Make new quality flags if grid_method is `bin`. Must happen before averaging.
-    if pconfig.grid_method == 'bin':
-        _new_flags = dict()
-        for var_ in 'uvw':
-            _flag_name = dataset[var_].attrs['ancillary_variables']
-            _new_flags[_flag_name] = _new_flags_bin_regrid(dataset[_flag_name], _new_depths)
-        new_flags = xr.Dataset(_new_flags)
-
-    # Apply quality control
-    for var_ in 'uvw':
-        _flag_name = dataset[var_].attrs['ancillary_variables']
-        dataset[var_] = dataset[var_].where(dataset[_flag_name] == 8)
-
-    # Regridding
-    msg = f"to grid from file: {pconfig.grid_depth}"
-    l.log(f"Regridded dataset with method {pconfig.grid_method} {msg}")
-    dataset = regrid_dataset(dataset,
-                             grid=_new_depths,
-                             dim='depth',
-                             method=pconfig.grid_method)
-
-    # Make new flags and replace interpolated/binned values
-    for var_ in 'uvw':
-        _flag_name = dataset[var_].attrs['ancillary_variables']
-        if pconfig.grid_method == 'bin':
-            dataset[_flag_name] = new_flags[_flag_name]
-        elif pconfig.grid_method == 'interp':
-            dataset[_flag_name] = _new_flags_interp_regrid(dataset, var_)
-
-    # Change min and max values
-    _add_data_min_max_to_var_attrs(dataset)
-
-    return dataset
-
-
 def _quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
     """Carries quality control.
 
@@ -795,7 +784,6 @@ def _quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
                          horizontal_vel_th=pconfig.horizontal_velocity_threshold,
                          vertical_vel_th=pconfig.vertical_velocity_threshold,
                          error_vel_th=pconfig.error_velocity_threshold,
-                         motion_correction_mode=pconfig.motion_correction_mode,
                          sidelobes_correction=pconfig.sidelobes_correction,
                          bottom_depth=pconfig.bottom_depth,
                          bad_pressure=pconfig.bad_pressure)
@@ -903,6 +891,59 @@ def _format_data_encoding(dataset: xr.Dataset):
 
     l.log(f"Data _FillValue: {DATA_FILL_VALUE}")
     l.log(f"Ancillary Data _FillValue: {QC_FILL_VALUE}")
+
+
+def _regrid_dataset(dataset: xr.Dataset, pconfig: ProcessConfig) -> xr.Dataset:
+    """ Wrapper for regrid_dataset
+
+    Note
+    ----
+    The `interp` method performs linear interpolation. The `bin` method
+    performs averaging of input data strictly within the bin boundaries
+    and with equal weights for all data inside each bin.
+
+    """
+    # Read new depths
+    _new_depths = np.loadtxt(pconfig.grid_depth)
+
+    # Pre-process flags
+    for var_ in 'uvw':
+        _flag_name = dataset[var_].attrs['ancillary_variables']
+        dataset[_flag_name].values = _prepare_flags_for_regrid(dataset[_flag_name].data)
+
+    # Make new quality flags if grid_method is `bin`. Must happen before averaging.
+    if pconfig.grid_method == 'bin':
+        _new_flags = dict()
+        for var_ in 'uvw':
+            _flag_name = dataset[var_].attrs['ancillary_variables']
+            _new_flags[_flag_name] = _new_flags_bin_regrid(dataset[_flag_name], _new_depths)
+        new_flags = xr.Dataset(_new_flags)
+
+    # Apply quality control
+    for var_ in 'uvw':
+        _flag_name = dataset[var_].attrs['ancillary_variables']
+        dataset[var_] = dataset[var_].where(dataset[_flag_name] == 8)
+
+    # Regridding
+    msg = f"to grid from file: {pconfig.grid_depth}"
+    l.log(f"Regridded dataset with method {pconfig.grid_method} {msg}")
+    dataset = regrid_dataset(dataset,
+                             grid=_new_depths,
+                             dim='depth',
+                             method=pconfig.grid_method)
+
+    # Make new flags and replace interpolated/binned values
+    for var_ in 'uvw':
+        _flag_name = dataset[var_].attrs['ancillary_variables']
+        if pconfig.grid_method == 'bin':
+            dataset[_flag_name] = new_flags[_flag_name]
+        elif pconfig.grid_method == 'interp':
+            dataset[_flag_name] = _new_flags_interp_regrid(dataset, var_)
+
+    # Change min and max values
+    _add_data_min_max_to_var_attrs(dataset)
+
+    return dataset
 
 
 def _drop_bottom_track(dataset: xr.Dataset) -> xr.Dataset:

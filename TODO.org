@@ -8,6 +8,7 @@
  - (LERRBT01) Velocity Error water current (Eulerian measurement) in the water body by ADCP bottom tracking
 
 * Issues.
+** OUTPUT DEFAULT NAME is not the CONFIG file when using process.
 ** Motion Correction in Adcp adcp/quality_control.py and load_navigation in navigation.
    A fix has been added in viking_dat branch.
    The load_navigation can return None if lon, lat are missing from the files which will crash in quality_control.py.
@@ -32,8 +33,6 @@
 ** Better Logger Object. (global ?)
 ** ADCP QUALITY CONTROL
 *** Change PG good test for beam coord. each should be greater than 25% sum > 100.
-*** ADCP figures
-plt.show(block=False)
 ** ODF
 *** time are printed with singles quotes
 *** move odf specific config in .ini to separate header

@@ -175,6 +175,12 @@ or with the `quick` command:
 ../magtogoek/test/files$ mtgk quick adcp iml4_2017_sw_0*.ENS -s sw -y 2017 -n iml4_2017_sw_quick
 ```
 
+### Notes
+
+#### Bodc parameter codes
+Parameter codes for adcp bottom velocity up and bottom velocity error (bt_w, bt_e) do not yet exist in the BODC vocabulary. 
+Those use were made up but following the BODC semantic bt_w: LRZABT01 and bt_e: LERRBT01".
+
 
 ### Other commands
 

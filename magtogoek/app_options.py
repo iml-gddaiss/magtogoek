@@ -89,6 +89,8 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
             )
         ]
     options += [
+        click.option("-T", "--platform_type", type=click.Choice(["buoy", "mooring", "ship", "lowered"]),
+                     help="Used for Proper BODC variables names", default="buoy"),
         click.option(
             "-O",
             "--adcp-orientation",
@@ -223,6 +225,7 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
             default=None,
             multiple=True,
         ),
+        click.option("--ct/--no-ct", help="Use to do Coordinate Transformation (ct)", default=True),
         click.option(
             "-M",
             "--motion_correction_mode",

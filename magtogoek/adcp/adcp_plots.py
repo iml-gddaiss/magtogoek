@@ -32,8 +32,6 @@ plt.style.use("seaborn-dark-palette")
 
 GEO_VAR = ["heading", "roll_", "pitch", "lon", "lat"]
 ANC_VAR = ["xducer_depth", "temperature", "pres"]
-BT_UVW_VAR = ["bt_u", "bt_v", "bt_w", "bt_depth"]
-UVW_VAR = ["u", "v", "w"]
 
 
 def map_varname(varnames: List[str], varname_map: Dict) -> List[str]:
@@ -78,6 +76,13 @@ def make_adcp_figure(dataset: xr.Dataset,
 
     """
 
+    if dataset.attrs['coord_system'] == "beam":
+        velocity_variables = ("v1", "v2", "v3", "v4")
+        velocity_bt_variables = ("bt_v1", "bt_v2", "bt_v3", "bt_v4", "bt_depth")
+    else:
+        velocity_variables = ("u", "v", "w")
+        velocity_bt_variables = ("bt_u", "bt_v", "bt_w", "bt_depth")
+
     figs, names = [], []
 
     varname_map = {}
@@ -96,23 +101,25 @@ def make_adcp_figure(dataset: xr.Dataset,
             figs.append(plot_sensor_data(dataset, varnames=anc_var))
             names.append(f'sensor_data_anc')
 
-        bt_uvw_var = map_varname(BT_UVW_VAR, varname_map)
+        bt_uvw_var = map_varname(velocity_bt_variables, varname_map)
         if len(bt_uvw_var) > 0 and all(v in dataset for v in bt_uvw_var):
-            figs.append(plot_bt_vel(dataset, uvw=bt_uvw_var))
+            figs.append(plot_bt_vel(dataset, bt_var=bt_uvw_var))
             names.append(f'bt_vel')
 
-    uvw_var = map_varname(UVW_VAR, varname_map)
+    uvw_var = map_varname(velocity_variables, varname_map)
     if len(uvw_var) > 0:
         if vel_only is False:
             depths = dataset.depth.data[0:3]
             if dataset.attrs['orientation'] == "up":
                 depths = dataset.depth.data[-3:]
             figs.append(plot_vel_series(dataset, depths=depths, uvw=uvw_var, flag_thres=flag_thres))
-            figs.append(plot_pearson_corr(dataset, uvw=uvw_var, flag_thres=flag_thres))
+            figs.append(plot_pearson_corr(dataset, vel_var=uvw_var, flag_thres=flag_thres))
             names.extend(('vel_series', 'pearson_corr'))
 
-        figs.append(plot_velocity_polar_hist(dataset, nrows=2, ncols=3, uv=uvw_var[:2], flag_thres=flag_thres))
-        figs.append(plot_velocity_fields(dataset, uvw=uvw_var, flag_thres=flag_thres))
+        if dataset.attrs['coord_system'] != 'beam':
+            figs.append(plot_velocity_polar_hist(dataset, nrows=2, ncols=3, uv=uvw_var[:2], flag_thres=flag_thres))
+
+        figs.append(plot_velocity_fields(dataset, vel_var=uvw_var, flag_thres=flag_thres))
         names.extend(('velocity_polar_hist', 'velocity_fields'))
 
     if "binary_mask" in dataset:
@@ -136,7 +143,11 @@ def make_adcp_figure(dataset: xr.Dataset,
 
     if show_fig is True:
         logging.info(f'make adcp_figure show fig: {show_fig}')
-        plt.show()
+        plt.ion()
+        plt.show(block=False)
+        input("Press Enter to continue ...")
+        plt.close('all')
+
     else:
         plt.close('all')
 
@@ -195,11 +206,11 @@ def plot_velocity_polar_hist(dataset: xr.Dataset, nrows: int = 3, ncols: int = 3
     return fig
 
 
-def plot_velocity_fields(dataset: xr.Dataset, uvw: List[str] = ("u", "v", "w"), flag_thres: int = 2):
+def plot_velocity_fields(dataset: xr.Dataset, vel_var: List[str] = ("u", "v", "w"), flag_thres: int = 2):
     fig, axes = plt.subplots(
-        figsize=(12, 8), nrows=3, ncols=1, sharex=True, sharey=True,
+        figsize=(12, 8), nrows=len(vel_var), ncols=1, sharex=True, sharey=True,
     )
-    for var, axe in zip(uvw, axes):
+    for var, axe in zip(vel_var, axes):
         vel_da = flag_data(dataset=dataset, var=var, flag_thres=flag_thres)
         vmax = round_up(np.max(np.abs(vel_da)), 0.1)
         extent = get_extent(dataset)
@@ -215,7 +226,7 @@ def plot_velocity_fields(dataset: xr.Dataset, uvw: List[str] = ("u", "v", "w"), 
         axe.tick_params(rotation=-30)
 
     axes[1].set_ylabel("depth [m]", fontdict=FONT)
-    axes[2].set_xlabel("time", fontdict=FONT)
+    axes[-1].set_xlabel("time", fontdict=FONT)
 
     return fig
 
@@ -252,7 +263,7 @@ def plot_test_fields(dataset: xr.Dataset):
 
 def plot_vel_series(dataset: xr.Dataset, depths: Union[float, List[float]],
                     uvw: List[str] = ("u", "v", "w"), flag_thres: int = 2):
-    fig, axes = plt.subplots(figsize=(12, 8), nrows=3, ncols=1, sharex=True, sharey=True)
+    fig, axes = plt.subplots(figsize=(12, 8), nrows=len(uvw), ncols=1, sharex=True, sharey=True)
     axes[0].tick_params(labelbottom=False)
     axes[1].tick_params(labelbottom=False)
 
@@ -263,15 +274,15 @@ def plot_vel_series(dataset: xr.Dataset, depths: Union[float, List[float]],
         for depth, c in zip(depths, colors):
             ax.plot(dataset.time, da.sel(depth=depth), linestyle=next(clines), c=c, label=str(depth) + " m")
         ax.set_ylabel(f"{var}\n[{dataset[var].units}]", fontdict=FONT)
-    axes[2].set_xlabel("time", fontdict=FONT)
+    axes[-1].set_xlabel("time", fontdict=FONT)
     axes[2].legend(title="depth")
 
     return fig
 
 
-def plot_pearson_corr(dataset: xr.Dataset, uvw: List[str] = ("u", "v", "w"), flag_thres: int = 2):
-    corr = {v: [] for v in uvw}
-    for var in uvw:
+def plot_pearson_corr(dataset: xr.Dataset, vel_var: List[str] = ("u", "v", "w"), flag_thres: int = 2):
+    corr = {v: [] for v in vel_var}
+    for var in vel_var:
         da = flag_data(dataset=dataset, var=var)
         for d in range(dataset.dims["depth"] - 2):
             if np.isfinite(da[d]).any() and np.isfinite(da[d + 2]).any():
@@ -279,7 +290,7 @@ def plot_pearson_corr(dataset: xr.Dataset, uvw: List[str] = ("u", "v", "w"), fla
             else:
                 corr[var].append(np.nan)
     fig, axe = plt.subplots(figsize=(6, 8))
-    for var in uvw:
+    for var in vel_var:
         axe.plot(corr[var], dataset.depth[:-2], label=var)
     axe.invert_yaxis()
     axe.set_ylabel("depth [m]", fontdict=FONT)
@@ -307,14 +318,14 @@ def plot_sensor_data(dataset: xr.Dataset, varnames: List[str], flag_thres: int =
     return fig
 
 
-def plot_bt_vel(dataset: xr.Dataset, uvw: List[str] = ("bt_u", "bt_v", "bt_w", "bt_depth")):
-    fig, axes = plt.subplots(figsize=(12, 8), nrows=4, ncols=1, sharex=True, sharey=True)
+def plot_bt_vel(dataset: xr.Dataset, bt_var: List[str] = ("bt_u", "bt_v", "bt_w", "bt_depth")):
+    fig, axes = plt.subplots(figsize=(12, 8), nrows=len(bt_var), ncols=1, sharex=True, sharey=True)
     axes[0].tick_params(labelbottom=False)
     axes[1].tick_params(labelbottom=False)
-    for var, ax in zip(uvw, axes):
+    for var, ax in zip(bt_var, axes):
         ax.plot(dataset.time, dataset[var])
         ax.set_ylabel(f"{var}\n[{dataset[var].units}]", fontdict=FONT)
-    axes[2].set_xlabel("time", fontdict=FONT)
+    axes[-1].set_xlabel("time", fontdict=FONT)
 
     return fig
 
