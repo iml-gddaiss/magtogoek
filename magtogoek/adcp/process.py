@@ -783,6 +783,7 @@ def _quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
                          pitch_th=pconfig.pitch_threshold,
                          horizontal_vel_th=pconfig.horizontal_velocity_threshold,
                          vertical_vel_th=pconfig.vertical_velocity_threshold,
+                         error_vel_th=pconfig.error_velocity_threshold,
                          sidelobes_correction=pconfig.sidelobes_correction,
                          bottom_depth=pconfig.bottom_depth,
                          bad_pressure=pconfig.bad_pressure)
