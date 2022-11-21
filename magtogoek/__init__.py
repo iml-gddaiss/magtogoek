@@ -1,4 +1,6 @@
 from magtogoek.logger import Logger
+import magtogoek.logger
 
-logger = Logger(level=0)
+logger.set_level(0)
+
 VERSION = "0.0.1"

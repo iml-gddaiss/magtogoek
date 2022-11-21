@@ -134,7 +134,7 @@ def cli_options_to_config(sensor_type: str, cli_options: dict, cwd: Optional[str
        current working directory.
     """
     tparser = get_config_taskparser(sensor_type)
-    config = tparser.as_dict(with_default=True)
+    
     cli_config = _format_cli_options_to_config_dict(sensor_type, tparser, cli_options)
 
     tparser.format_parser_dict(parser_dict=cli_config, add_missing=True, format_options=True, file_path=cwd)

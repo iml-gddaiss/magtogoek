@@ -7,7 +7,7 @@ import numpy as np
 import xarray as xr
 from pycurrents.adcp import transform
 
-from magtogoek import logger as l
+import magtogoek.logger as l
 
 
 def motion_correction(dataset: xr.Dataset, mode: str):

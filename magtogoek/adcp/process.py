@@ -57,7 +57,7 @@ import typing as tp
 import xarray as xr
 from pathlib import Path
 
-from magtogoek import logger as l
+import magtogoek.logger as l
 
 from magtogoek.adcp.adcp_plots import make_adcp_figure
 from magtogoek.adcp.loader import load_adcp_binary
@@ -605,13 +605,11 @@ def _process_adcp_data(pconfig: ProcessConfig):
     if pconfig.netcdf_output is True:
         netcdf_path = Path(pconfig.netcdf_path).with_suffix('.nc')
         dataset.to_netcdf(netcdf_path)
-        l.log(f"netcdf file made -> {netcdf_path.resolve()}")
+        l.log(f"netcdf file made -> {netcdf_path}")
 
     if pconfig.make_log is True:
         log_path = Path(pconfig.log_path).with_suffix(".log")
-        with open(log_path, "w") as log_file:
-            log_file.write(dataset.attrs["history"])
-            print(f"log file made -> {log_path.resolve()}")
+        l.write(log_path)
 
     click.echo(click.style("=" * TERMINAL_WIDTH, fg="white", bold=True))
 

@@ -31,9 +31,6 @@ See Also
    * pycurrents.adcp.rdiraw.Multiread
    * rti_python
 
-TODO if  coord_system == 'BEAM' v1, v2, v3, v4 instead of u, v, w, e
-TODO ADD VARIABLES PARAMETER CODES FOR BEAM AND XYZE
-
 """
 import logging
 import sys
@@ -44,13 +41,13 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
-from magtogoek import logger as l
+import magtogoek.logger as l
 
 from magtogoek.adcp.rti_reader import RtiReader
 from magtogoek.adcp.tools import dday_to_datetime64
 from magtogoek.utils import get_files_from_expression
-from pycurrents.adcp import rdiraw, transform
-from pycurrents.adcp.rdiraw import Bunch, Multiread, rawfile
+from pycurrents.adcp import rdiraw
+from pycurrents.adcp.rdiraw import Multiread, rawfile
 
 # This is to prevent pycurrents from printing warnings.
 logging.getLogger(rdiraw.__name__).setLevel("CRITICAL")
