@@ -21,8 +21,9 @@ from scipy.interpolate import griddata
 from scipy.stats import circmean
 from tqdm import tqdm
 
+from magtogoek import logger as l
 from magtogoek.adcp.tools import datetime_to_dday
-from magtogoek.utils import Logger, get_files_from_expression
+from magtogoek.utils import get_files_from_expression
 from rti_python.Codecs.BinaryCodec import BinaryCodec
 from rti_python.Ensemble.EnsembleData import *
 
@@ -30,8 +31,6 @@ DELIMITER = b"\x80" * 16  # RTB ensemble delimiter
 BLOCK_SIZE = 4096  # Number of bytes read at a time
 RTI_FILL_VALUE = 88.88800048828125
 RDI_FILL_VALUE = -32768.0
-
-l = Logger(level=0)
 
 
 class FilesFormatError(Exception):
@@ -125,8 +124,6 @@ class RtiReader:
         self.files_start_stop_index = None
         self.ens_chunks = None
         self.current_file = None
-
-        l.reset()
 
     def check_files(self):
         """Check files for ensemble count and bin depths."""

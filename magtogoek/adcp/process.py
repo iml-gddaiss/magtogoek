@@ -57,6 +57,8 @@ import typing as tp
 import xarray as xr
 from pathlib import Path
 
+from magtogoek import logger as l
+
 from magtogoek.adcp.adcp_plots import make_adcp_figure
 from magtogoek.adcp.loader import load_adcp_binary
 from magtogoek.adcp.transform import coordsystem2earth, motion_correction
@@ -70,9 +72,7 @@ from magtogoek.platforms import _add_platform
 from magtogoek.tools import (
     rotate_2d_vector, regrid_dataset, _prepare_flags_for_regrid, _new_flags_bin_regrid,
     _new_flags_interp_regrid)
-from magtogoek.utils import Logger, ensure_list_format, json2dict
-
-l = Logger(level=0)
+from magtogoek.utils import ensure_list_format, json2dict
 
 TERMINAL_WIDTH = 80
 
@@ -414,7 +414,6 @@ def _process_adcp_data(pconfig: ProcessConfig):
         `platform_type` value in the platform file must be either 'mooring' or 'ship'.
 
     """
-    l.reset()
     # ----------------- #
     # LOADING ADCP DATA #
     # ----------------- #
@@ -436,15 +435,11 @@ def _process_adcp_data(pconfig: ProcessConfig):
         if dataset.attrs['coord_system'] not in ["beam", "xyz"]:
             l.log(f"Coordsystem value of {dataset.attrs['coord_system']} not recognized. Conversion to enu not available.")
         else:
-            dataset.attrs["logbook"] += l.logbook
             dataset = coordsystem2earth(dataset)
-            l.reset()
 
     if pconfig.motion_correction_mode in ["bt", "nav"]:
         l.section('Motion Correction')
-        dataset.attrs["logbook"] += l.logbook
         motion_correction(dataset, pconfig.motion_correction_mode)
-        l.reset()
 
     # ----------------------------------- #
     # CORRECTION FOR MAGNETIC DECLINATION #
@@ -506,14 +501,10 @@ def _process_adcp_data(pconfig: ProcessConfig):
     # QUALITY CONTROL #
     # --------------- #
 
-    dataset.attrs["logbook"] += l.logbook
-
     if pconfig.quality_control:
         _quality_control(dataset, pconfig)
     else:
         no_adcp_quality_control(dataset)
-
-    l.reset()
 
     # ------------- #
     # DATA ENCODING #
@@ -559,10 +550,7 @@ def _process_adcp_data(pconfig: ProcessConfig):
 
     dataset.attrs["date_modified"] = pd.Timestamp.now().strftime("%Y-%m-%d")
 
-    dataset.attrs["logbook"] += l.logbook
-
-    dataset.attrs["history"] = dataset.attrs["logbook"]
-    del dataset.attrs["logbook"]
+    dataset.attrs["history"] = l.logbook
 
     if "platform_name" in dataset.attrs:
         dataset.attrs["platform"] = dataset.attrs.pop("platform_name")

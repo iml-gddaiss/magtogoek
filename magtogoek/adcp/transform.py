@@ -1,14 +1,13 @@
 """Module that contains transformation function for adcp data.
 
 """
+
 from typing import *
 import numpy as np
 import xarray as xr
 from pycurrents.adcp import transform
 
-from magtogoek.utils import Logger
-
-l = Logger(level=0)
+from magtogoek import logger as l
 
 
 def motion_correction(dataset: xr.Dataset, mode: str):
@@ -17,7 +16,6 @@ def motion_correction(dataset: xr.Dataset, mode: str):
     If mode is 'bt' the motion correction is along x, y, z.
     If mode is 'nav' the motion correction is along x, y.
     """
-    l.reset()
 
     if mode == "bt":
         if all(f"bt_{v}" in dataset for v in ["u", "v", "w"]):
@@ -39,8 +37,6 @@ def motion_correction(dataset: xr.Dataset, mode: str):
             l.warning("Motion correction aborted. Navigation velocity (u_ship, v_ship) missing")
     else:
         l.warning("Motion correction aborted. Motion correction mode invalid. ('bt' or 'nav')")
-
-    dataset.attrs["logbook"] += l.logbook
 
 
 def coordsystem2earth(dataset: xr.Dataset) -> xr.Dataset:
@@ -78,7 +74,6 @@ def coordsystem2earth(dataset: xr.Dataset) -> xr.Dataset:
     xyz coordinates : Velocity in a cartesian coordinate system in the ADCP frame of reference.
     enu coordinates : East North Up measured using the heading, pitch, roll of the ADCP.
     """
-    l.reset()
 
     if dataset.attrs['coord_system'] == "beam" and dataset.attrs['beam_angle'] is not None:
         dataset = beam2xyze(dataset)
@@ -92,8 +87,6 @@ def coordsystem2earth(dataset: xr.Dataset) -> xr.Dataset:
         else:
             l.warning(
                 "One or more of Pitch, Roll and Heading data are missing.")
-
-    dataset.attrs["logbook"] += l.logbook
 
     return dataset
 
@@ -137,7 +130,6 @@ def beam2xyze(dataset: xr.Dataset) -> xr.Dataset:
         dataset.drop_vars(bt_beam_velocities)
 
     dataset.attrs['coord_system'] = "xyz"
-
 
     return dataset
 
@@ -184,7 +176,6 @@ def xyz2beam(dataset: xr.Dataset) -> xr.Dataset:
 
     dataset.attrs['coord_system'] = "beam"
 
-
     return dataset
 
 
@@ -230,7 +221,6 @@ def xyz2enu(dataset: xr.Dataset):
 def _xyz2enu(dataset: xr.Dataset, velocities: Tuple[str]):
     """See xyze2enu
     """
-
 
 
 if __name__ == "__main__":

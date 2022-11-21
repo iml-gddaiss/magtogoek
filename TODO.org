@@ -1,11 +1,6 @@
 #+Author: jerome.guay@protonmail.com
 #+TITLE: Notes on Magtogoek
 
-* New BODC parameters:
-
-** ADCP enu bt velocity. These CODE don't exist (yet)
- - (LRZABT01) Upward velocity of water current (Eulerian measurement) in the water body by ADCP bottom tracking
- - (LERRBT01) Velocity Error water current (Eulerian measurement) in the water body by ADCP bottom tracking
 
 * Issues.
 ** OUTPUT DEFAULT NAME is not the CONFIG file when using process.
@@ -29,12 +24,14 @@
    -w length of the averaging window
 
 * Improvements
-** MTGK
-** Better Logger Object. (global ?)
+** mtgk
+*** Better Logger Object. (global ?)
 ** ADCP QUALITY CONTROL
+
 *** Change PG good test for beam coord. each should be greater than 25% sum > 100.
 ** ODF
 *** time are printed with singles quotes
+
 *** move odf specific config in .ini to separate header
 ** Add BODC name de compute nav variables (lon, lat)
 ** Make a sci_tools.py module for the scientific function.

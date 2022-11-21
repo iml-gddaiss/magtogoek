@@ -52,8 +52,10 @@ import typing as tp
 
 import numpy as np
 import xarray as xr
+
+from magtogoek import logger as l
+
 from magtogoek.tools import circular_distance
-from magtogoek.utils import Logger
 from pandas import Timestamp
 from scipy.stats import circmean
 
@@ -68,7 +70,6 @@ MAX_TEMPERATURE = 32  # Celcius
 MIN_PRESSURE = 0  # dbar
 MAX_PRESSURE = 10000  # dbar (mariana trench pressure)
 
-l = Logger(level=0)
 FLAG_REFERENCE = "BODC SeaDataNet"
 FLAG_VALUES = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9)
 FLAG_MEANINGS = (
@@ -98,7 +99,6 @@ def no_adcp_quality_control(dataset: xr.Dataset):
     dataset :
         ADCP dataset formatted as done by adcp_init.
     """
-    l.reset()
     l.section("No Quality Controlled", t=True)
 
     l.log("No quality control carried out")
@@ -195,7 +195,6 @@ def adcp_quality_control(
        * 8: interpolated_value
        * 9: missing_value
     """
-    l.reset()
     l.section("Quality Control")
 
     vel_flags = np.ones(dataset.depth.shape + dataset.time.shape).astype(int)
@@ -348,13 +347,11 @@ def adcp_quality_control(
             dataset[var].attrs["flag_values"] = FLAG_VALUES
             dataset[var].attrs["flag_reference"] = FLAG_REFERENCE
 
-    dataset.attrs["quality_comments"] = l.logbook[len("[Quality Control]"):]
+    dataset.attrs["quality_comments"] = l.logbook.split("[Quality Control]\n")[1]
 
     l.log(f"Quality Control was carried out with {l.w_count} warnings")
     percent_good_vel = (np.sum(vel_flags == 1) + np.sum(vel_flags == 2)) / (len(dataset.depth) * len(dataset.time))
     l.log(f"{round(percent_good_vel * 100, 2)}% of the velocities have a flag of 1 or 2.")
-
-    dataset.attrs["logbook"] += l.logbook
 
     dataset.attrs["flags_reference"] = FLAG_REFERENCE
     dataset.attrs["flags_values"] = FLAG_VALUES
