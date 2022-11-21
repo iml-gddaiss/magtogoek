@@ -53,7 +53,7 @@ import typing as tp
 import numpy as np
 import xarray as xr
 
-from magtogoek import logger as l
+import magtogoek.logger as l
 
 from magtogoek.tools import circular_distance
 from pandas import Timestamp

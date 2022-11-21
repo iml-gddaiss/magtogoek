@@ -21,7 +21,7 @@ from scipy.interpolate import griddata
 from scipy.stats import circmean
 from tqdm import tqdm
 
-from magtogoek import logger as l
+import magtogoek.logger as l
 from magtogoek.adcp.tools import datetime_to_dday
 from magtogoek.utils import get_files_from_expression
 from rti_python.Codecs.BinaryCodec import BinaryCodec
