@@ -31,9 +31,6 @@ See Also
    * pycurrents.adcp.rdiraw.Multiread
    * rti_python
 
-TODO if  coord_system == 'BEAM' v1, v2, v3, v4 instead of u, v, w, e
-TODO ADD VARIABLES PARAMETER CODES FOR BEAM AND XYZE
-
 """
 import logging
 import sys
