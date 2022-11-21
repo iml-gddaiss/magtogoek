@@ -32,7 +32,7 @@ import click
 from magtogoek.app_options import adcp_options, add_options
 #from magtogoek.configfile import _get_taskparser
 from magtogoek.utils import is_valid_filename, json2dict, resolve_relative_path
-from magtogoek.version import VERSION
+from magtogoek import VERSION
 
 # ---------- Module or functions imported by commands ----------- #
 # NOTE: PROBABLY NOT UP TO DATE
