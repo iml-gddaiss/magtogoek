@@ -43,10 +43,12 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import xarray as xr
+
+from magtogoek import logger as l
+
 from magtogoek.adcp.rti_reader import RtiReader
-from magtogoek.adcp.rti_reader import l as rti_log
 from magtogoek.adcp.tools import dday_to_datetime64
-from magtogoek.utils import Logger, get_files_from_expression
+from magtogoek.utils import get_files_from_expression
 from pycurrents.adcp import rdiraw, transform
 from pycurrents.adcp.rdiraw import Bunch, Multiread, rawfile
 
@@ -57,8 +59,6 @@ RDI_SONAR = ["wh", "sv", "os", "sw_pd0"]
 RTI_SONAR = ["sw"]
 
 VEL_FILL_VALUE = -32768.0
-
-l = Logger(level=0)
 
 
 class FilesFormatError(Exception):
@@ -128,7 +128,6 @@ def load_adcp_binary(
         Dataset with the loaded adcp data
 
     """
-    l.reset()
 
     l.section("Loading adcp data", t=True)
 
@@ -152,7 +151,7 @@ def load_adcp_binary(
         )
         if magnetic_declination_preset is not None:
             data.FL['EV'] = magnetic_declination_preset * 100
-        l.logbook += rti_log.logbook
+
     elif sonar in RDI_SONAR:
         if sonar == "sw_pd0":
             sonar = "wh"
@@ -482,7 +481,6 @@ def load_adcp_binary(
         data.SerialNumber if "SerialNumber" in data else None
     )
     l.log(f"File(s) loaded with {l.w_count} warnings")
-    dataset.attrs["logbook"] = l.logbook
 
     return dataset
 
