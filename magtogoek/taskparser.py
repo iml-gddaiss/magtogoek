@@ -460,7 +460,7 @@ class TaskParser:
         filename :
             path/to/filename
         parser_dict :
-            from the methode Parser.
+            from the method Parser.
         add_missing :
             If True, adds the missing option with empty fields.
         new_values_dict:
@@ -474,6 +474,25 @@ class TaskParser:
         self.format_parser_dict(parser_dict, add_missing=add_missing, new_values_dict=new_values_dict,
                                 format_options=format_options)
 
+        configparser = self._make_configparser(parser_dict, with_comments=with_comments)
+
+        with open(Path(filename).with_suffix('.ini'), "w") as f:
+            configparser.write(f)
+
+    def _make_configparser(self, parser_dict: ParserDict, with_comments: bool = True) -> RawConfigParser:
+        """
+
+        Parameters
+        ----------
+        parser_dict :
+            from the method Parser.
+        with_comments :
+            If True, the comments are added
+
+        Returns
+        -------
+
+        """
         configparser = _rawconfigparser(inline_comment_prefixes=self.inline_comment_prefixes,
                                         comment_prefixes=self.comment_prefixes)
         for section, options in parser_dict.items():
@@ -491,8 +510,7 @@ class TaskParser:
                     value = str(value)
                 configparser[section][option] = value + comments
 
-        with open(Path(filename).with_suffix('.ini'), "w") as f:
-            configparser.write(f)
+        return configparser
 
 
 def _update_parser_values(parser_dict: dict, values_dict: Optional[dict] = None):
