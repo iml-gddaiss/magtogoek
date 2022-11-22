@@ -89,7 +89,7 @@ def write_configfile(filename: str, sensor_type: str, cli_options: Optional[dict
     """
     tparser = get_config_taskparser(sensor_type)
 
-    cli_config = None
+    cli_config = {}
     if cli_options is not None:
         cli_config = _format_cli_options_to_config_dict(sensor_type, tparser, cli_options)
 
