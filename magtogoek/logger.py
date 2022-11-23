@@ -3,7 +3,7 @@ from datetime import datetime
 import click
 import typing as tp
 
-__all__ = ["get_logger", "section", "log", "warning", "reset", "set_level", "level", "write"]
+__all__ = ["get_logger", "section", "log", "warning", "reset", "set_level", "write"]
 
 
 class Logger:
@@ -123,52 +123,52 @@ class Logger:
             print(f"log file made -> {filename}")
 
 
-loggers = {}
-
-current_logger = 'default'
-
-loggers['default'] = Logger(level=0)
+class Manager:
+    current_logger: str
 
 
-def get_logger(name="default"):
-    global current_logger
-    current_logger = name
-    if name not in loggers.keys():
-        loggers[name] = Logger(level=0)
+manager = Manager()
+root_logger = 'root'
+manager.current_logger = root_logger
+loggers = {root_logger: Logger(root_logger, level=0)}
+
+
+def get_logger(logger_name="default"):
+    manager.current_logger = logger_name
+    if logger_name not in loggers:
+        loggers[logger_name] = Logger(logger_name, level=0)
 
 
 def section(name: str, t =False):
-    loggers[current_logger].section(name, t)
+    loggers[manager.current_logger].section(name, t)
 
 
 def log(msg: str, t =False):
-    loggers[current_logger].log(msg, t)
+    loggers[manager.current_logger].log(msg, t)
 
 
 def warning(msg: str, t =False):
-    loggers[current_logger].warning(msg, t)
+    loggers[manager.current_logger].warning(msg, t)
 
 
 def reset():
-    loggers[current_logger].reset()
+    loggers[manager.current_logger].reset()
 
 
 def set_level(level: int):
-    loggers[current_logger].set_level(level)
-
-
-def level():
-    return loggers[current_logger].level
+    loggers[manager.current_logger].set_level(level)
 
 
 def write(filename: str):
-    loggers[current_logger].write(filename)
+    loggers[manager.current_logger].write(filename)
 
 
 def __getattr__(name):
     if name == 'logbook':
-        return loggers[current_logger].logbook
+        return loggers[manager.current_logger].logbook
     if name == "w_count":
-        return loggers[current_logger].w_count
+        return loggers[manager.current_logger].w_count
+    if name == "level":
+        return loggers[manager.current_logger].level
 
     raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
