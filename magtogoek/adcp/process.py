@@ -74,6 +74,8 @@ from magtogoek.tools import (
     _new_flags_interp_regrid)
 from magtogoek.utils import ensure_list_format, json2dict
 
+l.get_logger('adcp_processing')
+
 TERMINAL_WIDTH = 80
 
 STANDARD_ADCP_GLOBAL_ATTRIBUTES = {
