@@ -133,7 +133,7 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
         click.option(
             "-a",
             "--amplitude-threshold",
-            type=click.FLOAT,
+            type=click.FloatRange(0, 255),
             help="Amplitude threshold (0-255). Defaults to 0.",
             nargs=1,
             default=0,
@@ -142,7 +142,7 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
         click.option(
             "-p",
             "--percentgood-threshold",
-            type=click.FLOAT,
+            type=click.FloatRange(0, 100),
             help="Percentage of 4 beam threshold (0-100). Defaults to 90.",
             default=90,
             show_default=True,
@@ -150,7 +150,7 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
         click.option(
             "-c",
             "--correlation-threshold",
-            type=click.FLOAT,
+            type=click.FloatRange(0, 255),
             help="Correlation threshold (0-255).",
             nargs=1,
             default=64,
@@ -159,7 +159,7 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
         click.option(
             "-u",
             "--horizontal-velocity-threshold",
-            type=click.FLOAT,
+            type=click.FloatRange(0),
             help="Horizontal velocity threshold (u,v). [m/s]",
             nargs=1,
             default=5,
@@ -168,7 +168,7 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
         click.option(
             "-w",
             "--vertical-velocity-threshold",
-            type=click.FLOAT,
+            type=click.FloatRange(0),
             help="Vertical velocity threshold (w).  [m/s]",
             nargs=1,
             default=5,
@@ -177,7 +177,7 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
         click.option(
             "-e",
             "--error-velocity-threshold",
-            type=click.FLOAT,
+            type=click.FloatRange(0),
             help="Error velocity threshold. [m/s]",
             nargs=1,
             default=5,
@@ -240,7 +240,7 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
         click.option(
             "-P",
             "--pitch-threshold",
-            type=click.FLOAT,
+            type=click.FloatRange(0, 180),
             help="Pitch threshold (0-180).",
             nargs=1,
             default=20,
@@ -249,7 +249,7 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
         click.option(
             "-R",
             "--roll-threshold",
-            type=click.FLOAT,
+            type=click.FloatRange(0, 180),
             help="Roll threshold (0-180).Defaults to 20.",
             nargs=1,
             default=20,
