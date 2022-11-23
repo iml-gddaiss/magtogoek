@@ -231,6 +231,7 @@ DATA_ENCODING = {"dtype": "float32", "_FillValue": DATA_FILL_VALUE}
 
 
 class ProcessConfig:
+    config_file: str = None
     sensor_type: str = None
     platform_type: str = None
     input_files: str = None
@@ -336,8 +337,8 @@ class ProcessConfig:
             l.warning(f"platform_type not specified.")
             l.warning(f"platform_type set to `{DEFAULT_PLATFORM_TYPE}` for platform_type.")
 
-    def resolve_outputs(self):
-        _resolve_outputs(self)
+    def resolve_outputs(self, default_path: str = None, default_filename: str = None):
+        _resolve_outputs(self, default_path=default_path, default_filename=default_filename)
 
 
 def process_adcp(config: dict,
@@ -367,7 +368,8 @@ def process_adcp(config: dict,
     event_qualifier1 = pconfig.metadata['event_qualifier1']
 
     if pconfig.merge_output_files:
-        pconfig.resolve_outputs()
+        config_file = Path(pconfig.config_file)
+        pconfig.resolve_outputs(default_path=config_file.parent, default_filename=config_file.name)
         _process_adcp_data(pconfig)
     else:
         for count, filename in enumerate(input_files):
@@ -1068,12 +1070,14 @@ def _load_platform(platform_file: str, platform_id: str, sensor_id: str) -> tp.D
     return platform_metadata
 
 
-def _resolve_outputs(pconfig: ProcessConfig):
+def _resolve_outputs(pconfig: ProcessConfig, default_path: str = None, default_filename: str = None):
     """ Figure out the outputs to make and their path.
     """
     input_path = pconfig.input_files[0]
-    default_path = Path(input_path).parent
-    default_filename = Path(input_path).name
+    if default_path is None:
+        default_path = Path(input_path).parent
+    if default_filename is None:
+        default_filename = Path(input_path).name
 
     if not pconfig.odf_output and not pconfig.netcdf_output:
         pconfig.netcdf_output = True
