@@ -20,7 +20,8 @@ def add_options(options):
 
 def adcp_options(input_files=True, yearbase=True, sonar=True):
     """return shared adcp options. They can they be passe with the add option decorator
-    Paramters:
+
+    Parameters:
     ----------
     inputs_files:
         Adds input_options
