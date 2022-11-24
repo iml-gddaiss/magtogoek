@@ -471,9 +471,6 @@ def _process_adcp_data(pconfig: ProcessConfig):
         else:
             l.warning('Correction for magnetic declination was not carried out since the velocity data are not in earth coordinates.')
 
-    if any(x is True for x in [pconfig.drop_percent_good, pconfig.drop_correlation, pconfig.drop_amplitude]):
-        dataset = _drop_beam_data(dataset, pconfig)
-
     # ----------------------------- #
     # ADDING SOME GLOBAL ATTRIBUTES #
     # ----------------------------- #
@@ -513,6 +510,9 @@ def _process_adcp_data(pconfig: ProcessConfig):
         _quality_control(dataset, pconfig)
     else:
         no_adcp_quality_control(dataset)
+
+    if any(x is True for x in [pconfig.drop_percent_good, pconfig.drop_correlation, pconfig.drop_amplitude]):
+        dataset = _drop_beam_data(dataset, pconfig)
 
     # ------------- #
     # DATA ENCODING #

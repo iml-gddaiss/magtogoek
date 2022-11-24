@@ -347,15 +347,18 @@ def load_adcp_binary(
             )
         else:
             dataset["pg"] = (["depth", "time"], np.asarray(data.pg4.T))
+        l.log('PercentGood data loaded.')
     else:
         l.warning("Percent good was not retrieve from the dataset.")
 
     if "cor1" in data:
         for i in range(1, 5):
             dataset[f"corr{i}"] = (["depth", "time"], np.asarray(data[f"cor{i}"].T))
+        l.log('Correlation data loaded.')
     if "amp1" in data:
         for i in range(1, 5):
             dataset[f"amp{i}"] = (["depth", "time"], np.asarray(data[f"amp{i}"].T))
+        l.log('Amplitude data loaded.')
 
     # ------------------ #
     # Loading depth data #
