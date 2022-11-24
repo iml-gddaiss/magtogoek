@@ -337,7 +337,12 @@ class ProcessConfig:
             l.warning(f"platform_type not specified.")
             l.warning(f"platform_type set to `{DEFAULT_PLATFORM_TYPE}` for platform_type.")
 
-    def resolve_outputs(self, default_path: str = None, default_filename: str = None):
+    def resolve_outputs(self):
+        default_path, default_filename = None, None
+        if self.config_file is not None:
+            config_file = Path(self.config_file)
+            default_path, default_filename = config_file.parent, config_file.name
+
         _resolve_outputs(self, default_path=default_path, default_filename=default_filename)
 
 
@@ -368,8 +373,7 @@ def process_adcp(config: dict,
     event_qualifier1 = pconfig.metadata['event_qualifier1']
 
     if pconfig.merge_output_files:
-        config_file = Path(pconfig.config_file)
-        pconfig.resolve_outputs(default_path=config_file.parent, default_filename=config_file.name)
+        pconfig.resolve_outputs()
         _process_adcp_data(pconfig)
     else:
         for count, filename in enumerate(input_files):
@@ -467,9 +471,6 @@ def _process_adcp_data(pconfig: ProcessConfig):
         else:
             l.warning('Correction for magnetic declination was not carried out since the velocity data are not in earth coordinates.')
 
-    if any(x is True for x in [pconfig.drop_percent_good, pconfig.drop_correlation, pconfig.drop_amplitude]):
-        dataset = _drop_beam_data(dataset, pconfig)
-
     # ----------------------------- #
     # ADDING SOME GLOBAL ATTRIBUTES #
     # ----------------------------- #
@@ -509,6 +510,9 @@ def _process_adcp_data(pconfig: ProcessConfig):
         _quality_control(dataset, pconfig)
     else:
         no_adcp_quality_control(dataset)
+
+    if any(x is True for x in [pconfig.drop_percent_good, pconfig.drop_correlation, pconfig.drop_amplitude]):
+        dataset = _drop_beam_data(dataset, pconfig)
 
     # ------------- #
     # DATA ENCODING #
