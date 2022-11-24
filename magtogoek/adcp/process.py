@@ -337,7 +337,12 @@ class ProcessConfig:
             l.warning(f"platform_type not specified.")
             l.warning(f"platform_type set to `{DEFAULT_PLATFORM_TYPE}` for platform_type.")
 
-    def resolve_outputs(self, default_path: str = None, default_filename: str = None):
+    def resolve_outputs(self):
+        default_path, default_filename = None, None
+        if self.config_file is not None:
+            config_file = Path(self.config_file)
+            default_path, default_filename = config_file.parent, config_file.name
+
         _resolve_outputs(self, default_path=default_path, default_filename=default_filename)
 
 
@@ -368,8 +373,7 @@ def process_adcp(config: dict,
     event_qualifier1 = pconfig.metadata['event_qualifier1']
 
     if pconfig.merge_output_files:
-        config_file = Path(pconfig.config_file)
-        pconfig.resolve_outputs(default_path=config_file.parent, default_filename=config_file.name)
+        pconfig.resolve_outputs()
         _process_adcp_data(pconfig)
     else:
         for count, filename in enumerate(input_files):
