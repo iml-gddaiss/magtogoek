@@ -1,7 +1,8 @@
 import os
 from setuptools import find_packages, setup
 
-from magtogoek.version import VERSION
+from magtogoek import VERSION
+
 
 def read_file(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()

@@ -32,7 +32,7 @@ import click
 from magtogoek.app_options import adcp_options, add_options
 #from magtogoek.configfile import _get_taskparser
 from magtogoek.utils import is_valid_filename, json2dict, resolve_relative_path
-from magtogoek.version import VERSION
+from magtogoek import VERSION
 
 # ---------- Module or functions imported by commands ----------- #
 # NOTE: PROBABLY NOT UP TO DATE
@@ -108,7 +108,7 @@ def magtogoek(info, verbosis):
               help="""Using remotely with no display capability""")
 def process(info, config_file: str, **options):
     """Process data by reading configfile"""
-    # NOTE This could be update as a group with sensor specific command.
+    # This could be updated as a group with sensor specific command.
     # Doing so would allow the user to pass config options. The load_configfile
     # command is already able to take updated_params options and update de configfile.
     # The same options (or nearly all the same) as for adcp_config could be use.
@@ -216,9 +216,7 @@ def config_adcp(
     required=True,
 )
 @click.option("-y", "--yearbase", type=click.INT,
-              help="""year when the adcp sampling started. ex: `1970`""", required=True)
-@click.option("-T", "--platform_type", type=click.Choice(["buoy", "mooring", "ship"]),
-              help="Used for Proper BODC variables names", default="buoy")
+              help="""year when the adcp sampling started. ex: `1970`""", required=False, default=None)
 @click.option("--headless",
               is_flag=True,
               help="""Using remotely with no display capability""")

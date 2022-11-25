@@ -82,11 +82,14 @@ In these section, empty fields are considered False.
 ## ADCP
 ```dosini
 [ADCP_PROCESSING]
-yearbase                      = REQUIRED: YYYY, Year during which the sampling started.
+yearbase                      = YYYY, Year during which the sampling started.
 adcp_orientation              = Adcp orientation: Either looking `up` or `down`.
 sonar                         = REQUIRED: One of [`os`, `wh`, `sv`, `sw`, `sw_pd0`].
+coord_transform               = If True, the velocity data will be transformed to earth coordinates if possible.
 navigation_file               = `path/to/netcdf_file` with navigation data. See the `compute nav` 
                                 command for more info.
+motion_correction_mode        = One of [`bt`, `nav`]. `bt` uses bottom velocity and `nav` velocities computed 
+                                form gps tracking. See the `compute nav` command for more info.
 leading_trim                  = Removes a count of leading data or data before a given date or datetime.
                                 Formats: Date (`YYYY-MM-DD` or `YYYY-MM-DDThh:mm:ss.ssss`) or Count (integer).
                                 Date ex: 2000-01-01T00:00:00.0000 -> 2000-01-01T00:00:00.0000 or 2000-01-01.
@@ -127,8 +130,7 @@ sidelobes_correction          = If True sidelobe correction is carried. Quality 
 bottom_depth                  = A bottom depth value can be set for sidelobe correction if needed. 
 pitch_threshold               = Value Between 0-180: Upper limit.
 roll_threshold                = Value Between 0-180: Upper limit.
-motion_correction_mode        = One of [`bt`, `nav`]. `bt` uses bottom velocity and `nav` velocities computed 
-                                form gps tracking. See the `compute nav` command for more info.
+
 
 [ADCP_OUTPUT]
 merge_output_files            = If True, merge the input_files into a single output.

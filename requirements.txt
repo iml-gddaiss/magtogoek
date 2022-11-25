@@ -2,7 +2,6 @@ hg+https://currents.soest.hawaii.edu/hgstage/pycurrents
 
 pytest~=6.2.3
 xarray~=0.17.0
-magtogoek~=0.0.1
 datetime~=4.3
 pip~=21.0.1
 configparser~=5.0.2
@@ -53,12 +52,9 @@ requests~=2.27.1
 dask~=2021.10.0
 ipywidgets~=7.6.5
 notebook~=6.4.6
-zope~=1.0
-dbus~=1.13.18
 secretstorage~=3.3.1
 pluggy~=1.0.0
 llvmlite~=0.37.0
-yaml~=0.2.5
 pyyaml~=6.0
 pygments~=2.10.0
 psutil~=5.8.0

@@ -460,7 +460,7 @@ class TaskParser:
         filename :
             path/to/filename
         parser_dict :
-            from the methode Parser.
+            from the method Parser.
         add_missing :
             If True, adds the missing option with empty fields.
         new_values_dict:
@@ -474,25 +474,53 @@ class TaskParser:
         self.format_parser_dict(parser_dict, add_missing=add_missing, new_values_dict=new_values_dict,
                                 format_options=format_options)
 
-        configparser = _rawconfigparser(inline_comment_prefixes=self.inline_comment_prefixes,
-                                        comment_prefixes=self.comment_prefixes)
-        for section, options in parser_dict.items():
-            configparser.add_section(section)
-            for option, value in options.items():
-                comments = ""
-                if option in self._parser_infos[section]:
-                    if value == self._parser_infos[section][option].null_value:
-                        value = None
-                    if with_comments is True and self._parser_infos[section][option].comments is not None:
-                        comments += f"    ;;{self._parser_infos[section][option].comments}"
-                if value is None:
-                    value = ""
-                else:
-                    value = str(value)
-                configparser[section][option] = value + comments
+        configparser = self._make_configparser(parser_dict, with_comments=with_comments)
 
         with open(Path(filename).with_suffix('.ini'), "w") as f:
             configparser.write(f)
+
+    def _make_configparser(self, parser_dict: ParserDict, with_comments: bool = True) -> RawConfigParser:
+        """
+
+        Parameters
+        ----------
+        parser_dict :
+            from the method Parser.
+        with_comments :
+            If True, the comments are added
+
+        Returns
+        -------
+
+        """
+        configparser = _rawconfigparser(inline_comment_prefixes=self.inline_comment_prefixes,
+                                        comment_prefixes=self.comment_prefixes)
+        for section, options in self.parser_infos.items():
+            if section in parser_dict:
+                configparser.add_section(section)
+                for option in options:
+                    if option in parser_dict[section]:
+                        value = parser_dict[section][option]
+                        comments = ""
+                        if option in self._parser_infos[section]:
+                            if value == self._parser_infos[section][option].null_value:
+                                value = None
+                            if with_comments is True and self._parser_infos[section][option].comments is not None:
+                                comments += f"    ;;{self._parser_infos[section][option].comments}"
+                        if value is None:
+                            value = ""
+                        else:
+                            value = str(value)
+                        configparser[section][option] = value + comments
+
+        return configparser
+
+
+def _rawconfigparser(inline_comment_prefixes: Tuple[str] = (';;',), comment_prefixes: Tuple[str] = (';;',)):
+    parser: RawConfigParser = RawConfigParser(inline_comment_prefixes=inline_comment_prefixes,
+                                              comment_prefixes=comment_prefixes)
+    parser.optionxform = str
+    return parser
 
 
 def _update_parser_values(parser_dict: dict, values_dict: Optional[dict] = None):
@@ -504,29 +532,6 @@ def _update_parser_values(parser_dict: dict, values_dict: Optional[dict] = None)
                     parser_dict[section][option] = ""
                 else:
                     parser_dict[section][option] = str(value)
-
-
-def _rawconfigparser(inline_comment_prefixes: Tuple[str] = (';;',), comment_prefixes: Tuple[str] = (';;',)):
-    parser: RawConfigParser = RawConfigParser(inline_comment_prefixes=inline_comment_prefixes,
-                                              comment_prefixes=comment_prefixes)
-    parser.optionxform = str
-    return parser
-
-
-def _add_missing_options(parser_dict: dict, parser_infos: ParserInfos):
-    """Check for missing sections or options compared to the expected parser
-       - Adds the options or section if needed with value == ParserInfo.null_value
-       Notes
-       -----
-       This prevents missing key error later in the processing without needing
-       to add tons of conditional statements.
-       """
-    for section, options in parser_infos.items():
-        if section not in parser_dict:
-            parser_dict[section] = {}
-        for option in options.keys():
-            if option not in parser_dict[section]:
-                parser_dict[section][option] = parser_infos[section][option].null_value
 
 
 def _format_parser_options(parser_dict: dict, parser_infos: ParserInfos, file_path: Optional[str] = None):
@@ -562,6 +567,22 @@ def _format_parser_options(parser_dict: dict, parser_infos: ParserInfos, file_pa
                         _value = _format_option(str(parser_dict[section][option]), option_info, file_path)
 
                     parser_dict[section][option] = _value
+
+
+def _add_missing_options(parser_dict: dict, parser_infos: ParserInfos):
+    """Check for missing sections or options compared to the expected parser
+       - Adds the options or section if needed with value == ParserInfo.null_value
+       Notes
+       -----
+       This prevents missing key error later in the processing without needing
+       to add tons of conditional statements.
+       """
+    for section, options in parser_infos.items():
+        if section not in parser_dict:
+            parser_dict[section] = {}
+        for option in options.keys():
+            if option not in parser_dict[section]:
+                parser_dict[section][option] = parser_infos[section][option].null_value
 
 
 def _format_option(value: str, option_info: OptionInfos, file_path: Optional[str] = None):
@@ -803,12 +824,6 @@ def main():
 
 
 if __name__ == "__main__":
-    _parser = main()
-    d = _parser.as_dict()
+    from magtogoek.config_handler import write_configfile
 
-    # d["HEADER"]["sensor_type"] = "adcp"
-    # d["INPUT"]["input_files"] = "taskparser.py"
-    # d["ADCP_PROCESSING"]["yearbase"] = 2018
-    # d["ADCP_PROCESSING"]["sonar"] = "wh"
-
-    _parser.format_parser_dict(d)
+    write_configfile(filename="/home/jeromejguay/test.ini", sensor_type="adcp", cli_options={'motion_correction_mode': 'off'})

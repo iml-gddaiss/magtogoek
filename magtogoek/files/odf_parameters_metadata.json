@@ -14,6 +14,34 @@
         "print_field_width": 10,
         "print_decimal_places": 3
     },
+    "v1": {
+        "code": "RCB1_01",
+        "name": "Radial Current along Beam 1",
+        "units": "m/s",
+        "print_field_width": 10,
+        "print_decimal_places": 4
+    },
+    "v2": {
+        "code": "RCB2_01",
+        "name": "Radial Current along Beam 2",
+        "units": "m/s",
+        "print_field_width": 10,
+        "print_decimal_places": 4
+    },
+    "v3": {
+        "code": "RCB3_01",
+        "name": "Radial Current along Beam 3",
+        "units": "m/s",
+        "print_field_width": 10,
+        "print_decimal_places": 4
+    },
+    "v4": {
+        "code": "RCB4_01",
+        "name": "Radial Current along Beam 4",
+        "units": "m/s",
+        "print_field_width": 10,
+        "print_decimal_places": 4
+    },
     "u": {
         "code": "EWCT_01",
         "name": "East (true) Component of Current",

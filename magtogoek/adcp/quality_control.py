@@ -52,8 +52,10 @@ import typing as tp
 
 import numpy as np
 import xarray as xr
+
+import magtogoek.logger as l
+
 from magtogoek.tools import circular_distance
-from magtogoek.utils import Logger
 from pandas import Timestamp
 from scipy.stats import circmean
 
@@ -68,7 +70,6 @@ MAX_TEMPERATURE = 32  # Celcius
 MIN_PRESSURE = 0  # dbar
 MAX_PRESSURE = 10000  # dbar (mariana trench pressure)
 
-l = Logger(level=0)
 FLAG_REFERENCE = "BODC SeaDataNet"
 FLAG_VALUES = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9)
 FLAG_MEANINGS = (
@@ -98,11 +99,16 @@ def no_adcp_quality_control(dataset: xr.Dataset):
     dataset :
         ADCP dataset formatted as done by adcp_init.
     """
-    l.reset()
     l.section("No Quality Controlled", t=True)
 
     l.log("No quality control carried out")
-    variables = ["temperature", "pres", "u", "v", "w"]
+
+    variables = ["temperature", "pres"]
+    if dataset.attrs['coord_system'] == 'beam':
+        variables += ['v1', 'v2', 'v3', 'v4']
+    else:
+        variables += ["u", "v", "w"]
+
     for var in variables:
         if var in dataset:
             dataset[var + "_QC"] = dataset[var].copy().astype("int8") * 0
@@ -123,7 +129,6 @@ def adcp_quality_control(
     horizontal_vel_th: float = 5,
     vertical_vel_th: float = 5,
     error_vel_th: float = 5,
-    motion_correction_mode: str = "",
     sidelobes_correction: bool = False,
     bottom_depth: float = None,
     bad_pressure: bool = False
@@ -153,10 +158,6 @@ def adcp_quality_control(
         Require w values be smaller than this value (meter per seconds).
     error_vel_th :
         Require e values be smaller than this value (meter per seconds).
-    motion_correction_mode :
-        If 'nav' or 'bt' will corrected velocities from the platform motion,
-        will either correct u,v,w with navigation ('nav') or bottom track ('bt')
-        data. No motion correction si carried out if motion_correction == 'off'.
     sidelobes_correction :
         Use fixed depth or bottom track range to remove side lobe
         contamination. Set to either "dep" or "bt" or None.
@@ -194,11 +195,7 @@ def adcp_quality_control(
        * 8: interpolated_value
        * 9: missing_value
     """
-    l.reset()
     l.section("Quality Control")
-
-    if motion_correction_mode in ["bt", "nav"]:
-        motion_correction(dataset, motion_correction_mode)
 
     vel_flags = np.ones(dataset.depth.shape + dataset.time.shape).astype(int)
     binary_mask = np.zeros(dataset.depth.shape + dataset.time.shape).astype(int)
@@ -230,29 +227,31 @@ def adcp_quality_control(
         binary_mask[pg_flag] += 2 ** 2
         binary_mask_tests_value[2] = pg_th
 
-    if horizontal_vel_th is not None:
-        l.log(f"horizontal velocity threshold {horizontal_vel_th} m/s")
-        horizontal_vel_flag = horizontal_vel_test(dataset, horizontal_vel_th)
-        vel_flags[horizontal_vel_flag] = 3
-        vel_qc_test.append(f"horizontal_velocity_threshold:{horizontal_vel_th} m/s")
-        binary_mask[horizontal_vel_flag] += 2 ** 3
-        binary_mask_tests_value[3] = horizontal_vel_th
+    if dataset.attrs['coord_system'] == "earth":
+        if horizontal_vel_th is not None:
+            l.log(f"horizontal velocity threshold {horizontal_vel_th} m/s")
+            horizontal_vel_flag = horizontal_vel_test(dataset, horizontal_vel_th)
+            vel_flags[horizontal_vel_flag] = 3
+            vel_qc_test.append(f"horizontal_velocity_threshold:{horizontal_vel_th} m/s")
+            binary_mask[horizontal_vel_flag] += 2 ** 3
+            binary_mask_tests_value[3] = horizontal_vel_th
 
-    if vertical_vel_th is not None:
-        l.log(f"vertical velocity threshold {vertical_vel_th} m/s")
-        vertical_vel_flag = vertical_vel_test(dataset, vertical_vel_th)
-        vel_flags[vertical_vel_flag] = 3
-        vel_qc_test.append(f"vertical_velocity_threshold:{vertical_vel_th} m/s")
-        binary_mask[vertical_vel_flag] += 2 ** 4
-        binary_mask_tests_value[4] = vertical_vel_th
+        if vertical_vel_th is not None:
+            l.log(f"vertical velocity threshold {vertical_vel_th} m/s")
+            vertical_vel_flag = vertical_vel_test(dataset, vertical_vel_th)
+            vel_flags[vertical_vel_flag] = 3
+            vel_qc_test.append(f"vertical_velocity_threshold:{vertical_vel_th} m/s")
+            binary_mask[vertical_vel_flag] += 2 ** 4
+            binary_mask_tests_value[4] = vertical_vel_th
 
-    if error_vel_th is not None:
-        l.log(f"error velocity threshold {error_vel_th} m/s")
-        error_vel_flag = error_vel_test(dataset, error_vel_th)
-        vel_flags[error_vel_flag] = 3
-        vel_qc_test.append(f"velocity_error_threshold:{error_vel_th} m/s")
-        binary_mask[error_vel_flag] += 2 ** 5
-        binary_mask_tests_value[5] = error_vel_th
+    if dataset.attrs['coord_system'] in ["xyz", "earth"]:
+        if error_vel_th is not None:
+            l.log(f"error velocity threshold {error_vel_th} m/s")
+            error_vel_flag = error_vel_test(dataset, error_vel_th)
+            vel_flags[error_vel_flag] = 3
+            vel_qc_test.append(f"velocity_error_threshold:{error_vel_th} m/s")
+            binary_mask[error_vel_flag] += 2 ** 5
+            binary_mask_tests_value[5] = error_vel_th
 
     if roll_th is not None:
         l.log(f"roll threshold {roll_th} degree")
@@ -282,10 +281,10 @@ def adcp_quality_control(
     if "pres" in dataset:
         dataset["pres_QC"] = (["time"], np.ones(dataset.pres.shape))
         if bad_pressure is True:
-            l.log("Flag as bad (4) by the user.")
+            l.log("Pressure were flagged as bad (4) by the user.")
             dataset["pres_QC"].values *= 4
             dataset["pres_QC"].attrs[
-                "quality_test"] = "Flag as bad (4) by the user."
+                "quality_test"] = "Flagged as bad (4) by the user."
         else:
             l.log(f"Good pressure range {MIN_PRESSURE} to {MAX_PRESSURE} dbar")
             pressure_flags = pressure_test(dataset)
@@ -305,6 +304,7 @@ def adcp_quality_control(
         dataset["temperature_QC"].attrs[
             "quality_test"
         ] = f"temperature_threshold: less than {MIN_TEMPERATURE} Celsius and greater than {MAX_TEMPERATURE} celsius"
+
     if "vb_vel" in dataset:
         l.log(
             "Fifth beam quality control carried out with"
@@ -321,14 +321,22 @@ def adcp_quality_control(
             + f"percentgood_threshold: {pg_th}\n" * ("vb_pg" in dataset)
         )
 
-    vel_flags[flag_implausible_vel(dataset, threshold=IMPLAUSIBLE_VEL_TRESHOLD)] = 4
+    if dataset.attrs['coord_system'] != "beam":
+        vel_flags[flag_implausible_vel(dataset, threshold=IMPLAUSIBLE_VEL_TRESHOLD)] = 4
 
-    missing_vel = np.bitwise_or(
-        *(~np.isfinite(dataset[v].values) for v in ("u", "v", "w"))
-    )
+    if dataset.attrs['coord_system'] == "beam":
+        velocity_variables = ("v1", "v2", "v3", "v4")
+    else:
+        velocity_variables = ("u", "v", "w")
+
+    missing_vel = np.sum(
+        np.stack(
+            [~np.isfinite(dataset[v].values) for v in velocity_variables]
+        ), axis=0, dtype=bool)
+
     vel_flags[missing_vel] = 9
 
-    for v in ("u", "v", "w"):
+    for v in velocity_variables:
         dataset[v + "_QC"] = (["depth", "time"], vel_flags)
         dataset[v + "_QC"].attrs["quality_test"] = "\n".join(vel_qc_test)
 
@@ -339,13 +347,11 @@ def adcp_quality_control(
             dataset[var].attrs["flag_values"] = FLAG_VALUES
             dataset[var].attrs["flag_reference"] = FLAG_REFERENCE
 
-    dataset.attrs["quality_comments"] = l.logbook[len("[Quality Control]"):]
+    dataset.attrs["quality_comments"] = l.logbook.split("[Quality Control]\n")[1]
 
     l.log(f"Quality Control was carried out with {l.w_count} warnings")
     percent_good_vel = (np.sum(vel_flags == 1) + np.sum(vel_flags == 2)) / (len(dataset.depth) * len(dataset.time))
     l.log(f"{round(percent_good_vel * 100, 2)}% of the velocities have a flag of 1 or 2.")
-
-    dataset.attrs["logbook"] += l.logbook
 
     dataset.attrs["flags_reference"] = FLAG_REFERENCE
     dataset.attrs["flags_values"] = FLAG_VALUES
@@ -365,43 +371,6 @@ def adcp_quality_control(
         "sidelobe",
     ]
     dataset.attrs["binary_mask_tests_values"] = binary_mask_tests_value
-
-
-def motion_correction(dataset: xr.Dataset, mode: str):
-    """Carry motion correction on velocities.
-
-    If mode is 'bt' the motion correction is along x, y, z.
-    If mode is 'nav' the motion correction is along x, y.
-    """
-    if mode == "bt":
-        if all(f"bt_{v}" in dataset for v in ["u", "v", "w"]):
-            for field in ["u", "v", "w"]:
-                dataset[field].values -= dataset[f"bt_{field}"].values
-            l.log("Motion correction carried out with bottom track")
-        else:
-            l.warning(
-                "Motion correction aborted. Bottom velocity (bt_u, bt_v, bt_w) missing"
-            )
-    elif mode == "nav":
-        if all(f"{v}_ship" in dataset for v in ["u", "v"]):
-            for field in ["u", "v"]:
-                if all([v in dataset for v in ['lon', 'lat']]):
-                    velocity_correction = dataset[field + "_ship"].where(np.isfinite(dataset.lon.values), 0)
-                else:
-                    velocity_correction = dataset[field + "_ship"]
-                dataset[field] += np.tile(
-                    velocity_correction,
-                    (dataset.depth.size, 1),
-                )
-            l.log("Motion correction carried out with navigation")
-        else:
-            l.warning(
-                "Motion correction aborted. Navigation velocity (u_ship, v_ship) missing"
-            )
-    else:
-        l.warning(
-            "Motion correction aborted. Motion correction mode invalid. ('bt' or 'nav')"
-        )
 
 
 def flag_implausible_vel(
@@ -442,7 +411,7 @@ def amplitude_test(dataset: xr.Dataset, threshold: int):
             & (dataset.amp4 < threshold)
         ).data
     else:
-        l.warning("Amplitude test aborted. Missing one or more corr data")
+        l.warning("Amplitude test aborted. Missing one or more amp data")
         return np.full(dataset.depth.shape + dataset.time.shape, False)
 
 
@@ -453,7 +422,7 @@ def percentgood_test(dataset: xr.Dataset, threshold: int):
     if "pg" in dataset:
         return (dataset.pg < threshold).data
     else:
-        l.warning("Percent Good test aborted. Missing one or more corr data")
+        l.warning("Percent Good test aborted. Missing one or more pg data")
         return np.full(dataset.depth.shape + dataset.time.shape, False)
 
 
@@ -466,8 +435,8 @@ def roll_test(dataset: xr.Dataset, threshold: float) -> tp.Type[np.array]:
         roll_from_mean = circular_distance(dataset.roll_.values, roll_mean, units="deg")
         return roll_from_mean > threshold
     else:
-        l.warning("Roll test aborted. Missing one or more corr data")
-        return np.full(dataset.depth.shape + dataset.time.shape, False)
+        l.warning("Roll test aborted. Missing roll data")
+        return np.full(dataset.time.shape, False)
 
 
 def pitch_test(dataset: xr.Dataset, threshold: float) -> tp.Type[np.array]:
@@ -483,8 +452,8 @@ def pitch_test(dataset: xr.Dataset, threshold: float) -> tp.Type[np.array]:
         return pitch_from_mean > threshold
 
     else:
-        l.warning("Pitch test aborted. Missing one or more corr data")
-        return np.full(dataset.depth.shape + dataset.time.shape, False)
+        l.warning("Pitch test aborted. Missing pitch data")
+        return np.full(dataset.time.shape, False)
 
 
 def horizontal_vel_test(dataset: xr.Dataset, threshold: float) -> tp.Type[np.array]:
@@ -658,7 +627,6 @@ if __name__ == "__main__":
         pitch_th=20,
         horizontal_vel_th=2,
         vertical_vel_th=0.1,
-        motion_correction_mode="bt",
         sidelobes_correction=True,
         bottom_depth=None,
     )

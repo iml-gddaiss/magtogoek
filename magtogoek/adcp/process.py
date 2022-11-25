@@ -43,35 +43,38 @@ Notes
 
 Notes
 -----
-TODO TEST NAVIGATION FILES ! Seems to be working.
 Note DATA_TYPES: Missing for ship adcp. Set to adcp for now
 FIXME SOURCE : moored adcp ?
 """
 
 import getpass
 import sys
-import typing as tp
 
 import click
 import numpy as np
 import pandas as pd
+import typing as tp
 import xarray as xr
+from pathlib import Path
+
+import magtogoek.logger as l
+
+from magtogoek.adcp.adcp_plots import make_adcp_figure
 from magtogoek.adcp.loader import load_adcp_binary
+from magtogoek.adcp.transform import coordsystem2earth, motion_correction
 from magtogoek.adcp.odf_exporter import make_odf
 from magtogoek.adcp.quality_control import (adcp_quality_control,
                                             no_adcp_quality_control)
-from magtogoek.tools import (
-    rotate_2d_vector, regrid_dataset, _prepare_flags_for_regrid, _new_flags_bin_regrid,
-    _new_flags_interp_regrid)
 from magtogoek.attributes_formatter import (
     compute_global_attrs, format_variables_names_and_attributes, _add_data_min_max_to_var_attrs)
 from magtogoek.navigation import load_navigation
 from magtogoek.platforms import _add_platform
-from magtogoek.utils import Logger, ensure_list_format, json2dict
-from magtogoek.adcp.plots import make_adcp_figure
-from pathlib import Path
+from magtogoek.tools import (
+    rotate_2d_vector, regrid_dataset, _prepare_flags_for_regrid, _new_flags_bin_regrid,
+    _new_flags_interp_regrid)
+from magtogoek.utils import ensure_list_format, json2dict
 
-l = Logger(level=0)
+l.get_logger('adcp_processing')
 
 TERMINAL_WIDTH = 80
 
@@ -100,12 +103,48 @@ GLOBAL_ATTRS_TO_DROP = [
     "bodc_name"
 ]
 CONFIG_GLOBAL_ATTRS_SECTIONS = ["NETCDF_CF", "PROJECT", "CRUISE", "GLOBAL_ATTRIBUTES"]
-PLATFORM_TYPES = ["buoy", "mooring", "ship"]
+PLATFORM_TYPES = ["buoy", "mooring", "ship", "lowered"]
 DEFAULT_PLATFORM_TYPE = "buoy"
-DATA_TYPES = {"buoy": "madcp", "mooring": "madcp", "ship": "adcp"}
-DATA_SUBTYPES = {"buoy": "BUOY", "mooring": "MOORED", "ship": "SHIPBORNE"}
+DATA_TYPES = {"buoy": "madcp", "mooring": "madcp", "ship": "adcp", "lowered": "adcp"}
+DATA_SUBTYPES = {"buoy": "BUOY", "mooring": "MOORED", "ship": "SHIPBORNE", 'lowered': 'LOWERED'}
+
+BEAM_VEL_CODES = dict(
+    v1='vel_beam_1',
+    v2='vel_beam_2',
+    v3='vel_beam_3',
+    v4='vel_beam_4',
+    v1_QC='vel_beam_1_QC',
+    v2_QC='vel_beam_2_QC',
+    v3_QC='vel_beam_3_QC',
+    v4_QC='vel_beam_4_QC',
+    bt_v1='bt_vel_beam_1',
+    bt_v2='bt_vel_beam_2',
+    bt_v3='bt_vel_beam_3',
+    bt_v4='bt_vel_beam_4',
+)
+
+XYZ_VEL_CODES = dict(
+    u='vel_x_axis',
+    v='vel_y_axis',
+    w='vel_z_axis',
+    u_QC="vel_x_axis_QC",
+    v_QC="vel_y_axis_QC",
+    w_QC="vel_z_axis_QC",
+    bt_u='bt_vel_x_axis',
+    bt_v='bt_vel_y_axis',
+    bt_w='bt_vel_z_axis',
+)
 
 P01_VEL_CODES = dict(
+    lowered=dict(
+        u="LCEWLW01",
+        v="LCNSLW01",
+        w="LRZALW01",
+        e="ERRVLDCP",
+        u_QC="LCEWAP01_QC",
+        v_QC="LCNSAP01_QC",
+        w_QC="LRZAAP01_QC",
+    ),
     buoy=dict(
         u="LCEWAP01",
         v="LCNSAP01",
@@ -142,10 +181,10 @@ P01_CODES = dict(
     amp2="TNIHCE02",
     amp3="TNIHCE03",
     amp4="TNIHCE04",
-    bt_u="APEWBT01",
-    bt_v="APNSBT01",
-    bt_w="APZABT01",
-    bt_e="APERBT01",
+    bt_u="LCEWBT01",
+    bt_v="LCNSBT01",
+    bt_w="LRZABT01", #FIXME Do not yet exist as a BODC sdn code
+    bt_e="LERRBT01", #FIXME Do not yet exist as a BODC sdn code
     vb_vel="LRZUVP01",
     vb_vel_QC="LRZUVP01_QC",
     vb_pg="PCGDAP05",
@@ -192,6 +231,7 @@ DATA_ENCODING = {"dtype": "float32", "_FillValue": DATA_FILL_VALUE}
 
 
 class ProcessConfig:
+    config_file: str = None
     sensor_type: str = None
     platform_type: str = None
     input_files: str = None
@@ -225,6 +265,7 @@ class ProcessConfig:
     bottom_depth: float = None
     pitch_threshold: float = None
     roll_threshold: float = None
+    coord_transform: bool = None
     motion_correction_mode: str = None
     merge_output_files: bool = None
     bodc_name: bool = None
@@ -285,15 +326,24 @@ class ProcessConfig:
                 l.warning(f"platform_file, {self.platform_file}, not found")
         elif self.platform_type is not None:
             self.platform_metadata = _default_platform_metadata()
-            if self.platform_type in DEFAULT_PLATFORM_TYPE:
+            if self.platform_type in PLATFORM_TYPES:
                 self.platform_metadata["platform"]['platform_type'] = self.platform_type
             else:
                 self.platform_metadata["platform"]['platform_type'] = DEFAULT_PLATFORM_TYPE
-                l.warning(f"platform_type invalid or no specified. Must be one of {PLATFORM_TYPES}")
+                l.warning(f"platform_type invalid. Must be one of {PLATFORM_TYPES}")
                 l.warning(f"platform_type set to `{DEFAULT_PLATFORM_TYPE}` for platform_type.")
+        else:
+            self.platform_metadata["platform"]['platform_type'] = DEFAULT_PLATFORM_TYPE
+            l.warning(f"platform_type not specified.")
+            l.warning(f"platform_type set to `{DEFAULT_PLATFORM_TYPE}` for platform_type.")
 
     def resolve_outputs(self):
-        _resolve_outputs(self)
+        default_path, default_filename = None, None
+        if self.config_file is not None:
+            config_file = Path(self.config_file)
+            default_path, default_filename = config_file.parent, config_file.name
+
+        _resolve_outputs(self, default_path=default_path, default_filename=default_filename)
 
 
 def process_adcp(config: dict,
@@ -316,24 +366,35 @@ def process_adcp(config: dict,
     pconfig = ProcessConfig(config)
     pconfig.drop_empty_attrs = drop_empty_attrs
     pconfig.headless = headless
-    pconfig.resolve_outputs()
+
+    input_files = list(pconfig.input_files)
+    odf_output = pconfig.odf_output
+    netcdf_output = pconfig.netcdf_output
+    event_qualifier1 = pconfig.metadata['event_qualifier1']
 
     if pconfig.merge_output_files:
+        pconfig.resolve_outputs()
         _process_adcp_data(pconfig)
     else:
-        netcdf_output = pconfig.netcdf_output
-        input_files = pconfig.input_files
-        for filename, count in zip(input_files, range(len(input_files))):
-            if netcdf_output:
-                if isinstance(netcdf_output, bool):
-                    pconfig.netcdf_output = filename
-                else:
-                    pconfig.netcdf_output = Path(netcdf_output).absolute().resolve()
-                    if pconfig.netcdf_output.is_dir():
-                        pconfig.netcdf_output = str(pconfig.netcdf_output.joinpath(filename))
-                    else:
-                        pconfig.netcdf_output = str(pconfig.netcdf_output.with_suffix("")) + f"_{count}"
+        for count, filename in enumerate(input_files):
             pconfig.input_files = [filename]
+            if isinstance(netcdf_output, str):
+                if not Path(netcdf_output).is_dir():
+                    pconfig.netcdf_output = str(Path(netcdf_output).with_suffix("")) + f"_{count}"
+                else:
+                    pconfig.netcdf_output = netcdf_output
+
+            if isinstance(odf_output, str):
+                if not Path(odf_output).is_dir():
+                    pconfig.odf_output = str(Path(odf_output).with_suffix("")) + f"_{count}"
+                else:
+                    pconfig.metadata['event_qualifier1'] = event_qualifier1 + f"_{Path(filename).name}"  # PREVENTS FROM OVERWRITING THE SAME FILE
+                    pconfig.odf_output = odf_output
+            else:
+                pconfig.metadata['event_qualifier1'] = event_qualifier1 + f"_{Path(filename).name}" # PREVENTS FROM OVERWRITING THE SAME FILE
+                pconfig.odf_output = odf_output
+
+            pconfig.resolve_outputs()
 
             _process_adcp_data(pconfig)
 
@@ -361,7 +422,6 @@ def _process_adcp_data(pconfig: ProcessConfig):
         `platform_type` value in the platform file must be either 'mooring' or 'ship'.
 
     """
-    l.reset()
     # ----------------- #
     # LOADING ADCP DATA #
     # ----------------- #
@@ -375,9 +435,47 @@ def _process_adcp_data(pconfig: ProcessConfig):
         l.section("Navigation data")
         dataset = _load_navigation(dataset, pconfig.navigation_file)
 
+    # -------------- #
+    # Transformation #
+    # -------------- #
+    if dataset.attrs['coord_system'] != 'earth' and pconfig.coord_transform is True:
+        l.section('Data Transformation')
+        if dataset.attrs['coord_system'] not in ["beam", "xyz"]:
+            l.log(f"Coordsystem value of {dataset.attrs['coord_system']} not recognized. Conversion to enu not available.")
+        else:
+            dataset = coordsystem2earth(dataset)
+
+    if pconfig.motion_correction_mode in ["bt", "nav"]:
+        l.section('Motion Correction')
+        motion_correction(dataset, pconfig.motion_correction_mode)
+
+    # ----------------------------------- #
+    # CORRECTION FOR MAGNETIC DECLINATION #
+    # ----------------------------------- #
+
+    l.section("Data Correction")
+
+    if dataset.attrs['magnetic_declination'] is not None:
+        l.log(f"Magnetic declination found in the raw file: {dataset.attrs['magnetic_declination']} degree east.")
+    else:
+        l.log(f"No magnetic declination found in the raw file.")
+    if pconfig.magnetic_declination:
+        if dataset.attrs['coord_system'] == 'earth':
+            angle = pconfig.magnetic_declination
+            if dataset.attrs["magnetic_declination"]:
+                angle = round((pconfig.magnetic_declination - dataset.attrs["magnetic_declination"]), 4)
+                l.log(f"An additional correction of {angle} degree east was applied.")
+            _apply_magnetic_correction(dataset, angle)
+            dataset.attrs["magnetic_declination"] = pconfig.magnetic_declination
+            l.log(f"Absolute magnetic declination: {dataset.attrs['magnetic_declination']} degree east.")
+        else:
+            l.warning('Correction for magnetic declination was not carried out since the velocity data are not in earth coordinates.')
+
     # ----------------------------- #
     # ADDING SOME GLOBAL ATTRIBUTES #
     # ----------------------------- #
+
+    l.section("Adding Global Attributes")
 
     dataset = dataset.assign_attrs(STANDARD_ADCP_GLOBAL_ATTRIBUTES)
 
@@ -408,33 +506,10 @@ def _process_adcp_data(pconfig: ProcessConfig):
     # QUALITY CONTROL #
     # --------------- #
 
-    dataset.attrs["logbook"] += l.logbook
-
     if pconfig.quality_control:
         _quality_control(dataset, pconfig)
     else:
         no_adcp_quality_control(dataset)
-
-    l.reset()
-
-    # ----------------------------------- #
-    # CORRECTION FOR MAGNETIC DECLINATION #
-    # ----------------------------------- #
-
-    l.section("Data transformation")
-
-    if dataset.attrs['magnetic_declination'] is not None:
-        l.log(f"Magnetic declination found in the raw file: {dataset.attrs['magnetic_declination']} degree east.")
-    else:
-        l.log(f"No magnetic declination found in the raw file.")
-    if pconfig.magnetic_declination:
-        angle = pconfig.magnetic_declination
-        if dataset.attrs["magnetic_declination"]:
-            angle = round((pconfig.magnetic_declination - dataset.attrs["magnetic_declination"]), 4)
-            l.log(f"An additional correction of {angle} degree east was applied.")
-        _apply_magnetic_correction(dataset, angle)
-        dataset.attrs["magnetic_declination"] = pconfig.magnetic_declination
-        l.log(f"Absolute magnetic declination: {dataset.attrs['magnetic_declination']} degree east.")
 
     if any(x is True for x in [pconfig.drop_percent_good, pconfig.drop_correlation, pconfig.drop_amplitude]):
         dataset = _drop_beam_data(dataset, pconfig)
@@ -449,10 +524,14 @@ def _process_adcp_data(pconfig: ProcessConfig):
     # -------------------- #
     dataset.attrs['bodc_name'] = pconfig.bodc_name
     dataset.attrs["VAR_TO_ADD_SENSOR_TYPE"] = VAR_TO_ADD_SENSOR_TYPE
-    dataset.attrs["P01_CODES"] = {
-        **P01_VEL_CODES[pconfig.platform_type],
-        **P01_CODES,
-    }
+    dataset.attrs["P01_CODES"] = P01_CODES
+    if dataset.attrs['coord_system'] == 'earth':
+        dataset.attrs["P01_CODES"].update((P01_VEL_CODES[pconfig.platform_type]))
+    elif dataset.attrs['coord_system'] == 'xyz':
+        dataset.attrs["P01_CODES"].update(XYZ_VEL_CODES)
+    elif dataset.attrs['coord_system'] == 'beam':
+        dataset.attrs["P01_CODES"].update(BEAM_VEL_CODES)
+
     dataset.attrs["variables_gen_name"] = [var for var in dataset.variables]  # For Odf outputs
 
     l.section("Variables attributes")
@@ -479,10 +558,7 @@ def _process_adcp_data(pconfig: ProcessConfig):
 
     dataset.attrs["date_modified"] = pd.Timestamp.now().strftime("%Y-%m-%d")
 
-    dataset.attrs["logbook"] += l.logbook
-
-    dataset.attrs["history"] = dataset.attrs["logbook"]
-    del dataset.attrs["logbook"]
+    dataset.attrs["history"] = l.logbook
 
     if "platform_name" in dataset.attrs:
         dataset.attrs["platform"] = dataset.attrs.pop("platform_name")
@@ -537,13 +613,11 @@ def _process_adcp_data(pconfig: ProcessConfig):
     if pconfig.netcdf_output is True:
         netcdf_path = Path(pconfig.netcdf_path).with_suffix('.nc')
         dataset.to_netcdf(netcdf_path)
-        l.log(f"netcdf file made -> {netcdf_path.resolve()}")
+        l.log(f"netcdf file made -> {netcdf_path}")
 
     if pconfig.make_log is True:
         log_path = Path(pconfig.log_path).with_suffix(".log")
-        with open(log_path, "w") as log_file:
-            log_file.write(dataset.attrs["history"])
-            print(f"log file made -> {log_path.resolve()}")
+        l.write(log_path)
 
     click.echo(click.style("=" * TERMINAL_WIDTH, fg="white", bold=True))
 
@@ -595,6 +669,71 @@ def _load_adcp_data(pconfig: ProcessConfig) -> xr.Dataset:
     return dataset
 
 
+def _load_navigation(dataset: xr.Dataset, navigation_files: str):
+    """Load navigation data from nmea, gpx or netcdf files.
+
+    Returns the dataset with the added navigation data. Data from the navigation file
+    are interpolated on the dataset time vector.
+
+    Use to load:
+        `lon, `lat`,
+        `u_shp`, `v_ship`
+        `roll_`, `pitch`, `heading`
+
+    Parameters
+    ----------
+    dataset :
+        Dataset to which add the navigation data.
+
+    navigation_files :
+        nmea(ascii), gpx(xml) or netcdf files containing the navigation data. For the
+        netcdf file, variable must be `lon`, `lat` and the coordinates `time`.
+
+    Notes
+    -----
+        Using the magtogoek function `mtgk compute nav`, u_ship, v_ship can be computed from `lon`, `lat`
+        data to correct the data for the platform motion by setting the config parameter `m_corr` to `nav`.
+    """
+    nav_ds = load_navigation(navigation_files)
+
+    if nav_ds is not None:
+        if 'time' in nav_ds.coords:
+            nav_ds = nav_ds.interp(time=dataset.time)
+            if all([var in nav_ds for var in ('lon', 'lat')]):
+                dataset['lon'] = nav_ds['lon']
+                dataset['lat'] = nav_ds['lat']
+                l.log("Platform GPS data loaded.")
+
+            if all([var in nav_ds for var in ('u_ship', 'v_ship')]):
+                dataset['u_ship'] = nav_ds['u_ship']
+                dataset['v_ship'] = nav_ds['v_ship']
+                l.log("Platform velocity data loaded.")
+
+            if all([var in nav_ds for var in ('heading', 'pitch', 'roll_')]):
+                dataset['heading'] = nav_ds['heading']
+                dataset['pitch'] = nav_ds['pitch']
+                dataset['roll_'] = nav_ds['roll_']
+                l.log("Platform inertial data loaded.")
+            nav_ds.close()
+        else:
+            l.warning('Could not load navigation data file. `time` coordinate was massing.')
+    else:
+        l.warning('Could not load navigation data file.')
+
+    return dataset
+
+
+def _set_xducer_depth_as_sensor_depth(dataset: xr.Dataset):
+    """Set xducer_depth value to dataset attributes sensor_depth"""
+    if "xducer_depth" in dataset.attrs:  # OCEAN SURVEYOR
+        dataset.attrs["sensor_depth"] = dataset.attrs["xducer_depth"]
+
+    if "xducer_depth" in dataset:
+        dataset.attrs["sensor_depth"] = np.round(
+            np.median(dataset["xducer_depth"].data), 2
+        )
+
+
 def _set_platform_metadata(dataset: xr.Dataset, pconfig: ProcessConfig):
     """Add metadata from platform_metadata files to dataset.attrs.
 
@@ -625,108 +764,6 @@ def _set_platform_metadata(dataset: xr.Dataset, pconfig: ProcessConfig):
                 dataset.attrs[key] = value
 
 
-def _set_xducer_depth_as_sensor_depth(dataset: xr.Dataset):
-    """Set xducer_depth value to dataset attributes sensor_depth"""
-    if "xducer_depth" in dataset.attrs:  # OCEAN SURVEYOR
-        dataset.attrs["sensor_depth"] = dataset.attrs["xducer_depth"]
-
-    if "xducer_depth" in dataset:
-        dataset.attrs["sensor_depth"] = np.round(
-            np.median(dataset["xducer_depth"].data), 2
-        )
-
-
-def _load_navigation(dataset: xr.Dataset, navigation_files: str):
-    """Load navigation data from nmea, gpx or netcdf files.
-
-    Returns the dataset with the added navigation data. Data from the navigation file
-    are interpolated on the dataset time vector.
-
-    Parameters
-    ----------
-    dataset :
-        Dataset to which add the navigation data.
-
-    navigation_files :
-        nmea(ascii), gpx(xml) or netcdf files containing the navigation data. For the
-        netcdf file, variable must be `lon`, `lat` and the coordinates `time`.
-
-    Notes
-    -----
-        Using the magtogoek function `mtgk compute nav`, u_ship, v_ship can be computed from `lon`, `lat`
-    data to correct the data for the platform motion by setting the config parameter `m_corr` to `nav`.
-    """
-    nav_ds = load_navigation(navigation_files)
-    if nav_ds is not None:
-        if nav_ds.attrs['time_flag'] is True:
-            nav_ds = nav_ds.interp(time=dataset.time)
-            if nav_ds.attrs['lonlat_flag']:
-                dataset['lon'] = nav_ds['lon']
-                dataset['lat'] = nav_ds['lat']
-                l.log("Platform GPS data loaded.")
-            if nav_ds.attrs['uv_ship_flag']:
-                dataset['u_ship'] = nav_ds['u_ship']
-                dataset['v_ship'] = nav_ds['v_ship']
-                l.log("Platform velocity data loaded.")
-            nav_ds.close()
-            return dataset
-    l.warning('Could not load navigation data file.')
-    return dataset
-
-
-def _regrid_dataset(dataset: xr.Dataset, pconfig: ProcessConfig) -> xr.Dataset:
-    """ Wrapper for regrid_dataset
-
-    Note
-    ----
-    The `interp` method performs linear interpolation. The `bin` method
-    performs averaging of input data strictly within the bin boundaries
-    and with equal weights for all data inside each bin.
-
-    """
-    # Read new depths
-    _new_depths = np.loadtxt(pconfig.grid_depth)
-
-    # Pre-process flags
-    for var_ in 'uvw':
-        _flag_name = dataset[var_].attrs['ancillary_variables']
-        dataset[_flag_name].values = _prepare_flags_for_regrid(dataset[_flag_name].data)
-
-    # Make new quality flags if grid_method is `bin`. Must happen before averaging.
-    if pconfig.grid_method == 'bin':
-        _new_flags = dict()
-        for var_ in 'uvw':
-            _flag_name = dataset[var_].attrs['ancillary_variables']
-            _new_flags[_flag_name] = _new_flags_bin_regrid(dataset[_flag_name], _new_depths)
-        new_flags = xr.Dataset(_new_flags)
-
-    # Apply quality control
-    for var_ in 'uvw':
-        _flag_name = dataset[var_].attrs['ancillary_variables']
-        dataset[var_] = dataset[var_].where(dataset[_flag_name] == 8)
-
-    # Regridding
-    msg = f"to grid from file: {pconfig.grid_depth}"
-    l.log(f"Regridded dataset with method {pconfig.grid_method} {msg}")
-    dataset = regrid_dataset(dataset,
-                             grid=_new_depths,
-                             dim='depth',
-                             method=pconfig.grid_method)
-
-    # Make new flags and replace interpolated/binned values
-    for var_ in 'uvw':
-        _flag_name = dataset[var_].attrs['ancillary_variables']
-        if pconfig.grid_method == 'bin':
-            dataset[_flag_name] = new_flags[_flag_name]
-        elif pconfig.grid_method == 'interp':
-            dataset[_flag_name] = _new_flags_interp_regrid(dataset, var_)
-
-    # Change min and max values
-    _add_data_min_max_to_var_attrs(dataset)
-
-    return dataset
-
-
 def _quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
     """Carries quality control.
 
@@ -741,7 +778,6 @@ def _quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
                          horizontal_vel_th=pconfig.horizontal_velocity_threshold,
                          vertical_vel_th=pconfig.vertical_velocity_threshold,
                          error_vel_th=pconfig.error_velocity_threshold,
-                         motion_correction_mode=pconfig.motion_correction_mode,
                          sidelobes_correction=pconfig.sidelobes_correction,
                          bottom_depth=pconfig.bottom_depth,
                          bad_pressure=pconfig.bad_pressure)
@@ -849,6 +885,59 @@ def _format_data_encoding(dataset: xr.Dataset):
 
     l.log(f"Data _FillValue: {DATA_FILL_VALUE}")
     l.log(f"Ancillary Data _FillValue: {QC_FILL_VALUE}")
+
+
+def _regrid_dataset(dataset: xr.Dataset, pconfig: ProcessConfig) -> xr.Dataset:
+    """ Wrapper for regrid_dataset
+
+    Note
+    ----
+    The `interp` method performs linear interpolation. The `bin` method
+    performs averaging of input data strictly within the bin boundaries
+    and with equal weights for all data inside each bin.
+
+    """
+    # Read new depths
+    _new_depths = np.loadtxt(pconfig.grid_depth)
+
+    # Pre-process flags
+    for var_ in 'uvw':
+        _flag_name = dataset[var_].attrs['ancillary_variables']
+        dataset[_flag_name].values = _prepare_flags_for_regrid(dataset[_flag_name].data)
+
+    # Make new quality flags if grid_method is `bin`. Must happen before averaging.
+    if pconfig.grid_method == 'bin':
+        _new_flags = dict()
+        for var_ in 'uvw':
+            _flag_name = dataset[var_].attrs['ancillary_variables']
+            _new_flags[_flag_name] = _new_flags_bin_regrid(dataset[_flag_name], _new_depths)
+        new_flags = xr.Dataset(_new_flags)
+
+    # Apply quality control
+    for var_ in 'uvw':
+        _flag_name = dataset[var_].attrs['ancillary_variables']
+        dataset[var_] = dataset[var_].where(dataset[_flag_name] == 8)
+
+    # Regridding
+    msg = f"to grid from file: {pconfig.grid_depth}"
+    l.log(f"Regridded dataset with method {pconfig.grid_method} {msg}")
+    dataset = regrid_dataset(dataset,
+                             grid=_new_depths,
+                             dim='depth',
+                             method=pconfig.grid_method)
+
+    # Make new flags and replace interpolated/binned values
+    for var_ in 'uvw':
+        _flag_name = dataset[var_].attrs['ancillary_variables']
+        if pconfig.grid_method == 'bin':
+            dataset[_flag_name] = new_flags[_flag_name]
+        elif pconfig.grid_method == 'interp':
+            dataset[_flag_name] = _new_flags_interp_regrid(dataset, var_)
+
+    # Change min and max values
+    _add_data_min_max_to_var_attrs(dataset)
+
+    return dataset
 
 
 def _drop_bottom_track(dataset: xr.Dataset) -> xr.Dataset:
@@ -985,12 +1074,14 @@ def _load_platform(platform_file: str, platform_id: str, sensor_id: str) -> tp.D
     return platform_metadata
 
 
-def _resolve_outputs(pconfig: ProcessConfig):
+def _resolve_outputs(pconfig: ProcessConfig, default_path: str = None, default_filename: str = None):
     """ Figure out the outputs to make and their path.
     """
     input_path = pconfig.input_files[0]
-    default_path = Path(input_path).parent
-    default_filename = Path(input_path).name
+    if default_path is None:
+        default_path = Path(input_path).parent
+    if default_filename is None:
+        default_filename = Path(input_path).name
 
     if not pconfig.odf_output and not pconfig.netcdf_output:
         pconfig.netcdf_output = True
@@ -1012,7 +1103,7 @@ def _netcdf_output_handler(pconfig: ProcessConfig, default_path: Path, default_f
         _netcdf_output = Path(pconfig.netcdf_output)
         if Path(_netcdf_output.name) == _netcdf_output:
             netcdf_path = default_path.joinpath(_netcdf_output).resolve()
-        elif _netcdf_output.absolute().is_dir():
+        elif _netcdf_output.is_dir():
             netcdf_path = _netcdf_output.joinpath(default_filename)
         elif _netcdf_output.parent.is_dir():
             netcdf_path = _netcdf_output

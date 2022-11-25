@@ -24,18 +24,26 @@ from magtogoek.tools import get_gps_bearing, vincenty
 from magtogoek.utils import get_files_from_expression
 
 FILE_FORMATS = (".log", ".gpx", ".nc")
-NAVIGATION_VARIABLES_NAME = ("lon", "lat", "time",'u_ship', 'v_ship')
+NAVIGATION_VARIABLES_NAME = ("lon", "lat", "time", 'u_ship', 'v_ship', 'heading', 'roll_', 'pitch')
 VARIABLE_NAME_MAPPING = dict(
     time=("Time", "TIME", "T", "t"),
     lon=("LON", "Lon", "longitude", "LONGITUDE", "Longitude", "X", "x"),
     lat=("LAT", "Lat", "latitude", "LATITUDE", "Latitude", "Y", "y"),
     u_ship=(),
     v_ship=(),
+    heading=(),
+    roll_=(),
+    pitch=()
+
 )
 
 
 def load_navigation(filenames):
     """Load gps data from  `nmea`, `gpx` or `netcdf` file format.
+
+    For netcdf files, additional data can also be loaded:
+        "heading", "pitch" and "roll_". FIXME NOT TESTED
+
     Returns a xarray.Dataset with the loaded data.
     """
 
@@ -70,11 +78,7 @@ def load_navigation(filenames):
             datasets.append(_dataset)
 
     if len(datasets) > 0:
-        flags = {'time_flag': False, 'lonlat_flag': False, 'uv_ship_flag': False}
-        for key in flags.keys():
-            flags[key] = all([ds.attrs[key] for ds in datasets])
         dataset = xr.merge(datasets)
-        dataset.attrs.update(flags)
         return dataset
     else:
         return None
@@ -153,11 +157,11 @@ def compute_navigation(
     if dataset is None:
         print('Could not load navigation data from file(s).')
         'Loading files ... [Error]'
-    elif dataset.attrs['time_flag'] is False:
+    elif 'time' not in dataset:
         'Loading files ... [Error]'
         print(f"`time` in the coordinates. Valid time name {VARIABLE_NAME_MAPPING['time']}")
         sys.exit()
-    elif dataset.attrs['lonlat_flag'] is False:
+    elif 'lon' not in dataset or 'lat' not in dataset:
         print('Loading files ... [Error]')
         print(f"Either `lon` and/or `lat` variable not found the dataset. Valid `lon` name {VARIABLE_NAME_MAPPING['lon']}, Valid `lat` name {VARIABLE_NAME_MAPPING['lon']}")
         sys.exit()
@@ -200,8 +204,7 @@ def _compute_navigation(
     """
     centered_time, course, speed = _compute_speed_and_course(dataset.time, dataset.lon.values, dataset.lat.values)
 
-    u_ship = speed * np.sin(np.deg2rad(course))
-    v_ship = speed * np.cos(np.deg2rad(course))
+    u_ship, v_ship = compute_uv_ship(speed, course)
 
     nav_dataset = xr.Dataset(
         {
@@ -250,6 +253,24 @@ def _compute_speed_and_course(time: tp.Union[list, np.ndarray],
     return centered_time, course, speed
 
 
+def compute_uv_ship(speed: np.ndarray, course: np.ndarray) -> tp.Tuple[np.ndarray]:
+    """ Compute u_ship and v_ship from speed and course
+
+    Parameters
+    ----------
+    speed:
+        Speed of the vessel.
+    course:
+        course (direction) of the vessel.
+
+    Returns
+    -------
+    u_ship, v_ship
+
+    """
+    return speed * np.sin(np.deg2rad(course)), speed * np.cos(np.deg2rad(course))
+
+
 def _plot_navigation(dataset: xr.Dataset):
     """plots bearing, speed, u_ship and v_ship from a dataset"""
 
@@ -295,16 +316,5 @@ def _check_variables_names(dataset):
                 if name in dataset:
                     dataset = dataset.rename({name: var})
                     found_variables.append(var)
-
-    dataset.attrs.update({'time_flag': False, 'lonlat_flag': False, 'uv_ship_flag': False})
-    if 'time' not in dataset.coords:
-        return dataset
-    else:
-        dataset.attrs['time_flag'] = True
-    if all([var in dataset for var in ('lon', 'lat')]):
-        dataset.attrs['lonlat_flag'] = True
-    if all([var in dataset for var in ('u_ship', 'v_ship')]):
-        dataset.attrs['uv_ship_flag'] = True
-
     return dataset
 

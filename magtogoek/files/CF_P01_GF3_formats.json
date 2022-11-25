@@ -6,6 +6,199 @@
         "SDN:P06::",
         "SDN:GF3"
     ],
+
+    "vel_beam_1": {
+        "units": "m s-1",
+        "sensor_type": "adcp",
+        "long_name": "sea water velocity along beam 1",
+        "sdn_parameter_urn": "SDN:P01::XXXXXXXX",
+        "sdn_parameter_name": "",
+        "sdn_uom_urn": "SDN:P06::UVAA",
+        "sdn_uom_name": "Metres per second"
+    },
+    "vel_beam_2": {
+        "units": "m s-1",
+        "sensor_type": "adcp",
+        "long_name": "sea water velocity along beam 2",
+        "sdn_parameter_urn": "SDN:P01::XXXXXXXX",
+        "sdn_parameter_name": "",
+        "sdn_uom_urn": "SDN:P06::UVAA",
+        "sdn_uom_name": "Metres per second"
+    },
+    "vel_beam_3": {
+        "units": "m s-1",
+        "sensor_type": "adcp",
+        "long_name": "sea water velocity along beam 3",
+        "sdn_parameter_urn": "SDN:P01::XXXXXXXX",
+        "sdn_parameter_name": "",
+        "sdn_uom_urn": "SDN:P06::UVAA",
+        "sdn_uom_name": "Metres per second"
+    },
+    "vel_beam_4": {
+        "units": "m s-1",
+        "sensor_type": "adcp",
+        "long_name": "sea water velocity along beam 4",
+        "sdn_parameter_urn": "SDN:P01::XXXXXXXX",
+        "sdn_parameter_name": "",
+        "sdn_uom_urn": "SDN:P06::UVAA",
+        "sdn_uom_name": "Metres per second"
+    },
+
+    "bt_vel_beam_1": {
+        "units": "m s-1",
+        "sensor_type": "adcp",
+        "long_name": "seabed velocity along beam 1",
+        "sdn_parameter_urn": "SDN:P01::XXXXXXXX",
+        "sdn_parameter_name": "",
+        "sdn_uom_urn": "SDN:P06::UVAA",
+        "sdn_uom_name": "Metres per second"
+    },
+    "bt_vel_beam_2": {
+        "units": "m s-1",
+        "sensor_type": "adcp",
+        "long_name": "seabed velocity along beam 2",
+        "sdn_parameter_urn": "SDN:P01::XXXXXXXX",
+        "sdn_parameter_name": "",
+        "sdn_uom_urn": "SDN:P06::UVAA",
+        "sdn_uom_name": "Metres per second"
+    },
+    "bt_vel_beam_3": {
+        "units": "m s-1",
+        "sensor_type": "adcp",
+        "long_name": "seabed velocity along beam 3",
+        "sdn_parameter_urn": "SDN:P01::XXXXXXXX",
+        "sdn_parameter_name": "",
+        "sdn_uom_urn": "SDN:P06::UVAA",
+        "sdn_uom_name": "Metres per second"
+    },
+    "bt_vel_beam_4": {
+        "units": "m s-1",
+        "sensor_type": "adcp",
+        "long_name": "seabed velocity along beam 4",
+        "sdn_parameter_urn": "SDN:P01::XXXXXXXX",
+        "sdn_parameter_name": "",
+        "sdn_uom_urn": "SDN:P06::UVAA",
+        "sdn_uom_name": "Metres per second"
+    },
+
+    "vel_x_axis": {
+        "units": "m s-1",
+        "sensor_type": "adcp",
+        "long_name": "sea water velocity along the x-axis",
+        "sdn_parameter_urn": "SDN:P01::XXXXXXXX",
+        "sdn_parameter_name": "",
+        "sdn_uom_urn": "SDN:P06::UVAA",
+        "sdn_uom_name": "Metres per second"
+    },
+    "vel_y_axis": {
+        "units": "m s-1",
+        "sensor_type": "adcp",
+        "long_name": "sea water velocity along the y-axis",
+        "sdn_parameter_urn": "SDN:P01::XXXXXXXX",
+        "sdn_parameter_name": "",
+        "sdn_uom_urn": "SDN:P06::UVAA",
+        "sdn_uom_name": "Metres per second"
+    },
+    "vel_z_axis": {
+        "units": "m s-1",
+        "sensor_type": "adcp",
+        "long_name": "sea water velocity along the z-axis",
+        "sdn_parameter_urn": "SDN:P01::XXXXXXXX",
+        "sdn_parameter_name": "",
+        "sdn_uom_urn": "SDN:P06::UVAA",
+        "sdn_uom_name": "Metres per second"
+    },
+    "vel_e": {
+        "units": "m s-1",
+        "sensor_type": "adcp",
+        "long_name": "sea water velocity error",
+        "sdn_parameter_urn": "SDN:P01::XXXXXXXX",
+        "sdn_parameter_name": "",
+        "sdn_uom_urn": "SDN:P06::UVAA",
+        "sdn_uom_name": "Metres per second"
+    },
+
+    "bt_vel_x_axis": {
+        "units": "m s-1",
+        "sensor_type": "adcp",
+        "long_name": "seabed velocity along the x-axis",
+        "sdn_parameter_urn": "SDN:P01::XXXXXXXX",
+        "sdn_parameter_name": "",
+        "sdn_uom_urn": "SDN:P06::UVAA",
+        "sdn_uom_name": "Metres per second"
+    },
+    "bt_vel_y_axis": {
+        "units": "m s-1",
+        "sensor_type": "adcp",
+        "long_name": "seabed velocity along the y-axis",
+        "sdn_parameter_urn": "SDN:P01::XXXXXXXX",
+        "sdn_parameter_name": "",
+        "sdn_uom_urn": "SDN:P06::UVAA",
+        "sdn_uom_name": "Metres per second"
+    },
+    "bt_vel_z_axis": {
+        "units": "m s-1",
+        "sensor_type": "adcp",
+        "long_name": "seabed velocity along the z-axis",
+        "sdn_parameter_urn": "SDN:P01::XXXXXXXX",
+        "sdn_parameter_name": "",
+        "sdn_uom_urn": "SDN:P06::UVAA",
+        "sdn_uom_name": "Metres per second"
+    },
+    "bt_vel_e": {
+        "units": "m s-1",
+        "sensor_type": "adcp",
+        "long_name": "seabed velocity error",
+        "sdn_parameter_urn": "SDN:P01::XXXXXXXX",
+        "sdn_parameter_name": "",
+        "sdn_uom_urn": "SDN:P06::UVAA",
+        "sdn_uom_name": "Metres per second"
+    },
+
+    "LCEWLW01": {
+        "standard_name": "eastward_sea_water_velocity",
+        "units": "m s-1",
+        "sensor_type": "adcp",
+        "long_name": "eastward sea water velocity",
+        "sdn_parameter_urn": "SDN:P01::LCEWLW01",
+        "sdn_parameter_name": "Eastward current velocity (Eulerian measurement) in the water body by lowered acoustic doppler current profiler (ADCP)",
+        "sdn_uom_urn": "SDN:P06::UVAA",
+        "sdn_uom_name": "Metres per second",
+        "legacy_GF3_code": "SDN:GF3::EWCT"
+    },
+    "LCNSLW01": {
+        "standard_name": "northward_sea_water_velocity",
+        "units": "m s-1",
+        "sensor_type": "adcp",
+        "long_name": "northward sea water velocity",
+        "sdn_parameter_urn": "SDN:P01::LCNSLW01",
+        "sdn_parameter_name": "Northward current velocity (Eulerian measurement) in the water body by lowered acoustic doppler current profiler (ADCP)",
+        "sdn_uom_urn": "SDN:P06::UVAA",
+        "sdn_uom_name": "Metres per second",
+        "legacy_GF3_code": "SDN:GF3::NWCT"
+    },
+    "LRZALW01": {
+        "standard_name": "upward_sea_water_velocity",
+        "units": "m s-1",
+        "sensor_type": "adcp",
+        "long_name": "upward sea water velocity",
+        "sdn_parameter_urn": "SDN:P01::LRZALW01",
+        "sdn_parameter_name": "Upward current velocity (Eulerian measurement) in the water body by lowered acoustic doppler current profiler (ADCP)",
+        "sdn_uom_urn": "SDN:P06::UVAA",
+        "sdn_uom_name": "Metres per second",
+        "legacy_GF3_code": "SDN:GF3::VCSP"
+    },
+    "ERRVLW01": {
+        "units": "m s-1",
+        "sensor_type": "adcp",
+        "long_name": "error velocity in sea water",
+        "sdn_parameter_urn": "SDN:P01::LERRLW01",
+        "sdn_parameter_name": "Current velocity error in the water body by lowered acoustic doppler current profiler(ADCP)",
+        "sdn_uom_urn": "SDN:P06::UVAA",
+        "sdn_uom_name": "Metres per second",
+        "legacy_GF3_code": "SDN:GF3::ERRV"
+    },
+
     "LCEWAP01": {
         "standard_name": "eastward_sea_water_velocity",
         "units": "m s-1",
@@ -49,6 +242,7 @@
         "sdn_uom_name": "Metres per second",
         "legacy_GF3_code": "SDN:GF3::ERRV"
     },
+
     "LCEWAS01": {
         "standard_name": "eastward_sea_water_velocity",
         "units": "m s-1",
@@ -92,6 +286,44 @@
         "sdn_uom_name": "Metres per second",
         "legacy_GF3_code": "SDN:GF3::ERRV"
     },
+
+    "LCNSBT01": {
+        "units": "m s-1",
+        "sensor_type": "adcp",
+        "long_name": "northward seabed velocity",
+        "sdn_parameter_urn": "SDN:P01::LCNSBT01",
+        "sdn_parameter_name": "Northward velocity of water current (Eulerian measurement) in the water body by ADCP bottom tracking",
+        "sdn_uom_urn": "SDN:P06::UVAA",
+        "sdn_uom_name": "Metres per second"
+    },
+    "LCEWBT01": {
+        "units": "m s-1",
+        "sensor_type": "adcp",
+        "long_name": "eastward seabed velocity",
+        "sdn_parameter_urn": "SDN:P01::LCEWBT01",
+        "sdn_parameter_name": "Eastward velocity of water current (Eulerian measurement) in the water body by ADCP bottom tracking",
+        "sdn_uom_urn": "SDN:P06::UVAA",
+        "sdn_uom_name": "Metres per second"
+    },
+    "LRZABT01": {
+        "units": "m s-1",
+        "sensor_type": "adcp",
+        "long_name": "upward seabed velocity",
+        "sdn_parameter_urn": "SDN:P01::LRZABT01",
+        "sdn_parameter_name": "Upward velocity of water current (Eulerian measurement) in the water body by ADCP bottom tracking",
+        "sdn_uom_urn": "SDN:P06::UVAA",
+        "sdn_uom_name": "Metres per second"
+    },
+    "LERRBT01": {
+        "units": "m s-1",
+        "sensor_type": "adcp",
+        "long_name": "seabed error velocity",
+        "sdn_parameter_urn": "SDN:P01::LERRBT01",
+        "sdn_parameter_name": "Current velocity error in the water body by ADCP bottom tracking",
+        "sdn_uom_urn": "SDN:P06::UVAA",
+        "sdn_uom_name": "Metres per second"
+    },
+
     "TNIHCE01": {
         "standard_name": "signal_intensity_from_multibeam_acoustic_doppler_velocity_sensor_in_sea_water",
         "units": "counts",
@@ -357,7 +589,7 @@
         "sensor_type": "adcp",
         "long_name": "bin depth below surface",
         "sdn_parameter_urn": "SDN:P01::PPSAADCP",
-        "sdn_parameter_name": "Depth below surface of the water body by acoustic doppler current profiler (ADCP) and computation from traveltime averaged from all operational beams and unknown sound velocity profile",
+        "sdn_parameter_name": "Depth below surface of the water body by acoustic doppler current profiler (ADCP) and computation from travel time averaged from all operational beams and unknown sound velocity profile",
         "sdn_uom_urn": "SDN:P06::ULAA",
         "sdn_uom_name": "Metres",
         "legacy_GF3_code": "SDN:GF3::DEPH"
@@ -445,7 +677,7 @@
         "sdn_uom_name": "Metres per second"
     },
     "BATHDPTH": {
-        "units": "m s-1",
+        "units": "m",
         "long_name": "bottom depth",
         "sdn_parameter_urn": "SDN:P01::BATHDPTH",
         "sdn_parameter_name": "Sea-floor depth (below mean sea level) {bathymetric depth}",
