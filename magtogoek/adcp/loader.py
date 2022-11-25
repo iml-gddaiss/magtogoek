@@ -2,7 +2,7 @@
 author: Jérôme Guay
 date: Feb. 22, 2021
 based in part  on: https://github.com/jeanlucshaw/adcp2nc/
-                   https://github.com/hhourston/pycurrents_ADCP_processign
+                   https://github.com/hhourston/pycurrents_ADCP_processing
 
 
 This script contains functions to read adcp files and load them in xarray.Dataset.
@@ -25,11 +25,6 @@ Notes
 file will be processed but a warning will be raised. The cause was not investigated.
 - This should probably be turned into an object.
 
-TODO
-----
-- Change PG good test for beam coord. each should be greater than 25% sum > 100.
-
-
 
 See Also
 --------
@@ -45,12 +40,14 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import xarray as xr
+
+import magtogoek.logger as l
+
 from magtogoek.adcp.rti_reader import RtiReader
-from magtogoek.adcp.rti_reader import l as rti_log
 from magtogoek.adcp.tools import dday_to_datetime64
-from magtogoek.utils import Logger, get_files_from_expression
-from pycurrents.adcp import rdiraw, transform
-from pycurrents.adcp.rdiraw import Bunch, Multiread, rawfile
+from magtogoek.utils import get_files_from_expression
+from pycurrents.adcp import rdiraw
+from pycurrents.adcp.rdiraw import Multiread, rawfile
 
 # This is to prevent pycurrents from printing warnings.
 logging.getLogger(rdiraw.__name__).setLevel("CRITICAL")
@@ -59,8 +56,6 @@ RDI_SONAR = ["wh", "sv", "os", "sw_pd0"]
 RTI_SONAR = ["sw"]
 
 VEL_FILL_VALUE = -32768.0
-
-l = Logger(level=0)
 
 
 class FilesFormatError(Exception):
@@ -74,7 +69,7 @@ class InvalidSonarError(Exception):
 def load_adcp_binary(
     filenames: tp.Union[str, tp.List[str]],
     sonar: str,
-    yearbase: int,
+    yearbase: int = None,
     orientation: str = None,
     leading_index: int = None,
     trailing_index: int = None,
@@ -82,6 +77,7 @@ def load_adcp_binary(
     bad_pressure: bool = False,
     start_time: str = None,
     time_step: float = None,
+    magnetic_declination_preset: float = None,
 ) -> xr.Dataset:
     """Load RDI and RTI adcp data.
 
@@ -98,32 +94,37 @@ def load_adcp_binary(
         Path/to/files
     sonar:
         Type of sonar (`os`, `wh`, `sv`, `sw`, `sw_pd0`)
-    yearbase:
+    yearbase: Optional
         year that the sampling begun.
-    orientation:
+    orientation: Optional
         Adcp orientation. Either `up` or `down`. Will overwrite the value
         of the binary file.
-    leading_index:
+    leading_index: Optional
         Number of ensemble to cut from the start.
-    trailing_index:
+    trailing_index: Optional
         Number of ensemble to cut from the end.
-    sensor_depth:
+    sensor_depth: Optional
         If provided, the adcp depth (meter) will be adjusted so that its median equal `sensor_depth`.
-    bad_pressure:
+    bad_pressure: Optional
         If True, XducerDepth is set to 0 or to `sensor_depth` if provided.
-    start_time:
+    start_time: Optional
         Format 'YYYY-MM-DDThh:mm:ss.ssss'.
         If provided, a new time coordinate vector, starting at `start_time`, is used instead of the
         one found in the raw adcp file.
         Use the parameter `time_step` to use a different time step than the one found in the adcp raw adcp file.
-    time_step:
+    time_step: Optional
         Time step in seconds. Only use if a `start_time` value is provided.
+    magnetic_declination_preset: Optional
+        RTI binaries do not contain the magnetic declination set in the ADCPs
+        program before deployment, so the value read is always null. Overwrite
+        this (e.g., with the value from the program commands) by setting this
+        parameter.
+
     Returns
     -------
         Dataset with the loaded adcp data
 
     """
-    l.reset()
 
     l.section("Loading adcp data", t=True)
 
@@ -145,7 +146,9 @@ def load_adcp_binary(
         data = RtiReader(filenames=filenames).read(
             start_index=leading_index, stop_index=trailing_index
         )
-        l.logbook += rti_log.logbook
+        if magnetic_declination_preset is not None:
+            data.FL['EV'] = magnetic_declination_preset * 100
+
     elif sonar in RDI_SONAR:
         if sonar == "sw_pd0":
             sonar = "wh"
@@ -174,7 +177,9 @@ def load_adcp_binary(
                 f"ERROR: The input_files are not in a RDI pd0 format. RDI sonar : {RDI_SONAR}"
             )
             sys.exit()
-
+        if leading_index is not None or trailing_index is not None:
+            l.log(f"Time index cut: leading={0 if leading_index is None else leading_index}, "
+                  f"trailing={0 if trailing_index is None else trailing_index}")
         # Reading the files FixedLeaders to check for invalid config.
         # noinspection PyTupleAssignmentBalance
         data.sysconfig["up"], invalid_config_count = check_pd0_fixed_leader(
@@ -213,7 +218,7 @@ def load_adcp_binary(
     # Convert `dday` to datetime64 #
     # ---------------------------- #
 
-    time, time_string, bad_dday = _get_time(data.dday, yearbase, start_time, time_step)
+    time, time_string, bad_dday = _get_time(data.dday, data.yearbase, start_time, time_step)
 
     # ----------------------------------------------------------- #
     # Convert depth relative to the ADCP to depth below surface   #
@@ -261,33 +266,26 @@ def load_adcp_binary(
     if (depth < 0).all():
         l.warning("Bin depths are all negative, ADCP orientation is probably wrong.")
 
-    # --------------------- #
+    # ------------------------ #
     # Initializing the dataset #
-    # --------------------- #
+    # ------------------------ #
     dataset = xr.Dataset(coords={"depth": depth, "time": time})
-
-    # --------------------------------------- #
-    # Dealing with the coordinates system     #
-    # --------------------------------------- #
-    original_coordsystem = data.trans["coordsystem"]
-    if original_coordsystem != "earth":
-        l.log(f"The velocity data are in {data.trans['coordsystem']} coordinate")
-
-        coordsystem2earth(data=data, orientation=orientation)
-
-        if data.trans["coordsystem"] == "xyz":
-            l.warning("Roll, Pitch or Heading seems to be missing from the data file.")
-        l.log(f"The velocity data were transformed to {data.trans['coordsystem']}")
 
     # --------------------------- #
     # Loading the transducer data #
     # --------------------------- #
+
+    l.log(f"The velocity data are in {data.trans['coordsystem']} coordinate")
+
+    # Water Velocities
     data.vel[data.vel == VEL_FILL_VALUE] = np.nan
-    # WATER VELOCITIES
-    dataset["u"] = (["depth", "time"], data.vel[:, :, 0].T)
-    dataset["v"] = (["depth", "time"], data.vel[:, :, 1].T)
-    dataset["w"] = (["depth", "time"], data.vel[:, :, 2].T)
-    dataset["e"] = (["depth", "time"], data.vel[:, :, 3].T)
+    if data.trans["coordsystem"] in ['earth', 'xyz']:
+        velocities_name = ("u", "v", "w", "e")
+    else:
+        velocities_name = ("v1", "v2", "v3", "v4")
+
+    for i, v in enumerate(velocities_name):
+        dataset[v] = (["depth", "time"], data.vel[:, :, i].T)
     l.log("Velocity data loaded")
 
     if sonar == "sv":
@@ -302,32 +300,22 @@ def load_adcp_binary(
     # BOTTOM VELOCITIES
     if "bt_vel" in data:
         if (data.bt_vel == 0).all():
-            l.log(
-                "Bottom track values were all `0`, therefore they were dropped from the output."
-            )
+            l.log("Bottom track values were all `0`, therefore they were dropped from the output.")
         elif not np.isfinite(data.bt_vel).all():
-            l.log(
-                "Bottom track values were all `nan`, therefore they were dropped from the output."
-            )
+            l.log("Bottom track values were all `nan`, therefore they were dropped from the output.")
 
         else:
             data.bt_vel[data.bt_vel == VEL_FILL_VALUE] = np.nan
-            dataset["bt_u"] = (["time"], data.bt_vel[:, 0])
-            dataset["bt_v"] = (["time"], data.bt_vel[:, 1])
-            dataset["bt_w"] = (["time"], data.bt_vel[:, 2])
-            dataset["bt_e"] = (["time"], data.bt_vel[:, 3])
+            for i, v in enumerate(velocities_name):
+                dataset["bt_"+v] = (["time"], data.bt_vel[:, i].T)
             l.log("Bottom track data loaded")
 
     # BOTTOM DEPTH
     if "bt_depth" in data:
         if (data.bt_depth == 0).all():
-            l.log(
-                "Bottom depth values were all `0`, therefore they were dropped from the output."
-            )
+            l.log("Bottom depth values were all `0`, therefore they were dropped from the output.")
         elif not np.isfinite(data.bt_depth).all():
-            l.log(
-                "Bottom depth values were all `nan`, therefore they were dropped from the output."
-            )
+            l.log("Bottom depth values were all `nan`, therefore they were dropped from the output.")
         else:
             dataset["bt_depth"] = (
                 ["time"],
@@ -352,22 +340,25 @@ def load_adcp_binary(
 
     # QUALITY
     if "pg" in data:
-        if original_coordsystem == "beam":
+        if data.trans["coordsystem"] == "beam":
             dataset["pg"] = (["depth", "time"], np.asarray(np.mean(data.pg, axis=2).T))
             l.log(
-                "Percent good was computed by averaging each beam PercentGood. The raw data were in beam coordinate."
+                "Percent good was computed by averaging each beam PercentGood. The raw data were in beam coordinates."
             )
         else:
             dataset["pg"] = (["depth", "time"], np.asarray(data.pg4.T))
+        l.log('PercentGood data loaded.')
     else:
         l.warning("Percent good was not retrieve from the dataset.")
 
     if "cor1" in data:
         for i in range(1, 5):
             dataset[f"corr{i}"] = (["depth", "time"], np.asarray(data[f"cor{i}"].T))
+        l.log('Correlation data loaded.')
     if "amp1" in data:
         for i in range(1, 5):
             dataset[f"amp{i}"] = (["depth", "time"], np.asarray(data[f"amp{i}"].T))
+        l.log('Amplitude data loaded.')
 
     # ------------------ #
     # Loading depth data #
@@ -406,7 +397,13 @@ def load_adcp_binary(
 
     if "heading" in data:
         if (data.heading == 0).all() or (np.diff(data.heading) == 0).all():
-            l.warning("Heading data are either all 0, or not varying.")
+            l.warning("Adcp heading data are either all 0, or not varying.")
+            if "nav_heading" in data:
+                if (data.nav_heading == 0).all() or (np.diff(data.nav_heading) == 0).all():
+                    l.warning("Navigation heading data are either all 0, or not varying.")
+                else:
+                    l.warning("Heading loaded from navigation data.")
+                    dataset["heading"] = (["time"], np.asarray(data.heading))
         else:
             dataset["heading"] = (["time"], np.asarray(data.heading))
     if "roll" in data:
@@ -476,8 +473,7 @@ def load_adcp_binary(
     dataset.attrs["magnetic_declination"] = None
     if "FL" in data:
         if "EV" in data.FL:
-            if data.FL["EV"] != 0:
-                dataset.attrs["magnetic_declination"] = data.FL["EV"] / 100
+            dataset.attrs["magnetic_declination"] = data.FL["EV"] / 100
     dataset.attrs["magnetic_declination_units"] = "degree east"
 
     dataset.attrs["orientation"] = orientation
@@ -485,83 +481,82 @@ def load_adcp_binary(
         data.SerialNumber if "SerialNumber" in data else None
     )
     l.log(f"File(s) loaded with {l.w_count} warnings")
-    dataset.attrs["logbook"] = l.logbook
 
     return dataset
 
 
-def coordsystem2earth(data: Bunch, orientation: str):
-    """Transforms beam and xyz coordinates to enu coordinates
-
-    NOTE: not properly tested. But it should work.
-
-    Replace the values of data.vel, data.bt_vel with East, North and Up velocities
-    and the velocity error for 4 beams ADCP. UHDAS transform functions are used to
-    transform for beam coordinates and xyz to east-north-up (enu). These function
-    can use a three-beam solution by faking a fourth beam.
-
-    Also change the values of of `coordinates` in data.trans.
-
-    beam coordinates : Velocity measured along beam axis.
-    xyz coordinates : Velocity in a cartesian coordinate system in the ADCP frame of reference.
-    enu coordinates : East North Up measured using the heading, pitch, roll of the ADCP.
-
-    Parameters
-    ----------
-    data:
-        pycurrents.adcp.rdiraw.Bunche object containing: vel[time, depth, beams], bt_vel[time, beams],
-        heading, roll, pitch sysconfig.convex, sysconfig.angle  and trans.coordsystem.
-
-    orientation:
-        adcp orientation. Either `up` or `down`.
-    Notes
-    -----
-    Move the prints outside
-    """
-
-    if data.trans.coordsystem not in ["beam", "xyz"]:
-        l.log(
-            f"Coordsystem value of {data.sysconfig.coordsystem} not recognized. Conversion to enu not available."
-        )
-
-    beam_pattern = "convex" if data.sysconfig["convex"] else "concave"
-
-    xyze, bt_xyze = data.vel, data.bt_vel
-
-    if data.trans.coordsystem == "beam":
-        if data.sysconfig.angle:
-            trans = transform.Transform(
-                angle=data.sysconfig.angle, geometry=beam_pattern
-            )
-            xyze = trans.beam_to_xyz(data.vel)
-            bt_xyze = trans.beam_to_xyz(data.bt_vel)
-        else:
-            l.log("Beam angle missing. Could not convert from beam coordinate.")
-
-    if (data.heading == 0).all() or (data.roll == 0).all() or (data.pitch == 0).all():
-        data.trans["coordsystem"] = "xyz"
-
-        for i in range(4):
-            data.vel[:, :, i] = np.round(xyze[:, :, i], decimals=3)
-            data.bt_vel[:, i] = np.round(bt_xyze[:, i], decimals=3)
-    else:
-        enu = transform.rdi_xyz_enu(
-            xyze, data.heading, data.pitch, data.roll, orientation=orientation,
-        )
-        bt_enu = transform.rdi_xyz_enu(
-            bt_xyze, data.heading, data.pitch, data.roll, orientation=orientation,
-        )
-        data.trans["coordsystem"] = "earth"
-
-        for i in range(4):
-            data.vel[:, :, i] = np.round(enu[:, :, i], decimals=3)
-            data.bt_vel[:, i] = np.round(bt_enu[:, i], decimals=3)
+# def coordsystem2earth(data: Bunch, orientation: str):
+#     """Transforms beam and xyz coordinates to enu coordinates
+#
+#     NOTE: not properly tested. But it should work.
+#
+#     Replace the values of data.vel, data.bt_vel with East, North and Up velocities
+#     and the velocity error for 4 beams ADCP. UHDAS transform functions are used to
+#     transform for beam coordinates and xyz to east-north-up (enu). These function
+#     can use a three-beam solution by faking a fourth beam.
+#
+#     Also change the values of of `coordinates` in data.trans.
+#
+#     beam coordinates : Velocity measured along beam axis.
+#     xyz coordinates : Velocity in a cartesian coordinate system in the ADCP frame of reference.
+#     enu coordinates : East North Up measured using the heading, pitch, roll of the ADCP.
+#
+#     Parameters
+#     ----------
+#     data:
+#         pycurrents.adcp.rdiraw.Bunche object containing: vel[time, depth, beams], bt_vel[time, beams],
+#         heading, roll, pitch sysconfig.convex, sysconfig.angle  and trans.coordsystem.
+#
+#     orientation:
+#         adcp orientation. Either `up` or `down`.
+#     Notes
+#     -----
+#     Move the prints outside
+#     """
+#
+#     if data.trans.coordsystem not in ["beam", "xyz"]:
+#         l.log(
+#             f"Coordsystem value of {data.sysconfig.coordsystem} not recognized. Conversion to enu not available."
+#         )
+#
+#     beam_pattern = "convex" if data.sysconfig["convex"] else "concave"
+#
+#     xyze, bt_xyze = data.vel, data.bt_vel
+#
+#     if data.trans.coordsystem == "beam":
+#         if data.sysconfig.angle:
+#             trans = transform.Transform(
+#                 angle=data.sysconfig.angle, geometry=beam_pattern
+#             )
+#             xyze = trans.beam_to_xyz(data.vel)
+#             bt_xyze = trans.beam_to_xyz(data.bt_vel)
+#         else:
+#             l.log("Beam angle missing. Could not convert from beam coordinate.")
+#
+#     if (data.heading == 0).all() or (data.roll == 0).all() or (data.pitch == 0).all():
+#         data.trans["coordsystem"] = "xyz"
+#
+#         for i in range(4):
+#             data.vel[:, :, i] = np.round(xyze[:, :, i], decimals=3)
+#             data.bt_vel[:, i] = np.round(bt_xyze[:, i], decimals=3)
+#     else:
+#         enu = transform.rdi_xyz_enu(
+#             xyze, data.heading, data.pitch, data.roll, orientation=orientation,
+#         )
+#         bt_enu = transform.rdi_xyz_enu(
+#             bt_xyze, data.heading, data.pitch, data.roll, orientation=orientation,
+#         )
+#         data.trans["coordsystem"] = "earth"
+#
+#         for i in range(4):
+#             data.vel[:, :, i] = np.round(enu[:, :, i], decimals=3)
+#             data.bt_vel[:, i] = np.round(bt_enu[:, i], decimals=3)
 
 
 def check_pd0_fixed_leader(
     filenames: tp.Union[str, tp.List[str]],
     sonar: str,
-    yearbase: int,
+    yearbase: int = None,
     leading_index: int = None,
     trailing_index: int = None,
 ) -> tp.Tuple[bool, int]:
@@ -573,15 +568,15 @@ def check_pd0_fixed_leader(
 
     Parameters
     ----------
-    filenames :
+    filenames:  Optional
         File(s) to read.
-    sonar :
+    sonar:  Optional
         sonar type passed to pycurrents.Multiread.
         ('nb', 'bb', 'wh', 'sv', or 'os')
-    yearbase :
+    yearbase: Optional
         start year of the sampling.
-    leading_index :
-    trailing_index :
+    leading_index:  Optional
+    trailing_index:  Optional
 
     Returns
     -------
@@ -719,8 +714,6 @@ def _get_time_step(dday: np.ndarray) -> pd.Timedelta:
 
 
 if __name__ == "__main__":
-    import matplotlib.pyplot as plt
-
     path = "/home/jeromejguay/ImlSpace/Data/MPO/iml42020/"
 
     ds = load_adcp_binary(filenames=path + "*4.ENS", sonar="sw", yearbase=2020)

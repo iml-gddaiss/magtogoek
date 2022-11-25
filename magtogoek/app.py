@@ -20,6 +20,8 @@ Notes:
     Some module are imported by function since loading pandas, for example, is time consuming. Doing makes the
     navigation in the app quicker.
 """
+
+import logging
 import sys
 import typing as tp
 from pathlib import Path
@@ -28,9 +30,9 @@ from subprocess import run as subp_run
 import click
 
 from magtogoek.app_options import adcp_options, add_options
-from magtogoek.configfile import BASE_CONFIG, ADCP_CONFIG
+#from magtogoek.configfile import _get_taskparser
 from magtogoek.utils import is_valid_filename, json2dict, resolve_relative_path
-from magtogoek.version import VERSION
+from magtogoek import VERSION
 
 # ---------- Module or functions imported by commands ----------- #
 # NOTE: PROBABLY NOT UP TO DATE
@@ -41,33 +43,9 @@ from magtogoek.version import VERSION
 # from magtogoek.adcp.process import process_adcp, quick_process_adcp
 # --------------------------------------------------------------- #
 
+
 LOGO_PATH = resolve_relative_path("files/logo.json", __file__)
 
-
-def _get_config_structure(_config: tp.Dict) -> tp.Dict:
-    config_struct = dict()
-    for section, items in _config.items():
-        for item in items:
-            config_struct[item] = section
-    return config_struct
-
-
-BASE_CONFIG_STRUCT = _get_config_structure(BASE_CONFIG)
-ADCP_CONFIG_STRUCT = _get_config_structure(ADCP_CONFIG)
-
-OPTIONS_NAME_TRANSLATOR = dict(
-    adcp=dict(
-        quality_control="qc",
-        sidelobes_correction="sidelobes",
-        merge_output_files="merge",
-        drop_percent_good="drop_pg",
-        drop_correlation="drop_corr",
-        drop_amplitude="drop_amp",
-        make_figures="mk_fig",
-        make_log="mk_log",
-        odf_data="odf_dtype"
-    )
-)
 CONTEXT_SETTINGS = dict(
     ignore_unknown_options=True,
     allow_extra_args=True,
@@ -108,7 +86,10 @@ common_options = [
 # --------------------------- #
 @click.group(context_settings=CONTEXT_SETTINGS)
 @add_options(common_options)
-def magtogoek(info):
+@click.option('-v', '--verbosis', is_flag=True, default=False)
+def magtogoek(info, verbosis):
+    if verbosis is True:
+        logging.basicConfig(format='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',level=logging.INFO)
     pass
 
 
@@ -122,26 +103,32 @@ def magtogoek(info):
               type=bool,
               help="""Make figures to inspect the data. Use to overwrite the value in the config_file""",
               default=None)
-def process(info, config_file, **options):
+@click.option("--headless",
+              is_flag=True,
+              help="""Using remotely with no display capability""")
+def process(info, config_file: str, **options):
     """Process data by reading configfile"""
-    # NOTE This could be update as a group with sensor specific command.
+    # This could be updated as a group with sensor specific command.
     # Doing so would allow the user to pass config options. The load_configfile
     # command is already able to take updated_params options and update de configfile.
     # The same options (or nearly all the same) as for adcp_config could be use.
     from configparser import ParsingError
-    from magtogoek.configfile import load_configfile
+    from magtogoek.config_handler import load_configfile
+
+    cli_options = {}
+    if options['mk_fig'] is not None:
+        cli_options['mk_fig'] = options['mk_fig']
 
     try:
-        configuration = load_configfile(config_file)
+        configuration, sensor_type = load_configfile(config_file, cli_options=cli_options)
     except (ParsingError, UnicodeDecodeError):
         print("Failed to open the given configfile.\n mtgk process aborted.")
         sys.exit()
-    if options['mk_fig'] is not None:
-        configuration['ADCP_OUTPUT']["make_figures"] = options['mk_fig']
 
-    if configuration["HEADER"]["sensor_type"] == "adcp":
+    if sensor_type == "adcp":
         from magtogoek.adcp.process import process_adcp
-        process_adcp(configuration)
+
+        process_adcp(configuration, headless=options['headless'])
 
 
 # --------------------------- #
@@ -204,18 +191,16 @@ def config_adcp(
 ):
     """Command to make an adcp config files. The [OPTIONS] can be added
     before or after the [config_name]."""
-    from magtogoek.configfile import make_configfile
+
+    from magtogoek.config_handler import write_configfile
 
     _print_passed_options(options)
-
-    # check if a file already exists and format the `.ini` extension.
     config_name = is_valid_filename(config_name, ext=".ini")
+    options['sensor_type'] = 'adcp'
+    options.update({k: v for k, v in zip(("platform_file", "platform_id", "sensor_id"), options.pop('platform'))})
 
-    new_config_values = _format_options_for_configfile("adcp", options)
-
-    make_configfile(filename=config_name, sensor_type="adcp", new_values=new_config_values)
-
-    click.echo(click.style(f"Config file created for adcp processing -> {config_name}", bold=True))
+    write_configfile(filename=config_name, sensor_type="adcp", cli_options=options)
+    click.secho(f"Config file created for adcp processing -> {config_name}", bold=True)
 
 
 # --------------------------- #
@@ -231,21 +216,24 @@ def config_adcp(
     required=True,
 )
 @click.option("-y", "--yearbase", type=click.INT,
-              help="""year when the adcp sampling started. ex: `1970`""", required=True)
-@click.option("-T", "--platform_type", type=click.Choice(["buoy", "mooring", "ship"]),
-              help="Used for Proper BODC variables names", default="buoy")
+              help="""year when the adcp sampling started. ex: `1970`""", required=False, default=None)
+@click.option("--headless",
+              is_flag=True,
+              help="""Using remotely with no display capability""")
 @click.pass_context
-def quick_adcp(ctx, info, input_files, sonar, yearbase, **options):
+def quick_adcp(ctx, info, input_files: tuple, sonar: str, yearbase: int, **options: dict):
     """Command to make an quickly process adcp files. The [OPTIONS] can be added
     before or after the [inputs_files]."""
-    from magtogoek.adcp.process import quick_process_adcp
-
-    options = {**{"input_files": input_files, "yearbase": yearbase, "sonar": sonar}, **options}
+    # TODO TEST. So far not crashing
+    from magtogoek.config_handler import cli_options_to_config
+    from magtogoek.adcp.process import process_adcp
+    options.update({"input_files": input_files, "sensor_type": "adcp", "yearbase": yearbase, "sonar": sonar})
     _print_passed_options(options)
+    configuration = cli_options_to_config('adcp', options, cwd=str(Path().cwd()))
 
-    params = _convert_options_names("adcp", options)
-
-    quick_process_adcp(params)
+    process_adcp(configuration,
+                 drop_empty_attrs=True,
+                 headless=options['headless'])
 
 
 # --------------------------- #
@@ -306,6 +294,7 @@ def navigation(ctx, info, input_files, **options):
 @click.pass_context
 def odf2nc(ctx, info, input_files, output_name, **options):
     from magtogoek.odf_format import convert_odf_to_nc
+    logging.info(f"odf2nc dims: {options['dims']}, time: {options['time']}, merge: {options['merge']}")
     convert_odf_to_nc(
         input_files=input_files,
         output_name=output_name,
@@ -323,52 +312,22 @@ def odf2nc(ctx, info, input_files, output_name, **options):
 @click.option("-t", "--flag-thres", help="""Set threshold value for flagging""", default=2, show_default=True)
 @click.option("-v", "--vel-only", help="""Only plots 2D velocity fields and polar histogram.""", is_flag=True,
               default=False)
+@click.option("-s", "--save_fig", help="""Path to save figures to.""", type=click.Path(exists=True), default=None)
+@click.option("--headless", help="""If True, figures en displayed""", is_flag=True, default=False)
 @click.pass_context
 def plot_adcp(ctx, info, input_file, **options):
     """Command to compute u_ship, v_ship, bearing from gsp data."""
+    logging.info(f"plot adcp function reached. headless:{options['headless']}, save_fig:{options['save_fig']}")
     import xarray as xr
     from magtogoek.adcp.adcp_plots import make_adcp_figure
     dataset = xr.open_dataset(input_file)
-    make_adcp_figure(dataset, flag_thres=options['flag_thres'], vel_only=options["vel_only"])
+    make_adcp_figure(dataset, flag_thres=options['flag_thres'], vel_only=options["vel_only"],
+                     save_path=options['save_fig'], show_fig=not options['headless'])
 
 
 # ------------------------ #
 #        Functions         #
 # ------------------------ #
-def _format_options_for_configfile(sensor_type, options):
-    """format options into the  configfile structure"""
-    options = _convert_options_names(sensor_type, options)
-
-    configfile_struct = {}
-    if sensor_type == "adcp":
-        configfile_struct = {**BASE_CONFIG_STRUCT, **ADCP_CONFIG_STRUCT}
-        if not options["bottom_depth"]:
-            options["bottom_depth"] = ""
-    options["platform_file"] = options["platform"][0]
-    options["platform_id"] = options["platform"][1]
-    options["sensor_id"] = options["platform"][2]
-    del options["platform"]
-
-    new_config_values = dict()
-    for section in set(configfile_struct.values()):
-        new_config_values[section] = dict()
-
-    for option, value in options.items():
-        if value is not None:
-            new_config_values[configfile_struct[option]][option] = value
-
-    return new_config_values
-
-
-def _convert_options_names(sensor_type, options):
-    """Translate options name.
-    Translate options names from the command names to
-    the parameters name used by magtogoek."""
-
-    for key, item in OPTIONS_NAME_TRANSLATOR[sensor_type].items():
-        options[key] = options.pop(item)
-
-    return options
 
 
 def _print_passed_options(ctx_params: tp.Dict):
@@ -444,7 +403,7 @@ def _print_arguments(group, parent):
                         + "Filename (path/to/file) for the new configuration file.",
                 "platform": "  [filename]".ljust(20, " ")
                             + "Filename (path/to/file) for the new platform file.",
-                }
+    }
     if group in messages:
         click.secho(messages[group], fg="white")
 
@@ -505,7 +464,7 @@ def _print_description(group):
         ),
         "platform": "Creates an empty platform.json file",
         "odf2nc": "Converts odf files to netcdf",
-    }
+        }
     if group in messages:
         if "\n" in messages[group]:
             click.echo(messages[group])

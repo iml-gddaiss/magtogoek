@@ -21,8 +21,9 @@ from scipy.interpolate import griddata
 from scipy.stats import circmean
 from tqdm import tqdm
 
+import magtogoek.logger as l
 from magtogoek.adcp.tools import datetime_to_dday
-from magtogoek.utils import Logger, get_files_from_expression
+from magtogoek.utils import get_files_from_expression
 from rti_python.Codecs.BinaryCodec import BinaryCodec
 from rti_python.Ensemble.EnsembleData import *
 
@@ -30,8 +31,6 @@ DELIMITER = b"\x80" * 16  # RTB ensemble delimiter
 BLOCK_SIZE = 4096  # Number of bytes read at a time
 RTI_FILL_VALUE = 88.88800048828125
 RDI_FILL_VALUE = -32768.0
-
-l = Logger(level=0)
 
 
 class FilesFormatError(Exception):
@@ -126,8 +125,6 @@ class RtiReader:
         self.ens_chunks = None
         self.current_file = None
 
-        l.reset()
-
     def check_files(self):
         """Check files for ensemble count and bin depths."""
 
@@ -192,7 +189,7 @@ class RtiReader:
             if np.sum(self.files_ens_count) < self.stop_index:
                 raise ValueError("Stop_index is greater than the number of ensemble")
         if self.start_index and self.stop_index:
-            if np.sum(self.files_ens_count) < self.start_index + self.stop_index:
+            if np.sum(self.files_ens_count) <= self.start_index + self.stop_index:
                 raise ValueError(
                     "Start_index + stop_index is greater than the number of ensemble"
                 )
@@ -214,11 +211,11 @@ class RtiReader:
     def get_files_ens_count(self):
         """Read each files to find the number of ensemble in each file."""
         self.files_ens_count = []
-        buff = bytes()
         self.ens_chunks = []
 
         for filename in self.filenames:
             count = 0
+            buff = bytes()
             with open(filename, "rb") as f:
                 data = f.read(BLOCK_SIZE)
                 while data:
@@ -263,15 +260,18 @@ class RtiReader:
             start_file = np.array(self.filenames)[diff_start > 0][0]
             # remove files with less leading ens than start_index
             self.filenames = np.array(self.filenames)[diff_start > 0].tolist()
+            # Recompute counts and cumsum(counts)
+            counts = counts[diff_start > 0]
+            self.files_ens_count = np.array(counts)
 
         if self.stop_index:
             # finds the first files with enough ens and the start index
-            diff_stop = cumsum - cumsum.max() + self.stop_index
-            stop_index = counts[diff_stop > 0][0] - diff_stop[diff_stop > 0][0] + 1
-            stop_file = np.array(self.filenames)[diff_stop > 0][0]
+            diff_stop = counts[::-1].cumsum()[::-1] - self.stop_index#reverses array before and after cumsum
+            stop_index = diff_stop[diff_stop > 0][-1]
+            stop_file = np.array(self.filenames)[diff_stop > 0][-1]
             # keep files with more trailing ens than stop_index
-            self.filenames = np.array(self.filenames)[diff_stop < 0].tolist()
-            self.filenames.append(stop_file)
+            self.filenames = np.array(self.filenames)[diff_stop > 0].tolist()
+            self.files_ens_count = np.array(counts[diff_stop > 0])
 
         self.files_start_stop_index = dict()
         for filename in self.filenames:
@@ -393,8 +393,8 @@ class RtiReader:
         (~5s total) for ~4000 chunks. Exiting the processes to output progress could be time consuming
         for bigger files.
         """
-        # spliting the reading workload on multiple cpu
-        number_of_cpu = cpu_count() - 1
+        # splitting the reading workload on multiple cpu
+        number_of_cpu = cpu_count()
 
         print(f"Reading {self.current_file}")
         time0 = datetime.now()
@@ -562,13 +562,13 @@ class RtiReader:
         Parameters
         ----------
         bunches :
-            List of the files bunches to concatenante.
+            List of the files bunches to concatenate.
 
         Raises
         ------
         DepLengthMismatch : (check_mismatch_depth())
-            Bin depth vector lenght mismatch.
-            Lenght, thus values, of the dep vector can change through files.
+            Bin depth vector length mismatch.
+            Length, thus values, of the dep vector can change through files.
             In that case, files need the be processed individually.
 
         """

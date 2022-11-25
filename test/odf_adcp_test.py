@@ -1,7 +1,7 @@
 import pytest
 import xarray as xr
 from magtogoek.adcp.odf_exporter import make_odf
-from magtogoek.adcp.process import _default_platform
+from magtogoek.adcp.process import _default_platform_metadata
 from magtogoek.utils import json2dict
 
 DATASET = xr.open_dataset("data/netcdf_test_files/test_netcdf.nc")
@@ -16,10 +16,9 @@ P01_TO_GENERIC_NAME = {
     "e": "LERRAP01",
 }
 DATASET.attrs['P01_CODES'] = P01_TO_GENERIC_NAME
-DATASET.attrs['bodc_name'] = True
 DATASET.attrs['variables_gen_name'] = [DATASET[var].attrs['generic_name'] for var in DATASET.variables]
 
-PLATFORM_METADATA = _default_platform()
+PLATFORM_METADATA = _default_platform_metadata()
 PLATFORM_METADATA['platform'].update(
     {
         "platform_name": "platform_name_test",
@@ -51,7 +50,13 @@ def test_make():
 )
 def test_platform_type(platform_type, headers, cruise_platform):
     PLATFORM_METADATA['platform']["platform_type"] = platform_type
-    odf = make_odf(DATASET, PLATFORM_METADATA, GLOBAL_ATTRS)
+    odf = make_odf(dataset=DATASET,
+                   platform_metadata=PLATFORM_METADATA,
+                   config_attrs=GLOBAL_ATTRS,
+                   bodc_name=True,
+                   event_qualifier2='VEL',
+                   output_path=None,
+                   )
     assert odf.cruise["platform"] == cruise_platform
     for header in headers:
         assert header in odf.__dict__

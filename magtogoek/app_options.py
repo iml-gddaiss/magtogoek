@@ -20,7 +20,8 @@ def add_options(options):
 
 def adcp_options(input_files=True, yearbase=True, sonar=True):
     """return shared adcp options. They can they be passe with the add option decorator
-    Paramters:
+
+    Parameters:
     ----------
     inputs_files:
         Adds input_options
@@ -89,6 +90,8 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
             )
         ]
     options += [
+        click.option("-T", "--platform_type", type=click.Choice(["buoy", "mooring", "ship", "lowered"]),
+                     help="Used for Proper BODC variables names", default="buoy"),
         click.option(
             "-O",
             "--adcp-orientation",
@@ -130,7 +133,7 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
         click.option(
             "-a",
             "--amplitude-threshold",
-            type=click.FLOAT,
+            type=click.FloatRange(0, 255),
             help="Amplitude threshold (0-255). Defaults to 0.",
             nargs=1,
             default=0,
@@ -139,7 +142,7 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
         click.option(
             "-p",
             "--percentgood-threshold",
-            type=click.FLOAT,
+            type=click.FloatRange(0, 100),
             help="Percentage of 4 beam threshold (0-100). Defaults to 90.",
             default=90,
             show_default=True,
@@ -147,7 +150,7 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
         click.option(
             "-c",
             "--correlation-threshold",
-            type=click.FLOAT,
+            type=click.FloatRange(0, 255),
             help="Correlation threshold (0-255).",
             nargs=1,
             default=64,
@@ -156,7 +159,7 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
         click.option(
             "-u",
             "--horizontal-velocity-threshold",
-            type=click.FLOAT,
+            type=click.FloatRange(0),
             help="Horizontal velocity threshold (u,v). [m/s]",
             nargs=1,
             default=5,
@@ -165,7 +168,7 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
         click.option(
             "-w",
             "--vertical-velocity-threshold",
-            type=click.FLOAT,
+            type=click.FloatRange(0),
             help="Vertical velocity threshold (w).  [m/s]",
             nargs=1,
             default=5,
@@ -174,7 +177,7 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
         click.option(
             "-e",
             "--error-velocity-threshold",
-            type=click.FLOAT,
+            type=click.FloatRange(0),
             help="Error velocity threshold. [m/s]",
             nargs=1,
             default=5,
@@ -182,7 +185,8 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
         ),
         click.option(
             "--sidelobes/--no-sidelobes",
-            help="Do side lobe correction.",
+            help="Do side lobe correction. Uses bottom_track if available. See option `--bottom-depth` "
+                 "to force a bottom_depth.",
             default=True,
             show_default=True,
         ),
@@ -190,7 +194,7 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
             "-b",
             "--bottom-depth",
             type=click.FLOAT,
-            help="""If provided, this fixed depth will be
+            help="""If provided, this constant bottom_depth will be
             used for sidelobes correction.""",
             default=None,
             show_default=True,
@@ -208,7 +212,7 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
             "--bad-pressure/-",
             help="""Use the `--bad-pressure` flag to discard pressure data from the processing.
             This will in turn discard the adcp depth (XducerDepth) measured by the ADCP.
-            Use the option `--sensor-depth` to enter a fixed depth.""",
+            Use the option `--sensor-depth` to enter a constant xducer depth.""",
             default=False,
             show_default=True,
         ),
@@ -222,6 +226,7 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
             default=None,
             multiple=True,
         ),
+        click.option("--ct/--no-ct", help="Use to do Coordinate Transformation (ct)", default=True),
         click.option(
             "-M",
             "--motion_correction_mode",
@@ -235,7 +240,7 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
         click.option(
             "-P",
             "--pitch-threshold",
-            type=click.FLOAT,
+            type=click.FloatRange(0, 180),
             help="Pitch threshold (0-180).",
             nargs=1,
             default=20,
@@ -244,7 +249,7 @@ def adcp_options(input_files=True, yearbase=True, sonar=True):
         click.option(
             "-R",
             "--roll-threshold",
-            type=click.FLOAT,
+            type=click.FloatRange(0, 180),
             help="Roll threshold (0-180).Defaults to 20.",
             nargs=1,
             default=20,

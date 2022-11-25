@@ -27,7 +27,7 @@ odf_output                    = `path/to/filenames` or (True, 1). If True or 1, 
 ```
 
 # Metadata
-The `NETCDF_CF` section contains the metadata fields required by the CF conventions. Not necessary for ODF ouput.
+The `NETCDF_CF` section contains the metadata fields required by the CF conventions. Not necessary for ODF outputs.
 ```dosini
 [NETCDF_CF]
 Conventions                   = Auto generated.
@@ -41,10 +41,10 @@ source                        = Orginal method that produced the data. Ex: Numer
                                 or instrument sampling (type).
 ```
 
-The `PROJECT`, `CRUISE` and `GLOBAL_ATTRIBUTES` sections contains metadata. 
+The `PROJECT`, `CRUISE` and `GLOBAL_ATTRIBUTES` sections contain metadata. 
 The netcdf global attributes will contain all the keys present in these sections, even if the field are left empty. 
 Removing them will remove them from the netcdf global attributes. 
-For ODF output, only the `CRUISE` sections is required.
+For ODF output, only the `CRUISE` section is required.
 ```dosini
 [PROJECT]
 project                       = 
@@ -82,11 +82,14 @@ In these section, empty fields are considered False.
 ## ADCP
 ```dosini
 [ADCP_PROCESSING]
-yearbase                      = REQUIRED: YYYY, Year during which the sampling started.
+yearbase                      = YYYY, Year during which the sampling started.
 adcp_orientation              = Adcp orientation: Either looking `up` or `down`.
 sonar                         = REQUIRED: One of [`os`, `wh`, `sv`, `sw`, `sw_pd0`].
+coord_transform               = If True, the velocity data will be transformed to earth coordinates if possible.
 navigation_file               = `path/to/netcdf_file` with navigation data. See the `compute nav` 
                                 command for more info.
+motion_correction_mode        = One of [`bt`, `nav`]. `bt` uses bottom velocity and `nav` velocities computed 
+                                form gps tracking. See the `compute nav` command for more info.
 leading_trim                  = Removes a count of leading data or data before a given date or datetime.
                                 Formats: Date (`YYYY-MM-DD` or `YYYY-MM-DDThh:mm:ss.ssss`) or Count (integer).
                                 Date ex: 2000-01-01T00:00:00.0000 -> 2000-01-01T00:00:00.0000 or 2000-01-01.
@@ -105,6 +108,15 @@ start_time                    = Format 'YYYY-MM-DDThh:mm:ss.ssss'.
                                 `time_step` to use a different time step than the one found in the adcp 
                                 raw adcp file. 
 time_step                     = Time step in seconds. Only use if a `start_time` value is provided.
+grid_depth                    = Path and name of the file containing depths
+                                to which the dataset should be regridded. Setting this value activates the
+                                regridding procedure. The grid file should be a one-column text file
+                                containing depth values in meters. For example, the output of:
+                                `$ seq 0 10 100 > z.grid`.
+grid_method                   = Either `interp` or `bin`. Selects whether vertical dimension
+                                regridding will be performed by linear interpolation or bin averaging of the
+                                quality-controlled data. Bin averaging selects all data strictly within the bin
+                                boundaries and averages them with equal weight.
 
 [ADCP_QUALITY_CONTROL]
 quality_control               = If True, quality control is carried out.
@@ -118,8 +130,7 @@ sidelobes_correction          = If True sidelobe correction is carried. Quality 
 bottom_depth                  = A bottom depth value can be set for sidelobe correction if needed. 
 pitch_threshold               = Value Between 0-180: Upper limit.
 roll_threshold                = Value Between 0-180: Upper limit.
-motion_correction_mode        = One of [`bt`, `nav`]. `bt` uses bottom velocity and `nav` velocities computed 
-                                form gps tracking. See the `compute nav` command for more info.
+
 
 [ADCP_OUTPUT]
 merge_output_files            = If True, merge the input_files into a single output.

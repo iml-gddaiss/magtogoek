@@ -41,12 +41,8 @@ Writing ODF files.
       - list elements are printed with the same headers key.
       - coefficients, directions and corrections items need to be stored as tuple for the correct formatting
         field width of 12 and 8 decimals precision.
-
-TODO FIXME:
-time are printed with singles quotes
-move odf specific config in .ini to separate header
 """
-
+import logging
 import typing as tp
 from pathlib import Path
 
@@ -169,17 +165,15 @@ def _get_repeated_headers_default():
             buoy_instrument_comments=[],
             sensors=[],
         ),
-        general_cal=(
-            dict(
-                parameter_code="",
-                calibration_type="",
-                calibration_date="",
-                application_date="",
-                number_coefficients=0,
-                coefficients=(),  # NOTE for i in number_coefficients ' %12.8e '
-                calibration_equation=[],
-                calibration_comments=[],
-            ),
+        general_cal=dict(
+            parameter_code="",
+            calibration_type="",
+            calibration_date="",
+            application_date="",
+            number_coefficients=0,
+            coefficients=(),  # NOTE for i in number_coefficients ' %12.8e '
+            calibration_equation=[],
+            calibration_comments=[],
         ),
         polynomial_cal=dict(
             parameter_code="",
@@ -316,9 +310,8 @@ class Odf:
         self.__init__()
         is_data = False
         current_header = {}  # used to be None, should work
-        header_key = ""
         parameters_code = []
-        counters = dict(
+        repeated_header_counters = dict(
             parameter=0,
             buoy_instrument=0,
             general_cal=0,
@@ -346,22 +339,19 @@ class Odf:
                 elif " -- DATA --" in line:
                     is_data = True
 
-                elif any([h.upper() + "_HEADER" in line for h in REPEATED_HEADERS]):
+                elif any([_h.upper() + "_HEADER" in line for _h in REPEATED_HEADERS]):
                     for h in REPEATED_HEADERS:
                         if h.upper() + "_HEADER" in line:
-                            header_key = h + "_" + str(counters[h])
-                            counters[h] += 1
-                            self.__dict__[h][
-                                header_key
-                            ] = _get_repeated_headers_default()[h]
+                            header_key = h + "_" + str(repeated_header_counters[h])
+                            repeated_header_counters[h] += 1
+                            self.__dict__[h][header_key] = _get_repeated_headers_default()[h]
                             current_header = self.__dict__[h][header_key]
-
                 else:
                     header_key = "_".join(line.split("_")[:-1]).lower()
                     current_header = self.__dict__[header_key]
 
             for _, section in self.__dict__.items():
-                _reshape_header(section)
+                _reshape_header_items(section)
 
             for p in list(self.parameter.keys()):
                 code = self.parameter[p]["code"]
@@ -375,10 +365,8 @@ class Odf:
 
             for cal_headers in ["general_cal", "polynomial_cal", "compass_cal"]:
                 for cal in list(self.__dict__[cal_headers].keys()):
-                    code = self.__dict__[cal_headers][cal]["code"]
-                    self.__dict__[cal_headers][code] = self.__dict__[cal_headers].pop(
-                        cal
-                    )
+                    code = self.__dict__[cal_headers][cal]["parameter_code"]
+                    self.__dict__[cal_headers][code] = self.__dict__[cal_headers].pop(cal)
 
             if is_data:
                 self.data = pd.read_csv(
@@ -389,7 +377,7 @@ class Odf:
                     quotechar="'",
                 )
             else:
-                print("Data section not found in ODF")
+                logging.error(f"Data section not found in ODF {filename}")
 
         return self
 
@@ -422,20 +410,26 @@ class Odf:
             Specify which variable is to be converted into datetime64. The variable
             "SYTM_01" will be converted to datetime64 automatically.
         """
+        logging.info(f'to_dataset params. dims: {dims}, time: {time}')
         if isinstance(dims, tuple):
             dims = list(dims)
 
-        times = {'SYTM_01'}
+        if isinstance(dims, list):
+            if len(dims) == 0:
+                dims = None
+        _time = {'SYTM_01'}
         if time is not None:
-            times.update({time})
-        for t in times:
+            _time.update({time})
+
+        for t in _time:
             if time in self.data:
                 self.data[t] = pd.to_datetime(self.data[t], format="%d-%b-%Y %H:%M:%S.%f")
 
         if dims is not None:
             [dims.remove(dim) for dim in dims if dim not in self.data]
-
-        dataset = xr.Dataset.from_dataframe(self.data.set_index(dims))
+            dataset = xr.Dataset.from_dataframe(self.data.set_index(dims))
+        else:
+            dataset = xr.Dataset.from_dataframe(self.data)
 
         for p in self.parameter:
             dataset[p].attrs.update(self.parameter[p])
@@ -636,9 +630,7 @@ class Odf:
         _null_values = _get_null_values(dataframe.columns, null_values, items)
 
         for code in dataframe.columns:
-            self.add_parameter(
-                code, dataframe[code].values, _null_values[code], items[code]
-            )
+            self.add_parameter(code, dataframe[code].values, _null_values[code], items[code])
 
         self.record = self._make_record()
 
@@ -718,18 +710,12 @@ class Odf:
                 formats[vd] = lambda x, p=padding: SPACE + str(x).rjust(p, SPACE)
 
             elif self.data[vd].dtypes == np.dtype("<M8[ns]"):
-                formats[vd] = lambda x, p=padding: (
-                    SPACE + ("'" + odf_time_format(x) + "'").rjust(p, SPACE)
-                )
+                formats[vd] = lambda x, p=padding: (SPACE + ("'" + odf_time_format(x) + "'").rjust(p, SPACE))
 
             elif self.data[vd].dtypes == np.floating:
-                formats[vd] = lambda x, p=padding, d=decimal_places: (
-                    SPACE + f"{x:.{d}f}".rjust(p, SPACE)
-                )
+                formats[vd] = lambda x, p=padding, d=decimal_places: (SPACE + f"{x:.{d}f}".rjust(p, SPACE))
 
-        self.data.to_string(
-            buf=buf, formatters=formats, header=False, index=False, na_rep=NA_REP,
-        )
+        self.data.to_string(buf=buf, formatters=formats, header=False, index=False, na_rep=NA_REP)
 
 
 def _get_null_values(
@@ -754,9 +740,7 @@ def _get_null_values(
                 if not isinstance(params_items["null_value"](int, float)):
                     _null_values[key] = params_items["null_value"]
                 else:
-                    raise ValueError(
-                        f"[{key}][`null_values`] must be a `int` or `float`."
-                    )
+                    raise ValueError(f"[{key}][`null_values`] must be a `int` or `float`.")
             else:
                 raise ValueError(f"[{key}] is missing a `null_values` key and value.")
     return _null_values
@@ -825,7 +809,7 @@ def _format_list(_list: list, parents: str) -> str:
 
 
 def _get_key_and_item(line):
-    """ Return key and item from a line"""
+    """ Return key and item from a line. Split of `=`."""
     key, item = line.split("=", 1)
     key, item = key.strip().lower(), item.strip()
     if not item:
@@ -837,21 +821,21 @@ def _get_key_and_item(line):
     return key, item
 
 
-def _reshape_header(header):
-    """Replace list of length one by the single element it contain.
+def _reshape_header_items(header):
+    """Replace list of length one by the value it contains.
 
-    Elements of items with keys named `coefficients`, `directions` or `corrections` are
-    split into tuple of and are evaluated.
+    The elements of items that keys are in [`coefficients`, `directions`, `corrections`] are
+    split into tuple and are evaluated.
 
     """
     for key, item in header.items():
         if isinstance(item, dict):
-            _reshape_header(item)
+            _reshape_header_items(item)
 
         elif isinstance(item, list):
-            if any(key == c for c in ["coefficients", "directions", "corrections"]):
+            if key in ["coefficients", "directions", "corrections"]:
                 for i in range(len(item)):
-                    header[key][i] = tuple(map(eval, header[key][i].split()))
+                    header[key][i] = tuple(map(eval, str(header[key][i]).split()))
             if len(item) == 1:
                 header[key] = item[0]
 
@@ -884,10 +868,11 @@ def convert_odf_to_nc(
 ) -> None:
     """
     """
+    logging.info(f"convert_odf_to_nc params. dims: {dims}, time: {time}, input_files: {input_files}, output_name: {output_name}")
     input_files = get_files_from_expression(input_files)
     datasets = []
     for fn in input_files:
-        datasets.append(Odf().read(fn).to_dataset(dims=list(dims), time=time))
+        datasets.append(Odf().read(fn).to_dataset(dims=dims, time=time))
     if merge is True:
         output = Path(output_name if output_name is not None else input_files[0]).with_suffix('.nc')
         try:
