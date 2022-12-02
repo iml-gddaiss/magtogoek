@@ -27,22 +27,21 @@ TODOS
 TODO DO SOME LOGGINGS
 TODO make it choose a file format.
 """
+
 from magtogoek.viking.dat_reader import RawDatReader, VikingData
 import matplotlib
 import numpy as np
 import xarray as xr
 from typing import *
-from magtogoek.utils import Logger
+import magtogoek.logger as l
 
 matplotlib.use('Qt5Agg')
-
-l = Logger()
 
 
 def load_meteoce_data(
         filenames: Tuple[str, List[str]],
-        buoy_name: str,
-        data_format: str,
+        buoy_name: str = None,
+        data_format: str = 'raw_dat',
 ) -> xr.Dataset:
     """
 
@@ -57,7 +56,6 @@ def load_meteoce_data(
     -------
 
     """
-    l.reset()
     if data_format == "raw_dat":
         dat_reader = RawDatReader()
     else:
@@ -243,6 +241,6 @@ if __name__ == "__main__":
 
     v_data = _buoys_data['pmza_riki']
 
-    ds = load_meteoce_data(v_data)
+    ds = load_meteoce_data('/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat')
 
     ds.to_netcdf('/home/jeromejguay/Desktop/viking_test.nc')

@@ -167,8 +167,7 @@ from magtogoek.utils import get_files_from_expression
 
 from pint import UnitRegistry
 
-ureg = UnitRegistry()
-Q_ = ureg.Quantity
+Quantity = UnitRegistry().Quantity
 
 FILL_VALUE = -32768  # Reusing the same fill value as teledyne (RDI) -(2**15)
 
@@ -317,6 +316,8 @@ data: (length: {len(self)})
         for tag in self.tags:
             if self.__dict__[tag] is not None:
                 repr += f"  {tag}: (" + ", ".join(list(self.__dict__[tag].keys())) + ")\n"
+            else:
+                repr += f"  {tag}: (empty)\n"
         return repr
 
     def __len__(self):
@@ -359,7 +360,7 @@ data: (length: {len(self)})
             if isinstance(variables, dict):
                 for var, units in variables.items():
                     if units is not None and self.__dict__[tag] is not None:
-                        self.__dict__[tag][var] = Q_(self.__dict__[tag][var], units)
+                        self.__dict__[tag][var] = Quantity(self.__dict__[tag][var], units)
 
 
 def _to_numpy_masked_array(data: list):
