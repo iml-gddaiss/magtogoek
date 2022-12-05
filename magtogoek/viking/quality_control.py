@@ -5,7 +5,8 @@
 from typing import *
 import xarray as xr
 from magtogoek.viking.tools import compensation_pres_temp_psal_rinko, voltEXT_from_pHEXT, pHEXT_from_voltEXT
-from magtogoek.utils import Logger
+
+from magtogoek import logger as l
 
 
 def no_meteoce_quality_control(dataset):

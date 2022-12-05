@@ -47,7 +47,9 @@ import click
 
 from magtogoek.navigation import load_navigation
 from magtogoek.platforms import _add_platform
-from magtogoek.utils import Logger, ensure_list_format, json2dict
+from magtogoek.utils import ensure_list_format, json2dict
+
+from magtogoek import logger as l
 
 from magtogoek.attributes_formatter import (
     compute_global_attrs, format_variables_names_and_attributes, _add_data_min_max_to_var_attrs)
@@ -138,8 +140,6 @@ QC_ENCODING = {"dtype": "int8", "_FillValue": QC_FILL_VALUE}
 
 DATA_FILL_VALUE = -9999.0
 DATA_ENCODING = {"dtype": "float32", "_FillValue": DATA_FILL_VALUE}
-
-l = Logger()
 
 
 class ProcessConfig:
@@ -265,7 +265,6 @@ def _process_viking_data(pconfig: ProcessConfig):
     """
 
     """
-    l.reset()
 
     # ------------------- #
     # LOADING VIKING DATA #
@@ -295,10 +294,10 @@ def _process_viking_data(pconfig: ProcessConfig):
     dataset.attrs['sensor_depth'] = pconfig.sensor_depth
     dataset.attrs['serial_number'] = dataset.attrs.pop('controller_serial_number')
 
-    if pconfig.platform_metadata["platform"]["longitude"]:
-        dataset.attrs["longitude"] = pconfig.platform_metadata["platform"]["longitude"]
-    if pconfig.platform_metadata["platform"]["latitude"]:
-        dataset.attrs["latitude"] = pconfig.platform_metadata["platform"]["latitude"]
+    # if pconfig.platform_metadata["platform"]["longitude"]:
+    #     dataset.attrs["longitude"] = pconfig.platform_metadata["platform"]["longitude"]
+    # if pconfig.platform_metadata["platform"]["latitude"]:
+    #     dataset.attrs["latitude"] = pconfig.platform_metadata["platform"]["latitude"]
 
     compute_global_attrs(dataset)
 
@@ -319,8 +318,6 @@ def _process_viking_data(pconfig: ProcessConfig):
         _quality_control(dataset, pconfig)
     else:
         no_meteoce_quality_control(dataset)
-
-    l.reset()
 
     # ----------------------------------- #
     # CORRECTION FOR MAGNETIC DECLINATION #
