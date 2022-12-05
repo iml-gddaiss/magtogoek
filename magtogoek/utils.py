@@ -20,7 +20,7 @@ def ensure_list_format(value: tp.Union[str, int, float, tp.List[tp.Union[str, in
     return value
 
 
-def print_filenames(file_type: str, filenames: tp.List) -> str:
+def format_filenames_for_print(file_type: str, filenames: tp.List) -> str:
     """Format a string of filenames for prints
 
     `file_type` files :
