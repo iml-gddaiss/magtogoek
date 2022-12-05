@@ -45,7 +45,7 @@ import magtogoek.logger as l
 
 from magtogoek.adcp.rti_reader import RtiReader
 from magtogoek.adcp.tools import dday_to_datetime64
-from magtogoek.utils import get_files_from_expression
+from magtogoek.utils import get_files_from_expression, print_filenames
 from pycurrents.adcp import rdiraw
 from pycurrents.adcp.rdiraw import Multiread, rawfile
 
@@ -142,7 +142,7 @@ def load_adcp_binary(
     # Reading the data file(s) #
     # ------------------------ #
     if sonar in RTI_SONAR:
-        l.log(_print_filenames("RTI ENS", filenames))
+        l.log(print_filenames("RTI ENS", filenames))
         data = RtiReader(filenames=filenames).read(
             start_index=leading_index, stop_index=trailing_index
         )
@@ -152,9 +152,9 @@ def load_adcp_binary(
     elif sonar in RDI_SONAR:
         if sonar == "sw_pd0":
             sonar = "wh"
-            l.log(_print_filenames("RTI pd0", filenames))
+            l.log(print_filenames("RTI pd0", filenames))
         else:
-            l.log(_print_filenames("RDI pd0", filenames))
+            l.log(print_filenames("RDI pd0", filenames))
 
         if trailing_index:
             trailing_index *= -1
@@ -619,22 +619,6 @@ def check_pd0_fixed_leader(
     )
 
     return upward_looking, invalid_config_count
-
-
-def _print_filenames(file_type: str, filenames: tp.List) -> str:
-    """Format a string of filenames for prints
-
-    `file_type` files :
-      |-filename1
-           :
-      |-filenameN
-
-    """
-    return (
-        file_type
-        + " files : \n  |-"
-        + "\n  |-".join([p.name for p in list(map(Path, filenames))])
-    )
 
 
 def _get_time(

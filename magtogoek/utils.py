@@ -20,6 +20,22 @@ def ensure_list_format(value: tp.Union[str, int, float, tp.List[tp.Union[str, in
     return value
 
 
+def print_filenames(file_type: str, filenames: tp.List) -> str:
+    """Format a string of filenames for prints
+
+    `file_type` files :
+      |-filename1
+           :
+      |-filenameN
+
+    """
+    return (
+        file_type
+        + " files : \n  |-"
+        + "\n  |-".join([p.name for p in list(map(Path, filenames))])
+    )
+
+
 def get_files_from_expression(filenames: tp.Union[str, tp.List[str]]) -> tp.List[str]: # TODO tester
     """Get existing files from expression.
 
