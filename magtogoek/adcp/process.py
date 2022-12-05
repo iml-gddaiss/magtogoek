@@ -537,6 +537,9 @@ def _process_adcp_data(pconfig: ProcessConfig):
     l.section("Variables attributes")
     dataset = format_variables_names_and_attributes(dataset)
 
+    dataset["time"].assign_attrs(TIME_ATTRS)
+    l.log("Variables attributes added.")
+
     # ------------ #
     # MAKE FIGURES #
     # ------------ #
@@ -545,9 +548,6 @@ def _process_adcp_data(pconfig: ProcessConfig):
                          flag_thres=2,
                          save_path=pconfig.figures_path,
                          show_fig=not pconfig.headless)
-
-    dataset["time"].assign_attrs(TIME_ATTRS)
-    l.log("Variables attributes added.")
 
     # --------------------------- #
     # ADDING OF GLOBAL ATTRIBUTES #
