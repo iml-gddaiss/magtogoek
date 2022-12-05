@@ -1,5 +1,40 @@
 """
-module to map xarray dataset to Odf
+Module to map xarray dataset to Odf
+
+Date: July 25 2022
+Made by: jeromejguay
+
+
+METEOCE BODC:
+        Time                                                 : SYTM_01 : SDN:P01::
+        Longitude (East +ve)                                 : LOND_01 : SDN:P01::
+        Latitude (North +ve)                                 : LATD_01 : SDN:P01::
+        Horizontal Wind Speed                                : WSPD_01 : SDN:P01::EWSBZZ01
+        Gust Wind Speed                                      : GSPD_01 : SDN:P01::EGTSZZ01
+        Wind Direction relative to North (T)                 : WDIR_01 : SDN:P01::EWDAZZ01
+        Dry Bulb Temperature                                 : DRYT_01 : SDN:P01::CTMPZZ01
+        Relative Humidity                                    : RELH_01 : SDN:P01::CRELZZ01
+        Atmospheric pressure                                 : ATMP_01 : SDN:P01::CAPHZZ01
+        Temperature (1990 scale)                             : TE90_01 : SDN:P01::TEMPPR01
+        Electrical Conductivity                              : CNDC_01 : SDN:P01::CNDCZZ01
+        Practical Salinity                                   : PSAL_01 : SDN:P01::PSLTZZ01
+        Sea Density                                          : DENS_01 : SDN:P01::SIGTEQ01
+        Hydrogen Ion Concentration (pH)                      : PHPH_01 : SDN:P01::PHXXZZXX
+        Fluorescence                                         : FLOR_01 : SDN:P01::FLUOZZZZ
+        Partial pressure of carbon dioxide in the atmosphere : ACO2_01 : SDN:P01::ACO2XXXX
+        Partial pressure of carbon dioxide in the water body : PCO2_01 : SDN:P01::PCO2XXXX
+        Wave mean height                                     : VRMS_01 : SDN:P01::GAVHZZ01
+        Wave maximum height                                  : VMXL_01 : SDN:P01::GCMXZZ01
+        Wave period                                          : VTCA_01 : SDN:P01::GTAMZZ01
+        u
+        v
+        w
+        e
+        bt_u
+        bt_v
+        bt_w
+        bt_e
+
 """
 import re
 from pathlib import Path
