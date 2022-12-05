@@ -34,7 +34,6 @@ METEOCE BODC:
         bt_v
         bt_w
         bt_e
-TODO DO SOME LOGGINGS
 """
 
 import numpy as np
@@ -62,7 +61,7 @@ from magtogoek.tools import rotate_2d_vector
 
 TERMINAL_WIDTH = 80
 
-STANDARD_ADCP_GLOBAL_ATTRIBUTES = {
+STANDARD_VIKING_GLOBAL_ATTRIBUTES = {
     "sensor_type": "viking_buoy",
     "featureType": "timeSeriesProfile",
     "data_type": "meteoce", #TODO CHECK IF ITS RIGHTS
@@ -72,14 +71,27 @@ STANDARD_ADCP_GLOBAL_ATTRIBUTES = {
 }
 
 VARIABLES_TO_DROP = ['ph_temperature']
-GLOBAL_ATTRS_TO_DROP = []
+GLOBAL_ATTRS_TO_DROP = [
+    "sensor_type",
+    "platform_type",
+    "VAR_TO_ADD_SENSOR_TYPE",
+    "P01_CODES",
+    "xducer_depth",
+    "variables_gen_name",
+    "binary_mask_tests",
+    "binary_mask_tests_values",
+    "bodc_name"
+]
 
 CONFIG_GLOBAL_ATTRS_SECTIONS = ["NETCDF_CF", "PROJECT", "CRUISE", "GLOBAL_ATTRIBUTES"]
-
-PLATFORM_TYPE = 'buoy'
+PLATFORM_TYPES = ["buoy", "mooring", "ship", "lowered"]
 DEFAULT_PLATFORM_TYPE = "buoy"
 
+DATA_SUBTYPES = {"buoy": "BUOY", "mooring": "MOORED", "ship": "SHIPBORNE", 'lowered': 'LOWERED'}
+
 P01_CODES = dict(
+    time="ELTMEP01",
+
     wind_mean="EWSBZZ01",
     wind_direction_mean="EGTSZZ01",
     wind_max="EWDAZZ01",
@@ -97,6 +109,7 @@ P01_CODES = dict(
     wave_mean_height="GAVHZZ01",
     wave_maximal_height="GCMXZZ01",
     wave_period="GTAMZZ01",
+
     u="LCEWAP01",
     v="LCNSAP01",
     w="LRZAAP01",
@@ -121,6 +134,13 @@ P01_CODES = dict(
     bt_v="APNSBT01",
     bt_w="APZABT01",
     bt_e="APERBT01",
+
+    lon="ALONZZ01",
+    lat="ALATZZ01",
+    heading="HEADCM01",
+    roll_="ROLLGP01",
+    pitch="PTCHGP01",
+
 )
 
 VAR_TO_ADD_SENSOR_TYPE = []
@@ -214,7 +234,7 @@ class ProcessConfig:
             raise ValueError("No adcp file was provided in the configfile.")
 
         self._get_platform_metadata()
-        self.platform_type = PLATFORM_TYPE
+        self.platform_type = DEFAULT_PLATFORM_TYPE #FIXME
 
     def _load_config_dict(self, config: dict) -> dict:
         """Split and flattens"""
@@ -230,35 +250,67 @@ class ProcessConfig:
         pass
 
     def resolve_outputs(self):
+        #TODO NEEDS TO BE UPDATED. FIX THIS BY MAKING A PROCESS COMON module.
+        # default_path, default_filename = None, None
+        # if self.config_file is not None:
+        #     config_file = Path(self.config_file)
+        #     default_path, default_filename = config_file.parent, config_file.name
+        #
+        # _resolve_outputs(self, default_path=default_path, default_filename=default_filename)
         _resolve_outputs(self)
 
 
 def process_viking(config: dict,
                    drop_empty_attrs: bool = False,
                    headless: bool = False):
+    """Process Viking data with parameters from a config file.
+
+    Parameters
+    ----------
+    config :
+        Dictionary make from a configfile (see config_handler.load_config).
+    drop_empty_attrs :
+        If true, all netcdf empty ('') global attributes will be drop from
+        the output.
+    headless :
+        If true, figures are not displayed.
+
+    The actual data processing is carried out by _process_adcp_data.
+    """
     pconfig = ProcessConfig(config)
     pconfig.drop_empty_attrs = drop_empty_attrs
     pconfig.headless = headless
-    pconfig.resolve_outputs()
+
+    input_files = list(pconfig.input_files)
+    odf_output = pconfig.odf_output
+    netcdf_output = pconfig.netcdf_output
+    event_qualifier1 = pconfig.metadata['event_qualifier1']
+
     if pconfig.merge_output_files:
-        _process_viking_data(pconfig)
+        pconfig.resolve_outputs()
+        return _process_viking_data(pconfig) # FIXME
     else:
-        netcdf_output = pconfig.netcdf_output
-        input_files = pconfig.input_files
-        for filename, count in zip(input_files, range(len(input_files))):
-            if netcdf_output:
-                if isinstance(netcdf_output, bool):
-                    pconfig.netcdf_output = filename
-                else:
-                    pconfig.netcdf_output = Path(netcdf_output).absolute().resolve()
-                    if pconfig.netcdf_output.is_dir():
-                        pconfig.netcdf_output = str(pconfig.netcdf_output.joinpath(filename))
-                    else:
-                        pconfig.netcdf_output = str(pconfig.netcdf_output.with_suffix("")) + f"_{count}"
+        for count, filename in enumerate(input_files):
             pconfig.input_files = [filename]
-            #FIXME
-            ds=_process_viking_data(pconfig)
-            return ds
+            if isinstance(netcdf_output, str):
+                if not Path(netcdf_output).is_dir():
+                    pconfig.netcdf_output = str(Path(netcdf_output).with_suffix("")) + f"_{count}"
+                else:
+                    pconfig.netcdf_output = netcdf_output
+
+            if isinstance(odf_output, str):
+                if not Path(odf_output).is_dir():
+                    pconfig.odf_output = str(Path(odf_output).with_suffix("")) + f"_{count}"
+                else:
+                    pconfig.metadata['event_qualifier1'] = event_qualifier1 + f"_{Path(filename).name}"  # PREVENTS FROM OVERWRITING THE SAME FILE
+                    pconfig.odf_output = odf_output
+            else:
+                pconfig.metadata['event_qualifier1'] = event_qualifier1 + f"_{Path(filename).name}" # PREVENTS FROM OVERWRITING THE SAME FILE
+                pconfig.odf_output = odf_output
+
+            pconfig.resolve_outputs()
+
+            _process_viking_data(pconfig)
 
 
 def _process_viking_data(pconfig: ProcessConfig):
@@ -272,28 +324,40 @@ def _process_viking_data(pconfig: ProcessConfig):
 
     dataset = _load_viking_data(pconfig)
 
-    # --------------- #
-    # Compute density #
-    # --------------- #
-
-    _compute_density(dataset)
-
     # ----------------------------------------- #
     # ADDING THE NAVIGATION DATA TO THE DATASET #
     # ----------------------------------------- #
-    if pconfig.navigation_file:
-        l.section("Navigation data")
-        dataset = _load_navigation(dataset, pconfig.navigation_file)
+    # NOTE: PROBABLY NOT NEED SINCE VIKING DATA have GPS.
+    # if pconfig.navigation_file:
+    #     l.section("Navigation data")
+    #     dataset = _load_navigation(dataset, pconfig.navigation_file)
+
+    # ----------------------------------- #
+    # CORRECTION FOR MAGNETIC DECLINATION #
+    # ----------------------------------- #
+
+    l.section("Data transformation")
+
+    _compute_density(dataset)
+
+    if pconfig.magnetic_declination:
+        angle = pconfig.magnetic_declination
+        _apply_magnetic_correction(dataset, angle)
+        dataset.attrs["magnetic_declination"] = pconfig.magnetic_declination
+        l.log(f"Absolute magnetic declination: {dataset.attrs['magnetic_declination']} degree east.")
 
     # ----------------------------- #
     # ADDING SOME GLOBAL ATTRIBUTES #
     # ----------------------------- #
 
-    dataset = dataset.assign_attrs(STANDARD_ADCP_GLOBAL_ATTRIBUTES)
+    l.section("Adding Global Attributes")
 
-    dataset.attrs['sensor_depth'] = pconfig.sensor_depth
-    dataset.attrs['serial_number'] = dataset.attrs.pop('controller_serial_number')
+    dataset = dataset.assign_attrs(STANDARD_VIKING_GLOBAL_ATTRIBUTES)
 
+    #dataset.attrs["data_type"] = DATA_TYPES[pconfig.platform_type] # DATA TYPE WILL DEPEND ON SENSOR
+    dataset.attrs["data_subtype"] = DATA_SUBTYPES[pconfig.platform_type]
+
+    # NOTE: Not needed viking data have a gps?
     # if pconfig.platform_metadata["platform"]["longitude"]:
     #     dataset.attrs["longitude"] = pconfig.platform_metadata["platform"]["longitude"]
     # if pconfig.platform_metadata["platform"]["latitude"]:
@@ -301,9 +365,12 @@ def _process_viking_data(pconfig: ProcessConfig):
 
     compute_global_attrs(dataset)
 
-    dataset = dataset.assign_attrs(pconfig.metadata)
+    dataset.attrs['sensor_depth'] = pconfig.sensor_depth
+    dataset.attrs['serial_number'] = dataset.attrs.pop('controller_serial_number')
 
     _set_platform_metadata(dataset, pconfig)
+
+    dataset = dataset.assign_attrs(pconfig.metadata)
 
     if not dataset.attrs["source"]:
         dataset.attrs["source"] = pconfig.platform_type
@@ -319,18 +386,6 @@ def _process_viking_data(pconfig: ProcessConfig):
     else:
         no_meteoce_quality_control(dataset)
 
-    # ----------------------------------- #
-    # CORRECTION FOR MAGNETIC DECLINATION #
-    # ----------------------------------- #
-
-    l.section("Data transformation")
-
-    if pconfig.magnetic_declination:
-        angle = pconfig.magnetic_declination
-        _apply_magnetic_correction(dataset, angle)
-        dataset.attrs["magnetic_declination"] = pconfig.magnetic_declination
-        l.log(f"Absolute magnetic declination: {dataset.attrs['magnetic_declination']} degree east.")
-
     # ------------- #
     # DATA ENCODING #
     # ------------- #
@@ -340,12 +395,18 @@ def _process_viking_data(pconfig: ProcessConfig):
     # VARIABLES ATTRIBUTES #
     # -------------------- #
     dataset.attrs['bodc_name'] = pconfig.bodc_name
-    dataset.attrs["VAR_TO_ADD_SENSOR_TYPE"] = VAR_TO_ADD_SENSOR_TYPE
+    dataset.attrs["VAR_TO_ADD_SENSOR_TYPE"] = VAR_TO_ADD_SENSOR_TYPE # Sensor types is Viking (dict of sensor:[var]) ?
     dataset.attrs["P01_CODES"] = P01_CODES
     dataset.attrs["variables_gen_name"] = [var for var in dataset.variables]  # For Odf outputs
 
     l.section("Variables attributes")
     dataset = format_variables_names_and_attributes(dataset)
+
+    # ------------ #
+    # MAKE FIGURES #
+    # ------------ #
+
+    #TODO
 
     # --------------------------- #
     # ADDING OF GLOBAL ATTRIBUTES #
@@ -367,7 +428,7 @@ def _process_viking_data(pconfig: ProcessConfig):
     # ----------- #
     # ODF OUTPUTS #
     # ----------- #
-
+    # make a function process_comon.py
     # l.section("Output")
     # if pconfig.odf_output is True:
     #     if pconfig.odf_data is None:
@@ -387,27 +448,28 @@ def _process_viking_data(pconfig: ProcessConfig):
     # ------------------------------------ #
     # FORMATTING DATASET FOR NETCDF OUTPUT #
     # ------------------------------------ #
+    # process_comon.py
     dataset = _drop_variables(dataset)
 
     dataset = _drop_global_attributes(dataset)
 
     dataset = _handle_null_global_attributes(dataset, pconfig)
 
+
     # ---------- #
     # NC OUTPUTS #
     # ---------- #
+    # make a function for process_comon.py
     # if pconfig.netcdf_output is True:
     #     netcdf_path = Path(pconfig.netcdf_path).with_suffix('.nc')
     #     dataset.to_netcdf(netcdf_path)
-    #     l.log(f"netcdf file made -> {netcdf_path.resolve()}")
+    #     l.log(f"netcdf file made -> {netcdf_path}")
     #
     # if pconfig.make_log is True:
     #     log_path = Path(pconfig.log_path).with_suffix(".log")
-    #     with open(log_path, "w") as log_file:
-    #         log_file.write(dataset.attrs["history"])
-    #         print(f"log file made -> {log_path.resolve()}")
+    #     l.write(log_path)
 
-    click.echo(click.style("=" * TERMINAL_WIDTH, fg="white", bold=True))
+
     # FIXME
     return dataset
 
@@ -649,18 +711,21 @@ if __name__ == "__main__":
     file_path = '/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat'
     out_path = '/home/jeromejguay/Desktop/viking_test.nc'
     config = dict(
-        header=dict(
+        HEADER=dict(
             sensor_type=None,
             platform_type=None
         ),
-        input=dict(
+        INPUT=dict(
             input_files=file_path,
             platform_file=None,
             platform_id=None
         ),
-        output=dict(
+        OUTPUT=dict(
             netcdf_output=out_path,
             odf_output=None
+        ),
+        CRUISE=dict(
+            event_qualifier1="meteoc"
         ),
         NETCDF_CF=dict(
             date_created = pd.Timestamp.now().strftime("%Y-%m-%d"),
@@ -668,7 +733,7 @@ if __name__ == "__main__":
             source='viking_buoy'
         ),
 
-        viking_processing=dict(
+        VIKING_PROCESSING=dict(
             buoy_name="pmza_riki",
             data_format="raw_dat",
             sensor_depth=0,
@@ -678,10 +743,10 @@ if __name__ == "__main__":
             magnetic_declination=None,
             magnetic_declination_preset=None,
         ),
-        viking_quality_control=dict(quality_control=None),
-        viking_output=dict(
-            merge_output_files=None,
-            bodc_name=None,
+        VIKING_QUALITY_CONTROL=dict(quality_control=None),
+        VIKING_OUTPUT=dict(
+            merge_output_files=True,
+            bodc_name=True,
             force_platform_metadata=None,
             odf_data=False,
             make_figures=False,
