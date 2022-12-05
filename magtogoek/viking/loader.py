@@ -57,12 +57,10 @@ def load_meteoce_data(
 
     """
     if data_format == "raw_dat":
-        dat_reader = RawDatReader()
+        buoys_data = RawDatReader().read(filenames)
     else:
         l.warning('Invalid data_format.')
         raise ValueError
-
-    buoys_data = dat_reader.read(filenames)
 
     if buoy_name is None:
         if len(buoys_data.keys()) == 1:
@@ -70,7 +68,6 @@ def load_meteoce_data(
         else:
             l.warning(f'More than one buoy was found in the file {filenames}. Exiting')
             raise ValueError
-
     elif buoy_name in buoys_data:
         pass
     else:
@@ -79,7 +76,7 @@ def load_meteoce_data(
 
     viking_data = buoys_data[buoy_name]
 
-    data = get_meteoce_data(viking_data)
+    meteoce_data = get_meteoce_data(viking_data)
 
     coords = {'time': np.asarray(viking_data.time)}
 
@@ -89,9 +86,9 @@ def load_meteoce_data(
         'controller_serial_number': viking_data.controller_sn
     }
 
-    data = _fill_data(data)
+    meteoce_data = _fill_data(meteoce_data)
 
-    dataset = xr.Dataset(data, coords=coords, attrs=global_attrs)
+    dataset = xr.Dataset(meteoce_data, coords=coords, attrs=global_attrs)
 
     dataset = _average_duplicates(dataset, 'time')
 
@@ -180,7 +177,7 @@ def get_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.MaskedArr
         _data.update({'co2_a': (viking_data.co2_a['cell_gas_pressure_mbar'] * viking_data.co2_a['co2_ppm'] / 1e6, {})})
 
     if viking_data.co2_w is not None:
-        _data.update({'co2_w': (viking_data.co2_w['cell_gas_pressure_mbar'] * viking_data.co2_w['co2_ppm'] / 1e6 ,{})})
+        _data.update({'co2_w': (viking_data.co2_w['cell_gas_pressure_mbar'] * viking_data.co2_w['co2_ppm'] / 1e6,{})})
 
     if viking_data.wave_m is not None:
         _data.update(
