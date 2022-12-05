@@ -34,6 +34,8 @@ from magtogoek.viking.quality_control import meteoce_quality_control, no_meteoce
 
 from magtogoek.tools import rotate_2d_vector
 
+from magtogoek.viking.tools import compute_density, pHEXT_from_voltEXT, voltEXT_from_pHEXT
+
 TERMINAL_WIDTH = 80
 
 STANDARD_VIKING_GLOBAL_ATTRIBUTES = {
@@ -164,12 +166,12 @@ class ProcessConfig:
     magnetic_declination: float = None
     magnetic_declination_preset: float = None
 
-    ph_coeffs: Tuple[float] = None
+    ph_coeffs: Tuple[float] = None  # psal, k0, k2
     oxy_coeffs: Tuple[float] = None
 
     # QUALITY_CONTROL
     quality_control: bool = None
-    ph_coeff: Tuple[float, float, float] = None # psal, k0, k2
+
     # motion_correction_mode: str = None
 
     # OUTPUT
@@ -313,7 +315,11 @@ def _process_viking_data(pconfig: ProcessConfig):
 
     l.section("Data transformation")
 
-    _compute_density(dataset)
+    if 'density' not in dataset:
+        _compute_ctdo_density(dataset)
+
+    if 'ph' in dataset:
+        _correct_ph(dataset, pconfig)
 
     if pconfig.magnetic_declination:
         angle = pconfig.magnetic_declination
@@ -458,9 +464,27 @@ def _load_viking_data(pconfig: ProcessConfig):
     return dataset
 
 
-def _compute_density(dataset: xr.Dataset):
+def _correct_ph(dataset: xr.Dataset, pconfig: ProcessConfig):
+    #FIXME
+    volt = voltEXT_from_pHEXT(
+        temp=dataset.ph_temperature,
+        psal=pconfig.ph_coeffs[0],
+        ph = dataset.ph,
+        k0=pconfig.ph_coeffs[1],
+        k2=pconfig.ph_coeffs[2]
+    )
+    ph = pHEXT_from_voltEXT(
+        temp=dataset.ph_temperature,
+        psal=dataset.salinity,
+        volt=volt,
+        k0=pconfig.ph_coeffs[1],
+        k2=pconfig.ph_coeffs[2]
 
-    pass
+    )
+
+
+def _compute_ctdo_density(dataset: xr.Dataset):
+    compute_density(dataset)
 
 
 def _set_platform_metadata(dataset: xr.Dataset, pconfig: ProcessConfig):

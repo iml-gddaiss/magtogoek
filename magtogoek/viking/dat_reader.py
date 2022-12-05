@@ -152,7 +152,7 @@ Notes
     - Everything is loaded as float since nans are not available for int type in numpy
 
     - Triplets Data Decoding: The code will to be modified for other wave lengths.
-          700 nm: Fluoresnce Scattering, 695 nm: Chlorophyll, 460 nm: FDOM
+          700 nm: Fluorescence Scattering, 695 nm: Chlorophyll, 460 nm: FDOM
 """
 
 import re
@@ -165,9 +165,9 @@ import numpy as np
 
 from magtogoek.utils import get_files_from_expression
 
-from pint import UnitRegistry
-
-Quantity = UnitRegistry().Quantity
+# from pint import UnitRegistry
+#
+# Quantity = UnitRegistry().Quantity
 
 FILL_VALUE = -32768  # Reusing the same fill value as teledyne (RDI) -(2**15)
 
@@ -178,7 +178,7 @@ TAGS = ["NOM", "COMP", "Triplet", "Par_digi", "SUNA", "GPS",
 DATA_BLOCK_REGEX = re.compile(r"(\[NOM].+?)\[FIN]", re.DOTALL)
 DATA_TAG_REGEX = re.compile(rf"\[({'|'.join(TAGS)})],?((?:(?!\[).)*)", re.DOTALL)
 
-### Tag keys ###
+### Tag keys ### TODO CONVERT DICT BACK TO LIST.
 TAG_VARS = dict(
     COMP_KEYS=['heading', 'pitch', 'roll', 'tilt', 'pitch_std', 'roll_std', 'tilt_std'],
     TRIPLET_KEYS=['time', 'model_number', 'serial_number',
@@ -334,7 +334,7 @@ data: (length: {len(self)})
         # Notes:
         if self.triplet is not None:  # This Could be done directly during the decoding
             _convert_triplet_wavelength(self.triplet)  # This Could be done directly during the decoding
-        self._add_units()
+        #self._add_units()
 
     def _to_numpy_masked_array(self):
         self.time = np.array(self.time, dtype='datetime64[s]')
@@ -354,13 +354,13 @@ data: (length: {len(self)})
             if len(uniques_values) == 1 and list(uniques_values)[0] == FILL_VALUE:
                 self.__dict__[tag] = None
 
-    def _add_units(self):
-        for tag in self.tags:
-            variables = TAG_VARS[tag.upper()+'_KEYS']
-            if isinstance(variables, dict):
-                for var, units in variables.items():
-                    if units is not None and self.__dict__[tag] is not None:
-                        self.__dict__[tag][var] = Quantity(self.__dict__[tag][var], units)
+    # def _add_units(self):
+    #     for tag in self.tags:
+    #         variables = TAG_VARS[tag.upper()+'_KEYS']
+    #         if isinstance(variables, dict):
+    #             for var, units in variables.items():
+    #                 if units is not None and self.__dict__[tag] is not None:
+    #                     self.__dict__[tag][var] = Quantity(self.__dict__[tag][var], units)
 
 
 def _to_numpy_masked_array(data: list):

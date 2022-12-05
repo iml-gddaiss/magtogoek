@@ -37,6 +37,8 @@ from magtogoek.utils import format_filenames_for_print
 
 matplotlib.use('Qt5Agg')
 
+KNOTS_TO_METER_PER_SECONDS = 1 / 1.944   # 1 kt = (1/1.944) m/s
+
 
 def load_meteoce_data(
         filenames: Tuple[str, List[str]],
@@ -107,25 +109,31 @@ def get_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.MaskedArr
     _data = {'lon': (viking_data.longitude, {}),
              'lat': (viking_data.latitude, {}),
              }
+
+    if viking_data.gps is not None:
+        _data.update(
+            {'speed': (viking_data.gps['speed'] * KNOTS_TO_METER_PER_SECONDS, {}),
+             'course': (viking_data.gps['course'], {})}
+        )
+        l.log('Gps data loaded.')
     if viking_data.comp is not None:
-        l.log('Comp data loaded.')
         _data.update(
             {'heading': (viking_data.comp['heading'], {}),
              'pitch': (viking_data.comp['pitch'], {}),
              'roll_': (viking_data.comp['roll'], {})}
-             # 'tilt': (viking_data.comp['tilt'], {})} Aren't pitch and tilt the same thing ???
         )
+        l.log('Comp data loaded.')
 
     if viking_data.wmt700 is not None:
-        l.log('wmt700 data loaded.')
         _data.update(
-            {'wind_mean': (viking_data.wmt700['Sm'], {}),
+            {'wind_mean': (viking_data.wmt700['Sm'] * KNOTS_TO_METER_PER_SECONDS, {}),
              'wind_direction_mean': (viking_data.wmt700['Dm'], {}),
              'wind_max': (viking_data.wmt700['Sx'], {}),
-             'wind_direction_max': (viking_data.wmt700['Dx'], {})}
+             'wind_direction_max': (viking_data.wmt700['Dx'] * KNOTS_TO_METER_PER_SECONDS, {})}
         )
+        l.log('wmt700 data loaded.')
+
     if viking_data.wxt520 is not None:
-        l.log('wxt520 data loaded.')
         _data.update(
             {'atm_temperature': (viking_data.wxt520['Ta'], {}),
              'atm_humidity': (viking_data.wxt520['Ua'], {}),
@@ -138,27 +146,27 @@ def get_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.MaskedArr
                     _data[nc_name] = (viking_data.wxt520[viking_name], {})
             else:
                 _data[nc_name] = (viking_data.wxt520[viking_name], {})
+        l.log('wxt520 data loaded.')
 
     if viking_data.ctd is not None:
-        l.log('Ctd data loaded.')
         _data.update(
             {'temperature': (viking_data.ctd['temperature'], {}),
              'salinity': (viking_data.ctd['salinity'], {}),
              'density': (viking_data.ctd['density'], {})}
         )
+        l.log('Ctd data loaded.')
 
     elif viking_data.ctdo is not None:
-        l.log('Ctdo data loaded.')
         _data.update(
             {'temperature': (viking_data.ctdo['temperature'], {}),
              'salinity': (viking_data.ctdo['salinity'], {}),
              'oxygen': (viking_data.ctd['oxygen'], {})}
         )
+        l.log('Ctdo data loaded.')
          # TODO 'density' needs to be computed
          # TODO Oxygen Correction ?
 
     if viking_data.wph is not None:
-        l.log('Wph data loaded.')
         _attrs = {
             'serial_number': viking_data.wph['serial_number'][~viking_data.wph['serial_number'].mask][0],
             'model_number': viking_data.wph['model'][~viking_data.wph['model'].mask][0]
@@ -168,9 +176,9 @@ def get_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.MaskedArr
                 'ph': (viking_data.wph['ext_ph'], _attrs),
                 'ph_temperature': (viking_data.wph['ext_ph'], _attrs)}
         )# TODO needs to be corrected
+        l.log('Wph data loaded.')
 
     if viking_data.triplet is not None:
-        l.log('Triplet data loaded.')
         _attrs = {'serial_number': viking_data.triplet['serial_number'][~viking_data.triplet['serial_number'].mask][0],
                   'model_number': viking_data.triplet['model_number'][~viking_data.triplet['model_number'].mask][0]}
         _data.update(
@@ -178,53 +186,55 @@ def get_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.MaskedArr
              'chlorophyle': (viking_data.triplet['chloro_calculated'], _attrs),
              'fdom': (viking_data.triplet['fdom_calculated'], _attrs)}
         )
+        l.log('Triplet data loaded.')
 
     if viking_data.par_digi is not None:
-        l.log('Par Digi data loaded.')
         _attrs = {
             'serial_number': viking_data.par_digi['serial_number'][~viking_data.par_digi['serial_number'].mask][0],
             'model_number': viking_data.par_digi['model_number'][~viking_data.par_digi['model_number'].mask][0]
         }
         _data['par'] = (viking_data.par_digi['PAR'], _attrs)
+        l.log('Par Digi data loaded.')
 
-    if viking_data.co2_a is not None:
-        l.log('Co2_a data loaded.')
+    if viking_data.co2_a is not None: # co2 partial pressure = (ppm / 1e6)* cell gas pressure
         _data.update({'co2_a': (viking_data.co2_a['cell_gas_pressure_mbar'] * viking_data.co2_a['co2_ppm'] / 1e6, {})})
+        l.log('Co2_a data loaded.')
 
-    if viking_data.co2_w is not None:
+    if viking_data.co2_w is not None: # co2 partial pressure = (ppm / 1e6)* cell gas pressure
+        _data.update({'co2_w': (viking_data.co2_w['cell_gas_pressure_mbar'] * viking_data.co2_w['co2_ppm'] / 1e6, {})})
         l.log('Co2_w data loaded.')
-        _data.update({'co2_w': (viking_data.co2_w['cell_gas_pressure_mbar'] * viking_data.co2_w['co2_ppm'] / 1e6,{})})
 
     if viking_data.wave_m is not None:
-        l.log('Wave_m data loaded.')
         _data.update(
             {'wave_mean_height': (viking_data.wave_m['average_height'], {}),
              'wave_maximal_height': (viking_data.wave_m['maximal_height'], {}),
              'wave_period': (viking_data.wave_m['period'], {})}
         )
+        l.log('Wave_m data loaded.')
 
     elif viking_data.wave_s is not None:
-        l.log('Wave_s data loaded.')
         _data.update(
             {'wave_mean_height': (viking_data.wave_s['average_height'], {}),
              'wave_maximal_height': (viking_data.wave_s['Hmax'], {}),
              'wave_period': (viking_data.wave_s['dominant_period'], {})}
         )
+        l.log('Wave_s data loaded.')
 
     if viking_data.rdi is not None:
-        l.log('Rdi data loaded.')
-        # TODO carry one quality control
         for _name in ['u', 'v', 'w', 'e']:
-            _data[_name] = (viking_data.rdi[_name], {})
+            _data[_name] = (viking_data.rdi[_name] / 1000, {})
+        l.log('Rdi data loaded.')
 
     elif viking_data.rti is not None:
-        l.log('Rti data loaded.')
-        # TODO carry one quality control
         _attrs = {'bin': viking_data.rti['bin'][~viking_data.rti['bin'].mask],
-                  'position': viking_data.rti['position_cm'][~viking_data.rti['position_cm'].mask].to('m')}
-        for _name in ['u', 'v', 'w', 'e', 'corr1', 'corr2', 'corr3', 'corr4', 'amp1', 'amp2', 'amp3', 'amp4']:
+                  'position': viking_data.rti['position_cm'][~viking_data.rti['position_cm'].mask] / 100}
+        for _name in ['u', 'v', 'w', 'e']:
+            _data[_name] = (viking_data.rti[_name] / 1000, _attrs)
+            _data["bt_" + _name] = (viking_data.rti["bt_" + _name] / 1000, _attrs)
+        for _name in ['corr1', 'corr2', 'corr3', 'corr4', 'amp1', 'amp2', 'amp3', 'amp4']:
             _data[_name] = (viking_data.rti[_name], _attrs)
             _data["bt_"+_name] = (viking_data.rti["bt_"+_name], _attrs)
+        l.log('Rti data loaded.')
 
     return _data
 
