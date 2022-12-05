@@ -22,10 +22,9 @@ Data That Need Processing
         https://github.com/TEOS-10/python-gsw/blob/master/gsw/gibbs/conversions.py
         https://github.com/ooici/ion-functions/blob/master/ion_functions/data/do2_functions.py
 
-TODOS
+Notes
 -----
-TODO DO SOME LOGGINGS
-TODO make it choose a file format.
+Load more data ? wind min ?
 """
 
 from magtogoek.viking.dat_reader import RawDatReader, VikingData
@@ -113,8 +112,8 @@ def get_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.MaskedArr
         _data.update(
             {'heading': (viking_data.comp['heading'], {}),
              'pitch': (viking_data.comp['pitch'], {}),
-             'roll_': (viking_data.comp['roll'], {}),
-             'tilt': (viking_data.comp['tilt'], {})}
+             'roll_': (viking_data.comp['roll'], {})}
+             # 'tilt': (viking_data.comp['tilt'], {})} Aren't pitch and tilt the same thing ???
         )
 
     if viking_data.wmt700 is not None:
