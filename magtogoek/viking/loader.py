@@ -183,7 +183,7 @@ def get_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.MaskedArr
                   'model_number': viking_data.triplet['model_number'][~viking_data.triplet['model_number'].mask][0]}
         _data.update(
             {'fluorescence': (viking_data.triplet['fluo_calculated'], _attrs),
-             'chlorophyle': (viking_data.triplet['chloro_calculated'], _attrs),
+             'chlorophyll': (viking_data.triplet['chloro_calculated'], _attrs),
              'fdom': (viking_data.triplet['fdom_calculated'], _attrs)}
         )
         l.log('Triplet data loaded.')
