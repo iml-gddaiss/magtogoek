@@ -12,7 +12,7 @@ The Buoy Data `.dat` files
     '000DA1B4,FFC58202,-4.634,88.61,0.654,27.98,11.14,24.94'
 [OCR]: Radiance, Irradiance
     (note used)
-[Triplet]: Water Surface Fluorescence
+[Triplet]:(Seabird ECO-Triplet) Water Surface Fluorescence
                                             L1, Raw1,   Calc1,      L2, Raw2,   Calc2,  L3, Raw3,   Calc3
                                                           ppb                     ppb                 ppb
     'BBFL2W-1688	05/24/21	10:59:03	700	1376	2.786E-03	695	190	1.066E+00	460	85	3.454E+00'
