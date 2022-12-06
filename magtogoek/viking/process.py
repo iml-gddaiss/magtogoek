@@ -81,11 +81,16 @@ P01_CODES = dict(
     density="SIGTEQ01",
     ph="PHXXZZXX",
     fluorescence="FLUOZZZZ",
+    chlorophyll="CPHLPR01",
+    fdom="CCOMD002",
     co2_a="ACO2XXXX",
     co2_w="PCO2XXXX",
     wave_mean_height="GAVHZZ01",
     wave_maximal_height="GCMXZZ01",
     wave_period="GTAMZZ01",
+    par="PFDPAR01",
+    #speed="", transform to uship, vship ?
+    #course="",
 
     u="LCEWAP01",
     v="LCNSAP01",
@@ -166,7 +171,10 @@ class ProcessConfig:
     magnetic_declination: float = None
     magnetic_declination_preset: float = None
 
+    #compute_density: bool = None
+    #ph_correction: bool = None
     ph_coeffs: Tuple[float] = None  # psal, k0, k2
+    #oxy_correction: bool = None
     oxy_coeffs: Tuple[float] = None
 
     # QUALITY_CONTROL
@@ -329,14 +337,14 @@ def _process_viking_data(pconfig: ProcessConfig):
     # this could be a function in process/comon
     if pconfig.magnetic_declination:
         angle = pconfig.magnetic_declination
-        _apply_magnetic_correction(dataset, angle)
+        _apply_magnetic_correction(dataset, angle) #magnetic declination need to be apply to wind as well.
         dataset.attrs["magnetic_declination"] = pconfig.magnetic_declination
         l.log(f"Absolute magnetic declination: {dataset.attrs['magnetic_declination']} degree east.")
 
     # ----------------------------- #
     # ADDING SOME GLOBAL ATTRIBUTES #
     # ----------------------------- #
-
+    # SECTION PAS CLAIR
     l.section("Adding Global Attributes")
 
     dataset = dataset.assign_attrs(STANDARD_VIKING_GLOBAL_ATTRIBUTES)
@@ -371,6 +379,7 @@ def _process_viking_data(pconfig: ProcessConfig):
 
     if pconfig.quality_control:
         _quality_control(dataset, pconfig)
+        #ADCP QUALITY CONTROL ?
     else:
         no_meteoce_quality_control(dataset)
 
@@ -797,7 +806,7 @@ if __name__ == "__main__":
         VIKING_QUALITY_CONTROL=dict(quality_control=None),
         VIKING_OUTPUT=dict(
             merge_output_files=True,
-            bodc_name=False,
+            bodc_name=True,
             force_platform_metadata=None,
             odf_data=False,
             make_figures=False,
@@ -806,3 +815,5 @@ if __name__ == "__main__":
     )
 
     ds = process_viking(config)
+
+    print(list(ds.variables))

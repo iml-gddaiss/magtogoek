@@ -739,7 +739,7 @@
         "legacy_GF3_code": "ATMP"
     },
     "CNDCZZ01": {
-        "units": "S/m",
+        "units": "S m-1",
         "long_name": "electrical_conductivity",
         "sdn_parameter_urn": "SDN:P01::CNDCZZ01",
         "sdn_parameter_name": "Electrical conductivity of the water body",
@@ -765,6 +765,14 @@
         "sdn_uom_name": "Kilograms per cubic metre",
         "legacy_GF3_code": "DENS"
     },
+    "PFDPAR01": {
+        "units": "uE m-2 s-1",
+        "long_name": "Photosynthetically Active Radiation",
+        "sdn_parameter_urn": "SDN:P01::PFDPAR01",
+        "sdn_parameter_name": "Irradiance as photons of electromagnetic radiation (PAR wavelengths)",
+        "sdn_uom_urn": "SDN:P06:UMES",
+        "sdn_uom_name": "MicroEinsteins per square metre per second"
+    },
     "PHXXZZXX": {
         "units": "NBS_scale",
         "long_name": "pH",
@@ -773,6 +781,24 @@
         "sdn_uom_urn": "SDN:P06:UUPH",
         "sdn_uom_name": "pH units",
         "legacy_GF3_code": "PHPH"
+    },
+    "CCOMD002": {
+        "units": "ppb",
+        "long_name": "fluoresecent coloured dissolved organic matter",
+        "sdn_parameter_urn": "SDN:P01::CCOMD002",
+        "sdn_parameter_name": "Concentration of coloured dissolved organic matter {CDOM Gelbstoff} per unit volume of the water body [dissolved plus reactive particulate phase] by in-situ WET Labs FDOM ECO fluorometer",
+        "sdn_uom_urn": "SDN:P06:UPPB",
+        "sdn_uom_name": "Parts per billion",
+        "legacy_GF3_code": ""
+    },
+    "CPHLPR01": {
+        "units": "mg L-1",
+        "long_name": "Chlorophyll-a concentration",
+        "sdn_parameter_urn": "SDN:P01::CPHLPR01",
+        "sdn_parameter_name": "Concentration of chlorophyll-a {chl-a CAS 479-61-8} per unit volume of the water body [particulate >unknown phase] by in-situ chlorophyll fluorometer",
+        "sdn_uom_urn": "SDN:P06:UMMC",
+        "sdn_uom_name": "Milligrams per cubic metre",
+        "legacy_GF3_code": ""
     },
     "FLUOZZZZ": {
         "units": "dimensionless",
