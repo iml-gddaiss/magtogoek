@@ -10,16 +10,16 @@ Notes
 Missing BODC: 'chlorophyle', 'fdom', 'par'.
 """
 
-#import numpy as np
+import numpy as np
 import pandas as pd
 import xarray as xr
 import getpass
 from pathlib import Path
 from typing import *
-#import click
+# import click
 
 from magtogoek.navigation import load_navigation
-#from magtogoek.platforms import _add_platform
+# from magtogoek.platforms import _add_platform
 from magtogoek.utils import ensure_list_format, json2dict
 
 from magtogoek import logger as l
@@ -29,19 +29,19 @@ from magtogoek.attributes_formatter import (
 )
 
 from magtogoek.viking.loader import load_meteoce_data
-#from magtogoek.viking.odf_exporter import make_odf
+# from magtogoek.viking.odf_exporter import make_odf
 from magtogoek.viking.quality_control import meteoce_quality_control, no_meteoce_quality_control
 
 from magtogoek.tools import rotate_2d_vector
 
-from magtogoek.viking.tools import compute_density, pHEXT_from_voltEXT, voltEXT_from_pHEXT
+from magtogoek.viking.tools import compute_density, pHEXT_from_voltEXT, voltEXT_from_pHEXT, RINKO_COEFFS_KEYS, dissolved_oxygen_rinko_correction
 
 TERMINAL_WIDTH = 80
 
 STANDARD_VIKING_GLOBAL_ATTRIBUTES = {
     "sensor_type": "viking_buoy",
     "featureType": "timeSeriesProfile",
-    "data_type": "meteoce", #TODO CHECK IF ITS RIGHTS
+    "data_type": "meteoce",  # TODO CHECK IF ITS RIGHTS
     "data_subtype": "BUOY",
     "source": None,
 
@@ -149,8 +149,8 @@ class ProcessConfig:
     platform_file: str = None
     platform_id: str = None
 
-    #NETCDF:
-    #source: str: None
+    # NETCDF:
+    # source: str: None
 
     # OUTPUT
     netcdf_output: Union[str, bool] = None
@@ -211,7 +211,7 @@ class ProcessConfig:
             raise ValueError("No adcp file was provided in the configfile.")
 
         self._get_platform_metadata()
-        self.platform_type = DEFAULT_PLATFORM_TYPE #FIXME
+        self.platform_type = DEFAULT_PLATFORM_TYPE  # FIXME
 
     def _load_config_dict(self, config: dict) -> dict:
         """Split and flattens"""
@@ -227,7 +227,7 @@ class ProcessConfig:
         pass
 
     def resolve_outputs(self):
-        #TODO NEEDS TO BE UPDATED. FIX THIS BY MAKING A PROCESS COMON module.
+        # TODO NEEDS TO BE UPDATED. FIX THIS BY MAKING A PROCESS COMON module.
         # default_path, default_filename = None, None
         # if self.config_file is not None:
         #     config_file = Path(self.config_file)
@@ -265,7 +265,7 @@ def process_viking(config: dict,
 
     if pconfig.merge_output_files:
         pconfig.resolve_outputs()
-        return _process_viking_data(pconfig) # FIXME
+        return _process_viking_data(pconfig)  # FIXME
     else:
         for count, filename in enumerate(input_files):
             pconfig.input_files = [filename]
@@ -279,10 +279,12 @@ def process_viking(config: dict,
                 if not Path(odf_output).is_dir():
                     pconfig.odf_output = str(Path(odf_output).with_suffix("")) + f"_{count}"
                 else:
-                    pconfig.metadata['event_qualifier1'] = event_qualifier1 + f"_{Path(filename).name}"  # PREVENTS FROM OVERWRITING THE SAME FILE
+                    pconfig.metadata[
+                        'event_qualifier1'] = event_qualifier1 + f"_{Path(filename).name}"  # PREVENTS FROM OVERWRITING THE SAME FILE
                     pconfig.odf_output = odf_output
             else:
-                pconfig.metadata['event_qualifier1'] = event_qualifier1 + f"_{Path(filename).name}" # PREVENTS FROM OVERWRITING THE SAME FILE
+                pconfig.metadata[
+                    'event_qualifier1'] = event_qualifier1 + f"_{Path(filename).name}"  # PREVENTS FROM OVERWRITING THE SAME FILE
                 pconfig.odf_output = odf_output
 
             pconfig.resolve_outputs()
@@ -305,9 +307,9 @@ def _process_viking_data(pconfig: ProcessConfig):
     # ADDING THE NAVIGATION DATA TO THE DATASET #
     # ----------------------------------------- #
     # NOTE: PROBABLY NOT NEED SINCE VIKING DATA have GPS.
-    # if pconfig.navigation_file:
-    #     l.section("Navigation data")
-    #     dataset = _load_navigation(dataset, pconfig.navigation_file)
+    if pconfig.navigation_file:
+        l.section("Navigation data")
+        dataset = _load_navigation(dataset, pconfig.navigation_file)
 
     # ----------------------------------- #
     # CORRECTION FOR MAGNETIC DECLINATION #
@@ -318,9 +320,13 @@ def _process_viking_data(pconfig: ProcessConfig):
     if 'density' not in dataset:
         _compute_ctdo_density(dataset)
 
-    if 'ph' in dataset:
-        _correct_ph(dataset, pconfig)
+    if 'dissolved_oxygen' in dataset:
+        _correction_dissolved_oxygen_rinko(dataset, pconfig)
 
+    if 'ph' in dataset:
+        _correct_ph_for_salinity(dataset, pconfig)
+
+    # this could be a function in process/comon
     if pconfig.magnetic_declination:
         angle = pconfig.magnetic_declination
         _apply_magnetic_correction(dataset, angle)
@@ -335,11 +341,12 @@ def _process_viking_data(pconfig: ProcessConfig):
 
     dataset = dataset.assign_attrs(STANDARD_VIKING_GLOBAL_ATTRIBUTES)
 
-    #dataset.attrs["data_type"] = DATA_TYPES[pconfig.platform_type] # DATA TYPE WILL DEPEND ON SENSOR
+    # dataset.attrs["data_type"] = DATA_TYPES[pconfig.platform_type] # DATA TYPE WILL DEPEND ON SENSOR
     dataset.attrs["data_subtype"] = DATA_SUBTYPES[pconfig.platform_type]
 
-    # NOTE: Not needed viking data have a gps?
-    # if pconfig.platform_metadata["platform"]["longitude"]:
+    # NOTE: Not needed viking data have a gps? its there so.
+    # this could be a function in process/comon
+    # if pconfig.platform_metadata["platform"]["longitude"]: FIXME
     #     dataset.attrs["longitude"] = pconfig.platform_metadata["platform"]["longitude"]
     # if pconfig.platform_metadata["platform"]["latitude"]:
     #     dataset.attrs["latitude"] = pconfig.platform_metadata["platform"]["latitude"]
@@ -349,7 +356,7 @@ def _process_viking_data(pconfig: ProcessConfig):
     dataset.attrs['sensor_depth'] = pconfig.sensor_depth
     dataset.attrs['serial_number'] = dataset.attrs.pop('controller_serial_number')
 
-    _set_platform_metadata(dataset, pconfig)
+    # _set_platform_metadata(dataset, pconfig)
 
     dataset = dataset.assign_attrs(pconfig.metadata)
 
@@ -376,7 +383,7 @@ def _process_viking_data(pconfig: ProcessConfig):
     # VARIABLES ATTRIBUTES #
     # -------------------- #
     dataset.attrs['bodc_name'] = pconfig.bodc_name
-    dataset.attrs["VAR_TO_ADD_SENSOR_TYPE"] = VAR_TO_ADD_SENSOR_TYPE # Sensor types is Viking (dict of sensor:[var]) ?
+    dataset.attrs["VAR_TO_ADD_SENSOR_TYPE"] = VAR_TO_ADD_SENSOR_TYPE  # Sensor types is Viking (dict of sensor:[var]) ?
     dataset.attrs["P01_CODES"] = P01_CODES
     dataset.attrs["variables_gen_name"] = [var for var in dataset.variables]  # For Odf outputs
 
@@ -387,7 +394,7 @@ def _process_viking_data(pconfig: ProcessConfig):
     # MAKE FIGURES #
     # ------------ #
 
-    #TODO
+    # TODO
 
     # --------------------------- #
     # ADDING OF GLOBAL ATTRIBUTES #
@@ -436,7 +443,6 @@ def _process_viking_data(pconfig: ProcessConfig):
 
     dataset = _handle_null_global_attributes(dataset, pconfig)
 
-
     # ---------- #
     # NC OUTPUTS #
     # ---------- #
@@ -449,7 +455,6 @@ def _process_viking_data(pconfig: ProcessConfig):
     # if pconfig.make_log is True:
     #     log_path = Path(pconfig.log_path).with_suffix(".log")
     #     l.write(log_path)
-
 
     # FIXME
     return dataset
@@ -464,27 +469,70 @@ def _load_viking_data(pconfig: ProcessConfig):
     return dataset
 
 
-def _correct_ph(dataset: xr.Dataset, pconfig: ProcessConfig):
-    #FIXME
-    volt = voltEXT_from_pHEXT(
-        temp=dataset.ph_temperature,
-        psal=pconfig.ph_coeffs[0],
-        ph = dataset.ph,
-        k0=pconfig.ph_coeffs[1],
-        k2=pconfig.ph_coeffs[2]
-    )
-    ph = pHEXT_from_voltEXT(
-        temp=dataset.ph_temperature,
-        psal=dataset.salinity,
-        volt=volt,
-        k0=pconfig.ph_coeffs[1],
-        k2=pconfig.ph_coeffs[2]
-
-    )
-
-
+######### VIKING ############
 def _compute_ctdo_density(dataset: xr.Dataset):
-    compute_density(dataset)
+    """Compute density as sigma_t:= Density(S,T) - 1000
+
+    """
+    try:
+        dataset['density'] = (['time'], np.asarray(compute_density(dataset) - 1000))
+        l.log(f'Density was computed.')
+    except ValueError:
+        required_variables = ['temperature', 'salinity']
+        l.warning(
+            f'density computation aborted. One of more variables in {required_variables} was missing.')
+
+
+######### VIKING ############
+def _correct_ph_for_salinity(dataset: xr.Dataset, pconfig: ProcessConfig):
+    """Ph correction for salinity.
+
+    ph_temperature (temperature is used to find the voltage measured by the probe, but the ctd
+    temperature is used to find the ph.
+
+    TODO TEST THE DIFFERENCE BETWEEN USING PH AND TEMPERATURE_PH
+
+    Notes
+    -----
+    The algorithm used were not tested (As of December 6 2022)
+    """
+    required_variables = ['ph_temperature', 'temperature', 'salinity']
+    if pconfig.ph_coeffs is not None:
+        if all((var in dataset for var in required_variables)):
+            [psal, k0, k2] = pconfig.ph_coeffs
+            volt = voltEXT_from_pHEXT(temp=dataset['ph_temperature'], psal=psal, k0=k0, k2=k2)
+            ph = pHEXT_from_voltEXT(temp=dataset['temperature'], psal=dataset['salinity'], volt=volt, k0=k0, k2=k2)
+            dataset['ph'].values = ph
+            l.log('pH correction was carried out')
+        else:
+            l.warning(f'pH correction aborted. One of more variables in {required_variables} was missing.')
+    else:
+        l.warning(f'pH correction aborted. `ph_coeffs` were not provided.')
+
+
+######### VIKING ############
+def _correction_dissolved_oxygen_rinko(dataset: xr.Dataset, pconfig: ProcessConfig):
+    """Dissolved oxygen correction for salinity, temperature and pressure.
+    Atmospheric pressure is used since the probe is on a buoy. TODO CHECK IF THIS IS OK
+
+    """
+    required_variables = ['dissolved_oxygen', 'temperature', 'salinity', 'atm_pressure']
+    if pconfig.oxy_coeffs is not None:
+        coeffs = dict(zip(RINKO_COEFFS_KEYS, pconfig.oxy_coeffs))
+        if all((var in dataset for var in required_variables)):
+            dataset['dissolved_oxygen'].values = dissolved_oxygen_rinko_correction(
+                doxy=dataset['dissolved_oxygen'],
+                temp=dataset['temperature'],
+                pres=dataset['atm_pressure'],
+                psal=dataset['salinity'],
+                coeffs=coeffs
+            )
+            l.log(f'Dissolved oxygen correction (Rinko) was carried out')
+        else:
+            l.warning(f'Dissolved oxygen correction (Rinko) aborted. One of more variables in {required_variables} was missing.')
+    else:
+        l.warning(
+            f'Dissolved oxygen correction (Rinko) aborted. `oxy_coeffs` were not provided.')
 
 
 def _set_platform_metadata(dataset: xr.Dataset, pconfig: ProcessConfig):
@@ -492,9 +540,12 @@ def _set_platform_metadata(dataset: xr.Dataset, pconfig: ProcessConfig):
 
 
 def _quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
+    """Pipe to adcp quality control for adcp data ?
+    """
+
     dataset = meteoce_quality_control(
         dataset
-        )
+    )
     return dataset
 
 
@@ -707,6 +758,7 @@ def _figure_output_handler(pconfig: ProcessConfig, default_path: Path, default_f
 
 
 if __name__ == "__main__":
+    import matplotlib.pyplot as plt
     file_path = '/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat'
     out_path = '/home/jeromejguay/Desktop/viking_test.nc'
     config = dict(
@@ -727,8 +779,8 @@ if __name__ == "__main__":
             event_qualifier1="meteoc"
         ),
         NETCDF_CF=dict(
-            date_created = pd.Timestamp.now().strftime("%Y-%m-%d"),
-            publisher_name = getpass.getuser(),
+            date_created=pd.Timestamp.now().strftime("%Y-%m-%d"),
+            publisher_name=getpass.getuser(),
             source='viking_buoy'
         ),
 
@@ -745,7 +797,7 @@ if __name__ == "__main__":
         VIKING_QUALITY_CONTROL=dict(quality_control=None),
         VIKING_OUTPUT=dict(
             merge_output_files=True,
-            bodc_name=True,
+            bodc_name=False,
             force_platform_metadata=None,
             odf_data=False,
             make_figures=False,

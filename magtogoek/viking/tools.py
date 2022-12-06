@@ -43,15 +43,19 @@ def compute_density(
     -------
 
     """
-    if pres is not None:
-        return eos.dens(dataset.salinity, dataset.temperature, pres)
-    elif 'pres' in dataset:
-        return eos.dens(dataset.salinity, dataset.temperature, dataset.pres)
+    required_variables = ['temperature', 'salinity']
+    if all((var in dataset for var in required_variables)):
+        if pres is not None:
+            return eos.dens(dataset.salinity, dataset.temperature, pres)
+        elif 'pres' in dataset:
+            return eos.dens(dataset.salinity, dataset.temperature, dataset.pres)
+        else:
+            return eos.dens0(dataset.salinity, dataset.temperature)
     else:
-        return eos.dens0(dataset.salinity, dataset.temperature)
+        raise ValueError(f"One or both variables in {required_variables} are missing from the dataset")
 
 
-def compensation_pres_temp_psal_rinko(
+def dissolved_oxygen_rinko_correction(
         doxy: np.ndarray,
         temp: np.ndarray,
         pres: np.ndarray,
@@ -90,8 +94,6 @@ def compensation_pres_temp_psal_rinko(
     """
     if not all(key in coeffs.keys() for key in RINKO_COEFFS_KEYS):
         raise ValueError(f'Some coefficients are missing from `coeffs`. Required keys are {RINKO_COEFFS_KEYS}')
-    if len({array.shape for array in [doxy, temp, pres, psal]}) != 1:
-        raise ValueError('Arrays length mismatch.')
 
     _doxy = doxy * 44.66  # ml/L -> uM
     _pres = pres / 100  # dbar -> MPa
@@ -106,7 +108,7 @@ def compensation_pres_temp_psal_rinko(
                                 + coeffs['b3'] * temp_s ** 3)
                          + coeffs['b4'] * psal ** 2)
 
-    return doxy_sc * 44.66  # uM -> ml/L
+    return doxy_sc * 44.66  # uM -> ml/
 
 
 def voltEXT_from_pHEXT(temp: np.ndarray, psal: float, ph: np.ndarray, k0: float, k2: float) -> np.ndarray:
