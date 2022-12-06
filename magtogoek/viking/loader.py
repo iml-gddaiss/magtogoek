@@ -38,6 +38,8 @@ from magtogoek.utils import format_filenames_for_print
 matplotlib.use('Qt5Agg')
 
 KNOTS_TO_METER_PER_SECONDS = 1 / 1.944   # 1 kt = (1/1.944) m/s
+MILLIMETER_TO_METER = 1 / 1000
+CENTIMETER_TO_METER = 1 / 100
 
 
 def load_meteoce_data(
@@ -163,8 +165,6 @@ def get_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.MaskedArr
              'oxygen': (viking_data.ctd['oxygen'], {})}
         )
         l.log('Ctdo data loaded.')
-         # TODO 'density' needs to be computed
-         # TODO Oxygen Correction ?
 
     if viking_data.wph is not None:
         _attrs = {
@@ -175,7 +175,7 @@ def get_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.MaskedArr
             {
                 'ph': (viking_data.wph['ext_ph'], _attrs),
                 'ph_temperature': (viking_data.wph['ext_ph'], _attrs)}
-        )# TODO needs to be corrected
+        )
         l.log('Wph data loaded.')
 
     if viking_data.triplet is not None:
@@ -222,15 +222,15 @@ def get_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.MaskedArr
 
     if viking_data.rdi is not None:
         for _name in ['u', 'v', 'w', 'e']:
-            _data[_name] = (viking_data.rdi[_name] / 1000, {})
+            _data[_name] = (viking_data.rdi[_name] * MILLIMETER_TO_METER, {})
         l.log('Rdi data loaded.')
 
     elif viking_data.rti is not None:
         _attrs = {'bin': viking_data.rti['bin'][~viking_data.rti['bin'].mask],
-                  'position': viking_data.rti['position_cm'][~viking_data.rti['position_cm'].mask] / 100}
+                  'position': viking_data.rti['position_cm'][~viking_data.rti['position_cm'].mask] * CENTIMETER_TO_METER}
         for _name in ['u', 'v', 'w', 'e']:
-            _data[_name] = (viking_data.rti[_name] / 1000, _attrs)
-            _data["bt_" + _name] = (viking_data.rti["bt_" + _name] / 1000, _attrs)
+            _data[_name] = (viking_data.rti[_name] * MILLIMETER_TO_METER, _attrs)
+            _data["bt_" + _name] = (viking_data.rti["bt_" + _name] * MILLIMETER_TO_METER, _attrs)
         for _name in ['corr1', 'corr2', 'corr3', 'corr4', 'amp1', 'amp2', 'amp3', 'amp4']:
             _data[_name] = (viking_data.rti[_name], _attrs)
             _data["bt_"+_name] = (viking_data.rti["bt_"+_name], _attrs)
