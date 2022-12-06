@@ -378,9 +378,9 @@ def _to_numpy_masked_array(data: list):
 
 def _convert_triplet_wavelength(triplet_data: dict):
     """
-    700 nm: Fluoresence Scattering
-    695 nm: Chlorophyll
-    460 nm: FDOM
+    700 nm: Fluoresence Scattering (ppb)
+    695 nm: Chlorophyll  (ug/l)
+    460 nm: FDOM (ppb)
 
     Returns
     -------
