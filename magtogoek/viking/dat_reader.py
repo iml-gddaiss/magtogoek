@@ -169,8 +169,10 @@ from magtogoek.utils import get_files_from_expression
 #
 # Quantity = UnitRegistry().Quantity
 
-FILL_VALUE = -32768  # Reusing the same fill value as teledyne (RDI) -(2**15)
-#FILL_VALUE = np.nan
+#FILL_VALUE = -32768  # Reusing the same fill value as teledyne (RDI) -(2**15)
+
+FILL_VALUE = np.nan # CHECK IF THIS IS OK FIXME
+
 TAGS = ["NOM", "COMP", "Triplet", "Par_digi", "SUNA", "GPS",
         "CTD", "CTDO", "RTI", "RDI", "WAVE_M", "WAVE_S", "WXT520",
         "WMT700", "WpH", "CO2_W", "CO2_A", "Debit", "VEMCO"]  # "OCR", "MO", "FIN"]
