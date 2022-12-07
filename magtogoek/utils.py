@@ -6,7 +6,6 @@ import typing as tp
 from pathlib import Path
 
 import click
-import numpy as np
 
 
 def ensure_list_format(value: tp.Union[str, int, float, tp.List[tp.Union[str, int, float]]]) -> tp.List[str]:
@@ -133,6 +132,3 @@ def resolve_relative_path(relative_path, current_path):
     return Path(current_path).resolve().parent.joinpath(relative_path).resolve()
 
 
-def nans(shape: tp.Union[list, tuple, np.ndarray]) -> np.ndarray:
-    """return array of nan of shape `shape`"""
-    return np.full(shape, np.nan)
