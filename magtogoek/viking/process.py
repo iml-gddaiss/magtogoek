@@ -44,8 +44,6 @@ from magtogoek.viking.tools import compute_density, pHEXT_from_voltEXT, voltEXT_
 
 TERMINAL_WIDTH = 80
 
-READER_FILL_VALUE = -32768  # Reusing the same fill value as teledyne (RDI) -(2**15)
-
 STANDARD_VIKING_GLOBAL_ATTRIBUTES = {
     "sensor_type": "viking_buoy",
     "featureType": "timeSeriesProfile",
@@ -55,7 +53,7 @@ STANDARD_VIKING_GLOBAL_ATTRIBUTES = {
 
 }
 
-VARIABLES_TO_DROP = ['ph_temperature', 'wind_direction_max', 'speed', 'course']
+VARIABLES_TO_DROP = ['ph_temperature', 'wind_direction_max', 'speed', 'course', 'magnetic_declination']
 GLOBAL_ATTRS_TO_DROP = [
     "sensor_type",
     "platform_type",
@@ -379,6 +377,10 @@ def _process_viking_data(pconfig: ProcessConfig):
     dataset.attrs['sensor_depth'] = pconfig.sensor_depth
     dataset.attrs['serial_number'] = dataset.attrs.pop('controller_serial_number')
 
+    if 'magnetic_declination' in dataset:
+        dataset.attrs["magnetic_declination"] = dataset['magnetic_declination'].mean()
+        dataset.attrs["magnetic_declination_units"] = "degree east"
+
     # _set_platform_metadata(dataset, pconfig)
 
     dataset = dataset.assign_attrs(pconfig.metadata)
@@ -635,20 +637,16 @@ def _format_data_encoding(dataset: xr.Dataset):
 
 
 def _apply_magnetic_correction(dataset: xr.Dataset, magnetic_declination: float):
-    """Transform velocities (u,v, bt_u,bt_v, u_ship, v_ship), wind_direction_mean, heading to true north and east.
+    """Transform velocities (u,v, bt_u,bt_v, u_ship, v_ship) to true north and east.
 
     Rotates velocities vector clockwise by `magnetic_declination` angle effectively
     rotating the frame fo reference by the `magnetic_declination` anti-clockwise.
     Corrects the heading with the `magnetic_declination`:
 
-    Equation for the heading: (heading + 180 + magnetic_declination) % 360 - 180
-        [-180, 180[ -> [0, 360[ -> [MD, 360+MD[
-        -> [MD, 360+MD[ -> [0, 360[ -> [-180, 180[
-
     Parameters
     ----------
     dataset :
-      dataset optional variables: (u, v), (bt_u, bt_v), (u_ship, v_ship) heading, course.
+      dataset optional variables: (u, v), (bt_u, bt_v), (u_ship, v_ship).
     magnetic_declination :
         angle in decimal degrees measured in the geographic frame of reference.
     """
@@ -669,18 +667,6 @@ def _apply_magnetic_correction(dataset: xr.Dataset, magnetic_declination: float)
             dataset.u_ship, dataset.v_ship, -magnetic_declination
         )
         l.log(f"Platform velocities transformed to true north and true east.")
-
-    # heading goes from 0 to 360
-    if 'wind_direction_mean' in dataset:
-        dataset.wind_direction_mean.values = (dataset.wind_direction_mean.data + magnetic_declination) % 360
-        l.log(f"Wind direction mean transformed to true north.")
-
-    # heading goes from -180 to 180
-    if "heading" in dataset:
-        dataset.heading.values = (
-                                         dataset.heading.data + 180 + magnetic_declination
-                                 ) % 360 - 180
-        l.log(f"Heading transformed to true north.")
 
 
 def _drop_variables(dataset):

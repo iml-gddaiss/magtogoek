@@ -115,7 +115,8 @@ def get_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.MaskedArr
     if viking_data.gps is not None:
         _data.update(
             {'speed': (viking_data.gps['speed'] * KNOTS_TO_METER_PER_SECONDS, {}),
-             'course': (viking_data.gps['course'], {})}
+             'course': (viking_data.gps['course'], {}),
+             'magnetic_declination': (viking_data.gps['variation_E'], {})}
         )
         l.log('Gps data loaded.')
 
