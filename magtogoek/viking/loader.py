@@ -118,6 +118,7 @@ def get_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.MaskedArr
              'course': (viking_data.gps['course'], {})}
         )
         l.log('Gps data loaded.')
+
     if viking_data.comp is not None:
         _data.update(
             {'heading': (viking_data.comp['heading'], {}),
@@ -267,10 +268,10 @@ def _average_duplicates(dataset: xr.Dataset, coord: str) -> xr.Dataset:
 
 if __name__ == "__main__":
     vr = RawDatReader()
-    _buoys_data = vr.read('/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat')
+    _buoys_data = vr.read(['/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat'])
 
     v_data = _buoys_data['pmza_riki']
 
-    ds = load_meteoce_data('/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat')
+    ds = load_meteoce_data(['/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat'])
 
     ds.to_netcdf('/home/jeromejguay/Desktop/viking_test.nc')

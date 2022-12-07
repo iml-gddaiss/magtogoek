@@ -854,8 +854,8 @@ def _safe_float(value: str) -> Union[float]:
     return float(FILL_VALUE) if '#' in value else float(value)
 
 
-def _safe_int(value: str) -> Union[int]:
-    return FILL_VALUE if '#' in value else int(value)
+# def _safe_int(value: str) -> Union[int]: everything is loaded in float
+#     return FILL_VALUE if '#' in value else int(value)
 
 
 def _make_timestamp(Y: str, M: str, D: str, h: str, m: str, s: str) -> str:

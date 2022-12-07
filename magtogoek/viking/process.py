@@ -8,6 +8,12 @@ Made by: jeromejguay
 Notes
 -----
 Missing BODC: 'chlorophyle', 'fdom', 'par'.
+
+At the moment for some of the data correction. If the variable used has nans, the corrected value will (should) be a nan as well.
+Therefore, if a variable is present but all the values are nan, the corrected data will also be all nan.
+
+Maybe quality control should be done before and the transformation should check the flag values.
+
 """
 
 import numpy as np
@@ -37,6 +43,8 @@ from magtogoek.tools import rotate_2d_vector, north_polar2cartesian
 from magtogoek.viking.tools import compute_density, pHEXT_from_voltEXT, voltEXT_from_pHEXT, RINKO_COEFFS_KEYS, dissolved_oxygen_rinko_correction
 
 TERMINAL_WIDTH = 80
+
+READER_FILL_VALUE = -32768  # Reusing the same fill value as teledyne (RDI) -(2**15)
 
 STANDARD_VIKING_GLOBAL_ATTRIBUTES = {
     "sensor_type": "viking_buoy",
@@ -328,19 +336,23 @@ def _process_viking_data(pconfig: ProcessConfig):
     if 'density' not in dataset:
         _compute_ctdo_density(dataset)
 
+    if all(x in dataset for x in ('speed', 'course')):
+        _compute_uv_ship(dataset)
+
+    l.section("Data correction")
+
     if 'dissolved_oxygen' in dataset:
         _correction_dissolved_oxygen_rinko(dataset, pconfig)
 
     if 'ph' in dataset:
         _correct_ph_for_salinity(dataset, pconfig)
 
-    if all(x in dataset for x in ('speed', 'course')):
-        _compute_uv_ship(dataset)
-
-    # this could be a function in process/comon
     if pconfig.magnetic_declination:
         angle = pconfig.magnetic_declination
-        _apply_magnetic_correction(dataset, angle) #magnetic declination need to be apply to wind as well.
+        if pconfig.magnetic_declination_preset:
+            angle = round((pconfig.magnetic_declination - dataset.pconfig.magnetic_declination_preset), 4)
+        l.log(f"An additional correction of {angle} degree east was applied to the preset {pconfig.magnetic_declination_preset}.")
+        _apply_magnetic_correction(dataset, angle)
         dataset.attrs["magnetic_declination"] = pconfig.magnetic_declination
         l.log(f"Absolute magnetic declination: {dataset.attrs['magnetic_declination']} degree east.")
 
@@ -526,7 +538,6 @@ def _correct_ph_for_salinity(dataset: xr.Dataset, pconfig: ProcessConfig):
 def _correction_dissolved_oxygen_rinko(dataset: xr.Dataset, pconfig: ProcessConfig):
     """Dissolved oxygen correction for salinity, temperature and pressure.
     Atmospheric pressure is used since the probe is on a buoy. TODO CHECK IF THIS IS OK
-
     """
     required_variables = ['dissolved_oxygen', 'temperature', 'salinity', 'atm_pressure']
     if pconfig.oxy_coeffs is not None:
@@ -550,6 +561,7 @@ def _correction_dissolved_oxygen_rinko(dataset: xr.Dataset, pconfig: ProcessConf
 def _compute_uv_ship(dataset: xr.Dataset):
     """Compute uship and vship from speed and course."""
     dataset["u_ship"], dataset["v_ship"] = north_polar2cartesian(dataset.speed, dataset.course)
+    l.log('Platform velocities (u_ship, v_ship) computed from speed and course.')
 
 
 def _set_platform_metadata(dataset: xr.Dataset, pconfig: ProcessConfig):
@@ -622,8 +634,8 @@ def _format_data_encoding(dataset: xr.Dataset):
     l.log(f"Ancillary Data _FillValue: {QC_FILL_VALUE}")
 
 
-def _apply_magnetic_correction(dataset: xr.Dataset, magnetic_declination: float):  # PUT IN ADCP UTILS
-    """Transform velocities and heading to true north and east.
+def _apply_magnetic_correction(dataset: xr.Dataset, magnetic_declination: float):
+    """Transform velocities (u,v, bt_u,bt_v, u_ship, v_ship), wind_direction_mean, heading to true north and east.
 
     Rotates velocities vector clockwise by `magnetic_declination` angle effectively
     rotating the frame fo reference by the `magnetic_declination` anti-clockwise.
@@ -636,20 +648,32 @@ def _apply_magnetic_correction(dataset: xr.Dataset, magnetic_declination: float)
     Parameters
     ----------
     dataset :
-      dataset containing variables (u, v) (required) and (bt_u, bt_v) (optional).
+      dataset optional variables: (u, v), (bt_u, bt_v), (u_ship, v_ship) heading, course.
     magnetic_declination :
         angle in decimal degrees measured in the geographic frame of reference.
     """
 
-    dataset.u.values, dataset.v.values = rotate_2d_vector(
-        dataset.u, dataset.v, -magnetic_declination
-    )
-    l.log(f"Velocities transformed to true north and true east.")
+    if all(v in dataset for v in ["u", "v"]):
+        dataset.u.values, dataset.v.values = rotate_2d_vector(
+            dataset.u, dataset.v, -magnetic_declination
+        )
+        l.log(f"Velocities transformed to true north and true east.")
     if all(v in dataset for v in ["bt_u", "bt_v"]):
         dataset.bt_u.values, dataset.bt_v.values = rotate_2d_vector(
             dataset.bt_u, dataset.bt_v, -magnetic_declination
         )
         l.log(f"Bottom velocities transformed to true north and true east.")
+
+    if all(v in dataset for v in ["u_ship", "v_ship"]):
+        dataset.u_ship.values, dataset.v_ship.values = rotate_2d_vector(
+            dataset.u_ship, dataset.v_ship, -magnetic_declination
+        )
+        l.log(f"Platform velocities transformed to true north and true east.")
+
+    # heading goes from 0 to 360
+    if 'wind_direction_mean' in dataset:
+        dataset.wind_direction_mean.values = (dataset.wind_direction_mean.data + magnetic_declination) % 360
+        l.log(f"Wind direction mean transformed to true north.")
 
     # heading goes from -180 to 180
     if "heading" in dataset:
@@ -808,13 +832,13 @@ if __name__ == "__main__":
             navigation_file=None,
             leading_trim=None,
             trailing_trim=None,
-            magnetic_declination=None,
+            magnetic_declination=0,
             magnetic_declination_preset=None,
         ),
         VIKING_QUALITY_CONTROL=dict(quality_control=None),
         VIKING_OUTPUT=dict(
             merge_output_files=True,
-            bodc_name=True,
+            bodc_name=False,
             force_platform_metadata=None,
             odf_data=False,
             make_figures=False,
