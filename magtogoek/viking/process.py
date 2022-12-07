@@ -32,7 +32,7 @@ from magtogoek.viking.loader import load_meteoce_data
 # from magtogoek.viking.odf_exporter import make_odf
 from magtogoek.viking.quality_control import meteoce_quality_control, no_meteoce_quality_control
 
-from magtogoek.tools import rotate_2d_vector
+from magtogoek.tools import rotate_2d_vector, north_polar2cartesian
 
 from magtogoek.viking.tools import compute_density, pHEXT_from_voltEXT, voltEXT_from_pHEXT, RINKO_COEFFS_KEYS, dissolved_oxygen_rinko_correction
 
@@ -47,7 +47,7 @@ STANDARD_VIKING_GLOBAL_ATTRIBUTES = {
 
 }
 
-VARIABLES_TO_DROP = ['ph_temperature', 'wind_direction_max']
+VARIABLES_TO_DROP = ['ph_temperature', 'wind_direction_max', 'speed', 'course']
 GLOBAL_ATTRS_TO_DROP = [
     "sensor_type",
     "platform_type",
@@ -89,8 +89,6 @@ P01_CODES = dict(
     wave_maximal_height="GCMXZZ01",
     wave_period="GTAMZZ01",
     par="PFDPAR01",
-    #speed="", transform to uship, vship ?
-    #course="",
 
     u="LCEWAP01",
     v="LCNSAP01",
@@ -114,14 +112,16 @@ P01_CODES = dict(
     amp4="TNIHCE04",
     bt_u="APEWBT01",
     bt_v="APNSBT01",
-    bt_w="APZABT01",
-    bt_e="APERBT01",
+    bt_w="LRZABT01",  # FIXME Do not yet exist as a BODC sdn code
+    bt_e="LERRBT01",  # FIXME Do not yet exist as a BODC sdn code
 
     lon="ALONZZ01",
     lat="ALATZZ01",
     heading="HEADCM01",
     roll_="ROLLGP01",
     pitch="PTCHGP01",
+    u_ship="APEWGP01",
+    v_ship="APNSGP01",
 
 )
 
@@ -334,6 +334,9 @@ def _process_viking_data(pconfig: ProcessConfig):
     if 'ph' in dataset:
         _correct_ph_for_salinity(dataset, pconfig)
 
+    if all(x in dataset for x in ('speed', 'course')):
+        _compute_uv_ship(dataset)
+
     # this could be a function in process/comon
     if pconfig.magnetic_declination:
         angle = pconfig.magnetic_declination
@@ -542,6 +545,11 @@ def _correction_dissolved_oxygen_rinko(dataset: xr.Dataset, pconfig: ProcessConf
     else:
         l.warning(
             f'Dissolved oxygen correction (Rinko) aborted. `oxy_coeffs` were not provided.')
+
+
+def _compute_uv_ship(dataset: xr.Dataset):
+    """Compute uship and vship from speed and course."""
+    dataset["u_ship"], dataset["v_ship"] = north_polar2cartesian(dataset.speed, dataset.course)
 
 
 def _set_platform_metadata(dataset: xr.Dataset, pconfig: ProcessConfig):
