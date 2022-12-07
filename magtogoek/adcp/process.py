@@ -438,22 +438,23 @@ def _process_adcp_data(pconfig: ProcessConfig):
     # -------------- #
     # Transformation #
     # -------------- #
+    l.section('Data Transformation')
+
     if dataset.attrs['coord_system'] != 'earth' and pconfig.coord_transform is True:
-        l.section('Data Transformation')
         if dataset.attrs['coord_system'] not in ["beam", "xyz"]:
             l.log(f"Coordsystem value of {dataset.attrs['coord_system']} not recognized. Conversion to enu not available.")
         else:
             dataset = coordsystem2earth(dataset)
 
+    # ---------- #
+    # CORRECTION #
+    # ---------- #
+
+    l.section("Data Correction")
+
     if pconfig.motion_correction_mode in ["bt", "nav"]:
         l.section('Motion Correction')
         motion_correction(dataset, pconfig.motion_correction_mode)
-
-    # ----------------------------------- #
-    # CORRECTION FOR MAGNETIC DECLINATION #
-    # ----------------------------------- #
-
-    l.section("Data Correction")
 
     if dataset.attrs['magnetic_declination'] is not None:
         l.log(f"Magnetic declination found in the raw file: {dataset.attrs['magnetic_declination']} degree east.")

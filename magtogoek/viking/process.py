@@ -325,9 +325,9 @@ def _process_viking_data(pconfig: ProcessConfig):
         l.section("Navigation data")
         dataset = _load_navigation(dataset, pconfig.navigation_file)
 
-    # ----------------------------------- #
-    # CORRECTION FOR MAGNETIC DECLINATION #
-    # ----------------------------------- #
+    # -------------- #
+    # Transformation #
+    # -------------- #
 
     l.section("Data transformation")
 
@@ -336,6 +336,10 @@ def _process_viking_data(pconfig: ProcessConfig):
 
     if all(x in dataset for x in ('speed', 'course')):
         _compute_uv_ship(dataset)
+
+    # ----------- #
+    # CORRECTION  #
+    # ----------- #
 
     l.section("Data correction")
 
@@ -365,12 +369,11 @@ def _process_viking_data(pconfig: ProcessConfig):
     # dataset.attrs["data_type"] = DATA_TYPES[pconfig.platform_type] # DATA TYPE WILL DEPEND ON SENSOR
     dataset.attrs["data_subtype"] = DATA_SUBTYPES[pconfig.platform_type]
 
-    # NOTE: Not needed viking data have a gps? its there so.
-    # this could be a function in process/comon
-    # if pconfig.platform_metadata["platform"]["longitude"]: FIXME
-    #     dataset.attrs["longitude"] = pconfig.platform_metadata["platform"]["longitude"]
-    # if pconfig.platform_metadata["platform"]["latitude"]:
-    #     dataset.attrs["latitude"] = pconfig.platform_metadata["platform"]["latitude"]
+    #this could be a function in process/comon
+    if pconfig.platform_metadata["platform"]["longitude"]:
+        dataset.attrs["longitude"] = pconfig.platform_metadata["platform"]["longitude"]
+    if pconfig.platform_metadata["platform"]["latitude"]:
+        dataset.attrs["latitude"] = pconfig.platform_metadata["platform"]["latitude"]
 
     compute_global_attrs(dataset)
 
