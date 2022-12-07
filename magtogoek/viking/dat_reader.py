@@ -170,7 +170,7 @@ from magtogoek.utils import get_files_from_expression
 # Quantity = UnitRegistry().Quantity
 
 FILL_VALUE = -32768  # Reusing the same fill value as teledyne (RDI) -(2**15)
-
+#FILL_VALUE = np.nan
 TAGS = ["NOM", "COMP", "Triplet", "Par_digi", "SUNA", "GPS",
         "CTD", "CTDO", "RTI", "RDI", "WAVE_M", "WAVE_S", "WXT520",
         "WMT700", "WpH", "CO2_W", "CO2_A", "Debit", "VEMCO"]  # "OCR", "MO", "FIN"]
@@ -373,6 +373,8 @@ def _to_numpy_masked_array(data: list):
     else:
         data_array = np.ma.masked_where(_data == FILL_VALUE, _data)
 
+    data_array.set_fill_value(FILL_VALUE)
+
     return data_array
 
 
@@ -482,11 +484,11 @@ buoys:\n"""
             for tag in tags:
                 tag_data = buoy_data.__dict__[tag]
                 if data_block[tag] is None:
-                    for key, value in tag_data.items():
-                        value.append(FILL_VALUE)
+                    for key in tag_data.keys():
+                        tag_data[key].append(FILL_VALUE)
                 else:
-                    for key, value in tag_data.items():
-                        value.append(data_block[tag][key])
+                    for key in tag_data.keys():
+                        tag_data[key].append(data_block[tag][key])
 
         for viking_data in self._buoys_data.values():
             viking_data.reformat()
@@ -530,7 +532,7 @@ def _decode_transmitted_data(data_received: str, century: int = 21) -> list:
     tag_key = ['comp', 'triplet', 'par_digi', 'suna', 'gps', 'ctd', 'ctdo', 'rti', 'rdi',
                'wave_m', 'wave_s', 'wxt520', 'wmt700', 'wph', 'co2_w', 'co2_a', 'debit', 'vemco']
     for data_block in DATA_BLOCK_REGEX.finditer(data_received):
-        wxt520 = dict()
+        wxt520 = dict().fromkeys(TAG_VARS['WXT520_KEYS'].keys(), float(FILL_VALUE))
         decoded_block = dict().fromkeys(tag_key)
         for data_sequence in DATA_TAG_REGEX.finditer(data_block.group(1)):
             tag = data_sequence.group(1)
@@ -774,10 +776,9 @@ def _decode_WXT520(data: str) -> dict:
             'Ta', 'Ua', 'Pa',
             'Th', 'Vh', 'Vs', 'Vr']
     regex = r'([A-z]+)=(\d+(?:\.\d+)?)'
-    decoded_data = dict().fromkeys(keys, float(FILL_VALUE))
+    decoded_data = dict()#.fromkeys(keys, float(FILL_VALUE))
     for key, value in re.findall(regex, data.strip('\n')):
         decoded_data[key] = _safe_float(value)
-
     return decoded_data
 
 
