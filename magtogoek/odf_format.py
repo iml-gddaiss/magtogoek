@@ -454,7 +454,7 @@ class Odf:
 
         dataset = dataset.rename(new_varname)
 
-        if 'SYTM_01' in dataset.coords:
+        if 'SYTM_01' in dataset: #dataset.coords
             [dataset['SYTM_01'].attrs.pop(key) for key in NC_TIME_ENCODING if key in dataset['SYTM_01'].attrs]
             dataset['SYTM_01'].encoding = NC_TIME_ENCODING
 
