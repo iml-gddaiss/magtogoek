@@ -399,7 +399,7 @@ class Odf:
             f.write(SPACE + "-- DATA --" + NEWLINE)
             self._write_data(buf=f)
 
-    def to_dataset(self, dims: tp.Union[str, tp.List[str], tp.Tuple[str]] = None, time: str = ''):
+    def to_dataset(self, dims: tp.Union[str, tp.List[str], tp.Tuple[str]] = None, time: tp.Union[str, tp.List[str], tp.Tuple[str]] = None):
         """
         Parameters
         ----------
@@ -417,17 +417,29 @@ class Odf:
         if isinstance(dims, list):
             if len(dims) == 0:
                 dims = None
+
         _time = {'SYTM_01'}
         if time is not None:
-            _time.update({time})
+            for t in time:
+                _time.update({t})
 
         for t in _time:
-            if time in self.data:
-                self.data[t] = pd.to_datetime(self.data[t], format="%d-%b-%Y %H:%M:%S.%f")
+            if t in self.data:
+                try:
+                    self.data[t] = pd.to_datetime(self.data[t], format="%d-%b-%Y %H:%M:%S.%f")
+                    print(f"{t} converted to time.")
+                except ValueError:
+                    print(f'Not able to format {t} to time.')
 
         if dims is not None:
             [dims.remove(dim) for dim in dims if dim not in self.data]
-            dataset = xr.Dataset.from_dataframe(self.data.set_index(dims))
+            if len(dims) > 0:
+                print(f"Dimensions: {dims}")
+                dataset = xr.Dataset.from_dataframe(self.data.set_index(dims))
+            else:
+                print("Dimensions not found in in ODF.")
+                print(f"Avaiable ODF variables: {list(self.data.keys())}")
+                dataset = xr.Dataset.from_dataframe(self.data)
         else:
             dataset = xr.Dataset.from_dataframe(self.data)
 
@@ -863,7 +875,7 @@ def convert_odf_to_nc(
         input_files: tp.Union[str, tp.Tuple[str], tp.List[str]] = None,
         output_name: str = None,
         dims: tp.Union[str, tp.Tuple[str], tp.List[str]] = None,
-        time: str = None,
+        time: tp.Union[str, tp.Tuple[str], tp.List[str]] = None,
         merge: bool = False,
 ) -> None:
     """
