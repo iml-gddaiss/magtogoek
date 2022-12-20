@@ -420,8 +420,7 @@ class Odf:
 
         _time = {'SYTM_01'}
         if time is not None:
-            for t in time:
-                _time.update({t})
+            _time.update(set(time))
 
         for t in _time:
             if t in self.data:
@@ -435,10 +434,11 @@ class Odf:
             [dims.remove(dim) for dim in dims if dim not in self.data]
             if len(dims) > 0:
                 print(f"Dimensions: {dims}")
-                dataset = xr.Dataset.from_dataframe(self.data.set_index(dims))
+                _dataframe = self.data.set_index(dims)
+                dataset = xr.Dataset.from_dataframe(_dataframe[~_dataframe.index.duplicated()])
             else:
                 print("Dimensions not found in in ODF.")
-                print(f"Avaiable ODF variables: {list(self.data.keys())}")
+                print(f"Available ODF variables: {list(self.data.keys())}")
                 dataset = xr.Dataset.from_dataframe(self.data)
         else:
             dataset = xr.Dataset.from_dataframe(self.data)
