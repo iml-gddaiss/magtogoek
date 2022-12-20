@@ -435,13 +435,19 @@ class Odf:
             if len(dims) > 0:
                 print(f"Dimensions: {dims}")
                 _dataframe = self.data.set_index(dims)
-                dataset = xr.Dataset.from_dataframe(_dataframe[~_dataframe.index.duplicated()])
+                if sum(_dataframe.index.duplicated()) != 0:
+                    _dataframe = _dataframe.drop_duplicates()
+                    print('Multi-Index duplicates dropped.')
+
+                dataset = xr.Dataset.from_dataframe(_dataframe)
             else:
                 print("Dimensions not found in in ODF.")
                 print(f"Available ODF variables: {list(self.data.keys())}")
                 dataset = xr.Dataset.from_dataframe(self.data)
         else:
             dataset = xr.Dataset.from_dataframe(self.data)
+
+        print(f"Dataset shape: {dict(dataset.dims)}")
 
         for p in self.parameter:
             dataset[p].attrs.update(self.parameter[p])
