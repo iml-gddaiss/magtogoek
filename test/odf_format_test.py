@@ -1,4 +1,5 @@
 import pytest
+import os
 from magtogoek.odf_format import Odf, convert_odf_to_nc
 from magtogoek.utils import json2dict
 
@@ -33,9 +34,15 @@ def test_reading_data(odf):
 
 
 def test_converting_odf2nc(odf):
-    convert_odf_to_nc(
-        input_files=TEST_FILE,
-        output_name='convert_odf2nc_test.nc',
-        dims=("DEPH_01", "SYTM_01"),
-        time="SYTM_01"
-    )
+    out_filename = 'convert_odf2nc_test.nc'
+    try:
+        convert_odf_to_nc(
+            input_files=TEST_FILE,
+            output_name=out_filename,
+            dims=("DEPH_01", "SYTM_01"),
+            time="SYTM_01"
+        )
+        os.remove(out_filename)
+    except Exception as exc:
+        assert False, f'Exception raised {exc}'
+
