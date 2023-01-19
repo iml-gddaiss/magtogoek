@@ -180,7 +180,7 @@ TAGS = ["NOM", "COMP", "Triplet", "Par_digi", "SUNA", "GPS",
 DATA_BLOCK_REGEX = re.compile(r"(\[NOM].+?)\[FIN]", re.DOTALL)
 DATA_TAG_REGEX = re.compile(rf"\[({'|'.join(TAGS)})],?((?:(?!\[).)*)", re.DOTALL)
 
-### Tag keys ### TODO CONVERT DICT BACK TO LIST.
+### Tag keys ###
 TAG_VARS = dict(
     COMP_KEYS=['heading', 'pitch', 'roll', 'tilt', 'pitch_std', 'roll_std', 'tilt_std'],
     TRIPLET_KEYS=['time', 'model_number', 'serial_number',
@@ -190,89 +190,29 @@ TAG_VARS = dict(
     PAR_DIGI_KEYS=['time', 'model_number', 'serial_number', 'timer_s', 'PAR', 'pitch', 'roll', 'intern_temperature'],
     SUNA_KEYS=["time", "model_number", "serial_number", 'nitrate', 'nitrogen',
                'absorbance_254_31', 'absorbance_350_16', 'bromide', 'spectrum_average'],
-    GPS_KEYS={'time': None,
-              'latitude_N': None,
-              'longitude_E': None,
-              'speed': 'knot',
-              'course': None,
-              'variation_E': None,
-              'validity': None},
+    GPS_KEYS=['time', 'latitude_N', 'longitude_E', 'speed', 'course', 'variation_E', 'validity'],
     CTD_KEYS=['temperature', 'conductivity', 'salinity', 'density'],
     CTDO_KEYS=['temperature', 'conductivity', 'oxygen', 'salinity'],
-    RTI_KEYS={'bin': None,
-              'position': 'cm',
-              'beam1': 'mm/s',
-              'beam2': 'mm/s',
-              'beam3': 'mm/s',
-              'beam4': 'mm/s',
-              'u': 'mm/s',
-              'v': 'mm/s',
-              'w': 'mm/s',
-              'e': 'mm/s',
-              'corr1': None,
-              'corr2': None,
-              'corr3': None,
-              'corr4': None,
-              'amp1': 'decibel',
-              'amp2': 'decibel',
-              'amp3': 'decibel',
-              'amp4': 'decibel',
-              'bt_beam1': 'mm/s',
-              'bt_beam2': 'mm/s',
-              'bt_beam3': 'mm/s',
-              'bt_beam4': 'mm/s',
-              'bt_u': 'mm/s',
-              'bt_v': 'mm/s',
-              'bt_w': 'mm/s',
-              'bt_e': 'mm/s',
-              'bt_corr1': None,
-              'bt_corr2': None,
-              'bt_corr3': None,
-              'bt_corr4': None,
-              'bt_amp1': 'decibel',
-              'bt_amp2': 'decibel',
-              'bt_amp3': 'decibel',
-              'bt_amp4': 'decibel'},
-    RDI_KEYS={'time': None,
-              'u': 'mm/s',
-              'v': 'mm/s',
-              'w': 'mm/s',
-              'e': 'mm/s'},
+    RTI_KEYS=['bin', 'position', 'beam1', 'beam2', 'beam3', 'beam4', 'u', 'v', 'w', 'e',
+              'corr1', 'corr2', 'corr3', 'corr4', 'amp1', 'amp2', 'amp3', 'amp4',
+              'bt_beam1', 'bt_beam2', 'bt_beam3', 'bt_beam4',
+              'bt_u', 'bt_v', 'bt_w', 'bt_e', 'bt_corr1', 'bt_corr2', 'bt_corr3', 'bt_corr4',
+              'bt_amp1', 'bt_amp2', 'bt_amp3', 'bt_amp4'],
+    RDI_KEYS=['time', 'u', 'v', 'w', 'e'],
     WAVE_M_KEYS=['time', "period", "average_height", "significant_height", "maximal_height"],
     WAVE_S_KEYS=['time', 'heading', 'average_height', 'dominant_period', 'wave_direction',
                  'Hmax', 'Hmax2', 'pmax', 'roll', 'pitch'],
-    WXT520_KEYS={'Dn': None,
-                 'Dm': None,
-                 'Dx': None,
-                 'Sn': 'knot',
-                 'Sm': 'knot',
-                 'Sx': 'knot',
-                 'Rc': None,
-                 'Rd': None,
-                 'Ri': None,
-                 'Hc': None,
-                 'Hd': None,
-                 'Hi': None,
-                 'Ta': None,
-                 'Ua': None,
-                 'Pa': None,
-                 'Th': None,
-                 'Vh': None,
-                 'Vs': None,
-                 'Vr': None},
-    WMT700_KEYS={'Dn': None,
-                 'Dm': None,
-                 'Dx': None,
-                 'Sn': 'knot',
-                 'Sm': 'knot',
-                 'Sx': 'knot'},
+    WXT520_KEYS=['Dn', 'Dm', 'Dx', 'Sn', 'Sm', 'Sx',
+                 'Rc', 'Rd', 'Ri', 'Hc', 'Hd', 'Hi',
+                 'Ta', 'Ua', 'Pa', 'Th', 'Vh', 'Vs', 'Vr'],
+    WMT700_KEYS=['Dn', 'Dm', 'Dx', 'Sn', 'Sm', 'Sx'],
     WPH_KEYS=['time', 'model', 'serial_number', 'sample_number', 'error_flag',
               'ext_ph', 'int_ph', 'int_volt', 'ext_volt', 'ph_temperature', 'rel_humidity', 'int_temperature'],
     CO2_W_KEYS=["time", "auto_zero", "current", "co2_ppm", "irga_temperature", "humidity_mbar",
                 "humidity_sensor_temperature", "cell_gas_pressure_mbar"],
     CO2_A_KEYS=['time', 'auto_zero', 'current', "co2_ppm", 'irga_temperature', 'humidity_mbar',
                 'humidity_sensor_temperature', "cell_gas_pressure_mbar"],
-    DEBIT_KEYS={'flow': 'meter per second'},
+    DEBIT_KEYS=['flow'],
     VEMCO_KEYS=['time', 'protocol', 'serial_number'],
 )
 
@@ -355,15 +295,6 @@ data: (length: {len(self)})
             [uniques_values.update(value) for value in self.__dict__[tag].values()]
             if len(uniques_values) == 1 and list(uniques_values)[0] == FILL_VALUE:
                 self.__dict__[tag] = None
-
-    # def _add_units(self):
-    #     for tag in self.tags:
-    #         variables = TAG_VARS[tag.upper()+'_KEYS']
-    #         if isinstance(variables, dict):
-    #             for var, units in variables.items():
-    #                 if units is not None and self.__dict__[tag] is not None:
-    #                     self.__dict__[tag][var] = Quantity(self.__dict__[tag][var], units)
-
 
 def _to_numpy_masked_array(data: list):
     """
@@ -534,7 +465,7 @@ def _decode_transmitted_data(data_received: str, century: int = 21) -> list:
     tag_key = ['comp', 'triplet', 'par_digi', 'suna', 'gps', 'ctd', 'ctdo', 'rti', 'rdi',
                'wave_m', 'wave_s', 'wxt520', 'wmt700', 'wph', 'co2_w', 'co2_a', 'debit', 'vemco']
     for data_block in DATA_BLOCK_REGEX.finditer(data_received):
-        wxt520 = dict().fromkeys(TAG_VARS['WXT520_KEYS'].keys(), float(FILL_VALUE))
+        wxt520 = dict().fromkeys(TAG_VARS['WXT520_KEYS'], float(FILL_VALUE))
         decoded_block = dict().fromkeys(tag_key)
         for data_sequence in DATA_TAG_REGEX.finditer(data_block.group(1)):
             tag = data_sequence.group(1)
