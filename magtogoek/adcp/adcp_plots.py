@@ -115,7 +115,6 @@ def make_adcp_figure(dataset: xr.Dataset,
             figs.append(plot_vel_series(dataset, depths=depths, uvw=uvw_var, flag_thres=flag_thres))
             figs.append(plot_pearson_corr(dataset, vel_var=uvw_var, flag_thres=flag_thres))
             names.extend(('vel_series', 'pearson_corr'))
-
         if dataset.attrs['coord_system'] != 'beam':
             polar_fig = plot_velocity_polar_hist(dataset, nrows=2, ncols=3, uv=uvw_var[:2], flag_thres=flag_thres)
             if polar_fig is not None:
@@ -162,7 +161,7 @@ def plot_velocity_polar_hist(dataset: xr.Dataset, nrows: int = 3, ncols: int = 3
     flagged_u = flag_data(dataset, var=uv[0], flag_thres=flag_thres).data
     flagged_v = flag_data(dataset, var=uv[1], flag_thres=flag_thres).data
 
-    if ~np.isfinite(flagged_u).all() or ~np.isfinite(flagged_v).all():
+    if not (np.isfinite(flagged_u).any() and np.isfinite(flagged_v).any()):
         return None
 
     r_max = np.nanmax(np.hypot(

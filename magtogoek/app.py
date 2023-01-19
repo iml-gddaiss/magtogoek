@@ -321,8 +321,11 @@ def plot_adcp(ctx, info, input_file, **options):
     import xarray as xr
     from magtogoek.adcp.adcp_plots import make_adcp_figure
     dataset = xr.open_dataset(input_file)
-    make_adcp_figure(dataset, flag_thres=options['flag_thres'], vel_only=options["vel_only"],
-                     save_path=options['save_fig'], show_fig=not options['headless'])
+    try:
+        make_adcp_figure(dataset, flag_thres=options['flag_thres'], vel_only=options["vel_only"],
+                         save_path=options['save_fig'], show_fig=not options['headless'])
+    except KeyError:
+        print("Wrong format. The netcdf file is missing some attributes or doesn't have the expected variables name.")
 
 
 # ------------------------ #
