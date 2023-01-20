@@ -438,8 +438,10 @@ def _process_adcp_data(pconfig: ProcessConfig):
     # -------------- #
     # TRANSFORMATION #
     # -------------- #
+    l.section('Data Transformation')
+
     if dataset.attrs['coord_system'] != 'earth' and pconfig.coord_transform is True:
-        l.section('Coord Transformation')
+        # l.section('Coord Transformation') # loggings are present in coordsystem2earth function
         l.warning('Coordinate transformation methods from Pycurrents should work. '
                   'But magtogoek implementation was not properly tested.')
         if dataset.attrs['coord_system'] not in ["beam", "xyz"]:
@@ -478,9 +480,9 @@ def _process_adcp_data(pconfig: ProcessConfig):
     else:
         no_adcp_quality_control(dataset)
 
-    # ----------------------------- #
-    # ADDING SOME GLOBAL ATTRIBUTES #
-    # ----------------------------- #
+    # ------------------------ #
+    # ADDING GLOBAL ATTRIBUTES #
+    # ------------------------ #
 
     l.section("Adding Global Attributes")
 
@@ -544,6 +546,13 @@ def _process_adcp_data(pconfig: ProcessConfig):
                          save_path=pconfig.figures_path,
                          show_fig=not pconfig.headless)
 
+    # --------------- #
+    # POST-PROCESSING #
+    # --------------- #
+    l.section("Post-processing")
+    if pconfig.grid_depth is not None:
+        dataset = _regrid_dataset(dataset, pconfig)
+
     # --------------------------- #
     # ADDING OF GLOBAL ATTRIBUTES #
     # ----------------------------#
@@ -557,13 +566,6 @@ def _process_adcp_data(pconfig: ProcessConfig):
 
     if "platform_name" in dataset.attrs:
         dataset.attrs["platform"] = dataset.attrs.pop("platform_name")
-
-    # ----------- #
-    # RE-GRIDDING #
-    # ----------- #
-    l.section("Post-processing")
-    if pconfig.grid_depth is not None:
-        dataset = _regrid_dataset(dataset, pconfig)
 
     # ----------- #
     # ODF OUTPUTS #
@@ -584,9 +586,9 @@ def _process_adcp_data(pconfig: ProcessConfig):
                 output_path=pconfig.odf_path,
             )
 
-    # ------------------------------------ #
-    # FORMATTING DATASET FOR NETCDF OUTPUT #
-    # ------------------------------------ #
+    # ------------------------------------- #
+    # DROPPING ATTRIBUTES FOR NETCDF OUTPUT #
+    # ------------------------------------- #
     if any(x is True for x in [
         pconfig.drop_percent_good, pconfig.drop_correlation, pconfig.drop_amplitude
     ]):
@@ -607,9 +609,9 @@ def _process_adcp_data(pconfig: ProcessConfig):
             else:
                 dataset.attrs[attr] = ""
 
-    # ---------- #
-    # NC OUTPUTS #
-    # ---------- #
+    # -------------- #
+    # NETCDF OUTPUTS #
+    # -------------- #
     if pconfig.netcdf_output is True:
         netcdf_path = Path(pconfig.netcdf_path).with_suffix('.nc')
         dataset.to_netcdf(netcdf_path)
