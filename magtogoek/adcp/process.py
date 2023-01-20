@@ -183,8 +183,8 @@ P01_CODES = dict(
     amp4="TNIHCE04",
     bt_u="LCEWBT01",
     bt_v="LCNSBT01",
-    bt_w="LRZABT01", #FIXME Do not yet exist as a BODC sdn code
-    bt_e="LERRBT01", #FIXME Do not yet exist as a BODC sdn code
+    bt_w="LRZABT01",  # FIXME Do not yet exist as a BODC sdn code
+    bt_e="LERRBT01",  # FIXME Do not yet exist as a BODC sdn code
     vb_vel="LRZUVP01",
     vb_vel_QC="LRZUVP01_QC",
     vb_pg="PCGDAP05",
@@ -273,7 +273,7 @@ class ProcessConfig:
     drop_percent_good: bool = None
     drop_correlation: bool = None
     drop_amplitude: bool = None
-    make_figures: tp.Union[str,bool] = None
+    make_figures: tp.Union[str, bool] = None
     make_log: bool = None
     odf_data: str = None
     metadata: dict = None
@@ -386,10 +386,12 @@ def process_adcp(config: dict, drop_empty_attrs: bool = False, headless: bool = 
                 if not Path(odf_output).is_dir():
                     pconfig.odf_output = str(Path(odf_output).with_suffix("")) + f"_{count}"
                 else:
-                    pconfig.metadata['event_qualifier1'] = event_qualifier1 + f"_{Path(filename).name}"  # PREVENTS FROM OVERWRITING THE SAME FILE
+                    pconfig.metadata[
+                        'event_qualifier1'] = event_qualifier1 + f"_{Path(filename).name}"  # PREVENTS FROM OVERWRITING THE SAME FILE
                     pconfig.odf_output = odf_output
             else:
-                pconfig.metadata['event_qualifier1'] = event_qualifier1 + f"_{Path(filename).name}" # PREVENTS FROM OVERWRITING THE SAME FILE
+                pconfig.metadata[
+                    'event_qualifier1'] = event_qualifier1 + f"_{Path(filename).name}"  # PREVENTS FROM OVERWRITING THE SAME FILE
                 pconfig.odf_output = odf_output
 
             pconfig.resolve_outputs()
@@ -434,40 +436,47 @@ def _process_adcp_data(pconfig: ProcessConfig):
         dataset = _load_navigation(dataset, pconfig.navigation_file)
 
     # -------------- #
-    # Transformation #
+    # TRANSFORMATION #
     # -------------- #
     if dataset.attrs['coord_system'] != 'earth' and pconfig.coord_transform is True:
         l.section('Coord Transformation')
+        l.warning('Coordinate transformation methods from Pycurrents should work. '
+                  'But magtogoek implementation was not properly tested.')
         if dataset.attrs['coord_system'] not in ["beam", "xyz"]:
-            l.log(f"Coordsystem value of {dataset.attrs['coord_system']} not recognized. Conversion to enu not available.")
+            l.log(f"Coordsystem value of {dataset.attrs['coord_system']} not recognized. "
+                  f"Conversion to enu not available.")
         else:
             dataset = coordsystem2earth(dataset)
 
-    if pconfig.motion_correction_mode in ["bt", "nav"]:
-        l.section('Motion Correction')
-        motion_correction(dataset, pconfig.motion_correction_mode)
-
-    # ----------------------------------- #
-    # CORRECTION FOR MAGNETIC DECLINATION #
-    # ----------------------------------- #
+    # ---------- #
+    # CORRECTION #
+    # ---------- #
 
     l.section("Data Correction")
+
+    if pconfig.motion_correction_mode in ["bt", "nav"]:
+        motion_correction(dataset, pconfig.motion_correction_mode)
 
     if dataset.attrs['magnetic_declination'] is not None:
         l.log(f"Magnetic declination found in the raw file: {dataset.attrs['magnetic_declination']} degree east.")
     else:
         l.log(f"No magnetic declination found in the raw file.")
+
     if pconfig.magnetic_declination:
         if dataset.attrs['coord_system'] == 'earth':
-            angle = pconfig.magnetic_declination
-            if dataset.attrs["magnetic_declination"]:
-                angle = round((pconfig.magnetic_declination - dataset.attrs["magnetic_declination"]), 4)
-                l.log(f"An additional correction of {angle} degree east was applied.")
-            _apply_magnetic_correction(dataset, angle)
-            dataset.attrs["magnetic_declination"] = pconfig.magnetic_declination
-            l.log(f"Absolute magnetic declination: {dataset.attrs['magnetic_declination']} degree east.")
+            _magnetic_correction(dataset, pconfig)
         else:
-            l.warning('Correction for magnetic declination was not carried out since the velocity data are not in earth coordinates.')
+            l.warning(
+                'Correction for magnetic declination was not carried out since the velocity data are not in earth coordinates.')
+
+    # --------------- #
+    # QUALITY CONTROL #
+    # --------------- #
+
+    if pconfig.quality_control:
+        _quality_control(dataset, pconfig)
+    else:
+        no_adcp_quality_control(dataset)
 
     # ----------------------------- #
     # ADDING SOME GLOBAL ATTRIBUTES #
@@ -493,24 +502,12 @@ def _process_adcp_data(pconfig: ProcessConfig):
 
     _set_xducer_depth_as_sensor_depth(dataset)
 
-    _set_platform_metadata(dataset, pconfig)
+    _add_platform_metadata(dataset, pconfig)
 
     dataset = dataset.assign_attrs(pconfig.metadata)
 
     if not dataset.attrs["source"]:
         dataset.attrs["source"] = pconfig.platform_type
-
-    # --------------- #
-    # QUALITY CONTROL #
-    # --------------- #
-
-    if pconfig.quality_control:
-        _quality_control(dataset, pconfig)
-    else:
-        no_adcp_quality_control(dataset)
-
-    if any(x is True for x in [pconfig.drop_percent_good, pconfig.drop_correlation, pconfig.drop_amplitude]):
-        dataset = _drop_beam_data(dataset, pconfig)
 
     # ------------- #
     # DATA ENCODING #
@@ -590,6 +587,11 @@ def _process_adcp_data(pconfig: ProcessConfig):
     # ------------------------------------ #
     # FORMATTING DATASET FOR NETCDF OUTPUT #
     # ------------------------------------ #
+    if any(x is True for x in [
+        pconfig.drop_percent_good, pconfig.drop_correlation, pconfig.drop_amplitude
+    ]):
+        dataset = _drop_beam_data(dataset, pconfig)
+
     for var in VARIABLES_TO_DROP:
         if var in dataset.variables:
             dataset = dataset.drop_vars([var])
@@ -648,17 +650,17 @@ def _load_adcp_data(pconfig: ProcessConfig) -> xr.Dataset:
 
     l.log(
         (
-            f"Bin counts : {len(dataset.depth.data)}, "
-            + f"Min depth : {np.round(dataset.depth.min().data, 3)} m, "
-            + f"Max depth : {np.round(dataset.depth.max().data, 3)} m, "
-            + f"Bin size : {dataset.attrs['bin_size_m']} m"
+                f"Bin counts : {len(dataset.depth.data)}, "
+                + f"Min depth : {np.round(dataset.depth.min().data, 3)} m, "
+                + f"Max depth : {np.round(dataset.depth.max().data, 3)} m, "
+                + f"Bin size : {dataset.attrs['bin_size_m']} m"
         )
     )
     l.log(
         (
-            f"Ensemble counts : {len(dataset.time.data)}, "
-            + f"Start time : {np.datetime_as_string(dataset.time.min().data, unit='s')}, "
-            + f"End time : {np.datetime_as_string(dataset.time.max().data, unit='s')}"
+                f"Ensemble counts : {len(dataset.time.data)}, "
+                + f"Start time : {np.datetime_as_string(dataset.time.min().data, unit='s')}, "
+                + f"End time : {np.datetime_as_string(dataset.time.max().data, unit='s')}"
         )
     )
     if not pconfig.keep_bt:
@@ -732,7 +734,7 @@ def _set_xducer_depth_as_sensor_depth(dataset: xr.Dataset):
         )
 
 
-def _set_platform_metadata(dataset: xr.Dataset, pconfig: ProcessConfig):
+def _add_platform_metadata(dataset: xr.Dataset, pconfig: ProcessConfig):
     """Add metadata from platform_metadata files to dataset.attrs.
 
     Values that are dictionary instances are not added.
@@ -781,8 +783,10 @@ def _quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
                          bad_pressure=pconfig.bad_pressure)
 
 
-def _apply_magnetic_correction(dataset: xr.Dataset, magnetic_declination: float):
-    """Transform velocities and heading to true north and east.
+def _magnetic_correction(dataset: xr.Dataset, pconfig: ProcessConfig):
+    """Correct velocities and heading to true north and east.
+
+    Computes the magnetic correction to apply.
 
     Rotates velocities vector clockwise by `magnetic_declination` angle effectively
     rotating the frame fo reference by the `magnetic_declination` anti-clockwise.
@@ -794,28 +798,51 @@ def _apply_magnetic_correction(dataset: xr.Dataset, magnetic_declination: float)
 
     Parameters
     ----------
-    dataset :
-      dataset containing variables (u, v) (required) and (bt_u, bt_v) (optional).
-    magnetic_declination :
-        angle in decimal degrees measured in the geographic frame of reference.
+    dataset:
+      requires global attribute : "magnetic_declination"
+    pconfig:
+
     """
 
+    magnetic_correction = _compute_magnetic_correction_angle(dataset, pconfig)
+
     dataset.u.values, dataset.v.values = rotate_2d_vector(
-        dataset.u, dataset.v, -magnetic_declination
+        dataset.u, dataset.v, -magnetic_correction
     )
     l.log(f"Velocities transformed to true north and true east.")
     if all(v in dataset for v in ["bt_u", "bt_v"]):
         dataset.bt_u.values, dataset.bt_v.values = rotate_2d_vector(
-            dataset.bt_u, dataset.bt_v, -magnetic_declination
+            dataset.bt_u, dataset.bt_v, -magnetic_correction
         )
         l.log(f"Bottom velocities transformed to true north and true east.")
 
     # heading goes from -180 to 180
     if "heading" in dataset:
         dataset.heading.values = (
-            dataset.heading.data + 180 + magnetic_declination
-        ) % 360 - 180
+                                         dataset.heading.data + 180 + magnetic_correction
+                                 ) % 360 - 180
         l.log(f"Heading transformed to true north.")
+
+    dataset.attrs["magnetic_declination"] = pconfig.magnetic_declination
+
+    l.log(f"Absolute magnetic declination: {dataset.attrs['magnetic_declination']} degree east.")
+
+
+def _compute_magnetic_correction_angle(dataset: xr.Dataset, pconfig: ProcessConfig):
+    """
+
+    Parameters
+    ----------
+    dataset:
+      requires global attribute : "magnetic_declination"
+    pconfig:
+
+    """
+    angle = pconfig.magnetic_declination
+    if dataset.attrs["magnetic_declination"]:
+        angle = round((pconfig.magnetic_declination - dataset.attrs["magnetic_declination"]), 4)
+        l.log(f"An additional correction of {angle} degree east was applied.")
+    return angle
 
 
 def _get_datetime_and_count(trim_arg: tp.Union[str, int]):
@@ -1159,8 +1186,3 @@ def _figure_output_handler(pconfig: ProcessConfig, default_path: Path, default_f
 
         pconfig.figures_path = str(_figures_path)
         pconfig.figures_output = True
-
-
-
-
-
