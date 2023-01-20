@@ -346,9 +346,7 @@ class ProcessConfig:
         _resolve_outputs(self, default_path=default_path, default_filename=default_filename)
 
 
-def process_adcp(config: dict,
-                 drop_empty_attrs: bool = False,
-                 headless: bool = False):
+def process_adcp(config: dict, drop_empty_attrs: bool = False, headless: bool = False):
     """Process adcp data with parameters from a config file.
 
     Parameters
@@ -439,7 +437,7 @@ def _process_adcp_data(pconfig: ProcessConfig):
     # Transformation #
     # -------------- #
     if dataset.attrs['coord_system'] != 'earth' and pconfig.coord_transform is True:
-        l.section('Data Transformation')
+        l.section('Coord Transformation')
         if dataset.attrs['coord_system'] not in ["beam", "xyz"]:
             l.log(f"Coordsystem value of {dataset.attrs['coord_system']} not recognized. Conversion to enu not available.")
         else:
@@ -728,7 +726,7 @@ def _set_xducer_depth_as_sensor_depth(dataset: xr.Dataset):
     if "xducer_depth" in dataset.attrs:  # OCEAN SURVEYOR
         dataset.attrs["sensor_depth"] = dataset.attrs["xducer_depth"]
 
-    if "xducer_depth" in dataset:
+    if "xducer_depth" in dataset.variables:  # dataset -> dataset.variables (same but more readable)
         dataset.attrs["sensor_depth"] = np.round(
             np.median(dataset["xducer_depth"].data), 2
         )
