@@ -296,7 +296,7 @@ def _geospatial_global_attrs(dataset: xr.Dataset):
      -geospatial_vertical_units
     """
 
-    if "lat" in dataset:
+    if "lat" in dataset.variables:
         dataset.attrs["latitude"] = round(dataset.lat.data.mean(), 4)
         dataset.attrs["geospatial_lat_min"] = round(dataset.lat.data.min(), 4)
         dataset.attrs["geospatial_lat_max"] = round(dataset.lat.data.max(), 4)
@@ -307,7 +307,7 @@ def _geospatial_global_attrs(dataset: xr.Dataset):
             dataset.attrs["geospatial_lat_max"] = round(dataset.attrs["latitude"], 4)
             dataset.attrs["geospatial_lat_units"] = "degrees north"
 
-    if "lon" in dataset:
+    if "lon" in dataset.variables:
         dataset.attrs["longitude"] = round(dataset.lon.data.mean(), 4)
         dataset.attrs["geospatial_lon_min"] = round(dataset.lon.data.min(), 4)
         dataset.attrs["geospatial_lon_max"] = round(dataset.lon.data.max(), 4)
@@ -318,7 +318,8 @@ def _geospatial_global_attrs(dataset: xr.Dataset):
             dataset.attrs["geospatial_lon_max"] = round(dataset.attrs["longitude"], 4)
             dataset.attrs["geospatial_lon_units"] = "degrees east"
 
-    dataset.attrs["geospatial_vertical_min"] = round(dataset.depth.data.min(), 2)
-    dataset.attrs["geospatial_vertical_max"] = round(dataset.depth.data.max(), 2)
-    dataset.attrs["geospatial_vertical_positive"] = "down"
-    dataset.attrs["geospatial_vertical_units"] = "meters"
+    if 'depth' in dataset.variables:
+        dataset.attrs["geospatial_vertical_min"] = round(dataset.depth.data.min(), 2)
+        dataset.attrs["geospatial_vertical_max"] = round(dataset.depth.data.max(), 2)
+        dataset.attrs["geospatial_vertical_positive"] = "down"
+        dataset.attrs["geospatial_vertical_units"] = "meters"

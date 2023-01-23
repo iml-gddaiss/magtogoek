@@ -59,6 +59,8 @@ from pathlib import Path
 
 import magtogoek.logger as l
 
+from magtogoek import TERMINAL_WIDTH, PLATFORM_TYPES
+
 from magtogoek.adcp.adcp_plots import make_adcp_figure
 from magtogoek.adcp.loader import load_adcp_binary
 from magtogoek.adcp.transform import coordsystem2earth, motion_correction
@@ -76,9 +78,7 @@ from magtogoek.utils import ensure_list_format, json2dict
 
 l.get_logger('adcp_processing')
 
-TERMINAL_WIDTH = 80
-
-STANDARD_ADCP_GLOBAL_ATTRIBUTES = {
+STANDARD_GLOBAL_ATTRIBUTES = {
     "sensor_type": "adcp",
     "featureType": "timeSeriesProfile",
 }
@@ -103,108 +103,107 @@ GLOBAL_ATTRS_TO_DROP = [
     "bodc_name"
 ]
 CONFIG_GLOBAL_ATTRS_SECTIONS = ["NETCDF_CF", "PROJECT", "CRUISE", "GLOBAL_ATTRIBUTES"]
-PLATFORM_TYPES = ["buoy", "mooring", "ship", "lowered"]
 DEFAULT_PLATFORM_TYPE = "buoy"
 DATA_TYPES = {"buoy": "madcp", "mooring": "madcp", "ship": "adcp", "lowered": "adcp"}
 DATA_SUBTYPES = {"buoy": "BUOY", "mooring": "MOORED", "ship": "SHIPBORNE", 'lowered': 'LOWERED'}
 
-BEAM_VEL_CODES = dict(
-    v1='vel_beam_1',
-    v2='vel_beam_2',
-    v3='vel_beam_3',
-    v4='vel_beam_4',
-    v1_QC='vel_beam_1_QC',
-    v2_QC='vel_beam_2_QC',
-    v3_QC='vel_beam_3_QC',
-    v4_QC='vel_beam_4_QC',
-    bt_v1='bt_vel_beam_1',
-    bt_v2='bt_vel_beam_2',
-    bt_v3='bt_vel_beam_3',
-    bt_v4='bt_vel_beam_4',
-)
+BEAM_VEL_CODES = {
+    'v1': 'vel_beam_1',
+    'v2': 'vel_beam_2',
+    'v3': 'vel_beam_3',
+    'v4': 'vel_beam_4',
+    'v1_QC': 'vel_beam_1_QC',
+    'v2_QC': 'vel_beam_2_QC',
+    'v3_QC': 'vel_beam_3_QC',
+    'v4_QC': 'vel_beam_4_QC',
+    'bt_v1': 'bt_vel_beam_1',
+    'bt_v2': 'bt_vel_beam_2',
+    'bt_v3': 'bt_vel_beam_3',
+    'bt_v4': 'bt_vel_beam_4'
+}
 
-XYZ_VEL_CODES = dict(
-    u='vel_x_axis',
-    v='vel_y_axis',
-    w='vel_z_axis',
-    u_QC="vel_x_axis_QC",
-    v_QC="vel_y_axis_QC",
-    w_QC="vel_z_axis_QC",
-    bt_u='bt_vel_x_axis',
-    bt_v='bt_vel_y_axis',
-    bt_w='bt_vel_z_axis',
-)
+XYZ_VEL_CODES = {
+    'u': 'vel_x_axis',
+    'v': 'vel_y_axis',
+    'w': 'vel_z_axis',
+    'u_QC': "vel_x_axis_QC",
+    'v_QC': "vel_y_axis_QC",
+    'w_QC': "vel_z_axis_QC",
+    'bt_u': 'bt_vel_x_axis',
+    'bt_v': 'bt_vel_y_axis',
+    'bt_w': 'bt_vel_z_axis'
+}
 
-P01_VEL_CODES = dict(
-    lowered=dict(
-        u="LCEWLW01",
-        v="LCNSLW01",
-        w="LRZALW01",
-        e="ERRVLDCP",
-        u_QC="LCEWAP01_QC",
-        v_QC="LCNSAP01_QC",
-        w_QC="LRZAAP01_QC",
-    ),
-    buoy=dict(
-        u="LCEWAP01",
-        v="LCNSAP01",
-        w="LRZAAP01",
-        e="LERRAP01",
-        u_QC="LCEWAP01_QC",
-        v_QC="LCNSAP01_QC",
-        w_QC="LRZAAP01_QC",
-    ),
-    ship=dict(
-        u="LCEWAS01",
-        v="LCNSAS01",
-        w="LRZAAS01",
-        e="LERRAS01",
-        u_QC="LCEWAS01_QC",
-        v_QC="LCNSAS01_QC",
-        w_QC="LRZAAS01_QC",
-    ),
-)
+P01_VEL_CODES = {
+    'lowered': {
+        'u': "LCEWLW01",
+        'v': "LCNSLW01",
+        'w': "LRZALW01",
+        'e': "ERRVLDCP",
+        'u_QC': "LCEWAP01_QC",
+        'v_QC': "LCNSAP01_QC",
+        'w_QC': "LRZAAP01_QC"
+    },
+    'buoy': {
+        'u': "LCEWAP01",
+        'v': "LCNSAP01",
+        'w': "LRZAAP01",
+        'e': "LERRAP01",
+        'u_QC': "LCEWAP01_QC",
+        'v_QC': "LCNSAP01_QC",
+        'w_QC': "LRZAAP01_QC"
+    },
+    'ship': {
+        'u': "LCEWAS01",
+        'v': "LCNSAS01",
+        'w': "LRZAAS01",
+        'e': "LERRAS01",
+        'u_QC': "LCEWAS01_QC",
+        'v_QC': "LCNSAS01_QC",
+        'w_QC': "LRZAAS01_QC"
+    }
+}
 P01_VEL_CODES["mooring"] = P01_VEL_CODES["buoy"]
-P01_CODES = dict(
-    time="ELTMEP01",
-    depth="PPSAADCP",
-    pg="PCGDAP01",
-    pg1="PCGDAP00",
-    pg2="PCGDAP02",
-    pg3="PCGDAP03",
-    pg4="PCGDAP04",
-    corr1="CMAGZZ01",
-    corr2="CMAGZZ02",
-    corr3="CMAGZZ03",
-    corr4="CMAGZZ04",
-    amp1="TNIHCE01",
-    amp2="TNIHCE02",
-    amp3="TNIHCE03",
-    amp4="TNIHCE04",
-    bt_u="LCEWBT01",
-    bt_v="LCNSBT01",
-    bt_w="LRZABT01",  # FIXME Do not yet exist as a BODC sdn code
-    bt_e="LERRBT01",  # FIXME Do not yet exist as a BODC sdn code
-    vb_vel="LRZUVP01",
-    vb_vel_QC="LRZUVP01_QC",
-    vb_pg="PCGDAP05",
-    vb_cor="CMAGZZ05",
-    vb_amp="TNIHCE05",
-    lon="ALONZZ01",
-    lat="ALATZZ01",
-    heading="HEADCM01",
-    roll_="ROLLGP01",
-    pitch="PTCHGP01",
-    u_ship="APEWGP01",
-    v_ship="APNSGP01",
-    pres="PRESPR01",
-    pres_QC="PRESPR01_QC",
-    temperature="TEMPPR01",
-    temperature_QC="TEMPPR01_QC",
-    xducer_depth="ADEPZZ01",
-    time_string="DTUT8601",
-    bt_depth="BATHDPTH",
-)
+P01_CODES = {
+    'time': "ELTMEP01",
+    'depth': "PPSAADCP",
+    'pg': "PCGDAP01",
+    'pg1': "PCGDAP00",
+    'pg2': "PCGDAP02",
+    'pg3': "PCGDAP03",
+    'pg4': "PCGDAP04",
+    'corr1': "CMAGZZ01",
+    'corr2': "CMAGZZ02",
+    'corr3': "CMAGZZ03",
+    'corr4': "CMAGZZ04",
+    'amp1': "TNIHCE01",
+    'amp2': "TNIHCE02",
+    'amp3': "TNIHCE03",
+    'amp4': "TNIHCE04",
+    'bt_u': "LCEWBT01",
+    'bt_v': "LCNSBT01",
+    'bt_w': "LRZABT01",
+    'bt_e': "LERRBT01",
+    'vb_vel': "LRZUVP01",
+    'vb_vel_QC': "LRZUVP01_QC",
+    'vb_pg': "PCGDAP05",
+    'vb_cor': "CMAGZZ05",
+    'vb_amp': "TNIHCE05",
+    'lon': "ALONZZ01",
+    'lat': "ALATZZ01",
+    'heading': "HEADCM01",
+    'roll_': "ROLLGP01",
+    'pitch': "PTCHGP01",
+    'u_ship': "APEWGP01",
+    'v_ship': "APNSGP01",
+    'pres': "PRESPR01",
+    'pres_QC': "PRESPR01_QC",
+    'temperature': "TEMPPR01",
+    'temperature_QC': "TEMPPR01_QC",
+    'xducer_depth': "ADEPZZ01",
+    'time_string': "DTUT8601",
+    'bt_depth': "BATHDPTH"
+}
 
 VAR_TO_ADD_SENSOR_TYPE = ["TEMPPR01", "PRESPR01", "ADEPZZ01", "BATHDPTH"]
 
@@ -370,7 +369,7 @@ def process_adcp(config: dict, drop_empty_attrs: bool = False, headless: bool = 
     netcdf_output = pconfig.netcdf_output
     event_qualifier1 = pconfig.metadata['event_qualifier1']
 
-    if pconfig.merge_output_files:
+    if pconfig.merge_output_files is True:
         pconfig.resolve_outputs()
         _process_adcp_data(pconfig)
     else:
@@ -401,8 +400,6 @@ def process_adcp(config: dict, drop_empty_attrs: bool = False, headless: bool = 
 
 def _process_adcp_data(pconfig: ProcessConfig):
     """Process adcp data
-
-    FIXME EXPLAIN THE PROCESSING WORKFLOW FIXME
 
     Meanwhile, the code is pretty explicit. Go check it out if need be.
 
@@ -441,14 +438,7 @@ def _process_adcp_data(pconfig: ProcessConfig):
     l.section('Data Transformation')
 
     if dataset.attrs['coord_system'] != 'earth' and pconfig.coord_transform is True:
-        # l.section('Coord Transformation') # loggings are present in coordsystem2earth function
-        l.warning('Coordinate transformation methods from Pycurrents should work. '
-                  'But magtogoek implementation was not properly tested.')
-        if dataset.attrs['coord_system'] not in ["beam", "xyz"]:
-            l.log(f"Coordsystem value of {dataset.attrs['coord_system']} not recognized. "
-                  f"Conversion to enu not available.")
-        else:
-            dataset = coordsystem2earth(dataset)
+        dataset = _coordinate_system_transformation(dataset)
 
     # ---------- #
     # CORRECTION #
@@ -456,9 +446,11 @@ def _process_adcp_data(pconfig: ProcessConfig):
 
     l.section("Data Correction")
 
+    # motion correction #
     if pconfig.motion_correction_mode in ["bt", "nav"]:
         motion_correction(dataset, pconfig.motion_correction_mode)
 
+    # magnetic declination #
     if dataset.attrs['magnetic_declination'] is not None:
         l.log(f"Magnetic declination found in the raw file: {dataset.attrs['magnetic_declination']} degree east.")
     else:
@@ -486,58 +478,29 @@ def _process_adcp_data(pconfig: ProcessConfig):
 
     l.section("Adding Global Attributes")
 
-    dataset = dataset.assign_attrs(STANDARD_ADCP_GLOBAL_ATTRIBUTES)
+    _add_global_attributes(dataset, pconfig)
 
-    dataset.attrs["data_type"] = DATA_TYPES[pconfig.platform_type]
-    dataset.attrs["data_subtype"] = DATA_SUBTYPES[pconfig.platform_type]
-
-    if pconfig.platform_metadata["platform"]["longitude"]:
-        dataset.attrs["longitude"] = pconfig.platform_metadata["platform"]["longitude"]
-    if pconfig.platform_metadata["platform"]["latitude"]:
-        dataset.attrs["latitude"] = pconfig.platform_metadata["platform"]["latitude"]
-
-    compute_global_attrs(dataset)
-
-    if pconfig.platform_metadata["platform"]["platform_type"] in ["mooring", "buoy"]:
+    if pconfig.platform_metadata["platform"]["platform_type"] in ["mooring", "buoy"]:  # ADCP SPECIFIC
         if "bt_depth" in dataset:
             dataset.attrs["sounding"] = np.round(np.median(dataset.bt_depth.data), 2)
 
-    _set_xducer_depth_as_sensor_depth(dataset)
-
-    _add_platform_metadata(dataset, pconfig)
-
-    dataset = dataset.assign_attrs(pconfig.metadata)
-
-    if not dataset.attrs["source"]:
-        dataset.attrs["source"] = pconfig.platform_type
-
-    # ------------- #
-    # DATA ENCODING #
-    # ------------- #
-    _format_data_encoding(dataset)
+    _set_xducer_depth_as_sensor_depth(dataset)  # ADCP SPECIFIC
 
     # -------------------- #
     # VARIABLES ATTRIBUTES #
     # -------------------- #
-    dataset.attrs['bodc_name'] = pconfig.bodc_name
-    dataset.attrs["VAR_TO_ADD_SENSOR_TYPE"] = VAR_TO_ADD_SENSOR_TYPE
-    dataset.attrs["P01_CODES"] = P01_CODES
-    if dataset.attrs['coord_system'] == 'earth':
-        dataset.attrs["P01_CODES"].update((P01_VEL_CODES[pconfig.platform_type]))
-    elif dataset.attrs['coord_system'] == 'xyz':
-        dataset.attrs["P01_CODES"].update(XYZ_VEL_CODES)
-    elif dataset.attrs['coord_system'] == 'beam':
-        dataset.attrs["P01_CODES"].update(BEAM_VEL_CODES)
-
-    dataset.attrs["variables_gen_name"] = [var for var in dataset.variables]  # For Odf outputs
-
     l.section("Variables attributes")
-    dataset = format_variables_names_and_attributes(dataset)
 
-    dataset["time"].assign_attrs(TIME_ATTRS)
-    l.log("Variables attributes added.")
+    dataset = _format_variables_names_and_attributes(dataset, pconfig)  # comon
 
-    # ------------ #
+    # ------------- #
+    # DATA ENCODING #
+    # ------------- #
+    l.section("Data Encoding")
+
+    _format_data_encoding(dataset)   # comon ?
+
+    # ------------ #h
     # MAKE FIGURES #
     # ------------ #
     if pconfig.figures_output is True:
@@ -552,20 +515,6 @@ def _process_adcp_data(pconfig: ProcessConfig):
     l.section("Post-processing")
     if pconfig.grid_depth is not None:
         dataset = _regrid_dataset(dataset, pconfig)
-
-    # --------------------------- #
-    # ADDING OF GLOBAL ATTRIBUTES #
-    # ----------------------------#
-
-    if not dataset.attrs["date_created"]:
-        dataset.attrs["date_created"] = pd.Timestamp.now().strftime("%Y-%m-%d")
-
-    dataset.attrs["date_modified"] = pd.Timestamp.now().strftime("%Y-%m-%d")
-
-    dataset.attrs["history"] = l.logbook
-
-    if "platform_name" in dataset.attrs:
-        dataset.attrs["platform"] = dataset.attrs.pop("platform_name")
 
     # ----------- #
     # ODF OUTPUTS #
@@ -586,9 +535,10 @@ def _process_adcp_data(pconfig: ProcessConfig):
                 output_path=pconfig.odf_path,
             )
 
-    # ------------------------------------- #
-    # DROPPING ATTRIBUTES FOR NETCDF OUTPUT #
-    # ------------------------------------- #
+    # ----------------- #
+    # NETCDF FORMATTING #
+    # ------------------#
+
     if any(x is True for x in [
         pconfig.drop_percent_good, pconfig.drop_correlation, pconfig.drop_amplitude
     ]):
@@ -608,6 +558,13 @@ def _process_adcp_data(pconfig: ProcessConfig):
                 del dataset.attrs[attr]
             else:
                 dataset.attrs[attr] = ""
+
+    if not dataset.attrs["date_created"]:
+        dataset.attrs["date_created"] = pd.Timestamp.now().strftime("%Y-%m-%d")
+
+    dataset.attrs["date_modified"] = pd.Timestamp.now().strftime("%Y-%m-%d")
+
+    dataset.attrs["history"] = l.logbook
 
     # -------------- #
     # NETCDF OUTPUTS #
@@ -748,7 +705,7 @@ def _add_platform_metadata(dataset: xr.Dataset, pconfig: ProcessConfig):
         Dataset to which add the navigation data.
     """
     metadata = {**pconfig.platform_metadata['platform'], **pconfig.platform_metadata[pconfig.sensor_type]}
-    metadata['sensor_comments'] = metadata['comments']
+    metadata['sensor_comments'] = metadata.pop('comments')
     if pconfig.force_platform_metadata:
         for key, value in metadata.items():
             dataset.attrs[key] = value
@@ -764,6 +721,13 @@ def _add_platform_metadata(dataset: xr.Dataset, pconfig: ProcessConfig):
                     dataset.attrs[key] = value
             else:
                 dataset.attrs[key] = value
+
+    #if "platform_name" in dataset.attrs: # it has to be in there.
+    dataset.attrs["platform"] = dataset.attrs.pop("platform_name")
+
+    for v in ['longitude', 'latitude']:
+        if pconfig.platform_metadata["platform"][v]:  # COMON IN PLATFORM
+            dataset.attrs[v] = pconfig.platform_metadata["platform"][v]
 
 
 def _quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
@@ -783,6 +747,19 @@ def _quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
                          sidelobes_correction=pconfig.sidelobes_correction,
                          bottom_depth=pconfig.bottom_depth,
                          bad_pressure=pconfig.bad_pressure)
+
+
+def _coordinate_system_transformation(dataset: xr.Dataset):
+    """
+    """
+    if dataset.attrs['coord_system'] not in ["beam", "xyz"]:
+        l.log(f"Coordsystem value of {dataset.attrs['coord_system']} not recognized. "
+              f"Conversion to enu not available.")
+    else:
+        l.warning('Coordinate transformation methods from Pycurrents should work. '
+                  'But magtogoek implementation was not properly tested.')
+        dataset = coordsystem2earth(dataset)
+    return dataset
 
 
 def _magnetic_correction(dataset: xr.Dataset, pconfig: ProcessConfig):
@@ -894,9 +871,27 @@ def _drop_beam_data(dataset: xr.Dataset, pconfig: ProcessConfig):
     return dataset
 
 
+def _add_global_attributes(dataset: xr.Dataset, pconfig: ProcessConfig):
+    # dataset = dataset.assign_attrs(STANDARD_GLOBAL_ATTRIBUTES)  # COMON
+    dataset.attrs.update(STANDARD_GLOBAL_ATTRIBUTES)
+
+    dataset.attrs["data_type"] = DATA_TYPES[pconfig.platform_type]  # COMON
+    dataset.attrs["data_subtype"] = DATA_SUBTYPES[pconfig.platform_type]  # COMON
+
+    _add_platform_metadata(dataset, pconfig)  # COMON
+
+    compute_global_attrs(dataset)  # already common
+
+    # dataset = dataset.assign_attrs(pconfig.metadata)  # COMON
+    dataset.attrs.update(pconfig.metadata)
+
+    if not dataset.attrs["source"]:  # COMON
+        dataset.attrs["source"] = pconfig.platform_type
+
+
 def _format_data_encoding(dataset: xr.Dataset):
     """Format data encoding with default value in module."""
-    l.section("Data Encoding")
+
     for var in dataset.variables:
         if var == "time":
             dataset.time.encoding = TIME_ENCODING
@@ -912,6 +907,28 @@ def _format_data_encoding(dataset: xr.Dataset):
 
     l.log(f"Data _FillValue: {DATA_FILL_VALUE}")
     l.log(f"Ancillary Data _FillValue: {QC_FILL_VALUE}")
+
+
+def _format_variables_names_and_attributes(dataset: xr.Dataset, pconfig: ProcessConfig):
+    """Format variables attributes"""
+    dataset.attrs['bodc_name'] = pconfig.bodc_name
+    dataset.attrs["VAR_TO_ADD_SENSOR_TYPE"] = VAR_TO_ADD_SENSOR_TYPE
+    dataset.attrs["P01_CODES"] = P01_CODES
+    if dataset.attrs['coord_system'] == 'earth':
+        dataset.attrs["P01_CODES"].update((P01_VEL_CODES[pconfig.platform_type]))
+    elif dataset.attrs['coord_system'] == 'xyz':
+        dataset.attrs["P01_CODES"].update(XYZ_VEL_CODES)
+    elif dataset.attrs['coord_system'] == 'beam':
+        dataset.attrs["P01_CODES"].update(BEAM_VEL_CODES)
+
+    dataset.attrs["variables_gen_name"] = [var for var in dataset.variables]  # For Odf outputs
+
+    dataset = format_variables_names_and_attributes(dataset)
+
+    dataset["time"].assign_attrs(TIME_ATTRS)
+    l.log("Variables attributes added.")
+
+    return dataset
 
 
 def _regrid_dataset(dataset: xr.Dataset, pconfig: ProcessConfig) -> xr.Dataset:

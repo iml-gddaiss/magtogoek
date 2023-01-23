@@ -31,7 +31,6 @@ ListStrIntFloatBool = Union[StrIntFloatBool, List[StrIntFloatBool]]
 ParserDict = Dict[str, Dict[str, ListStrIntFloatBool]]
 
 REFERENCE = "https://github.com/JeromeJGuay/magtogoek"
-VALID_SENSOR_TYPES = ['ADCP']
 
 CONFIG_TO_CLI_MAPS = dict(
     adcp=dict(

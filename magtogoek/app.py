@@ -32,7 +32,7 @@ import click
 from magtogoek.app_options import adcp_options, add_options
 #from magtogoek.configfile import _get_taskparser
 from magtogoek.utils import is_valid_filename, json2dict, resolve_relative_path
-from magtogoek import VERSION
+from magtogoek import VERSION, TERMINAL_WIDTH
 
 # ---------- Module or functions imported by commands ----------- #
 # NOTE: PROBABLY NOT UP TO DATE
@@ -51,8 +51,6 @@ CONTEXT_SETTINGS = dict(
     allow_extra_args=True,
     help_option_names=["-h", "--help"],
 )
-TERMINAL_WIDTH = 80
-
 
 def _print_info(ctx, callback, info_called):
     """Show command information"""
