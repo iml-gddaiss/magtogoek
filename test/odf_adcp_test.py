@@ -1,7 +1,7 @@
 import pytest
 import xarray as xr
 from magtogoek.adcp.odf_exporter import make_odf
-from magtogoek.adcp.process import _default_platform_metadata
+from magtogoek.platforms import PlatformMetadata, Platform, BuoySpecifications, Sensor
 from magtogoek.utils import json2dict
 
 DATASET = xr.open_dataset("data/netcdf_test_files/test_netcdf.nc")
@@ -18,22 +18,34 @@ P01_TO_GENERIC_NAME = {
 DATASET.attrs['P01_CODES'] = P01_TO_GENERIC_NAME
 DATASET.attrs['variables_gen_name'] = [DATASET[var].attrs['generic_name'] for var in DATASET.variables]
 
-PLATFORM_METADATA = _default_platform_metadata()
-PLATFORM_METADATA['platform'].update(
-    {
-        "platform_name": "platform_name_test",
-        "description": "platform_description_test"}
+PLATFORM_METADATA = PlatformMetadata(
+    platform=Platform(platform_name='platform_name_test', description='platform_description_test'),
+    buoy_specs=BuoySpecifications(
+        type="buoy_type_test",
+        model="buoy_model_test",
+        height="buoy_height_test",
+        diameter="buoy_diameter_test",
+        weight="buoy_weight_test",
+        description="buoy_description_test"
+    ),
+    sensor=Sensor(sensor_id='ADCP_01', sensor_type='adcp')
 )
-PLATFORM_METADATA['buoy_specs'].update(
-    {
-        "type": "buoy_type_test",
-        "model": "buoy_model_test",
-        "height": "buoy_height_test",
-        "diameter": "buoy_diameter_test",
-        "weight": "buoy_weight_test",
-        "description": "buoy_description_test",
-        }
-)
+# PLATFORM_METADATA.platform.update(
+#     {
+#         "platform_name": "platform_name_test",
+#         "description": "platform_description_test"}
+# )
+# PLATFORM_METADATA['buoy_specs'].update(
+#     {
+#         "type": "buoy_type_test",
+#         "model": "buoy_model_test",
+#         "height": "buoy_height_test",
+#         "diameter": "buoy_diameter_test",
+#         "weight": "buoy_weight_test",
+#         "description": "buoy_description_test",
+#     }
+# )
+
 
 def test_make():
     odf = make_odf(DATASET, PLATFORM_METADATA, GLOBAL_ATTRS)
@@ -43,13 +55,13 @@ def test_make():
 @pytest.mark.parametrize(
     "platform_type, headers, cruise_platform",
     [
-        ("mooring", ["instrument"], PLATFORM_METADATA['platform']["platform_name"]),
-        ("ship", ["instrument"], PLATFORM_METADATA['platform']["platform_name"]),
+        ("mooring", ["instrument"], PLATFORM_METADATA.platform.platform_name),
+        ("ship", ["instrument"], PLATFORM_METADATA.platform.platform_name),
         ("buoy", ["buoy_instrument", "buoy"], "Oceanographic Buoy"),
     ],
 )
 def test_platform_type(platform_type, headers, cruise_platform):
-    PLATFORM_METADATA['platform']["platform_type"] = platform_type
+    PLATFORM_METADATA.platform.platform_type = platform_type
     odf = make_odf(dataset=DATASET,
                    platform_metadata=PLATFORM_METADATA,
                    config_attrs=GLOBAL_ATTRS,
@@ -61,6 +73,6 @@ def test_platform_type(platform_type, headers, cruise_platform):
     for header in headers:
         assert header in odf.__dict__
     if platform_type == "buoy":
-        assert odf.buoy["name"] == PLATFORM_METADATA['platform']["platform_name"]
-        for key, value in PLATFORM_METADATA["buoy_specs"].items():
+        assert odf.buoy["name"] == PLATFORM_METADATA.platform.platform_name
+        for key, value in PLATFORM_METADATA.buoy_specs.__dict__.items():
             assert odf.buoy[key] == value

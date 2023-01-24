@@ -63,8 +63,8 @@ def _add_sensors() -> dict:
     )
 
 
-@dataclass(unsafe_hash=True)
-class PlatformMetadata:
+@dataclass
+class Platform:
     platform_id: str = None
     platform_name: str = None
     platform_type: str = None
@@ -76,10 +76,10 @@ class PlatformMetadata:
 
     def __post_init__(self):
         if self.platform_type not in PLATFORM_TYPES:
-            l.warning(f"Invalid platform_type `{self.platform_type}` in platform file for sensor_id `{self.platform_id}`")
+            l.warning(f"Invalid platform_type: `{self.platform_type}` in platform file: `{self.platform_id}`")
 
 
-@dataclass(unsafe_hash=True)
+@dataclass
 class BuoySpecifications:
     type: str = None
     model: str = None
@@ -89,7 +89,7 @@ class BuoySpecifications:
     description: str = None
 
 
-@dataclass(unsafe_hash=True)
+@dataclass
 class Sensor:
     sensor_id: str = None
     sensor_type: str = None
@@ -104,19 +104,32 @@ class Sensor:
 
     def __post_init__(self):
         if self.sensor_type not in SENSOR_TYPES:
-            l.warning(f"Invalid sensor_type `{self.sensor_type}` in platform file for sensor_id `{self.sensor_id}`")
+            l.warning(f"Invalid sensor_type: `{self.sensor_type}` in platform file for sensor_id: `{self.sensor_id}`")
 
 
 @dataclass
-class Platform:
-    platform_metadata: PlatformMetadata
+class PlatformMetadata:
+    platform: Platform
     buoy_specs: BuoySpecifications
     sensor: Sensor
 
-    def add_to(self, dataset: xr.Dataset, force = False):
+    def add_to_dataset(self, dataset: xr.Dataset, force: bool = False):
+        """Add values stored in Platform to dataset attributes.
+
+        Rename attributes:
+            `platform_type`   -> `platform`
+            `sensor_comments` -> `sensor`
+
+        Parameters
+        ----------
+        dataset:
+            dataset to add attributes to.
+        force:
+            If True, will overwrite existing value of the same key.
+        """
 
         if force is True:
-            for key, value in self.platform_metadata.__dict__.items():
+            for key, value in self.platform.__dict__.items():
                 dataset.attrs[key] = value
             for key, value in self.sensor.__dict__.items():
                 dataset.attrs[key] = value
@@ -125,7 +138,7 @@ class Platform:
                 l.log(f"`sensor_depth` value ({self.sensor.sensor_depth}) was set by the user.")
 
         else:
-            for key, value in self.platform_metadata.__dict__.items():
+            for key, value in self.platform.__dict__.items():
                 if key in dataset.attrs:
                     if not dataset.attrs[key]:
                         dataset.attrs[key] = value
@@ -142,9 +155,9 @@ class Platform:
         dataset.attrs['sensor_comments'] = dataset.attrs.pop('comments')
         dataset.attrs["platform"] = dataset.attrs.pop("platform_name")
 
-        for v in ['longitude', 'latitude']:
-            if self.platform_metadata.__dict__[v]:  # COMON IN PLATFORM
-                dataset.attrs[v] = self.platform_metadata.__dict__[v]
+        #for v in ['longitude', 'latitude']:
+        #    if self.platform_metadata.__dict__[v]:  # COMON IN PLATFORM
+        #        dataset.attrs[v] = self.platform_metadata.__dict__[v]
 
 
 def _make_dataclass(data_class: dataclass, values: dict):
@@ -155,25 +168,31 @@ def _make_dataclass(data_class: dataclass, values: dict):
 
 
 def load_platform_metadata(platform_file: str, platform_id: str, sensor_id: str):
+
+    platform_metadata = Platform()
+    buoy_specs = BuoySpecifications()
+    sensor = Sensor()
+
     json_dict = json2dict(platform_file)
 
-    platform_metadata = None
-    sensor = None
-    buoy_specs = None
-
     if platform_id in json_dict:
-        platform_metadata = _make_dataclass(PlatformMetadata, json_dict[platform_id])
+        platform_metadata = _make_dataclass(Platform, json_dict[platform_id])
         if 'buoy_specs' in json_dict[platform_id]:
             buoy_specs = _make_dataclass(BuoySpecifications, json_dict[platform_id]['buoy_specs'])
         if 'sensors' in json_dict[platform_id]:
             if sensor_id in json_dict[platform_id]["sensors"]:
-                json_dict[platform_id]['adcp_id'] = sensor_id
+                json_dict[platform_id]['sensor_id'] = sensor_id
                 sensor = _make_dataclass(Sensor, json_dict[platform_id]["sensors"][sensor_id])
 
-    platform_metadata = Platform(**{'platform_metadata': platform_metadata, 'buoy_specs': buoy_specs, 'sensor': sensor})
+    return PlatformMetadata(platform_metadata, buoy_specs, sensor)
 
-    return platform_metadata
 
+def default_platform_metadata(platform_type: str, sensor_type: str, sensor_id: str):
+    return PlatformMetadata(
+        Platform(platform_type=platform_type),
+        BuoySpecifications(),
+        Sensor(sensor_id=sensor_id, sensor_type=sensor_type)
+    )
 
 
 if __name__ == "__main__":
