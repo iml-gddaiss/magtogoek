@@ -82,11 +82,17 @@ STANDARD_GLOBAL_ATTRIBUTES = {
     "sensor_type": "adcp",
     "featureType": "timeSeriesProfile",
 }
+
 DEFAULT_CONFIG_ATTRIBUTES = {
     "date_created": pd.Timestamp.now().strftime("%Y-%m-%d"),
     "publisher_name": getpass.getuser(),
     "source": "adcp",
 }
+
+DEFAULT_PLATFORM_TYPE = "buoy"
+DATA_TYPES = {"buoy": "madcp", "mooring": "madcp", "ship": "adcp", "lowered": "adcp"}
+DATA_SUBTYPES = {"buoy": "BUOY", "mooring": "MOORED", "ship": "SHIPBORNE", 'lowered': 'LOWERED'}
+
 VARIABLES_TO_DROP = [
     "binary_mask"
 ]
@@ -103,9 +109,6 @@ GLOBAL_ATTRS_TO_DROP = [
     "bodc_name"
 ]
 CONFIG_GLOBAL_ATTRS_SECTIONS = ["NETCDF_CF", "PROJECT", "CRUISE", "GLOBAL_ATTRIBUTES"]
-DEFAULT_PLATFORM_TYPE = "buoy"
-DATA_TYPES = {"buoy": "madcp", "mooring": "madcp", "ship": "adcp", "lowered": "adcp"}
-DATA_SUBTYPES = {"buoy": "BUOY", "mooring": "MOORED", "ship": "SHIPBORNE", 'lowered': 'LOWERED'}
 
 BEAM_VEL_CODES = {
     'v1': 'vel_beam_1',
@@ -292,7 +295,7 @@ class ProcessConfig:
 
     def __init__(self, config_dict: dict = None):
         self.metadata: dict = {}
-        #self.platform_metadata: dict = {}
+
         self.platform_type = DEFAULT_PLATFORM_TYPE
 
         if config_dict is not None:
@@ -395,11 +398,14 @@ def process_adcp(config: dict, drop_empty_attrs: bool = False, headless: bool = 
 
             _process_adcp_data(pconfig)
 
+            click.echo(click.style("=" * TERMINAL_WIDTH, fg="white", bold=True))
+
 
 def _process_adcp_data(pconfig: ProcessConfig):
     """Process adcp data
 
-    Meanwhile, the code is pretty explicit. Go check it out if need be.
+    This is not good documentation...
+    However, the code is pretty explicit. Go check it out if need be.
 
     Notes
     -----
@@ -458,8 +464,8 @@ def _process_adcp_data(pconfig: ProcessConfig):
         if dataset.attrs['coord_system'] == 'earth':
             _magnetic_correction(dataset, pconfig)
         else:
-            l.warning(
-                'Correction for magnetic declination was not carried out since the velocity data are not in earth coordinates.')
+            l.warning('Correction for magnetic declination was not carried out since '
+                      'the velocity data are not in earth coordinates.')
 
     # --------------- #
     # QUALITY CONTROL #
@@ -489,23 +495,20 @@ def _process_adcp_data(pconfig: ProcessConfig):
     # -------------------- #
     l.section("Variables attributes")
 
-    dataset = _format_variables_names_and_attributes(dataset, pconfig)  # comon
+    dataset = _format_variables_names_and_attributes(dataset, pconfig)
 
     # ------------- #
     # DATA ENCODING #
     # ------------- #
     l.section("Data Encoding")
 
-    _format_data_encoding(dataset)   # comon ?
+    _format_data_encoding(dataset)
 
-    # ------------ #h
+    # ------------ #
     # MAKE FIGURES #
     # ------------ #
     if pconfig.figures_output is True:
-        make_adcp_figure(dataset,
-                         flag_thres=2,
-                         save_path=pconfig.figures_path,
-                         show_fig=not pconfig.headless)
+        make_adcp_figure(dataset, flag_thres=2, save_path=pconfig.figures_path, show_fig=not pconfig.headless)
 
     # --------------- #
     # POST-PROCESSING #
@@ -514,70 +517,38 @@ def _process_adcp_data(pconfig: ProcessConfig):
     if pconfig.grid_depth is not None:
         dataset = _regrid_dataset(dataset, pconfig)
 
-    # ----------- #
-    # ODF OUTPUTS #
-    # ----------- #
+    # ---------- #
+    # ODF OUTPUT #
+    # ---------- #
 
     l.section("Output")
     if pconfig.odf_output is True:
-        if pconfig.odf_data is None:
-            pconfig.odf_data = 'both'
-        odf_data = {'both': ['VEL', 'ANC'], 'vel': ['VEL'], 'anc': ['ANC']}[pconfig.odf_data]
-        for qualifier in odf_data:
-            _ = make_odf(
-                dataset=dataset,
-                platform_metadata=pconfig.platform_metadata,
-                sensor_id=pconfig.sensor_id,
-                config_attrs=pconfig.metadata,
-                bodc_name=pconfig.bodc_name,
-                event_qualifier2=qualifier,
-                output_path=pconfig.odf_path,
-            )
+        _write_odf(dataset, pconfig)
 
     # ----------------- #
     # NETCDF FORMATTING #
     # ------------------#
 
-    if any(x is True for x in [
-        pconfig.drop_percent_good, pconfig.drop_correlation, pconfig.drop_amplitude
-    ]):
-        dataset = _drop_beam_data(dataset, pconfig)
+    dataset = _drop_beam_metadata(dataset, pconfig) # ADCP SPECIFIC
 
-    for var in VARIABLES_TO_DROP:
-        if var in dataset.variables:
-            dataset = dataset.drop_vars([var])
+    dataset = clean_dataset_for_nc_output(dataset, pconfig)
 
-    for attr in GLOBAL_ATTRS_TO_DROP:
-        if attr in dataset.attrs:
-            del dataset.attrs[attr]
-
-    for attr in list(dataset.attrs.keys()):
-        if not dataset.attrs[attr]:
-            if pconfig.drop_empty_attrs is True:
-                del dataset.attrs[attr]
-            else:
-                dataset.attrs[attr] = ""
-
-    if not dataset.attrs["date_created"]:
-        dataset.attrs["date_created"] = pd.Timestamp.now().strftime("%Y-%m-%d")
-
-    dataset.attrs["date_modified"] = pd.Timestamp.now().strftime("%Y-%m-%d")
+    _add_processing_timestamp(dataset)
 
     dataset.attrs["history"] = l.logbook
 
-    # -------------- #
-    # NETCDF OUTPUTS #
-    # -------------- #
+    # ------------- #
+    # NETCDF OUTPUT #
+    # ------------- #
     if pconfig.netcdf_output is True:
-        netcdf_path = Path(pconfig.netcdf_path).with_suffix('.nc')
-        dataset.to_netcdf(netcdf_path)
-        l.log(f"netcdf file made -> {netcdf_path}")
+        _write_netcdf(dataset, pconfig)
+
+    # ---------- #
+    # LOG OUTPUT #
+    # ---------- #
 
     if pconfig.make_log is True:
-        log_path = Path(pconfig.log_path).with_suffix(".log")
-        l.write(log_path)
-
-    click.echo(click.style("=" * TERMINAL_WIDTH, fg="white", bold=True))
+        _write_log(pconfig)
 
 
 def _load_adcp_data(pconfig: ProcessConfig) -> xr.Dataset:
@@ -817,8 +788,12 @@ def _get_datetime_and_count(trim_arg: tp.Union[str, int]):
         return None, None
 
 
-def _drop_beam_data(dataset: xr.Dataset, pconfig: ProcessConfig):
-    """"""
+def _drop_beam_metadata(dataset: xr.Dataset, pconfig: ProcessConfig):
+    """Drop beam metadata if their respective flag in `pconfig` is True.
+
+    flags: `pconfig.drop_percent_good`, `pconfig.drop_correlation`, `pconfig.drop_amplitude`
+
+    """
     for var, name, flag in zip(
             ["pg", "corr", "amp"],
             ["percent_good", "correlation", "amplitude"],
@@ -834,7 +809,6 @@ def _drop_beam_data(dataset: xr.Dataset, pconfig: ProcessConfig):
 
 
 def _add_global_attributes(dataset: xr.Dataset, pconfig: ProcessConfig):
-    # dataset = dataset.assign_attrs(STANDARD_GLOBAL_ATTRIBUTES)  # COMON
     dataset.attrs.update(STANDARD_GLOBAL_ATTRIBUTES)
 
     dataset.attrs["data_type"] = DATA_TYPES[pconfig.platform_type]  # COMON
@@ -844,7 +818,6 @@ def _add_global_attributes(dataset: xr.Dataset, pconfig: ProcessConfig):
 
     compute_global_attrs(dataset)  # already common
 
-    # dataset = dataset.assign_attrs(pconfig.metadata)  # COMON
     dataset.attrs.update(pconfig.metadata)
 
     if not dataset.attrs["source"]:  # COMON
@@ -891,6 +864,63 @@ def _format_variables_names_and_attributes(dataset: xr.Dataset, pconfig: Process
     l.log("Variables attributes added.")
 
     return dataset
+
+
+def clean_dataset_for_nc_output(dataset: xr.Dataset, pconfig: ProcessConfig)->xr.Dataset:
+    """ Clean dataset for netcdf output.
+
+    Drops variables in `VARIABLES_TO_DROP`
+    Drops global attributes in `GLOBAL_ATTRS_TO_DROP`
+    Drops empty/null global attributes if `pconfig.drop_empty_attrs` is True.
+        else sets them to an emptyu string.
+
+    """
+    for var in VARIABLES_TO_DROP:
+        if var in dataset.variables:
+            dataset = dataset.drop_vars([var])
+
+    for attr in GLOBAL_ATTRS_TO_DROP:
+        if attr in dataset.attrs:
+            del dataset.attrs[attr]
+
+    for attr in list(dataset.attrs.keys()):
+        if not dataset.attrs[attr]:
+            if pconfig.drop_empty_attrs is True:
+                del dataset.attrs[attr]
+            else:
+                dataset.attrs[attr] = ""
+    return dataset
+
+
+def _add_processing_timestamp(dataset: xr.Dataset):
+    if not dataset.attrs["date_created"]:
+        dataset.attrs["date_created"] = pd.Timestamp.now().strftime("%Y-%m-%d")
+    dataset.attrs["date_modified"] = pd.Timestamp.now().strftime("%Y-%m-%d")
+
+
+def _write_odf(dataset: xr.Dataset, pconfig: ProcessConfig):
+    if pconfig.odf_data is None:
+        pconfig.odf_data = 'both'
+    odf_data = {'both': ['VEL', 'ANC'], 'vel': ['VEL'], 'anc': ['ANC']}[pconfig.odf_data]
+    for qualifier in odf_data:
+        _ = make_odf(
+            dataset=dataset,
+            platform_metadata=pconfig.platform_metadata,
+            sensor_id=pconfig.sensor_id,
+            config_attrs=pconfig.metadata,
+            bodc_name=pconfig.bodc_name,
+            event_qualifier2=qualifier,
+            output_path=pconfig.odf_path,
+        )
+def _write_netcdf(dataset: xr.Dataset, pconfig: ProcessConfig):
+    netcdf_path = Path(pconfig.netcdf_path).with_suffix('.nc')
+    dataset.to_netcdf(netcdf_path)
+    l.log(f"netcdf file made -> {netcdf_path}")
+
+
+def _write_log(pconfig: ProcessConfig):
+    log_path = Path(pconfig.log_path).with_suffix(".log")
+    l.write(log_path)
 
 
 def _regrid_dataset(dataset: xr.Dataset, pconfig: ProcessConfig) -> xr.Dataset:
@@ -1040,6 +1070,7 @@ def cut_times(
             l.log('Time slicing: ' + ', '.join(msg) + '.')
 
     return dataset
+
 
 def _resolve_outputs(pconfig: ProcessConfig, default_path: str = None, default_filename: str = None):
     """ Figure out the outputs to make and their path.
