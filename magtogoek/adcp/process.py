@@ -320,12 +320,12 @@ class ProcessConfig:
     def _load_platform_metadata(self):
         if self.platform_file is not None:
             if Path(self.platform_file).is_file():
-                self.platform_metadata = load_platform_metadata(self.platform_file, self.platform_id, self.sensor_id)
+                self.platform_metadata = load_platform_metadata(self.platform_file, self.platform_id)
             else:
                 l.warning(f"platform_file, {self.platform_file}, not found")
         else:
             if self.platform_type in PLATFORM_TYPES:
-                self.platform_metadata = default_platform_metadata(self.platform_type, 'adcp', 'ADCP_01')
+                self.platform_metadata = default_platform_metadata(self.platform_type, 'ADCP_01', 'adcp')
             else:
                 if self.platform_type is None:
                     self.platform_type = DEFAULT_PLATFORM_TYPE
@@ -527,6 +527,7 @@ def _process_adcp_data(pconfig: ProcessConfig):
             _ = make_odf(
                 dataset=dataset,
                 platform_metadata=pconfig.platform_metadata,
+                sensor_id=pconfig.sensor_id,
                 config_attrs=pconfig.metadata,
                 bodc_name=pconfig.bodc_name,
                 event_qualifier2=qualifier,
@@ -691,44 +692,6 @@ def _set_xducer_depth_as_sensor_depth(dataset: xr.Dataset):
         )
 
 
-def _add_platform_metadata(dataset: xr.Dataset, pconfig: ProcessConfig):
-    """Add metadata from platform_metadata files to dataset.attrs.
-
-    Values that are dictionary instances are not added.
-
-    Parameters
-    ----------
-    pconfig
-    dataset :
-        Dataset to which add the navigation data.
-    """
-    pconfig.platform_metadata.add_to_dataset(dataset, pconfig.force_platform_metadata)
-    # metadata = {**pconfig.platform_metadata['platform'], **pconfig.platform_metadata[pconfig.sensor_type]}
-    # metadata['sensor_comments'] = metadata.pop('comments')
-    # if pconfig.force_platform_metadata:
-    #     for key, value in metadata.items():
-    #         dataset.attrs[key] = value
-    #     if "sensor_depth" in metadata:
-    #         l.log(
-    #             f"`sensor_depth` value ({pconfig.platform_metadata['sensor_depth']} was set by the user."
-    #         )
-    #
-    # else:
-    #     for key, value in metadata.items():
-    #         if key in dataset.attrs:
-    #             if not dataset.attrs[key]:
-    #                 dataset.attrs[key] = value
-    #         else:
-    #             dataset.attrs[key] = value
-
-    #if "platform_name" in dataset.attrs: # it has to be in there.
-    #dataset.attrs["platform"] = dataset.attrs.pop("platform_name")
-
-    #for v in ['longitude', 'latitude']:
-    #    if pconfig.platform_metadata["platform"][v]:  # COMON IN PLATFORM
-    #        dataset.attrs[v] = pconfig.platform_metadata["platform"][v]
-
-
 def _quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
     """Carries quality control.
 
@@ -877,7 +840,7 @@ def _add_global_attributes(dataset: xr.Dataset, pconfig: ProcessConfig):
     dataset.attrs["data_type"] = DATA_TYPES[pconfig.platform_type]  # COMON
     dataset.attrs["data_subtype"] = DATA_SUBTYPES[pconfig.platform_type]  # COMON
 
-    _add_platform_metadata(dataset, pconfig)  # COMON
+    pconfig.platform_metadata.add_to_dataset(dataset, pconfig.force_platform_metadata)
 
     compute_global_attrs(dataset)  # already common
 
@@ -1077,45 +1040,6 @@ def cut_times(
             l.log('Time slicing: ' + ', '.join(msg) + '.')
 
     return dataset
-
-
-# def _default_platform_metadata() -> dict:
-#     """Return an empty platform data dictionary"""
-#     platform_metadata = {'platform': _add_platform(), 'adcp_id': 'ADCP_01'}
-#     platform_metadata['platform']["platform_type"] = DEFAULT_PLATFORM_TYPE
-#     platform_metadata['sensors'] = platform_metadata['platform'].pop('sensors')
-#     platform_metadata['adcp'] = platform_metadata['sensors'].pop('__enter_a_sensor_ID_here')
-#     platform_metadata['buoy_specs'] = platform_metadata['platform'].pop('buoy_specs')
-#
-#     return platform_metadata
-
-
-# def _load_platform(platform_file: str, platform_id: str, sensor_id: str) -> tp.Dict:
-#     """load sensor metadata into dict
-#
-#     Returns a `flat` dictionary with all the parents metadata
-#     to `platform.json/platform_id/sensors/sensor_id` and the
-#     metadata of the `sensor_id.`
-#     """
-#     platform_metadata = default_platform_metadata()
-#     json_dict = json2dict(platform_file)
-#     if platform_id in json_dict:
-#         platform_metadata['platform'].update(json_dict[platform_id])
-#         if 'buoy_specs' in platform_metadata['platform']:
-#             platform_metadata['buoy_specs'].update(platform_metadata['platform'].pop('buoy_specs'))
-#         if 'sensors' in platform_metadata['platform']:
-#             platform_metadata['sensors'].update(platform_metadata['platform'].pop('sensors'))
-#             if sensor_id in platform_metadata["sensors"]:
-#                 platform_metadata['adcp_id'] = sensor_id
-#                 platform_metadata['adcp'].update(platform_metadata["sensors"].pop(sensor_id))
-#             else:
-#                 l.warning(f"{sensor_id} not found in the {platform_id}['sensor'] section of the platform file.")
-#         else:
-#             l.warning(f'sensors section missing in the {platform_id} section of the platform file.')
-#     else:
-#         l.warning(f"{platform_id} not found in platform file.")
-#     return platform_metadata
-
 
 def _resolve_outputs(pconfig: ProcessConfig, default_path: str = None, default_filename: str = None):
     """ Figure out the outputs to make and their path.

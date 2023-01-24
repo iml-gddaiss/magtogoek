@@ -7,6 +7,6 @@ VERSION = "0.0.1"
 
 TERMINAL_WIDTH = 80
 
-SENSOR_TYPES = ['adcp']
+SENSOR_TYPES = ['adcp', 'ctd']
 
 PLATFORM_TYPES = ["buoy", "mooring", "ship", "lowered"]

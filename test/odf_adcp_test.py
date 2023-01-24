@@ -27,9 +27,10 @@ PLATFORM_METADATA = PlatformMetadata(
         diameter="buoy_diameter_test",
         weight="buoy_weight_test",
         description="buoy_description_test"
-    ),
-    sensor=Sensor(sensor_id='ADCP_01', sensor_type='adcp')
+    )
 )
+PLATFORM_METADATA.add_sensor(sensor_id='ADCP_01', kwargs={'sensor_id':'ADCP_01', 'sensor_type':'adcp'})
+
 # PLATFORM_METADATA.platform.update(
 #     {
 #         "platform_name": "platform_name_test",
@@ -48,7 +49,7 @@ PLATFORM_METADATA = PlatformMetadata(
 
 
 def test_make():
-    odf = make_odf(DATASET, PLATFORM_METADATA, GLOBAL_ATTRS)
+    odf = make_odf(DATASET, PLATFORM_METADATA, 'ADCP_01', GLOBAL_ATTRS)
     assert odf.data.shape == (40, 9)
 
 
@@ -64,6 +65,7 @@ def test_platform_type(platform_type, headers, cruise_platform):
     PLATFORM_METADATA.platform.platform_type = platform_type
     odf = make_odf(dataset=DATASET,
                    platform_metadata=PLATFORM_METADATA,
+                   sensor_id='ADCP_01',
                    config_attrs=GLOBAL_ATTRS,
                    bodc_name=True,
                    event_qualifier2='VEL',
