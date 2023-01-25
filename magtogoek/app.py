@@ -245,7 +245,10 @@ def check_rti(ctx, info, input_files, **options):
     """Prints info about RTI .ENS files."""
     from magtogoek.adcp.rti_reader import RtiReader
 
-    RtiReader(input_files).check_files()
+    try:
+        RtiReader(input_files).check_files()
+    except IndexError:
+        print(f'Error, could not read the file. {input_files}')
 
 
 @compute.command("nav", context_settings=CONTEXT_SETTINGS)
