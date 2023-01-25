@@ -99,7 +99,7 @@ def no_adcp_quality_control(dataset: xr.Dataset):
     dataset :
         ADCP dataset formatted as done by adcp_init.
     """
-    l.section("Quality Controlled", t=True)
+    l.section("Quality Controlled")
 
     l.log("No quality control carried out")
 
@@ -195,7 +195,7 @@ def adcp_quality_control(
        * 8: interpolated_value
        * 9: missing_value
     """
-    l.section("Quality Control", t=True)
+    l.section("Quality Control")
 
     vel_flags = np.ones(dataset.depth.shape + dataset.time.shape).astype(int)
     binary_mask = np.zeros(dataset.depth.shape + dataset.time.shape).astype(int)

@@ -127,6 +127,8 @@ class PlatformMetadata:
                 if self.__dict__[sensor_id].sensor_depth is not None:
                     l.log(f"`sensor_depth` value ({self.__dict__[sensor_id].sensor_depth}) was set by the user.")
 
+                dataset.attrs['sensor_comments'] = dataset.attrs.pop('comments')
+
         else:
             for key, value in self.platform.__dict__.items():
                 if key in dataset.attrs:
@@ -142,7 +144,8 @@ class PlatformMetadata:
                     else:
                         dataset.attrs[key] = value
 
-        dataset.attrs['sensor_comments'] = dataset.attrs.pop('comments')
+                dataset.attrs['sensor_comments'] = dataset.attrs.pop('comments')
+
         dataset.attrs["platform"] = dataset.attrs.pop("platform_name")
 
 
