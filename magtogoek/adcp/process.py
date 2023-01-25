@@ -291,6 +291,7 @@ class ProcessConfig:
                 l.warning(f"platform_type invalid. Must be one of {PLATFORM_TYPES}")
                 l.warning(f"platform_type set to `{DEFAULT_PLATFORM_TYPE}` for platform_type.")
         else:
+            self.platform_metadata = _default_platform_metadata()
             self.platform_metadata["platform"]['platform_type'] = DEFAULT_PLATFORM_TYPE
             l.warning(f"platform_type not specified.")
             l.warning(f"platform_type set to `{DEFAULT_PLATFORM_TYPE}` for platform_type.")
