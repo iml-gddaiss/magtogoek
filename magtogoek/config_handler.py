@@ -22,6 +22,7 @@ If bodc_name False, generic variable names are used.
 """
 import getpass
 from typing import Dict, List, Union, Optional
+from magtogoek import SENSOR_TYPES
 from magtogoek.taskparser import TaskParser
 from datetime import datetime
 from pathlib import Path
@@ -153,7 +154,7 @@ def get_config_taskparser(sensor_type: Optional[str] = None):
     section = "HEADER"
     tparser.add_option(section, "made_by", dtypes=["str"], default=getpass.getuser())
     tparser.add_option(section, "last_updated", dtypes=["str"], default=datetime.now().strftime("%Y-%m-%d"))
-    tparser.add_option(section, "sensor_type", dtypes=["str"], default=sensor_type, is_required=True, choice=["adcp"], comments='One of [adcp, ].')
+    tparser.add_option(section, "sensor_type", dtypes=["str"], default=sensor_type, is_required=True, choice=SENSOR_TYPES, comments='One of [adcp, ].')
     tparser.add_option(section, "platform_type", dtypes=["str"], choice=["buoy", "mooring", "ship", "lowered"], comments='One of [buoy, mooring, ship, lowered].')
 
     section = "INPUT"

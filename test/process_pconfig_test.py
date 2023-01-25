@@ -23,7 +23,8 @@ CONFIG_PATH = Path().cwd()
     ],
 )
 def test_outputs(config_dict, netcdf_output, odf_output, netcdf_path, odf_path, log_path):
-    config_dict = {'input': {**{'input_files': INPUT_FILES}, **config_dict}}
+    config_dict = {'header': {'sensor_type': 'adcp'},
+                   'input': {**{'input_files': INPUT_FILES}, **config_dict}}
     pconfig = BaseProcessConfig(config_dict=config_dict)
     pconfig.resolve_outputs()
 
@@ -36,8 +37,13 @@ def test_outputs(config_dict, netcdf_output, odf_output, netcdf_path, odf_path, 
 
 
 def test_outputs_error():
-    config_dict = {'input': {**{'input_files': INPUT_FILES},
-                             **{'netcdf_output': '../notafolder/filename', 'odf_output': False}}}
+    config_dict = {
+        'header': {'sensor_type': 'adcp'},
+        'input': {
+            **{'input_files': INPUT_FILES},
+            **{'netcdf_output': '../notafolder/filename', 'odf_output': False}
+        }
+    }
     with pytest.raises(ValueError):
         pconfig = BaseProcessConfig(config_dict=config_dict)
         pconfig.resolve_outputs()
@@ -56,7 +62,8 @@ def test_outputs_error():
     ]
 )
 def test_figures_outputs(config_dict, figure_output, figure_path):
-    config_dict = {'input': {**{'input_files': INPUT_FILES}, **config_dict}}
+    config_dict = {'header': {'sensor_type': 'adcp'},
+                   'input': {**{'input_files': INPUT_FILES}, **config_dict}}
     pconfig = BaseProcessConfig(config_dict=config_dict)
     pconfig.resolve_outputs()
     assert pconfig.figures_output == figure_output

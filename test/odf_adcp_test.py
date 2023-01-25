@@ -29,7 +29,7 @@ PLATFORM_METADATA = PlatformMetadata(
         description="buoy_description_test"
     )
 )
-PLATFORM_METADATA.add_sensor(sensor_id='ADCP_01', kwargs={'sensor_id':'ADCP_01', 'sensor_type':'adcp'})
+PLATFORM_METADATA.add_sensor(sensor_id='ADCP_01', kwargs={'sensor_id': 'ADCP_01', 'sensor_type': 'adcp'})
 
 # PLATFORM_METADATA.platform.update(
 #     {

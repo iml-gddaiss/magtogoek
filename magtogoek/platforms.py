@@ -6,7 +6,10 @@ This script makes platform template
 :TODO:
 -:everything:
 """
+import json
+import sys
 
+from typing import *
 from dataclasses import dataclass, fields
 from magtogoek import SENSOR_TYPES, PLATFORM_TYPES
 import magtogoek.logger as l
@@ -143,11 +146,31 @@ class PlatformMetadata:
         dataset.attrs["platform"] = dataset.attrs.pop("platform_name")
 
 
-def load_platform_metadata(platform_file: str, platform_id: str):
+def load_platform_metadata(platform_file: str, platform_id: str) -> PlatformMetadata:
+    """Load json platform file into a PlatformMetadata dataclass.
 
-    json_dict = json2dict(platform_file)
+    Will exit on json error or if the platform_id is not found in the platform_file.
 
-    if platform_id in json_dict:
+    Parameters
+    ----------
+    platform_file: path to platform json file.
+    platform_id: key for the platform.
+
+    Returns
+    -------
+
+    """
+    try:
+        json_dict = json2dict(platform_file)
+    except json.JSONDecodeError as err:
+        print(
+            f"ERROR. Could not load platform file (json): {platform_file}. \n"
+            f"Error: {err}.\n"
+            f"Aborting !"
+        )
+        sys.exit()
+
+    try:
         platform = _make_dataclass(Platform, json_dict[platform_id])
         if 'buoy_specs' in json_dict[platform_id]:
             buoy_specs = _make_dataclass(BuoySpecifications, json_dict[platform_id]['buoy_specs'])
@@ -160,7 +183,13 @@ def load_platform_metadata(platform_file: str, platform_id: str):
             platform_metadata.add_sensor(sensor_id, json_dict[platform_id]["sensors"][sensor_id])
 
         return platform_metadata
-    return None # fix me
+
+    except KeyError:
+        print(
+            f"ERROR. `platform_id`: { platform_id} not found platform file: {platform_file}.\n"
+            f"Aborting !"
+        )
+        sys.exit()
 
 
 def default_platform_metadata(platform_type: str, sensor_id: str, sensor_type: str):

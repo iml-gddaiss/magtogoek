@@ -59,7 +59,7 @@ from pathlib import Path
 
 import magtogoek.logger as l
 
-from magtogoek import TERMINAL_WIDTH, PLATFORM_TYPES
+from magtogoek import TERMINAL_WIDTH
 
 from magtogoek.adcp.adcp_plots import make_adcp_figure
 from magtogoek.adcp.loader import load_adcp_binary
@@ -70,11 +70,10 @@ from magtogoek.adcp.quality_control import (adcp_quality_control,
 from magtogoek.attributes_formatter import (
     compute_global_attrs, format_variables_names_and_attributes, _add_data_min_max_to_var_attrs)
 from magtogoek.navigation import load_navigation
-from magtogoek.platforms import load_platform_metadata, default_platform_metadata, PlatformMetadata
+from magtogoek.process_common import BaseProcessConfig
 from magtogoek.tools import (
     rotate_2d_vector, regrid_dataset, _prepare_flags_for_regrid, _new_flags_bin_regrid,
     _new_flags_interp_regrid)
-from magtogoek.utils import ensure_list_format
 
 l.get_logger('adcp_processing')
 
@@ -89,7 +88,6 @@ DEFAULT_CONFIG_ATTRIBUTES = {
     "source": "adcp",
 }
 
-DEFAULT_PLATFORM_TYPE = "buoy"
 DATA_TYPES = {"buoy": "madcp", "mooring": "madcp", "ship": "adcp", "lowered": "adcp"}
 DATA_SUBTYPES = {"buoy": "BUOY", "mooring": "MOORED", "ship": "SHIPBORNE", 'lowered': 'LOWERED'}
 
@@ -108,7 +106,6 @@ GLOBAL_ATTRS_TO_DROP = [
     "binary_mask_tests_values",
     "bodc_name"
 ]
-CONFIG_GLOBAL_ATTRS_SECTIONS = ["NETCDF_CF", "PROJECT", "CRUISE", "GLOBAL_ATTRIBUTES"]
 
 BEAM_VEL_CODES = {
     'v1': 'vel_beam_1',
@@ -232,120 +229,6 @@ DATA_FILL_VALUE = -9999.0
 DATA_ENCODING = {"dtype": "float32", "_FillValue": DATA_FILL_VALUE}
 
 
-class ProcessConfig:
-    config_file: str = None
-    sensor_type: str = None
-    platform_type: str = None
-    input_files: str = None
-    platform_file: str = None
-    platform_id: str = None
-    sensor_id: str = None
-    netcdf_output: tp.Union[str, bool] = None
-    odf_output: tp.Union[str, bool] = None
-    yearbase: int = None
-    adcp_orientation: str = None
-    sonar: str = None
-    navigation_file: str = None
-    leading_trim: tp.Union[int, str] = None
-    trailing_trim: tp.Union[int, str] = None
-    sensor_depth: float = None
-    depth_range: list = None
-    magnetic_declination: float = None
-    magnetic_declination_preset: float = None
-    keep_bt: bool = None
-    bad_pressure: bool = None
-    start_time: str = None
-    time_step: float = None
-    quality_control: bool = None
-    amplitude_threshold: int = None
-    percentgood_threshold: int = None
-    correlation_threshold: int = None
-    horizontal_velocity_threshold: float = None
-    vertical_velocity_threshold: float = None
-    error_velocity_threshold: float = None
-    sidelobes_correction: bool = None
-    bottom_depth: float = None
-    pitch_threshold: float = None
-    roll_threshold: float = None
-    coord_transform: bool = None
-    motion_correction_mode: str = None
-    merge_output_files: bool = None
-    bodc_name: bool = None
-    force_platform_metadata: bool = None
-    drop_percent_good: bool = None
-    drop_correlation: bool = None
-    drop_amplitude: bool = None
-    make_figures: tp.Union[str, bool] = None
-    make_log: bool = None
-    odf_data: str = None
-    metadata: dict = None
-    platform_metadata: PlatformMetadata = None
-
-    netcdf_path: str = None
-    odf_path: str = None
-    log_path: str = None
-    figures_path: str = None
-    figures_output: bool = None
-
-    grid_depth: tp.Union[str, bool] = None
-    grid_method: str = None
-
-    drop_empty_attrs: bool = False
-    headless: bool = False
-
-    def __init__(self, config_dict: dict = None):
-        self.metadata: dict = {}
-
-        self.platform_type = DEFAULT_PLATFORM_TYPE
-
-        if config_dict is not None:
-            self._load_config_dict(config_dict)
-
-        if isinstance(self.input_files, str):
-            self.input_files = ensure_list_format(self.input_files)
-
-        if len(self.input_files) == 0:
-            raise ValueError("No adcp file was provided in the configfile.")
-
-        self._load_platform_metadata()
-        self.platform_type = self.platform_metadata.platform.platform_type
-
-    def _load_config_dict(self, config: dict) -> dict:
-        """Split and flattens"""
-        for section, options in config.items():
-            if section in CONFIG_GLOBAL_ATTRS_SECTIONS:
-                for option in options:
-                    self.metadata[option] = config[section][option]
-            else:
-                for option in options:
-                    self.__dict__[option] = config[section][option]
-
-    def _load_platform_metadata(self):
-        if self.platform_file is not None:
-            if Path(self.platform_file).is_file():
-                self.platform_metadata = load_platform_metadata(self.platform_file, self.platform_id)
-            else:
-                l.warning(f"platform_file, {self.platform_file}, not found")
-        else:
-            if self.platform_type in PLATFORM_TYPES:
-                self.platform_metadata = default_platform_metadata(self.platform_type, 'ADCP_01', 'adcp')
-            else:
-                if self.platform_type is None:
-                    self.platform_type = DEFAULT_PLATFORM_TYPE
-                    l.warning(f"platform_type not specified.")
-                else:
-                    l.warning(f"platform_type invalid. Must be one of {PLATFORM_TYPES}")
-                l.warning(f"platform_type set to `{DEFAULT_PLATFORM_TYPE}` for platform_type.")
-
-    def resolve_outputs(self):
-        default_path, default_filename = None, None
-        if self.config_file is not None:
-            config_file = Path(self.config_file)
-            default_path, default_filename = config_file.parent, config_file.name
-
-        _resolve_outputs(self, default_path=default_path, default_filename=default_filename)
-
-
 def process_adcp(config: dict, drop_empty_attrs: bool = False, headless: bool = False):
     """Process adcp data with parameters from a config file.
 
@@ -386,12 +269,10 @@ def process_adcp(config: dict, drop_empty_attrs: bool = False, headless: bool = 
                 if not Path(odf_output).is_dir():
                     pconfig.odf_output = str(Path(odf_output).with_suffix("")) + f"_{count}"
                 else:
-                    pconfig.metadata[
-                        'event_qualifier1'] = event_qualifier1 + f"_{Path(filename).name}"  # PREVENTS FROM OVERWRITING THE SAME FILE
+                    pconfig.metadata['event_qualifier1'] = event_qualifier1 + f"_{Path(filename).name}"  # PREVENTS FROM OVERWRITING THE SAME FILE
                     pconfig.odf_output = odf_output
             else:
-                pconfig.metadata[
-                    'event_qualifier1'] = event_qualifier1 + f"_{Path(filename).name}"  # PREVENTS FROM OVERWRITING THE SAME FILE
+                pconfig.metadata['event_qualifier1'] = event_qualifier1 + f"_{Path(filename).name}"  # PREVENTS FROM OVERWRITING THE SAME FILE
                 pconfig.odf_output = odf_output
 
             pconfig.resolve_outputs()
@@ -399,6 +280,40 @@ def process_adcp(config: dict, drop_empty_attrs: bool = False, headless: bool = 
             _process_adcp_data(pconfig)
 
             click.echo(click.style("=" * TERMINAL_WIDTH, fg="white", bold=True))
+
+
+class ProcessConfig(BaseProcessConfig):
+    yearbase: int = None
+    adcp_orientation: str = None
+    sonar: str = None
+
+    sensor_depth: float = None
+    depth_range: list = None
+    magnetic_declination: float = None
+    magnetic_declination_preset: float = None
+    keep_bt: bool = None
+    bad_pressure: bool = None
+    start_time: str = None
+    time_step: float = None
+
+    amplitude_threshold: int = None
+    percentgood_threshold: int = None
+    correlation_threshold: int = None
+    horizontal_velocity_threshold: float = None
+    vertical_velocity_threshold: float = None
+    error_velocity_threshold: float = None
+    sidelobes_correction: bool = None
+    bottom_depth: float = None
+    pitch_threshold: float = None
+    roll_threshold: float = None
+    coord_transform: bool = None
+    motion_correction_mode: str = None
+    drop_percent_good: bool = None
+    drop_correlation: bool = None
+    drop_amplitude: bool = None
+
+    grid_depth: tp.Union[str, bool] = None
+    grid_method: str = None
 
 
 def _process_adcp_data(pconfig: ProcessConfig):
@@ -434,7 +349,7 @@ def _process_adcp_data(pconfig: ProcessConfig):
     # ----------------------------------------- #
     if pconfig.navigation_file:
         l.section("Navigation data")
-        dataset = _load_navigation(dataset, pconfig.navigation_file)
+        dataset = add_navigation(dataset, pconfig.navigation_file)
 
     # -------------- #
     # TRANSFORMATION #
@@ -482,7 +397,7 @@ def _process_adcp_data(pconfig: ProcessConfig):
 
     l.section("Adding Global Attributes")
 
-    _add_global_attributes(dataset, pconfig)
+    add_global_attributes(dataset, pconfig)
 
     if pconfig.platform_metadata.platform.platform_type in ["mooring", "buoy"]:  # ADCP SPECIFIC
         if "bt_depth" in dataset:
@@ -502,7 +417,7 @@ def _process_adcp_data(pconfig: ProcessConfig):
     # ------------- #
     l.section("Data Encoding")
 
-    _format_data_encoding(dataset)
+    format_data_encoding(dataset)
 
     # ------------ #
     # MAKE FIGURES #
@@ -533,7 +448,7 @@ def _process_adcp_data(pconfig: ProcessConfig):
 
     dataset = clean_dataset_for_nc_output(dataset, pconfig)
 
-    _add_processing_timestamp(dataset)
+    add_processing_timestamp(dataset)
 
     dataset.attrs["history"] = l.logbook
 
@@ -541,14 +456,14 @@ def _process_adcp_data(pconfig: ProcessConfig):
     # NETCDF OUTPUT #
     # ------------- #
     if pconfig.netcdf_output is True:
-        _write_netcdf(dataset, pconfig)
+        write_netcdf(dataset, pconfig)
 
     # ---------- #
     # LOG OUTPUT #
     # ---------- #
 
     if pconfig.make_log is True:
-        _write_log(pconfig)
+        write_log(pconfig)
 
 
 def _load_adcp_data(pconfig: ProcessConfig) -> xr.Dataset:
@@ -629,7 +544,6 @@ def _get_datetime_and_count(trim_arg: tp.Union[str, int]):
         return None, None
 
 
-
 def cut_bin_depths(
         dataset: xr.Dataset, depth_range: tp.Union[int, float, list] = None
 ) -> xr.Dataset:
@@ -650,31 +564,22 @@ def cut_bin_depths(
     if depth_range:
         if not isinstance(depth_range, (list, tuple)):
             if depth_range > dataset.depth.max():
-                l.log(
-                    "depth_range value is greater than the maximum bin depth. Depth slicing aborted."
-                )
+                l.log("depth_range value is greater than the maximum bin depth. Depth slicing aborted.")
             else:
                 dataset = dataset.sel(depth=slice(depth_range, None))
                 l.log(f"Bin of depth inferior to {depth_range} m were cut.")
+
         elif len(depth_range) == 2:
             if dataset.depth[0] > dataset.depth[-1]:
                 depth_range.reverse()
-            if (
-                    depth_range[0] > dataset.depth.max()
-                    or depth_range[1] < dataset.depth.min()
-            ):
-                l.log(
-                    "depth_range values are outside the actual depth range. Depth slicing aborted."
-                )
+
+            if depth_range[0] > dataset.depth.max() or depth_range[1] < dataset.depth.min():
+                l.log("depth_range values are outside the actual depth range. Depth slicing aborted.")
             else:
                 dataset = dataset.sel(depth=slice(*depth_range))
-                l.log(
-                    f"Bin of depth inferior to {depth_range[0]} m and superior to {depth_range[1]} m were cut."
-                )
+                l.log(f"Bin of depth inferior to {depth_range[0]} m and superior to {depth_range[1]} m were cut.")
         else:
-            l.log(
-                f"depth_range expects a maximum of 2 values but {len(depth_range)} were given. Depth slicing aborted."
-            )
+            l.log(f"depth_range expects a maximum of 2 values but {len(depth_range)} were given. Depth slicing aborted.")
     return dataset
 
 
@@ -718,8 +623,8 @@ def cut_times(
     return dataset
 
 
-def _load_navigation(dataset: xr.Dataset, navigation_files: str):
-    """Load navigation data from nmea, gpx or netcdf files.
+def add_navigation(dataset: xr.Dataset, navigation_files: str):
+    """Load navigation data to `dataset` from nmea, gpx or netcdf files.
 
     Returns the dataset with the added navigation data. Data from the navigation file
     are interpolated on the dataset time vector.
@@ -866,7 +771,7 @@ def _quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
                          bad_pressure=pconfig.bad_pressure)
 
 
-def _add_global_attributes(dataset: xr.Dataset, pconfig: ProcessConfig):
+def add_global_attributes(dataset: xr.Dataset, pconfig: ProcessConfig):
     dataset.attrs.update(STANDARD_GLOBAL_ATTRIBUTES)
 
     dataset.attrs["data_type"] = DATA_TYPES[pconfig.platform_type]  # COMON
@@ -940,7 +845,7 @@ def _format_variables_names_and_attributes(dataset: xr.Dataset, pconfig: Process
     return dataset
 
 
-def _format_data_encoding(dataset: xr.Dataset):
+def format_data_encoding(dataset: xr.Dataset):
     """Format data encoding with default value in module."""
 
     for var in dataset.variables:
@@ -958,8 +863,6 @@ def _format_data_encoding(dataset: xr.Dataset):
 
     l.log(f"Data _FillValue: {DATA_FILL_VALUE}")
     l.log(f"Ancillary Data _FillValue: {QC_FILL_VALUE}")
-
-
 
 
 def _regrid_dataset(dataset: xr.Dataset, pconfig: ProcessConfig) -> xr.Dataset:
@@ -1021,7 +924,7 @@ def clean_dataset_for_nc_output(dataset: xr.Dataset, pconfig: ProcessConfig)->xr
     Drops variables in `VARIABLES_TO_DROP`
     Drops global attributes in `GLOBAL_ATTRS_TO_DROP`
     Drops empty/null global attributes if `pconfig.drop_empty_attrs` is True.
-        else sets them to an emptyu string.
+        else sets them to an empty string.
 
     """
     for var in VARIABLES_TO_DROP:
@@ -1041,7 +944,7 @@ def clean_dataset_for_nc_output(dataset: xr.Dataset, pconfig: ProcessConfig)->xr
     return dataset
 
 
-def _add_processing_timestamp(dataset: xr.Dataset):
+def add_processing_timestamp(dataset: xr.Dataset):
     if not dataset.attrs["date_created"]:
         dataset.attrs["date_created"] = pd.Timestamp.now().strftime("%Y-%m-%d")
     dataset.attrs["date_modified"] = pd.Timestamp.now().strftime("%Y-%m-%d")
@@ -1063,13 +966,13 @@ def _write_odf(dataset: xr.Dataset, pconfig: ProcessConfig):
         )
 
 
-def _write_netcdf(dataset: xr.Dataset, pconfig: ProcessConfig):
+def write_netcdf(dataset: xr.Dataset, pconfig: ProcessConfig):
     netcdf_path = Path(pconfig.netcdf_path).with_suffix('.nc')
     dataset.to_netcdf(netcdf_path)
     l.log(f"netcdf file made -> {netcdf_path}")
 
 
-def _write_log(pconfig: ProcessConfig):
+def write_log(pconfig: ProcessConfig):
     log_path = Path(pconfig.log_path).with_suffix(".log")
     l.write(log_path)
 
@@ -1082,90 +985,3 @@ def _drop_bottom_track(dataset: xr.Dataset) -> xr.Dataset:
     return dataset
 
 
-def _resolve_outputs(pconfig: ProcessConfig, default_path: str = None, default_filename: str = None):
-    """ Figure out the outputs to make and their path.
-    """
-    input_path = pconfig.input_files[0]
-    if default_path is None:
-        default_path = Path(input_path).parent
-    if default_filename is None:
-        default_filename = Path(input_path).name
-
-    if not pconfig.odf_output and not pconfig.netcdf_output:
-        pconfig.netcdf_output = True
-
-    default_path, default_filename = _netcdf_output_handler(pconfig, default_path, default_filename)
-
-    default_path, default_filename = _odf_output_handler(pconfig, default_path, default_filename)
-
-    _figure_output_handler(pconfig, default_path, default_filename)
-
-    pconfig.log_path = str(default_path.joinpath(default_filename))
-
-
-def _netcdf_output_handler(pconfig: ProcessConfig, default_path: Path, default_filename: Path) -> tp.Tuple[Path, Path]:
-    if isinstance(pconfig.netcdf_output, bool):
-        if pconfig.netcdf_output is True:
-            pconfig.netcdf_path = str(default_path.joinpath(default_filename))
-    elif isinstance(pconfig.netcdf_output, str):
-        _netcdf_output = Path(pconfig.netcdf_output)
-        if Path(_netcdf_output.name) == _netcdf_output:
-            netcdf_path = default_path.joinpath(_netcdf_output).resolve()
-        elif _netcdf_output.is_dir():
-            netcdf_path = _netcdf_output.joinpath(default_filename)
-        elif _netcdf_output.parent.is_dir():
-            netcdf_path = _netcdf_output
-        else:
-            raise ValueError(f'Path path to {_netcdf_output} does not exists.')
-        default_path = netcdf_path.parent
-        default_filename = netcdf_path.stem
-        pconfig.netcdf_path = str(netcdf_path)
-        pconfig.netcdf_output = True
-
-    return default_path, default_filename
-
-
-def _odf_output_handler(pconfig: ProcessConfig, default_path: Path, default_filename: Path) -> tp.Tuple[Path, Path]:
-    if isinstance(pconfig.odf_output, bool):
-        if pconfig.odf_output is True:
-            pconfig.odf_path = str(default_path)
-    elif isinstance(pconfig.odf_output, str):
-        _odf_output = Path(pconfig.odf_output)
-        if Path(_odf_output.name) == _odf_output:
-            _odf_path = default_path.joinpath(_odf_output).resolve()
-        elif _odf_output.is_dir():
-            _odf_path = _odf_output
-        elif _odf_output.parent.is_dir():
-            _odf_path = _odf_output
-        else:
-            raise ValueError(f'Path to {_odf_output} does not exists.')
-
-        pconfig.odf_path = str(_odf_path)
-        pconfig.odf_output = True
-
-        if not pconfig.netcdf_output:
-            default_path = _odf_path.parent
-            default_filename = _odf_path.stem
-
-    return default_path, default_filename
-
-
-def _figure_output_handler(pconfig: ProcessConfig, default_path: Path, default_filename: Path):
-    if isinstance(pconfig.make_figures, bool):
-        if pconfig.make_figures is True:
-            pconfig.figures_output = True
-            if pconfig.headless is True:
-                pconfig.figures_path = str(default_path.joinpath(default_filename))
-    elif isinstance(pconfig.make_figures, str):
-        _figures_output = Path(pconfig.make_figures)
-        if Path(_figures_output.name) == _figures_output:
-            _figures_path = default_path.joinpath(_figures_output).resolve()
-        elif _figures_output.is_dir():
-            _figures_path = _figures_output.joinpath(default_filename)
-        elif _figures_output.parent.is_dir():
-            _figures_path = _figures_output
-        else:
-            raise ValueError(f'Path to {_figures_output} does not exists.')
-
-        pconfig.figures_path = str(_figures_path)
-        pconfig.figures_output = True
