@@ -142,16 +142,8 @@ class PlatformMetadata:
         dataset.attrs['sensor_comments'] = dataset.attrs.pop('comments')
         dataset.attrs["platform"] = dataset.attrs.pop("platform_name")
 
-        #for v in ['longitude', 'latitude']: # TODO Check if its needed
-        #    if self.platform_metadata.__dict__[v]:  # COMON IN PLATFORM
-        #        dataset.attrs[v] = self.platform_metadata.__dict__[v]
-
 
 def load_platform_metadata(platform_file: str, platform_id: str):
-
-    #platform = Platform()
-    #buoy_specs = BuoySpecifications()
-    #sensor = Sensor()
 
     json_dict = json2dict(platform_file)
 
@@ -166,11 +158,9 @@ def load_platform_metadata(platform_file: str, platform_id: str):
 
         for sensor_id in json_dict[platform_id]['sensors']:
             platform_metadata.add_sensor(sensor_id, json_dict[platform_id]["sensors"][sensor_id])
-            #if sensor_id in json_dict[platform_id]["sensors"]:
-            #    json_dict[platform_id]['sensor_id'] = sensor_id
-            #    sensor = _make_dataclass(Sensor, json_dict[platform_id]["sensors"][sensor_id])
 
-    return platform_metadata
+        return platform_metadata
+    return None # fix me
 
 
 def default_platform_metadata(platform_type: str, sensor_id: str, sensor_type: str):
