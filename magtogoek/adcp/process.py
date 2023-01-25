@@ -954,6 +954,9 @@ def _write_odf(dataset: xr.Dataset, pconfig: ProcessConfig):
     if pconfig.odf_data is None:
         pconfig.odf_data = 'both'
     odf_data = {'both': ['VEL', 'ANC'], 'vel': ['VEL'], 'anc': ['ANC']}[pconfig.odf_data]
+
+    dataset.attrs['history'] = l.logbook
+
     for qualifier in odf_data:
         _ = make_odf(
             dataset=dataset,
