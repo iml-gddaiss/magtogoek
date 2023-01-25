@@ -287,6 +287,9 @@ class ProcessConfig(BaseProcessConfig):
     adcp_orientation: str = None
     sonar: str = None
 
+    leading_trim: tp.Union[int, str] = None
+    trailing_trim: tp.Union[int, str] = None
+
     sensor_depth: float = None
     depth_range: list = None
     magnetic_declination: float = None
@@ -296,6 +299,7 @@ class ProcessConfig(BaseProcessConfig):
     start_time: str = None
     time_step: float = None
 
+    quality_control: bool = None
     amplitude_threshold: int = None
     percentgood_threshold: int = None
     correlation_threshold: int = None
