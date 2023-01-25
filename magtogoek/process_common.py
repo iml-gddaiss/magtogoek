@@ -126,13 +126,18 @@ def _resolve_outputs(pconfig: BaseProcessConfig):
     4. If `odf_output` is not `None` or `False`:
         a) Depending on the value of `odf_output`: True, a filename, a path to directory or a path to a filename,
            an output path is build using `default_path` if needed. ODF doesn't require a filename since it is built
-           by default using metadata in the ODF file. Thus `default_filename` is not used here.
+           by default using metadata in the ODF file. Thus, `default_filename` is not used here.
 
-        b) If `netcdf_output` is False:
+        b) If `netcdf_output` is `False`:
            Updates `default_path` using `odf_path` value. Updates `default_filename` if `odf_path` has a filename
-           otherwise it stays the same..
+           otherwise it stays the same.
 
-    5. TODO FIGURE.
+    5. If `make_figure` is not `None` or `False`:
+        a) If `make_figure` is True, `figure_output` is set True.
+            If `headless` is `True`. `figure_path` is build using `default_path` and `default_filename`.
+        b) A path to directory or a path to a filename is build using `default_path` and `default_filename` if needed.
+            Every figure filename will have a suffix added to it.
+
 
     6. `log_path` is made using `default_path` and `default_filename`.
 
@@ -166,8 +171,9 @@ def _resolve_outputs(pconfig: BaseProcessConfig):
 
 
 def _make_netcdf_output_path(pconfig: BaseProcessConfig, default_path: Path, default_filename: Path):
-
-    if pconfig.netcdf_output is True:
+    if not pconfig.netcdf_output:
+        pass
+    elif pconfig.netcdf_output is True:
         pconfig.netcdf_path = str(default_path.joinpath(default_filename))
     else:
         if is_filename(pconfig.netcdf_output):
@@ -184,8 +190,9 @@ def _make_netcdf_output_path(pconfig: BaseProcessConfig, default_path: Path, def
 
 
 def _make_odf_output_path(pconfig: BaseProcessConfig, default_path: Path):
-
-    if pconfig.odf_output is True:
+    if not pconfig.odf_output:
+        pass
+    elif pconfig.odf_output is True:
         pconfig.odf_path = str(default_path)
     else:
         if is_filename(pconfig.odf_output):
@@ -202,22 +209,23 @@ def _make_odf_output_path(pconfig: BaseProcessConfig, default_path: Path):
 
 
 def _make_figure_output_path(pconfig: BaseProcessConfig, default_path: Path, default_filename: Path):
-    if pconfig.make_figures is True:
+    if not pconfig.make_figures:
+        pass
+    elif pconfig.make_figures is True:
         pconfig.figures_output = True
         if pconfig.headless is True:
             pconfig.figures_path = str(default_path.joinpath(default_filename))
     else:
-        _figures_output = Path(pconfig.make_figures)
-        if Path(_figures_output.name) == _figures_output:
-            _figures_path = default_path.joinpath(_figures_output).resolve()
-        elif _figures_output.is_dir():
-            _figures_path = _figures_output.joinpath(default_filename)
-        elif _figures_output.parent.is_dir():
-            _figures_path = _figures_output
+        if is_filename(pconfig.make_figures):
+            figures_path = default_path.joinpath(Path(pconfig.make_figures)).resolve()
+        elif is_directory(pconfig.make_figures):
+            figures_path = Path(pconfig.make_figures).joinpath(default_filename)
+        elif parent_is_dir(pconfig.make_figures):
+            figures_path = Path(pconfig.make_figures)
         else:
-            raise ValueError(f'Path to {_figures_output} does not exists.')
+            raise ValueError(f'Path to {pconfig.figures_output} does not exists.')
 
-        pconfig.figures_path = str(_figures_path)
+        pconfig.figures_path = str(figures_path)
         pconfig.figures_output = True
 
 
