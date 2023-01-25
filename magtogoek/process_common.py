@@ -24,10 +24,6 @@ class BaseProcessConfig:
 
     navigation_file: str = None
 
-    leading_trim: tp.Union[int, str] = None
-    trailing_trim: tp.Union[int, str] = None
-
-    quality_control: bool = None
     merge_output_files: bool = None
     bodc_name: bool = None
     force_platform_metadata: bool = None
@@ -104,7 +100,7 @@ def _resolve_outputs(pconfig: BaseProcessConfig):
 
     There is three parameters the user can set in the `pconfig`:
 
-        [`nc_output`, `odf_output`,  `figure_output`]
+        [`netcdf_output`, `odf_output`,  `figure_output`]
 
     They can all have values of:
         - None
@@ -113,9 +109,7 @@ def _resolve_outputs(pconfig: BaseProcessConfig):
         - `path to directory`
         - `path to directory` + `file name`
 
-    ###
-
-    Let's focus on `netcdf_output`, `odf_output`.
+    --- Logic Flow ---
 
     1. `default_path` and `default_filename` are defined. if the processing was done with
         a) a config file (.ini) they are respectively to path to the config file its name.
@@ -131,10 +125,16 @@ def _resolve_outputs(pconfig: BaseProcessConfig):
 
     4. If `odf_output` is not `None` or `False`:
         a) Depending on the value of `odf_output`: True, a filename, a path to directory or a path to a filename,
-           an output path is build using `default_path` if needed. ODF doesn't require a filename since it built by default
-           using metadata in the ODF file. Thus `default_filename` is not used here.
+           an output path is build using `default_path` if needed. ODF doesn't require a filename since it is built
+           by default using metadata in the ODF file. Thus `default_filename` is not used here.
 
-        b) Updates `default_path` and `default_filename` using `netcdf_path` value.
+        b) If `netcdf_output` is False:
+           Updates `default_path` using `odf_path` value. Updates `default_filename` if `odf_path` has a filename
+           otherwise it stays the same..
+
+    5. TODO FIGURE.
+
+    6. `log_path` is made using `default_path` and `default_filename`.
 
     ...
 
@@ -150,14 +150,17 @@ def _resolve_outputs(pconfig: BaseProcessConfig):
 
     if pconfig.netcdf_output:
         _make_netcdf_output_path(pconfig, default_path, default_filename)
-        default_path, default_filename = update_defaults_path(pconfig.netcdf_path)
+        default_path, default_filename = Path(pconfig.netcdf_path).parent, Path(pconfig.netcdf_path).stem
 
     if pconfig.odf_output:
         _make_odf_output_path(pconfig, default_path)
         if not pconfig.netcdf_output:
-            default_path, default_filename = update_defaults_path(pconfig.odf_path)
+            default_path = Path(pconfig.odf_path).parent
+            if not is_directory(pconfig.odf_path):
+                default_filename = Path(pconfig.odf_path).stem
 
-    _make_figure_output_path(pconfig, default_path, default_filename)
+    if pconfig.make_figures:
+        _make_figure_output_path(pconfig, default_path, default_filename)
 
     pconfig.log_path = str(default_path.joinpath(default_filename))
 
@@ -199,12 +202,11 @@ def _make_odf_output_path(pconfig: BaseProcessConfig, default_path: Path):
 
 
 def _make_figure_output_path(pconfig: BaseProcessConfig, default_path: Path, default_filename: Path):
-    if isinstance(pconfig.make_figures, bool):
-        if pconfig.make_figures is True:
-            pconfig.figures_output = True
-            if pconfig.headless is True:
-                pconfig.figures_path = str(default_path.joinpath(default_filename))
-    elif isinstance(pconfig.make_figures, str):
+    if pconfig.make_figures is True:
+        pconfig.figures_output = True
+        if pconfig.headless is True:
+            pconfig.figures_path = str(default_path.joinpath(default_filename))
+    else:
         _figures_output = Path(pconfig.make_figures)
         if Path(_figures_output.name) == _figures_output:
             _figures_path = default_path.joinpath(_figures_output).resolve()
@@ -229,8 +231,3 @@ def is_directory(path: str):
 
 def parent_is_dir(path: str):
     return Path(path).parent.is_dir()
-
-
-def update_defaults_path(path: str) -> tp.Tuple[Path, Path]:
-    return Path(path).parent, Path(path).stem
-

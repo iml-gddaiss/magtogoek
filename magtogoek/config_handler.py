@@ -166,6 +166,14 @@ def get_config_taskparser(sensor_type: Optional[str] = None):
     section = "OUTPUT"
     tparser.add_option(section, "netcdf_output", dtypes=["str", "bool"], default="", is_path=True, null_value=False)
     tparser.add_option(section, "odf_output", dtypes=["str", "bool"], default="", is_path=True, null_value=False)
+    tparser.add_option(section, "make_figures", dtypes=["bool", "str"], default=True, null_value=False)
+    tparser.add_option(section, "make_log", dtypes=["bool"], default=True, null_value=False)
+    tparser.add_option(section, "force_platform_metadata", dtypes=["bool"], default=False, null_value=False)
+    tparser.add_option(section, "bodc_name", dtypes=["bool"], default=True, null_value=False)
+    tparser.add_option(section, "merge_output_files", dtypes=["bool"], default=True, null_value=False)
+    tparser.add_option(section, "odf_data", dtypes=["str"], default="both", choice=["vel", "anc", "both"],
+                       comments='One of [vel, anc, both,].')
+
 
     section = "NETCDF_CF"
     tparser.add_option(section, "Conventions", dtypes=["str"], default="CF 1.8")
@@ -242,15 +250,10 @@ def get_config_taskparser(sensor_type: Optional[str] = None):
         tparser.add_option(section, "roll_threshold", dtypes=["int"], default=20, value_min=0, value_max=180, comments='Value between 0 and 180.')
 
         section = "ADCP_OUTPUT"
-        tparser.add_option(section, "merge_output_files", dtypes=["bool"], default=True, null_value=False)
-        tparser.add_option(section, "bodc_name", dtypes=["bool"], default=True, null_value=False)
-        tparser.add_option(section, "force_platform_metadata", dtypes=["bool"], default=False, null_value=False)
         tparser.add_option(section, "drop_percent_good", dtypes=["bool"], default=True, null_value=False)
         tparser.add_option(section, "drop_correlation", dtypes=["bool"], default=True, null_value=False)
         tparser.add_option(section, "drop_amplitude", dtypes=["bool"], default=True, null_value=False)
-        tparser.add_option(section, "odf_data", dtypes=["str"], default="both", choice=["vel", "anc", "both"], comments='One of [vel, anc, both,].')
-        tparser.add_option(section, "make_figures", dtypes=["bool", "str"], default=True, null_value=False)
-        tparser.add_option(section, "make_log", dtypes=["bool"], default=True, null_value=False)
+
 
     return tparser
 
