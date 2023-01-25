@@ -31,22 +31,6 @@ PLATFORM_METADATA = PlatformMetadata(
 )
 PLATFORM_METADATA.add_sensor(sensor_id='ADCP_01', kwargs={'sensor_id': 'ADCP_01', 'sensor_type': 'adcp'})
 
-# PLATFORM_METADATA.platform.update(
-#     {
-#         "platform_name": "platform_name_test",
-#         "description": "platform_description_test"}
-# )
-# PLATFORM_METADATA['buoy_specs'].update(
-#     {
-#         "type": "buoy_type_test",
-#         "model": "buoy_model_test",
-#         "height": "buoy_height_test",
-#         "diameter": "buoy_diameter_test",
-#         "weight": "buoy_weight_test",
-#         "description": "buoy_description_test",
-#     }
-# )
-
 
 def test_make():
     odf = make_odf(DATASET, PLATFORM_METADATA, 'ADCP_01', GLOBAL_ATTRS)
