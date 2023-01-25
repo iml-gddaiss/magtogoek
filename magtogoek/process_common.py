@@ -89,7 +89,9 @@ class BaseProcessConfig:
                 self.platform_type = DEFAULT_PLATFORM_TYPE
                 l.warning(f"platform_type not specified or not one of {PLATFORM_TYPES}.")
                 l.warning(f"platform_type set to `{self.platform_type}` for platform_type.")
-            self.platform_metadata = default_platform_metadata(self.platform_type, self.sensor_type+"_01", self.sensor_type)
+            if not self.sensor_id:
+                self.sensor_id = self.sensor_type + "_01"
+            self.platform_metadata = default_platform_metadata(self.platform_type, self.sensor_id, self.sensor_type)
 
     def resolve_outputs(self):
         _resolve_outputs(self)

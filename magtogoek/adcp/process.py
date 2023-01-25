@@ -777,7 +777,7 @@ def add_global_attributes(dataset: xr.Dataset, pconfig: ProcessConfig):
     dataset.attrs["data_type"] = DATA_TYPES[pconfig.platform_type]  # COMON
     dataset.attrs["data_subtype"] = DATA_SUBTYPES[pconfig.platform_type]  # COMON
 
-    pconfig.platform_metadata.add_to_dataset(dataset, pconfig.force_platform_metadata)
+    pconfig.platform_metadata.add_to_dataset(dataset, pconfig.sensor_id, pconfig.force_platform_metadata)
 
     compute_global_attrs(dataset)  # already common
 
