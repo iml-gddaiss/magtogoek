@@ -303,7 +303,7 @@ def add_processing_timestamp(dataset: xr.Dataset):
 
 def clean_dataset_for_nc_output(dataset: xr.Dataset,
                                 pconfig: BaseProcessConfig,
-                                )->xr.Dataset:
+                                ) -> xr.Dataset:
     """ Clean dataset for netcdf output.
 
     Drops variables in `pconfig.variables_to_drop`
@@ -330,7 +330,7 @@ def clean_dataset_for_nc_output(dataset: xr.Dataset,
 
 
 def format_data_encoding(dataset: xr.Dataset):
-    """Format data encoding with default value in module."""
+    """Format data encoding with default value in module. Requires generic variable names."""
 
     for var in dataset.variables:
         if var == "time":

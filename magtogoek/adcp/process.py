@@ -397,6 +397,13 @@ def _process_adcp_data(pconfig: ProcessConfig):
 
     _set_xducer_depth_as_sensor_depth(dataset)  # ADCP SPECIFIC
 
+    # ------------- #
+    # DATA ENCODING #
+    # ------------- #
+    l.section("Data Encoding")
+
+    format_data_encoding(dataset)
+
     # -------------------- #
     # VARIABLES ATTRIBUTES #
     # -------------------- #
@@ -405,13 +412,6 @@ def _process_adcp_data(pconfig: ProcessConfig):
     p01_codes = _get_p01_codes(dataset, pconfig)
 
     dataset = _format_variables_names_and_attributes(dataset, pconfig, p01_codes)
-
-    # ------------- #
-    # DATA ENCODING #
-    # ------------- #
-    l.section("Data Encoding")
-
-    format_data_encoding(dataset)
 
     # ------------ #
     # MAKE FIGURES #
