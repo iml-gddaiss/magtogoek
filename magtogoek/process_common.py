@@ -358,10 +358,10 @@ def _format_variables_names_and_attributes(
     dataset.attrs["variables_gen_name"] = [var for var in dataset.variables]  # For Odf outputs
 
     dataset = format_variables_names_and_attributes(
-        dataset,
-        pconfig.bodc_name,
-        p01_codes,
-        pconfig.variables_to_add_sensor_type
+        dataset=dataset,
+        bodc_name=pconfig.bodc_name,
+        p01_codes=p01_codes,
+        variable_to_add_sensor_type=pconfig.variables_to_add_sensor_type
     )
 
     dataset["time"].assign_attrs(TIME_ATTRS)
