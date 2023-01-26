@@ -57,6 +57,8 @@ INDENT = "  "  # double space
 NEWLINE = "\n"  # new line
 PRECISION = 6
 
+DATE_STRING_FILL_VALUE = "17-NOV-1858 00:00:00.00"
+
 REPEATED_HEADERS = [
     "buoy_instrument",
     "general_cal",
@@ -855,7 +857,7 @@ def odf_time_format(time):
     try:
         odf_time = pd.Timestamp(time).strftime("%d-%b-%Y %H:%M:%S.%f").upper()[:-4]
     except ValueError:
-        odf_time = "17-NOV-1858 00:00:00.00"
+        odf_time = DATE_STRING_FILL_VALUE
     return odf_time
 
 

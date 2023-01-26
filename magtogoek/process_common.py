@@ -3,7 +3,7 @@ import sys
 import typing as tp
 from pathlib import Path
 
-from magtogoek import logger as l, PLATFORM_TYPES, SENSOR_TYPES
+from magtogoek import logger as l, PLATFORM_TYPES
 from magtogoek.platforms import PlatformMetadata, load_platform_metadata, default_platform_metadata
 from magtogoek.utils import ensure_list_format
 

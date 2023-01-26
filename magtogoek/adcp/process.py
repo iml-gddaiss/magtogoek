@@ -220,8 +220,6 @@ DEPTH_ENCODING = {
     "dtype": "float32",
 }
 
-# filled value used by ODF format
-DATE_STRING_FILL_VALUE = "17-NOV-1858 00:00:00.00"
 QC_FILL_VALUE = 127
 QC_ENCODING = {"dtype": "int8", "_FillValue": QC_FILL_VALUE}
 
