@@ -85,6 +85,7 @@ def format_variables_names_and_attributes(
     original_coords_name = dataset.coords
 
     dataset = _convert_variables_names(dataset, p01_codes)
+
     if "sensor_type" in dataset.attrs:
         for var in variable_to_add_sensor_type:
             if var in dataset:

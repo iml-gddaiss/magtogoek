@@ -220,7 +220,7 @@ def config_adcp(
               help="""Using remotely with no display capability""")
 @click.pass_context
 def quick_adcp(ctx, info, input_files: tuple, sonar: str, yearbase: int, **options: dict):
-    """Command to make an quickly process adcp files. The [OPTIONS] can be added
+    """Command to quickly process adcp files. The [OPTIONS] can be added
     before or after the [inputs_files]."""
     # TODO TEST. So far not crashing
     from magtogoek.config_handler import cli_options_to_config

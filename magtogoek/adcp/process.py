@@ -438,11 +438,11 @@ def _process_adcp_data(pconfig: ProcessConfig):
     # NETCDF FORMATTING #
     # ------------------#
 
+    add_processing_timestamp(dataset)
+
     dataset = _drop_beam_metadata(dataset, pconfig) # ADCP SPECIFIC
 
     dataset = clean_dataset_for_nc_output(dataset, pconfig)
-
-    add_processing_timestamp(dataset)
 
     dataset.attrs["history"] = l.logbook
 
@@ -686,10 +686,10 @@ def _drop_beam_metadata(dataset: xr.Dataset, pconfig: ProcessConfig):
     return dataset
 
 
-def _get_p01_codes(dataset: xr.Dataset, pconfig:ProcessConfig) -> dict:
+def _get_p01_codes(dataset: xr.Dataset, pconfig: ProcessConfig) -> dict:
     """Make a dictionnary of p01_code depending on the data coordinate_system.
     """
-    p01_codes = P01_CODES
+    p01_codes = {**P01_CODES}
 
     if dataset.attrs['coord_system'] == 'earth':
         p01_codes.update((P01_VEL_CODES[pconfig.platform_type]))
