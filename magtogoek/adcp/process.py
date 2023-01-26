@@ -67,10 +67,10 @@ from magtogoek.adcp.odf_exporter import make_odf
 from magtogoek.adcp.quality_control import (adcp_quality_control,
                                             no_adcp_quality_control)
 from magtogoek.attributes_formatter import (
-    format_variables_names_and_attributes, _add_data_min_max_to_var_attrs)
+    _add_data_min_max_to_var_attrs)
 from magtogoek.navigation import load_navigation
 from magtogoek.process_common import BaseProcessConfig, add_global_attributes, write_log, write_netcdf, \
-    add_processing_timestamp, clean_dataset_for_nc_output, format_data_encoding
+    add_processing_timestamp, clean_dataset_for_nc_output, format_data_encoding, _format_variables_names_and_attributes
 from magtogoek.tools import (
     rotate_2d_vector, regrid_dataset, _prepare_flags_for_regrid, _new_flags_bin_regrid,
     _new_flags_interp_regrid, get_datetime_and_count, cut_bin_depths, cut_times)
@@ -94,14 +94,11 @@ VARIABLES_TO_DROP = [
 GLOBAL_ATTRS_TO_DROP = [
     "sensor_type",
     "platform_type",
-    "VAR_TO_ADD_SENSOR_TYPE",
-    "P01_CODES",
     "xducer_depth",
     "sonar",
     "variables_gen_name",
     "binary_mask_tests",
     "binary_mask_tests_values",
-    "bodc_name"
 ]
 
 BEAM_VEL_CODES = {
@@ -204,8 +201,6 @@ P01_CODES = {
 
 VAR_TO_ADD_SENSOR_TYPE = ["TEMPPR01", "PRESPR01", "ADEPZZ01", "BATHDPTH"]
 
-TIME_ATTRS = {"cf_role": "profile_id"}
-
 
 class ProcessConfig(BaseProcessConfig):
     yearbase: int = None
@@ -246,6 +241,7 @@ class ProcessConfig(BaseProcessConfig):
 
     def __init__(self, config_dict: dict = None):
         super().__init__(config_dict)
+        self.variables_to_add_sensor_type = VAR_TO_ADD_SENSOR_TYPE
         self.variables_to_drop = VARIABLES_TO_DROP
         self.global_attributes_to_drop = GLOBAL_ATTRS_TO_DROP
 
@@ -406,7 +402,9 @@ def _process_adcp_data(pconfig: ProcessConfig):
     # -------------------- #
     l.section("Variables attributes")
 
-    dataset = _format_variables_names_and_attributes(dataset, pconfig)
+    p01_codes = _get_p01_codes(dataset, pconfig)
+
+    dataset = _format_variables_names_and_attributes(dataset, pconfig, p01_codes)
 
     # ------------- #
     # DATA ENCODING #
@@ -688,31 +686,18 @@ def _drop_beam_metadata(dataset: xr.Dataset, pconfig: ProcessConfig):
     return dataset
 
 
-def _format_variables_names_and_attributes(dataset: xr.Dataset, pconfig: ProcessConfig):
-    """Format variables attributes.
-
-    Depend on the value of `dataset.attrs['coord_system']`.
-
+def _get_p01_codes(dataset: xr.Dataset, pconfig:ProcessConfig) -> dict:
+    """Make a dictionnary of p01_code depending on the data coordinate_system.
     """
-    dataset.attrs['bodc_name'] = pconfig.bodc_name
-    dataset.attrs["VAR_TO_ADD_SENSOR_TYPE"] = VAR_TO_ADD_SENSOR_TYPE
-    dataset.attrs["P01_CODES"] = P01_CODES
+    p01_codes = P01_CODES
 
     if dataset.attrs['coord_system'] == 'earth':
-        dataset.attrs["P01_CODES"].update((P01_VEL_CODES[pconfig.platform_type]))
+        p01_codes.update((P01_VEL_CODES[pconfig.platform_type]))
     elif dataset.attrs['coord_system'] == 'xyz':
-        dataset.attrs["P01_CODES"].update(XYZ_VEL_CODES)
+        p01_codes.update(XYZ_VEL_CODES)
     elif dataset.attrs['coord_system'] == 'beam':
-        dataset.attrs["P01_CODES"].update(BEAM_VEL_CODES)
-
-    dataset.attrs["variables_gen_name"] = [var for var in dataset.variables]  # For Odf outputs
-
-    dataset = format_variables_names_and_attributes(dataset)
-
-    dataset["time"].assign_attrs(TIME_ATTRS)
-    l.log("Variables attributes added.")
-
-    return dataset
+        p01_codes.update(BEAM_VEL_CODES)
+    return p01_codes
 
 
 def _regrid_dataset(dataset: xr.Dataset, pconfig: ProcessConfig) -> xr.Dataset:

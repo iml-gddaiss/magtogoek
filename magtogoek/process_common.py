@@ -6,7 +6,7 @@ import xarray as xr
 from pathlib import Path
 
 from magtogoek import logger as l, PLATFORM_TYPES
-from magtogoek.attributes_formatter import compute_global_attrs
+from magtogoek.attributes_formatter import compute_global_attrs, format_variables_names_and_attributes
 from magtogoek.platforms import PlatformMetadata, load_platform_metadata, default_platform_metadata
 from magtogoek.utils import ensure_list_format
 
@@ -31,6 +31,8 @@ QC_ENCODING = {"dtype": "int8", "_FillValue": QC_FILL_VALUE}
 DATA_FILL_VALUE = -9999.0
 DATA_ENCODING = {"dtype": "float32", "_FillValue": DATA_FILL_VALUE}
 
+
+TIME_ATTRS = {"cf_role": "profile_id"}
 
 
 class BaseProcessConfig:
@@ -62,6 +64,7 @@ class BaseProcessConfig:
     figures_path: str = None
     figures_output: bool = None
 
+    variables_to_add_sensor_type: tp.List[str] = None
     variables_to_drop: tp.List[str] = None
     global_attributes_to_drop: tp.List[str] = None
     drop_empty_attrs: bool = False
@@ -344,3 +347,24 @@ def format_data_encoding(dataset: xr.Dataset):
 
     l.log(f"Data _FillValue: {DATA_FILL_VALUE}")
     l.log(f"Ancillary Data _FillValue: {QC_FILL_VALUE}")
+
+
+def _format_variables_names_and_attributes(
+        dataset: xr.Dataset,
+        pconfig: BaseProcessConfig,
+        p01_codes: dict
+):
+    """Format variables attributes"""
+    dataset.attrs["variables_gen_name"] = [var for var in dataset.variables]  # For Odf outputs
+
+    dataset = format_variables_names_and_attributes(
+        dataset,
+        pconfig.bodc_name,
+        p01_codes,
+        pconfig.variables_to_add_sensor_type
+    )
+
+    dataset["time"].assign_attrs(TIME_ATTRS)
+    l.log("Variables attributes added.")
+
+    return dataset

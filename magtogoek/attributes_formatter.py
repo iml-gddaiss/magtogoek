@@ -45,33 +45,36 @@ STATIC_ATTRIBUTES_ABSOLUTE_FILE_PATH = (
 )
 
 
-def format_variables_names_and_attributes(dataset: xr.Dataset) -> xr.Dataset:
+def format_variables_names_and_attributes(
+        dataset: xr.Dataset,
+        bodc_name: bool,
+        p01_codes: dict,
+        variable_to_add_sensor_type: list
+) -> xr.Dataset:
     """Format variables names and attributes
 
     Returns dataset with variables attributes set.
 
     Convert variables names to BODC and then adds CF and SeaDataNet metadata
     to variables attributes. Coordinates names are always changed back to their
-    original names (generic_name). Variables names can also be changed back to
-    their original names (generic_name) setting `use_bodc_codes` as `False`/
-
-    Require dataset global attributes  :
-        `bodc_name` : Bool to say that indicates if the dataset has uses bodc name.
-        `P01_CODES` : a dictionary containing `generic_name`:`p01_codes`
-             as keys and items.
+    original names (generic_name). Variable names can also be changed back to
+    their original names (generic_name) setting `use_bodc_codes` as `False`.
 
     None essential global attributes :
         `sensor_type` :
         `sensor_depth` :
         `sensor_serial` :
-        `VAR_TO_ADD_SENSOR_TYPE` : List of P01 parameters codes of variables to which
-            add the sensor_type attributes.
 
     Parameters
     ----------
     dataset :
-        dataset to format. The dataset must contain a global_attributes named `P01_CODE_TRANSLATOR`
-    which has to be a dictionary containing `generic_name`:`p01_code` as keys and items.
+        dataset to format.
+    bodc_name :
+        True if the bodc_name are to be used.
+    p01_codes :
+        generic name to bodc p01_code mapping.
+    variable_to_add_sensor_type :
+        List of P01 parameters codes of variables to which add the sensor_type attributes.
 
     Notes
     -----
@@ -81,19 +84,19 @@ def format_variables_names_and_attributes(dataset: xr.Dataset) -> xr.Dataset:
 
     original_coords_name = dataset.coords
 
-    dataset = _convert_variables_names(dataset)
-    if "VAR_TO_ADD_SENSOR_TYPE" in dataset.attrs:
-        for var in dataset.attrs["VAR_TO_ADD_SENSOR_TYPE"]:
+    dataset = _convert_variables_names(dataset, p01_codes)
+    if "sensor_type" in dataset.attrs:
+        for var in variable_to_add_sensor_type:
             if var in dataset:
                 dataset[var].attrs["sensor_type"] = dataset.attrs["sensor_type"]
 
     _add_sdn_and_cf_var_attrs(dataset, json2dict(STATIC_ATTRIBUTES_ABSOLUTE_FILE_PATH))
 
-    if dataset.attrs['bodc_name'] is not True:
-        dataset = _convert_variables_names(dataset, convert_back_to_generic=True)
+    if bodc_name is not True:
+        dataset = _convert_variables_names(dataset, p01_codes, convert_back_to_generic=True)
     else:
         dataset = dataset.rename(
-            {dataset.attrs["P01_CODES"][name]: name for name in original_coords_name}
+            {p01_codes[name]: name for name in original_coords_name}
         )
 
     _add_data_min_max_to_var_attrs(dataset)
@@ -110,7 +113,7 @@ def format_variables_names_and_attributes(dataset: xr.Dataset) -> xr.Dataset:
 
 
 def _convert_variables_names(
-    dataset: xr.Dataset, convert_back_to_generic: bool = False
+    dataset: xr.Dataset, p01_codes: dict, convert_back_to_generic: bool = False
 ) -> xr.Dataset:
     """Convert variable and coords names.
 
@@ -120,14 +123,17 @@ def _convert_variables_names(
     Parameters
     ----------
     dataset :
-        FIXME
-    convert_back_to_generic:
+        dataset to format
+    p01_codes :
+        generic name to bodc p01_code mappin.
+    convert_back_to_generic :
        converts from bodc to generic.
+
     Notes
     -----
     Converting names is used to add the convention attributes to variables.
     """
-    varname_translator = {**dataset.attrs["P01_CODES"]}
+    varname_translator = {**p01_codes}
 
     if convert_back_to_generic:
         # mapping key and value and value to key
