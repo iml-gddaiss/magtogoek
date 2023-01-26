@@ -48,7 +48,6 @@ FIXME SOURCE : moored adcp ?
 """
 
 import getpass
-import sys
 
 import click
 import numpy as np
@@ -68,12 +67,13 @@ from magtogoek.adcp.odf_exporter import make_odf
 from magtogoek.adcp.quality_control import (adcp_quality_control,
                                             no_adcp_quality_control)
 from magtogoek.attributes_formatter import (
-    compute_global_attrs, format_variables_names_and_attributes, _add_data_min_max_to_var_attrs)
+    format_variables_names_and_attributes, _add_data_min_max_to_var_attrs)
 from magtogoek.navigation import load_navigation
-from magtogoek.process_common import BaseProcessConfig
+from magtogoek.process_common import BaseProcessConfig, add_global_attributes, write_log, write_netcdf, \
+    add_processing_timestamp, clean_dataset_for_nc_output, format_data_encoding
 from magtogoek.tools import (
     rotate_2d_vector, regrid_dataset, _prepare_flags_for_regrid, _new_flags_bin_regrid,
-    _new_flags_interp_regrid)
+    _new_flags_interp_regrid, get_datetime_and_count, cut_bin_depths, cut_times)
 
 l.get_logger('adcp_processing')
 
@@ -87,9 +87,6 @@ DEFAULT_CONFIG_ATTRIBUTES = {
     "publisher_name": getpass.getuser(),
     "source": "adcp",
 }
-
-DATA_TYPES = {"buoy": "madcp", "mooring": "madcp", "ship": "adcp", "lowered": "adcp"}
-DATA_SUBTYPES = {"buoy": "BUOY", "mooring": "MOORED", "ship": "SHIPBORNE", 'lowered': 'LOWERED'}
 
 VARIABLES_TO_DROP = [
     "binary_mask"
@@ -209,76 +206,6 @@ VAR_TO_ADD_SENSOR_TYPE = ["TEMPPR01", "PRESPR01", "ADEPZZ01", "BATHDPTH"]
 
 TIME_ATTRS = {"cf_role": "profile_id"}
 
-TIME_ENCODING = {
-    "units": "seconds since 1970-1-1 00:00:00Z",
-    "calendar": "gregorian",
-    "_FillValue": None,
-}
-TIME_STRING_ENCODING = {"dtype": "S1"}
-DEPTH_ENCODING = {
-    "_FillValue": -9999.0,
-    "dtype": "float32",
-}
-
-QC_FILL_VALUE = 127
-QC_ENCODING = {"dtype": "int8", "_FillValue": QC_FILL_VALUE}
-
-DATA_FILL_VALUE = -9999.0
-DATA_ENCODING = {"dtype": "float32", "_FillValue": DATA_FILL_VALUE}
-
-
-def process_adcp(config: dict, drop_empty_attrs: bool = False, headless: bool = False):
-    """Process adcp data with parameters from a config file.
-
-    Parameters
-    ----------
-    config :
-        Dictionary make from a configfile (see config_handler.load_config).
-    drop_empty_attrs :
-        If true, all netcdf empty ('') global attributes will be drop from
-        the output.
-    headless :
-        If true, figures are not displayed.
-
-    The actual data processing is carried out by _process_adcp_data.
-    """
-    pconfig = ProcessConfig(config)
-    pconfig.drop_empty_attrs = drop_empty_attrs
-    pconfig.headless = headless
-
-    input_files = list(pconfig.input_files)
-    odf_output = pconfig.odf_output
-    netcdf_output = pconfig.netcdf_output
-    event_qualifier1 = pconfig.metadata['event_qualifier1']
-
-    if pconfig.merge_output_files is True:
-        pconfig.resolve_outputs()
-        _process_adcp_data(pconfig)
-    else:
-        for count, filename in enumerate(input_files):
-            pconfig.input_files = [filename]
-            if isinstance(netcdf_output, str):
-                if not Path(netcdf_output).is_dir():
-                    pconfig.netcdf_output = str(Path(netcdf_output).with_suffix("")) + f"_{count}"
-                else:
-                    pconfig.netcdf_output = netcdf_output
-
-            if isinstance(odf_output, str):
-                if not Path(odf_output).is_dir():
-                    pconfig.odf_output = str(Path(odf_output).with_suffix("")) + f"_{count}"
-                else:
-                    pconfig.metadata['event_qualifier1'] = event_qualifier1 + f"_{Path(filename).name}"  # PREVENTS FROM OVERWRITING THE SAME FILE
-                    pconfig.odf_output = odf_output
-            else:
-                pconfig.metadata['event_qualifier1'] = event_qualifier1 + f"_{Path(filename).name}"  # PREVENTS FROM OVERWRITING THE SAME FILE
-                pconfig.odf_output = odf_output
-
-            pconfig.resolve_outputs()
-
-            _process_adcp_data(pconfig)
-
-            click.echo(click.style("=" * TERMINAL_WIDTH, fg="white", bold=True))
-
 
 class ProcessConfig(BaseProcessConfig):
     yearbase: int = None
@@ -316,6 +243,73 @@ class ProcessConfig(BaseProcessConfig):
 
     grid_depth: tp.Union[str, bool] = None
     grid_method: str = None
+
+    def __init__(self, config_dict: dict = None):
+        super().__init__(config_dict)
+        self.variables_to_drop = VARIABLES_TO_DROP
+        self.global_attributes_to_drop = GLOBAL_ATTRS_TO_DROP
+
+
+def process_adcp(config: dict, drop_empty_attrs: bool = False, headless: bool = False):
+    """Process adcp data with parameters from a config file.
+
+    If `pconfig.merge_output_files` is False, each input file is process individually.
+
+    Parameters
+    ----------
+    config :
+        Dictionary make from a configfile (see config_handler.load_config).
+    drop_empty_attrs :
+        If true, all netcdf empty ('') global attributes will be drop from
+        the output.
+    headless :
+        If true, figures are not displayed.
+
+    The actual data processing is carried out by _process_adcp_data.
+    """
+    pconfig = ProcessConfig(config)
+    pconfig.drop_empty_attrs = drop_empty_attrs
+    pconfig.headless = headless
+
+    if pconfig.merge_output_files is True:
+        pconfig.resolve_outputs()
+        _process_adcp_data(pconfig)
+    else:
+        input_files = list(pconfig.input_files)
+        odf_output = pconfig.odf_output
+        netcdf_output = pconfig.netcdf_output
+        event_qualifier1 = pconfig.metadata['event_qualifier1']
+
+        for count, filename in enumerate(input_files):
+            pconfig.input_files = [filename]
+            # If the user set path ...
+            if isinstance(netcdf_output, str):
+                # If the path is a filename ...
+                if not Path(netcdf_output).is_dir():
+                    # An incrementing suffix is added to the filename
+                    pconfig.netcdf_output = str(Path(netcdf_output).with_suffix("")) + f"_{count}"
+
+            # If the user set path ...
+            if isinstance(odf_output, str):
+                # If the path is a filename ...
+                if not Path(odf_output).is_dir():
+                    # An incrementing suffix is added to the filename
+                    pconfig.odf_output = str(Path(odf_output).with_suffix("")) + f"_{count}"
+                # If it's a directory
+                else:
+                    # An incrementing suffix is added to the event_qualifier that builds the filename
+                    # PREVENTS FROM OVERWRITING THE SAME FILE
+                    pconfig.metadata['event_qualifier1'] = event_qualifier1 + f"_{Path(filename).name}"
+            elif odf_output is True:
+                # An incrementing suffix is added to the event_qualifier that builds the filename
+                # PREVENTS FROM OVERWRITING THE SAME FILE
+                pconfig.metadata['event_qualifier1'] = event_qualifier1 + f"_{Path(filename).name}"
+
+            pconfig.resolve_outputs()
+
+            _process_adcp_data(pconfig)
+
+            click.echo(click.style("=" * TERMINAL_WIDTH, fg="white", bold=True))
 
 
 def _process_adcp_data(pconfig: ProcessConfig):
@@ -399,7 +393,7 @@ def _process_adcp_data(pconfig: ProcessConfig):
 
     l.section("Adding Global Attributes")
 
-    add_global_attributes(dataset, pconfig)
+    add_global_attributes(dataset, pconfig, STANDARD_GLOBAL_ATTRIBUTES)
 
     if pconfig.platform_metadata.platform.platform_type in ["mooring", "buoy"]:  # ADCP SPECIFIC
         if "bt_depth" in dataset:
@@ -473,8 +467,8 @@ def _load_adcp_data(pconfig: ProcessConfig) -> xr.Dataset:
     Load and trim the adcp data into a xarray.Dataset.
     Drops bottom track data if `keep_bt` is False.
     """
-    start_time, leading_index = _get_datetime_and_count(pconfig.leading_trim)
-    end_time, trailing_index = _get_datetime_and_count(pconfig.trailing_trim)
+    start_time, leading_index = get_datetime_and_count(pconfig.leading_trim)
+    end_time, trailing_index = get_datetime_and_count(pconfig.trailing_trim)
 
     dataset = load_adcp_binary(
         filenames=pconfig.input_files,
@@ -511,116 +505,6 @@ def _load_adcp_data(pconfig: ProcessConfig) -> xr.Dataset:
     )
     if not pconfig.keep_bt:
         dataset = _drop_bottom_track(dataset)
-
-    return dataset
-
-
-def _get_datetime_and_count(trim_arg: tp.Union[str, int]):
-    """Get datetime and count from trim_arg.
-
-    If `trim_arg` is None, returns (None, None)
-    If 'T' is a datetime or a count returns (Timestamp(trim_arg), None)
-    Else returns (None, int(trim_arg))
-
-    Returns:
-    --------
-    Timestamp:
-        None or pandas.Timestamp
-    count:
-        None or int
-
-    """
-    if trim_arg:
-        if isinstance(trim_arg, int):
-            return None, trim_arg
-        elif not trim_arg.isdecimal():
-            try:
-                return pd.Timestamp(trim_arg), None
-            except ValueError:
-                print("Bad datetime format for trim. Use YYYY-MM-DDTHH:MM:SS.ssss")
-                print("Process aborted")
-                sys.exit()
-        else:
-            return None, int(trim_arg)
-    else:
-        return None, None
-
-
-def cut_bin_depths(
-        dataset: xr.Dataset, depth_range: tp.Union[int, float, list] = None
-) -> xr.Dataset:
-    """
-    Return dataset with cut bin depths if the depth_range are not outside the depth span.
-    Parameters
-    ----------
-    dataset :
-    depth_range :
-        min or (min, max) to be included in the dataset.
-        Bin depths outside this range will be cut.
-
-    Returns
-    -------
-    dataset with depths cut.
-
-    """
-    if depth_range:
-        if not isinstance(depth_range, (list, tuple)):
-            if depth_range > dataset.depth.max():
-                l.log("depth_range value is greater than the maximum bin depth. Depth slicing aborted.")
-            else:
-                dataset = dataset.sel(depth=slice(depth_range, None))
-                l.log(f"Bin of depth inferior to {depth_range} m were cut.")
-
-        elif len(depth_range) == 2:
-            if dataset.depth[0] > dataset.depth[-1]:
-                depth_range.reverse()
-
-            if depth_range[0] > dataset.depth.max() or depth_range[1] < dataset.depth.min():
-                l.log("depth_range values are outside the actual depth range. Depth slicing aborted.")
-            else:
-                dataset = dataset.sel(depth=slice(*depth_range))
-                l.log(f"Bin of depth inferior to {depth_range[0]} m and superior to {depth_range[1]} m were cut.")
-        else:
-            l.log(f"depth_range expects a maximum of 2 values but {len(depth_range)} were given. Depth slicing aborted.")
-    return dataset
-
-
-def cut_times(
-        dataset: xr.Dataset, start_time: pd.Timestamp = None, end_time: pd.Timestamp = None
-) -> xr.Dataset:
-    """
-    Return a dataset with time cut if they are not outside the dataset time span.
-
-    Parameters
-    ----------
-    dataset
-    start_time :
-        minimum time to be included in the dataset.
-    end_time :
-        maximum time to be included in the dataset.
-    Returns
-    -------
-    dataset with times cut.
-
-    """
-    msg = []
-    out_off_bound_time = False
-    if start_time is not None:
-        if start_time > dataset.time.max():
-            out_off_bound_time = True
-        else:
-            msg.append(f"Start={start_time.strftime('%Y-%m-%dT%H:%M:%S')}")
-    if end_time is not None:
-        if end_time < dataset.time.min():
-            out_off_bound_time = True
-        else:
-            msg.append(f"end={end_time.strftime('%Y-%m-%dT%H:%M:%S')}")
-    if out_off_bound_time is True:
-        l.warning("Trimming datetimes out of bounds. Time slicing aborted.")
-    else:
-        dataset = dataset.sel(time=slice(start_time, end_time))
-        if len(msg) > 0:
-            l.log('Time slicing: ' + ', '.join(msg) + '.')
 
     return dataset
 
@@ -773,22 +657,6 @@ def _quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
                          bad_pressure=pconfig.bad_pressure)
 
 
-def add_global_attributes(dataset: xr.Dataset, pconfig: ProcessConfig):
-    dataset.attrs.update(STANDARD_GLOBAL_ATTRIBUTES)
-
-    dataset.attrs["data_type"] = DATA_TYPES[pconfig.platform_type]  # COMON
-    dataset.attrs["data_subtype"] = DATA_SUBTYPES[pconfig.platform_type]  # COMON
-
-    pconfig.platform_metadata.add_to_dataset(dataset, pconfig.sensor_id, pconfig.force_platform_metadata)
-
-    compute_global_attrs(dataset)  # already common
-
-    dataset.attrs.update(pconfig.metadata)
-
-    if not dataset.attrs["source"]:  # COMON
-        dataset.attrs["source"] = pconfig.platform_type
-
-
 def _set_xducer_depth_as_sensor_depth(dataset: xr.Dataset):
     """Set xducer_depth value to dataset attributes sensor_depth"""
     if "xducer_depth" in dataset.attrs:  # OCEAN SURVEYOR
@@ -847,26 +715,6 @@ def _format_variables_names_and_attributes(dataset: xr.Dataset, pconfig: Process
     return dataset
 
 
-def format_data_encoding(dataset: xr.Dataset):
-    """Format data encoding with default value in module."""
-
-    for var in dataset.variables:
-        if var == "time":
-            dataset.time.encoding = TIME_ENCODING
-        elif var == "depth":
-            dataset.depth.encoding = DEPTH_ENCODING
-        elif "_QC" in var:
-            dataset[var].values = dataset[var].values.astype("int8")
-            dataset[var].encoding = QC_ENCODING
-        elif var == "time_string":
-            dataset[var].encoding = TIME_STRING_ENCODING
-        else:
-            dataset[var].encoding = DATA_ENCODING
-
-    l.log(f"Data _FillValue: {DATA_FILL_VALUE}")
-    l.log(f"Ancillary Data _FillValue: {QC_FILL_VALUE}")
-
-
 def _regrid_dataset(dataset: xr.Dataset, pconfig: ProcessConfig) -> xr.Dataset:
     """ Wrapper for regrid_dataset
 
@@ -920,38 +768,6 @@ def _regrid_dataset(dataset: xr.Dataset, pconfig: ProcessConfig) -> xr.Dataset:
     return dataset
 
 
-def clean_dataset_for_nc_output(dataset: xr.Dataset, pconfig: ProcessConfig)->xr.Dataset:
-    """ Clean dataset for netcdf output.
-
-    Drops variables in `VARIABLES_TO_DROP`
-    Drops global attributes in `GLOBAL_ATTRS_TO_DROP`
-    Drops empty/null global attributes if `pconfig.drop_empty_attrs` is True.
-        else sets them to an empty string.
-
-    """
-    for var in VARIABLES_TO_DROP:
-        if var in dataset.variables:
-            dataset = dataset.drop_vars([var])
-
-    for attr in GLOBAL_ATTRS_TO_DROP:
-        if attr in dataset.attrs:
-            del dataset.attrs[attr]
-
-    for attr in list(dataset.attrs.keys()):
-        if not dataset.attrs[attr]:
-            if pconfig.drop_empty_attrs is True:
-                del dataset.attrs[attr]
-            else:
-                dataset.attrs[attr] = ""
-    return dataset
-
-
-def add_processing_timestamp(dataset: xr.Dataset):
-    if not dataset.attrs["date_created"]:
-        dataset.attrs["date_created"] = pd.Timestamp.now().strftime("%Y-%m-%d")
-    dataset.attrs["date_modified"] = pd.Timestamp.now().strftime("%Y-%m-%d")
-
-
 def _write_odf(dataset: xr.Dataset, pconfig: ProcessConfig):
     if pconfig.odf_data is None:
         pconfig.odf_data = 'both'
@@ -969,17 +785,6 @@ def _write_odf(dataset: xr.Dataset, pconfig: ProcessConfig):
             event_qualifier2=qualifier,
             output_path=pconfig.odf_path,
         )
-
-
-def write_netcdf(dataset: xr.Dataset, pconfig: ProcessConfig):
-    netcdf_path = Path(pconfig.netcdf_path).with_suffix('.nc')
-    dataset.to_netcdf(netcdf_path)
-    l.log(f"netcdf file made -> {netcdf_path}")
-
-
-def write_log(pconfig: ProcessConfig):
-    log_path = Path(pconfig.log_path).with_suffix(".log")
-    l.write(log_path)
 
 
 def _drop_bottom_track(dataset: xr.Dataset) -> xr.Dataset:

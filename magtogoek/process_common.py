@@ -1,14 +1,36 @@
 import sys
 
+import pandas as pd
 import typing as tp
+import xarray as xr
 from pathlib import Path
 
 from magtogoek import logger as l, PLATFORM_TYPES
+from magtogoek.attributes_formatter import compute_global_attrs
 from magtogoek.platforms import PlatformMetadata, load_platform_metadata, default_platform_metadata
 from magtogoek.utils import ensure_list_format
 
 DEFAULT_PLATFORM_TYPE = "buoy"
 CONFIG_GLOBAL_ATTRS_SECTIONS = ["NETCDF_CF", "PROJECT", "CRUISE", "GLOBAL_ATTRIBUTES"]
+
+DATA_TYPES = {"buoy": "madcp", "mooring": "madcp", "ship": "adcp", "lowered": "adcp"}
+DATA_SUBTYPES = {"buoy": "BUOY", "mooring": "MOORED", "ship": "SHIPBORNE", 'lowered': 'LOWERED'}
+
+TIME_ENCODING = {
+    "units": "seconds since 1970-1-1 00:00:00Z",
+    "calendar": "gregorian",
+    "_FillValue": None,
+}
+TIME_STRING_ENCODING = {"dtype": "S1"}
+DEPTH_ENCODING = {
+    "_FillValue": -9999.0,
+    "dtype": "float32",
+}
+QC_FILL_VALUE = 127
+QC_ENCODING = {"dtype": "int8", "_FillValue": QC_FILL_VALUE}
+DATA_FILL_VALUE = -9999.0
+DATA_ENCODING = {"dtype": "float32", "_FillValue": DATA_FILL_VALUE}
+
 
 
 class BaseProcessConfig:
@@ -40,6 +62,8 @@ class BaseProcessConfig:
     figures_path: str = None
     figures_output: bool = None
 
+    variables_to_drop: tp.List[str] = None
+    global_attributes_to_drop: tp.List[str] = None
     drop_empty_attrs: bool = False
     headless: bool = False
 
@@ -239,3 +263,84 @@ def is_directory(path: str):
 
 def parent_is_dir(path: str):
     return Path(path).parent.is_dir()
+
+
+def add_global_attributes(dataset: xr.Dataset, pconfig: BaseProcessConfig, standard_global_attributes: dict):
+    dataset.attrs.update(standard_global_attributes)
+
+    dataset.attrs["data_type"] = DATA_TYPES[pconfig.platform_type]  # COMON
+    dataset.attrs["data_subtype"] = DATA_SUBTYPES[pconfig.platform_type]  # COMON
+
+    pconfig.platform_metadata.add_to_dataset(dataset, pconfig.sensor_id, pconfig.force_platform_metadata)
+
+    compute_global_attrs(dataset)  # already common
+
+    dataset.attrs.update(pconfig.metadata)
+
+    if not dataset.attrs["source"]:  # COMON
+        dataset.attrs["source"] = pconfig.platform_type
+
+
+def write_netcdf(dataset: xr.Dataset, pconfig: BaseProcessConfig):
+    netcdf_path = Path(pconfig.netcdf_path).with_suffix('.nc')
+    dataset.to_netcdf(netcdf_path)
+    l.log(f"netcdf file made -> {netcdf_path}")
+
+
+def write_log(pconfig: BaseProcessConfig):
+    log_path = Path(pconfig.log_path).with_suffix(".log")
+    l.write(log_path)
+
+
+def add_processing_timestamp(dataset: xr.Dataset):
+    if not dataset.attrs["date_created"]:
+        dataset.attrs["date_created"] = pd.Timestamp.now().strftime("%Y-%m-%d")
+    dataset.attrs["date_modified"] = pd.Timestamp.now().strftime("%Y-%m-%d")
+
+
+def clean_dataset_for_nc_output(dataset: xr.Dataset,
+                                pconfig: BaseProcessConfig,
+                                )->xr.Dataset:
+    """ Clean dataset for netcdf output.
+
+    Drops variables in `pconfig.variables_to_drop`
+    Drops global attributes in `pconfig.global_attributes_to_drop.`
+    Drops empty/null global attributes if `pconfig.drop_empty_attrs` is True.
+        else sets them to an empty string.
+
+    """
+    for var in pconfig.variables_to_drop:
+        if var in dataset.variables:
+            dataset = dataset.drop_vars([var])
+
+    for attr in pconfig.global_attributes_to_drop:
+        if attr in dataset.attrs:
+            del dataset.attrs[attr]
+
+    for attr in list(dataset.attrs.keys()):
+        if not dataset.attrs[attr]:
+            if pconfig.drop_empty_attrs is True:
+                del dataset.attrs[attr]
+            else:
+                dataset.attrs[attr] = ""
+    return dataset
+
+
+def format_data_encoding(dataset: xr.Dataset):
+    """Format data encoding with default value in module."""
+
+    for var in dataset.variables:
+        if var == "time":
+            dataset.time.encoding = TIME_ENCODING
+        elif var == "depth":
+            dataset.depth.encoding = DEPTH_ENCODING
+        elif "_QC" in var:
+            dataset[var].values = dataset[var].values.astype("int8")
+            dataset[var].encoding = QC_ENCODING
+        elif var == "time_string":
+            dataset[var].encoding = TIME_STRING_ENCODING
+        else:
+            dataset[var].encoding = DATA_ENCODING
+
+    l.log(f"Data _FillValue: {DATA_FILL_VALUE}")
+    l.log(f"Ancillary Data _FillValue: {QC_FILL_VALUE}")
