@@ -401,7 +401,7 @@ class Odf:
             f.write(SPACE + "-- DATA --" + NEWLINE)
             self._write_data(buf=f)
 
-    def to_dataset(self, dims: tp.Union[str, tp.List[str], tp.Tuple[str]] = None, time: str = ''):
+    def to_dataset(self, dims: tp.Union[str, tp.List[str], tp.Tuple[str]] = None, time: tp.Union[str, tp.List[str], tp.Tuple[str]] = None):
         """
         Parameters
         ----------
@@ -419,19 +419,37 @@ class Odf:
         if isinstance(dims, list):
             if len(dims) == 0:
                 dims = None
+
         _time = {'SYTM_01'}
         if time is not None:
-            _time.update({time})
+            _time.update(set(time))
 
         for t in _time:
-            if time in self.data:
-                self.data[t] = pd.to_datetime(self.data[t], format="%d-%b-%Y %H:%M:%S.%f")
+            if t in self.data:
+                try:
+                    self.data[t] = pd.to_datetime(self.data[t], format="%d-%b-%Y %H:%M:%S.%f")
+                    print(f"{t} converted to time.")
+                except ValueError:
+                    print(f'Not able to format {t} to time.')
 
         if dims is not None:
             [dims.remove(dim) for dim in dims if dim not in self.data]
-            dataset = xr.Dataset.from_dataframe(self.data.set_index(dims))
+            if len(dims) > 0:
+                print(f"Dimensions: {dims}")
+                _dataframe = self.data.set_index(dims)
+                if sum(_dataframe.index.duplicated()) != 0:
+                    _dataframe = _dataframe.drop_duplicates()
+                    print('Multi-Index duplicates dropped.')
+
+                dataset = xr.Dataset.from_dataframe(_dataframe)
+            else:
+                print("Dimensions not found in in ODF.")
+                print(f"Available ODF variables: {list(self.data.keys())}")
+                dataset = xr.Dataset.from_dataframe(self.data)
         else:
             dataset = xr.Dataset.from_dataframe(self.data)
+
+        print(f"Dataset shape: {dict(dataset.dims)}")
 
         for p in self.parameter:
             dataset[p].attrs.update(self.parameter[p])
@@ -444,7 +462,7 @@ class Odf:
 
         dataset = dataset.rename(new_varname)
 
-        if 'SYTM_01' in dataset.coords:
+        if 'SYTM_01' in dataset: #dataset.coords
             [dataset['SYTM_01'].attrs.pop(key) for key in NC_TIME_ENCODING if key in dataset['SYTM_01'].attrs]
             dataset['SYTM_01'].encoding = NC_TIME_ENCODING
 
@@ -865,7 +883,7 @@ def convert_odf_to_nc(
         input_files: tp.Union[str, tp.Tuple[str], tp.List[str]] = None,
         output_name: str = None,
         dims: tp.Union[str, tp.Tuple[str], tp.List[str]] = None,
-        time: str = None,
+        time: tp.Union[str, tp.Tuple[str], tp.List[str]] = None,
         merge: bool = False,
 ) -> None:
     """
