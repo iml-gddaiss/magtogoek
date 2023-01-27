@@ -7,6 +7,7 @@ from pathlib import Path
 
 from magtogoek import logger as l, PLATFORM_TYPES
 from magtogoek.attributes_formatter import compute_global_attrs, format_variables_names_and_attributes
+from magtogoek.navigation import load_navigation
 from magtogoek.platforms import PlatformMetadata, load_platform_metadata, default_platform_metadata
 from magtogoek.utils import ensure_list_format
 
@@ -366,5 +367,59 @@ def _format_variables_names_and_attributes(
 
     dataset["time"].assign_attrs(TIME_ATTRS)
     l.log("Variables attributes added.")
+
+    return dataset
+
+
+def add_navigation(dataset: xr.Dataset, navigation_files: str):
+    """Load navigation data to `dataset` from nmea, gpx or netcdf files.
+
+    Returns the dataset with the added navigation data. Data from the navigation file
+    are interpolated on the dataset time vector.
+
+    Use to load:
+        `lon, `lat`,
+        `u_shp`, `v_ship`
+        `roll_`, `pitch`, `heading`
+
+    Parameters
+    ----------
+    dataset :
+        Dataset to which add the navigation data.
+
+    navigation_files :
+        nmea(ascii), gpx(xml) or netcdf files containing the navigation data. For the
+        netcdf file, variable must be `lon`, `lat` and the coordinates `time`.
+
+    Notes
+    -----
+        Using the magtogoek function `mtgk compute nav`, u_ship, v_ship can be computed from `lon`, `lat`
+        data to correct the data for the platform motion by setting the config parameter `m_corr` to `nav`.
+    """
+    nav_ds = load_navigation(navigation_files)
+
+    if nav_ds is not None:
+        if 'time' in nav_ds.coords:
+            nav_ds = nav_ds.interp(time=dataset.time)
+            if all([var in nav_ds for var in ('lon', 'lat')]):
+                dataset['lon'] = nav_ds['lon']
+                dataset['lat'] = nav_ds['lat']
+                l.log("Platform GPS data loaded.")
+
+            if all([var in nav_ds for var in ('u_ship', 'v_ship')]):
+                dataset['u_ship'] = nav_ds['u_ship']
+                dataset['v_ship'] = nav_ds['v_ship']
+                l.log("Platform velocity data loaded.")
+
+            if all([var in nav_ds for var in ('heading', 'pitch', 'roll_')]):
+                dataset['heading'] = nav_ds['heading']
+                dataset['pitch'] = nav_ds['pitch']
+                dataset['roll_'] = nav_ds['roll_']
+                l.log("Platform inertial data loaded.")
+            nav_ds.close()
+        else:
+            l.warning('Could not load navigation data file. `time` coordinate was massing.')
+    else:
+        l.warning('Could not load navigation data file.')
 
     return dataset
