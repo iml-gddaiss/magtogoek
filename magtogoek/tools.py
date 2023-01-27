@@ -4,6 +4,9 @@ They are separated from utils.py due to longer import time.
 
 # Move some function to a scientific toolbox ?
 """
+import sys
+
+import pandas as pd
 import typing as tp
 
 import numpy as np
@@ -11,6 +14,8 @@ import xarray as xr
 from nptyping import NDArray
 from pygeodesy.ellipsoidalVincenty import LatLon
 import warnings
+
+from magtogoek import logger as l
 
 
 def nans(shape: tp.Union[list, tuple, np.ndarray]) -> np.ndarray:
@@ -488,3 +493,113 @@ def _prepare_flags_for_regrid(flags: tp.Union[np.ndarray, xr.DataArray]) -> tp.U
     these three types before regridding to simplify the transfer algorithms.
     """
     return (flags < 9)*5 + (flags < 3)*3 + (flags==9)*9
+
+
+def get_datetime_and_count(trim_arg: tp.Union[str, int]):
+    """Get datetime and count from trim_arg.
+
+    If `trim_arg` is None, returns (None, None)
+    If 'T' in trim_arg, it is a datetimeand  returns (Timestamp(trim_arg), None)
+    Else It returns a count returns (None, int(trim_arg))
+
+    Returns:
+    --------
+    Timestamp:
+        None or pandas.Timestamp
+    count:
+        None or int
+
+    """
+    if trim_arg:
+        if isinstance(trim_arg, int):
+            return None, trim_arg
+        elif not trim_arg.isdecimal():
+            try:
+                return pd.Timestamp(trim_arg), None
+            except ValueError:
+                print("Bad datetime format for trim. Use YYYY-MM-DDTHH:MM:SS.ssss")
+                print("Process aborted")
+                sys.exit()
+        else:
+            return None, int(trim_arg)
+    else:
+        return None, None
+
+
+def cut_bin_depths(
+        dataset: xr.Dataset, depth_range: tp.Union[int, float, list] = None
+) -> xr.Dataset:
+    """
+    Return dataset with cut bin depths if the depth_range are not outside the depth span.
+    Parameters
+    ----------
+    dataset :
+    depth_range :
+        min or (min, max) to be included in the dataset.
+        Bin depths outside this range will be cut.
+
+    Returns
+    -------
+    dataset with depths cut.
+
+    """
+    if depth_range:
+        if not isinstance(depth_range, (list, tuple)):
+            if depth_range > dataset.depth.max():
+                l.log("depth_range value is greater than the maximum bin depth. Depth slicing aborted.")
+            else:
+                dataset = dataset.sel(depth=slice(depth_range, None))
+                l.log(f"Bin of depth inferior to {depth_range} m were cut.")
+
+        elif len(depth_range) == 2:
+            if dataset.depth[0] > dataset.depth[-1]:
+                depth_range.reverse()
+
+            if depth_range[0] > dataset.depth.max() or depth_range[1] < dataset.depth.min():
+                l.log("depth_range values are outside the actual depth range. Depth slicing aborted.")
+            else:
+                dataset = dataset.sel(depth=slice(*depth_range))
+                l.log(f"Bin of depth inferior to {depth_range[0]} m and superior to {depth_range[1]} m were cut.")
+        else:
+            l.log(f"depth_range expects a maximum of 2 values but {len(depth_range)} were given. Depth slicing aborted.")
+    return dataset
+
+
+def cut_times(
+        dataset: xr.Dataset, start_time: pd.Timestamp = None, end_time: pd.Timestamp = None
+) -> xr.Dataset:
+    """
+    Return a dataset with time cut if they are not outside the dataset time span.
+
+    Parameters
+    ----------
+    dataset
+    start_time :
+        minimum time to be included in the dataset.
+    end_time :
+        maximum time to be included in the dataset.
+    Returns
+    -------
+    dataset with times cut.
+
+    """
+    msg = []
+    out_off_bound_time = False
+    if start_time is not None:
+        if start_time > dataset.time.max():
+            out_off_bound_time = True
+        else:
+            msg.append(f"Start={start_time.strftime('%Y-%m-%dT%H:%M:%S')}")
+    if end_time is not None:
+        if end_time < dataset.time.min():
+            out_off_bound_time = True
+        else:
+            msg.append(f"end={end_time.strftime('%Y-%m-%dT%H:%M:%S')}")
+    if out_off_bound_time is True:
+        l.warning("Trimming datetimes out of bounds. Time slicing aborted.")
+    else:
+        dataset = dataset.sel(time=slice(start_time, end_time))
+        if len(msg) > 0:
+            l.log('Time slicing: ' + ', '.join(msg) + '.')
+
+    return dataset

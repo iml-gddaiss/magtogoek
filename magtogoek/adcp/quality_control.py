@@ -99,7 +99,7 @@ def no_adcp_quality_control(dataset: xr.Dataset):
     dataset :
         ADCP dataset formatted as done by adcp_init.
     """
-    l.section("No Quality Controlled", t=True)
+    l.section("Quality Controlled")
 
     l.log("No quality control carried out")
 
