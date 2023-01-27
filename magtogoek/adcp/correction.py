@@ -117,6 +117,6 @@ def _rotate_heading(heading: np.ndarray, angle: float) -> np.ndarray:
 
     Returns
     -------
-        Rotated Heading
+    Rotated Heading
     """
     return (heading + 180 + angle) % 360 - 180
