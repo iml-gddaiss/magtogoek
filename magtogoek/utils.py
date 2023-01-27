@@ -19,6 +19,22 @@ def ensure_list_format(value: tp.Union[str, int, float, tp.List[tp.Union[str, in
     return value
 
 
+def format_filenames_for_print(file_type: str, filenames: tp.List) -> str:
+    """Format a string of filenames for prints
+
+    `file_type` files :
+      |-filename1
+           :
+      |-filenameN
+
+    """
+    return (
+        file_type
+        + " files : \n  |-"
+        + "\n  |-".join([p.name for p in list(map(Path, filenames))])
+    )
+
+
 def get_files_from_expression(filenames: tp.Union[str, tp.List[str]]) -> tp.List[str]: # TODO tester
     """Get existing files from expression.
 
@@ -114,3 +130,5 @@ def json2dict(json_file: tp.Union[str, Path]):
 def resolve_relative_path(relative_path, current_path):
     """ """
     return Path(current_path).resolve().parent.joinpath(relative_path).resolve()
+
+

@@ -295,7 +295,6 @@ def navigation(ctx, info, input_files, **options):
 @click.pass_context
 def odf2nc(ctx, info, input_files, output_name, **options):
     from magtogoek.odf_format import convert_odf_to_nc
-    logging.info(f"odf2nc dims: {options['dims']}, time: {options['time']}, merge: {options['merge']}")
     convert_odf_to_nc(
         input_files=input_files,
         output_name=output_name,

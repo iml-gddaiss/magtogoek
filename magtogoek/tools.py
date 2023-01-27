@@ -1,6 +1,8 @@
 """
 This modules contains mathematical and scientific functions.
 They are separated from utils.py due to longer import time.
+
+# Move some function to a scientific toolbox ?
 """
 import sys
 
@@ -14,6 +16,11 @@ from pygeodesy.ellipsoidalVincenty import LatLon
 import warnings
 
 from magtogoek import logger as l
+
+
+def nans(shape: tp.Union[list, tuple, np.ndarray]) -> np.ndarray:
+    """return array of nan of shape `shape`"""
+    return np.full(shape, np.nan)
 
 
 def flag_data(dataset: xr.Dataset, var: str, flag_thres: int = 2, ancillary_variables: str = None):
@@ -37,13 +44,8 @@ def flag_data(dataset: xr.Dataset, var: str, flag_thres: int = 2, ancillary_vari
     return dataset[var].where(dataset[ancillary_variables].data <= flag_thres)
 
 
-def round_up(x: float, scale: float=1):
+def round_up(x: float, scale: float = 1):
     return np.ceil(np.asarray(x) * 1 / scale) * scale
-
-
-def nans(shape: tp.Union[list, tuple, np.ndarray]) -> np.ndarray:
-    """return array of nan of shape `shape`"""
-    return np.full(shape, np.nan)
 
 
 def polar_histo(dataset: xr.Dataset, x_vel: str, y_vel: str, r_max: float):
@@ -51,7 +53,7 @@ def polar_histo(dataset: xr.Dataset, x_vel: str, y_vel: str, r_max: float):
     v = flag_data(dataset, y_vel).data.flatten()
     ii = np.isfinite(u) & np.isfinite(v)
 
-    azimut, radius = cartesian2northpolar(u[ii], v[ii])
+    azimut, radius = cartesian2north_polar(u[ii], v[ii])
 
     rN, aN = 30, 180
     rbins, abins = np.linspace(0, r_max, rN), np.linspace(0, 2 * np.pi, aN)
@@ -59,9 +61,39 @@ def polar_histo(dataset: xr.Dataset, x_vel: str, y_vel: str, r_max: float):
     return np.histogram2d(azimut, radius, bins=(abins, rbins))
 
 
-def cartesian2northpolar(x, y):
-    """Return the azimut (north clockwise)  and the radius from x, y vector."""
+def cartesian2north_polar(x: np.ndarray, y: np.ndarray):
+    """Compute the azimut (north clockwise)  and the radius from x, y vector.
+
+    Parameters
+    ----------
+    x:
+        Vector x component
+    y:
+        Vector y component
+
+    Returns
+    -------
+    azimut (north clockwise), radius
+    """
     return (np.arctan2(x, y) + 2 * np.pi) % (2 * np.pi), np.hypot(x, y)
+
+
+def north_polar2cartesian(radius: np.ndarray, azimut: np.ndarray) -> tp.Tuple[np.ndarray, np.ndarray]:
+    """ Compute x and y from radius and azimut (north clockwise)
+
+    Parameters
+    ----------
+    radius:
+        Vector norm
+    azimut:
+        Vector direction (north clockwise)
+
+    Returns
+    -------
+    x, y
+
+    """
+    return radius * np.sin(np.deg2rad(azimut)), radius * np.cos(np.deg2rad(azimut))
 
 
 def circular_distance(a1, a2, units="rad"):
@@ -116,7 +148,7 @@ def circular_distance(a1, a2, units="rad"):
 def vincenty(p0: tp.Tuple[float, float], p1: tp.Tuple[float, float]) -> float:
     """Calculate the distance between 2 coordinates with pygeodesy.ellipsoidalVincenty.LatLon
 
-    Great Circule Distance with Datum = WGS84
+    Great Circle Distance with Datum = WGS84
 
     Parameters
     ----------

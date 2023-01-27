@@ -520,7 +520,7 @@
     },
     "PTCHGP01": {
         "standard_name": "platform_pitch",
-        "units": "degree",
+        "units": "degree_true",
         "long_name": "pitch",
         "sdn_parameter_urn": "SDN:P01::PTCHGP01",
         "sdn_parameter_name": "Orientation (pitch) of measurement platform by inclinometer",
@@ -534,8 +534,8 @@
         "long_name": "heading",
         "sdn_parameter_urn": "SDN:P01::HEADCM01",
         "sdn_parameter_name": "Orientation (horizontal relative to true north) of measurement device {heading}",
-        "sdn_uom_urn": "SDN:P06::UAAA",
-        "sdn_uom_name": "Degrees",
+        "sdn_uom_urn": "SDN:P06::UABB",
+        "sdn_uom_name": "Degrees True",
         "legacy_GF3_code": "SDN:GF3::HEAD"
     },
     "ROLLGP01": {
@@ -643,7 +643,7 @@
     "APNSBT01": {
         "units": "m s-1",
         "sensor_type": "adcp",
-        "long_name": "northward velocity of the measurment platform by bottom tracking",
+        "long_name": "northward velocity of the measurement platform by bottom tracking",
         "sdn_parameter_urn": "SDN:P01::",
         "sdn_parameter_name": "Northward velocity of measurement platform relative to ground surface by ADCP bottom tracking.",
         "sdn_uom_urn": "SDN:P06::UVAA",
@@ -652,7 +652,7 @@
     "APEWBT01": {
         "units": "m s-1",
         "sensor_type": "adcp",
-        "long_name": "eastward velocity of the measurment platform by bottom tracking",
+        "long_name": "eastward velocity of the measurement platform by bottom tracking",
         "sdn_parameter_urn": "SDN:P01::APEWBT01",
         "sdn_parameter_name": "Eastward velocity of measurement platform relative to ground surface by ADCP bottom tracking.",
         "sdn_uom_urn": "SDN:P06::UVAA",
@@ -661,7 +661,7 @@
     "APZABT01": {
         "units": "m s-1",
         "sensor_type": "adcp",
-        "long_name": "upward velocity of the measurment platform by bottom tracking",
+        "long_name": "upward velocity of the measurement platform by bottom tracking",
         "sdn_parameter_urn": "SDN:P01::APZABT01",
         "sdn_parameter_name": "Upward velocity of measurement platform by ADCP bottom tracking.",
         "sdn_uom_urn": "SDN:P06::UVAA",
@@ -670,9 +670,11 @@
     "APERBT01": {
         "units": "m s-1",
         "sensor_type": "adcp",
-        "long_name": "error velocity of the measurment platform by bottom tracking",
+        "long_name": "error velocity of the measurement platform by bottom tracking",
         "sdn_parameter_urn": "SDN:P01::APERBT01",
-        "sdn_parameter_name": "Error velocity of measurement platform relative to ground surface by ADCP bottom tracking."
+        "sdn_parameter_name": "Error velocity of measurement platform relative to ground surface by ADCP bottom tracking.",
+        "sdn_uom_urn": "SDN:P06::UVAA",
+        "sdn_uom_name": "Metres per second"
     },
     "BATHDPTH": {
         "units": "m",
@@ -681,5 +683,175 @@
         "sdn_parameter_name": "Sea-floor depth (below mean sea level) {bathymetric depth}",
         "sdn_uom_urn": "SDN:P06::ULAA",
         "sdn_uom_name": "Metres"
+    },
+    "EWSBZZ01": {
+        "units": "m s-1",
+        "long_name": "Speed of wind in the atmosphere",
+        "sdn_parameter_urn": "SDN:P01::EWSBZZ01",
+        "sdn_parameter_name": "Speed of wind {wind speed} in the atmosphere",
+        "sdn_uom_urn": "SDN:P06:UVAA",
+        "sdn_uom_name": "Metres per second",
+        "legacy_GF3_code": "WSPD"
+    },
+    "EGTSZZ01": {
+        "units": "m s-1",
+        "long_name": "Speed of wind (gust) in the atmosphere",
+        "sdn_parameter_urn": "SDN:P01::EGTSZZ01",
+        "sdn_parameter_name": "Speed of wind (gust) {wind speed} in the atmosphere",
+        "sdn_uom_urn": "SDN:P06:UVAA",
+        "sdn_uom_name": "Metres per second",
+        "legacy_GF3_code": "GSPD"
+    },
+    "EWDAZZ01": {
+        "units": "degree_true",
+        "long_name": "Direction (from) of wind relative to True North in the atmosphere",
+        "sdn_parameter_urn": "SDN:P01::EWDASS01",
+        "sdn_parameter_name": "Direction (from) of wind relative to True North {wind direction} in the atmosphere",
+        "sdn_uom_urn": "SDN:P06:UABB",
+        "sdn_uom_name": "Degrees True",
+        "legacy_GF3_code": "WDIR"
+    },
+    "CTMPZZ01": {
+        "units": "degree_C",
+        "long_name": "Temperature of the atmosphere",
+        "sdn_parameter_urn": "SDN:P01::CTMPZZ01",
+        "sdn_parameter_name": "Temperature of the atmosphere",
+        "sdn_uom_urn": "SDN:P06::UPAA",
+        "sdn_uom_name": "Celsius degree",
+        "legacy_GF3_code": "DRYT"
+    },
+    "CRELZZ01": {
+        "units": "percent",
+        "long_name": "Relative humidity of the atmosphere",
+        "sdn_parameter_urn": "SDN:P01::CRELZZ01",
+        "sdn_parameter_name": "Relative humidity of the atmosphere",
+        "sdn_uom_urn": "SDN:P06:UPCT",
+        "sdn_uom_name": "Percent",
+        "legacy_GF3_code": "RELH"
+    },
+    "CAPHZZ01": {
+        "units": "mbar",
+        "long_name": "atmospheric_pressure",
+        "sdn_parameter_urn": "SDN:P01::CAPHZZ01",
+        "sdn_parameter_name": "Pressure (measured variable) exerted by the atmosphere",
+        "sdn_uom_urn": "SDN:P06:UPBB",
+        "sdn_uom_name": "Millibars",
+        "legacy_GF3_code": "ATMP"
+    },
+    "CNDCZZ01": {
+        "units": "S m-1",
+        "long_name": "electrical_conductivity",
+        "sdn_parameter_urn": "SDN:P01::CNDCZZ01",
+        "sdn_parameter_name": "Electrical conductivity of the water body",
+        "sdn_uom_urn": "SDN:P06:UECA",
+        "sdn_uom_name": "Siemens per metre",
+        "legacy_GF3_code": "CNDC"
+    },
+    "PSLTZZ01": {
+        "units": "psu",
+        "long_name": "Practical salinity of the water body",
+        "sdn_parameter_urn": "SDN:P01::PSLTZZ01",
+        "sdn_parameter_name": "Practical salinity of the water body",
+        "sdn_uom_urn": "SDN:P06:UUUU",
+        "sdn_uom_name": "Dimensionless",
+        "legacy_GF3_code": "PSAL"
+    },
+    "SIGTEQ01": {
+        "units": "kg m-3",
+        "long_name": "sigma_theta",
+        "sdn_parameter_urn": "SDN:P01::SIGTEQ01",
+        "sdn_parameter_name": "Sigma-theta of the water body by computation from salinity and potential temperature using UNESCO algorithm",
+        "sdn_uom_urn": "SDN:P06:UKMC",
+        "sdn_uom_name": "Kilograms per cubic metre",
+        "legacy_GF3_code": "DENS"
+    },
+    "PFDPAR01": {
+        "units": "uE m-2 s-1",
+        "long_name": "Photosynthetically Active Radiation",
+        "sdn_parameter_urn": "SDN:P01::PFDPAR01",
+        "sdn_parameter_name": "Irradiance as photons of electromagnetic radiation (PAR wavelengths)",
+        "sdn_uom_urn": "SDN:P06:UMES",
+        "sdn_uom_name": "MicroEinsteins per square metre per second"
+    },
+    "PHXXZZXX": {
+        "units": "NBS_scale",
+        "long_name": "pH",
+        "sdn_parameter_urn": "SDN:P01::PHXXZZXX",
+        "sdn_parameter_name": "pH (unspecified scale) of the water body",
+        "sdn_uom_urn": "SDN:P06:UUPH",
+        "sdn_uom_name": "pH units",
+        "legacy_GF3_code": "PHPH"
+    },
+    "CCOMD002": {
+        "units": "ppb",
+        "long_name": "fluoresecent coloured dissolved organic matter",
+        "sdn_parameter_urn": "SDN:P01::CCOMD002",
+        "sdn_parameter_name": "Concentration of coloured dissolved organic matter {CDOM Gelbstoff} per unit volume of the water body [dissolved plus reactive particulate phase] by in-situ WET Labs FDOM ECO fluorometer",
+        "sdn_uom_urn": "SDN:P06:UPPB",
+        "sdn_uom_name": "Parts per billion",
+        "legacy_GF3_code": ""
+    },
+    "CPHLPR01": {
+        "units": "mg L-1",
+        "long_name": "Chlorophyll-a concentration",
+        "sdn_parameter_urn": "SDN:P01::CPHLPR01",
+        "sdn_parameter_name": "Concentration of chlorophyll-a {chl-a CAS 479-61-8} per unit volume of the water body [particulate >unknown phase] by in-situ chlorophyll fluorometer",
+        "sdn_uom_urn": "SDN:P06:UMMC",
+        "sdn_uom_name": "Milligrams per cubic metre",
+        "legacy_GF3_code": ""
+    },
+    "FLUOZZZZ": {
+        "units": "dimensionless",
+        "long_name": "fluorescence",
+        "sdn_parameter_urn": "SDN:P01::FLUOZZZZ",
+        "sdn_parameter_name": "Fluorescence of the water body",
+        "sdn_uom_urn": "SDN:P06:UUUU",
+        "sdn_uom_name": "Dimensionless",
+        "legacy_GF3_code": "FLOR"
+    },
+    "ACO2XXXX": {
+        "units": "uatm",
+        "long_name": "partial_pressure_of_carbon_dioxide_in_the_atmosphere",
+        "sdn_parameter_urn": "SDN:P01::ACO2XXXX",
+        "sdn_parameter_name": "Partial pressure of carbon dioxide {CO2 CAS 124-38-9} {pCO2} in the atmosphere",
+        "sdn_uom_urn": "SDN:P06:UATM",
+        "sdn_uom_name": "Microatmospheres",
+        "legacy_GF3_code": "ACO2"
+    },
+    "PCO2XXXX": {
+        "units": "uatm",
+        "long_name": "partial_pressure_of_carbon_dioxide_in_the_water_body",
+        "sdn_parameter_urn": "SDN:P01::PCO2XXXX",
+        "sdn_parameter_name": "Partial pressure of carbon dioxide {CO2 CAS 124-38-9} {pCO2} in the water body",
+        "sdn_uom_urn": "SDN:P06:UATM",
+        "sdn_uom_name": "Microatmospheres",
+        "legacy_GF3_code": "PCO2"
+    },
+    "GAVHZZ01": {
+        "units": "m",
+        "long_name": "wave_mean_height",
+        "sdn_parameter_urn": "SDN:P01::GAVHZZ01",
+        "sdn_parameter_name": "Wave height mean of waves (highest one third) on the water body",
+        "sdn_uom_urn": "SDN:P06:ULAA",
+        "sdn_uom_name": "Metres",
+        "legacy_GF3_code": "VRMS"
+    },
+    "GCMXZZ01": {
+        "units": "m",
+        "long_name": "wave_max_height",
+        "sdn_parameter_urn": "SDN:P01::GCMXZZ01",
+        "sdn_parameter_name": "Wave height maximum of waves on the water body",
+        "sdn_uom_urn": "SDN:P06:ULAA",
+        "sdn_uom_name": "Metres",
+        "legacy_GF3_code": "VMXL"
+    },
+    "GTAMZZ01": {
+        "units": "s",
+        "long_name": "wave_mean_period",
+        "sdn_parameter_urn": "SDN:P01::GTAMZZ01",
+        "sdn_parameter_name": "Period mean of waves on the water body",
+        "sdn_uom_urn": "SDN:P06:UTBB",
+        "sdn_uom_name": "Seconds",
+        "legacy_GF3_code": "VTCA"
     }
 }
