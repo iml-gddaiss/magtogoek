@@ -40,7 +40,8 @@ from magtogoek.viking.quality_control import meteoce_quality_control, no_meteoce
 
 from magtogoek.tools import rotate_2d_vector, north_polar2cartesian
 
-from magtogoek.viking.tools import compute_density, pHEXT_from_voltEXT, voltEXT_from_pHEXT, RINKO_COEFFS_KEYS, dissolved_oxygen_rinko_correction
+from magtogoek.ctd.correction import RINKO_COEFFS_KEYS, dissolved_oxygen_rinko_correction, voltEXT_from_pHEXT, \
+    pHEXT_from_voltEXT, compute_density
 
 TERMINAL_WIDTH = 80
 
