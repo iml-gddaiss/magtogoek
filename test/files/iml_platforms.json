@@ -49,7 +49,7 @@
                 "comments": "The model and serial number are the same for the temperature and pressure sensors as the ADCP."
             },
             "CTD_01": {
-                "sensor_type": "CTD",
+                "sensor_type": "ctd",
                 "sensor_depth": 10,
                 "serial_number": "ctd_serial",
                 "manufacturer": "Seabird",

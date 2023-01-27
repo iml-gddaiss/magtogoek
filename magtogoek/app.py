@@ -32,7 +32,7 @@ import click
 from magtogoek.app_options import adcp_options, add_options
 #from magtogoek.configfile import _get_taskparser
 from magtogoek.utils import is_valid_filename, json2dict, resolve_relative_path
-from magtogoek import VERSION
+from magtogoek import VERSION, TERMINAL_WIDTH
 
 # ---------- Module or functions imported by commands ----------- #
 # NOTE: PROBABLY NOT UP TO DATE
@@ -51,8 +51,6 @@ CONTEXT_SETTINGS = dict(
     allow_extra_args=True,
     help_option_names=["-h", "--help"],
 )
-TERMINAL_WIDTH = 80
-
 
 def _print_info(ctx, callback, info_called):
     """Show command information"""
@@ -222,7 +220,7 @@ def config_adcp(
               help="""Using remotely with no display capability""")
 @click.pass_context
 def quick_adcp(ctx, info, input_files: tuple, sonar: str, yearbase: int, **options: dict):
-    """Command to make an quickly process adcp files. The [OPTIONS] can be added
+    """Command to quickly process adcp files. The [OPTIONS] can be added
     before or after the [inputs_files]."""
     # TODO TEST. So far not crashing
     from magtogoek.config_handler import cli_options_to_config
@@ -247,7 +245,10 @@ def check_rti(ctx, info, input_files, **options):
     """Prints info about RTI .ENS files."""
     from magtogoek.adcp.rti_reader import RtiReader
 
-    RtiReader(input_files).check_files()
+    try:
+        RtiReader(input_files).check_files()
+    except IndexError:
+        print(f'Error, could not read the file. {input_files}')
 
 
 @compute.command("nav", context_settings=CONTEXT_SETTINGS)
