@@ -11,7 +11,6 @@ compute_navigation:
     average window could do the trick.
 """
 import sys
-
 import typing as tp
 import warnings
 from pathlib import Path
@@ -21,13 +20,11 @@ import numpy as np
 import pynmea2
 import xarray as xr
 import matplotlib.pyplot as plt
-from magtogoek.tools import get_gps_bearing, vincenty, north_polar2cartesian
+from magtogoek.tools import get_gps_bearing, vincenty
 from magtogoek.utils import get_files_from_expression
 
 FILE_FORMATS = (".log", ".gpx", ".nc")
-
-#NAVIGATION_VARIABLES_NAME = ("lon", "lat", "time", 'u_ship', 'v_ship', 'heading', 'roll_', 'pitch')
-
+NAVIGATION_VARIABLES_NAME = ("lon", "lat", "time", 'u_ship', 'v_ship', 'heading', 'roll_', 'pitch')
 VARIABLE_NAME_MAPPING = dict(
     time=("Time", "TIME", "T", "t"),
     lon=("LON", "Lon", "longitude", "LONGITUDE", "Longitude", "X", "x"),
@@ -69,7 +66,7 @@ def load_navigation(filenames):
 
         if ext == ".nc":
             _dataset = xr.open_dataset(filename)
-            _dataset = _locate_variables(_dataset)
+            _dataset = _check_variables_names(_dataset)
         elif ext == ".gpx":
             _dataset = _load_gps(filename, file_type="gpx")
         elif ext == ".log":
@@ -87,21 +84,6 @@ def load_navigation(filenames):
         return None
 
 
-def _locate_variables(dataset: xr.Dataset):
-    """Locate the needed variables in the dataset.
-
-    Converts variables name if needed.
-
-    See the global variable `VARIABLE_NAME_MAPPING`.
-    """
-    for var, var_names in VARIABLE_NAME_MAPPING.items():
-        if var not in dataset:
-            for name in var_names:
-                if name in dataset:
-                    dataset = dataset.rename({name: var})
-    return dataset
-
-
 def _load_gps(filename: str, file_type: str) -> xr.Dataset:
     """Load navigation data `lon`, `lat` and `time` from a gpx or nmea file format."""
     reader = {"gpx": _read_gpx, "nmea":_read_nmea}[file_type]
@@ -109,7 +91,8 @@ def _load_gps(filename: str, file_type: str) -> xr.Dataset:
 
     dataset = xr.Dataset(
         {"lon": (["time"], gps_data["lon"]), "lat": (["time"], gps_data["lat"])},
-        coords={"time": gps_data["time"]}
+        coords={"time": gps_data["time"]},
+        attrs={'time_flag': True, 'lonlat_flag': True, 'uv_ship_flag': False},
     )
     return dataset.sortby("time")
 
@@ -221,7 +204,7 @@ def _compute_navigation(
     """
     centered_time, course, speed = _compute_speed_and_course(dataset.time, dataset.lon.values, dataset.lat.values)
 
-    u_ship, v_ship = north_polar2cartesian(speed, course)
+    u_ship, v_ship = compute_uv_ship(speed, course)
 
     nav_dataset = xr.Dataset(
         {
@@ -270,6 +253,24 @@ def _compute_speed_and_course(time: tp.Union[list, np.ndarray],
     return centered_time, course, speed
 
 
+def compute_uv_ship(speed: np.ndarray, course: np.ndarray) -> tp.Tuple[np.ndarray]:
+    """ Compute u_ship and v_ship from speed and course
+
+    Parameters
+    ----------
+    speed:
+        Speed of the vessel.
+    course:
+        course (direction) of the vessel.
+
+    Returns
+    -------
+    u_ship, v_ship
+
+    """
+    return speed * np.sin(np.deg2rad(course)), speed * np.cos(np.deg2rad(course))
+
+
 def _plot_navigation(dataset: xr.Dataset):
     """plots bearing, speed, u_ship and v_ship from a dataset"""
 
@@ -295,3 +296,25 @@ def _plot_navigation(dataset: xr.Dataset):
     plt.subplots_adjust(hspace=0.05)
 
     plt.show()
+
+
+def _check_variables_names(dataset):
+    """Check what variables are int he dataset.
+
+    Converts variables name if needed.
+
+    Return None if:
+     - neither ( (lon and lat) or (u_ship and v_ship)) are not found.
+     - time is not a coordinates.
+    """
+    found_variables = []
+    for var, varnames in VARIABLE_NAME_MAPPING.items():
+        if var in dataset:
+            found_variables.append(var)
+        else:
+            for name in varnames:
+                if name in dataset:
+                    dataset = dataset.rename({name: var})
+                    found_variables.append(var)
+    return dataset
+
