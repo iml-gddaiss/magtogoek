@@ -16,34 +16,34 @@ Maybe quality control should be done before and the transformation should check 
 
 """
 
+import getpass
+
 import numpy as np
 import pandas as pd
 import xarray as xr
-import getpass
 from pathlib import Path
 from typing import *
-# import click
-
-from magtogoek.navigation import load_navigation
-# from magtogoek.platforms import _add_platform
-from magtogoek.utils import ensure_list_format, json2dict
 
 from magtogoek import logger as l
-
+from magtogoek import TERMINAL_WIDTH
+from magtogoek.process_common import BaseProcessConfig, add_global_attributes, write_log, write_netcdf, \
+    add_processing_timestamp, clean_dataset_for_nc_output, format_data_encoding, _format_variables_names_and_attributes
 from magtogoek.attributes_formatter import (
     compute_global_attrs, format_variables_names_and_attributes,
 )
-
+from magtogoek.ctd.correction import RINKO_COEFFS_KEYS, dissolved_oxygen_rinko_correction, voltEXT_from_pHEXT, \
+    pHEXT_from_voltEXT, compute_density
+from magtogoek.navigation import load_navigation
+from magtogoek.tools import rotate_2d_vector, north_polar2cartesian
+# from magtogoek.platforms import _add_platform
+from magtogoek.utils import ensure_list_format
 from magtogoek.viking.loader import load_meteoce_data
 # from magtogoek.viking.odf_exporter import make_odf
 from magtogoek.viking.quality_control import meteoce_quality_control, no_meteoce_quality_control
 
-from magtogoek.tools import rotate_2d_vector, north_polar2cartesian
+# import click
 
-from magtogoek.ctd.correction import RINKO_COEFFS_KEYS, dissolved_oxygen_rinko_correction, voltEXT_from_pHEXT, \
-    pHEXT_from_voltEXT, compute_density
-
-TERMINAL_WIDTH = 80
+l.get_logger("viking_processing")
 
 STANDARD_VIKING_GLOBAL_ATTRIBUTES = {
     "sensor_type": "viking_buoy",
@@ -55,6 +55,7 @@ STANDARD_VIKING_GLOBAL_ATTRIBUTES = {
 }
 
 VARIABLES_TO_DROP = ['ph_temperature', 'wind_direction_max', 'speed', 'course', 'magnetic_declination']
+
 GLOBAL_ATTRS_TO_DROP = [
     "sensor_type",
     "platform_type",
@@ -67,240 +68,170 @@ GLOBAL_ATTRS_TO_DROP = [
     "bodc_name"
 ]
 
-CONFIG_GLOBAL_ATTRS_SECTIONS = ["NETCDF_CF", "PROJECT", "CRUISE", "GLOBAL_ATTRIBUTES"]
-PLATFORM_TYPES = ["buoy", "mooring", "ship", "lowered"]
-DEFAULT_PLATFORM_TYPE = "buoy"
+#CONFIG_GLOBAL_ATTRS_SECTIONS = ["NETCDF_CF", "PROJECT", "CRUISE", "GLOBAL_ATTRIBUTES"]
+#PLATFORM_TYPES = ["buoy", "mooring", "ship", "lowered"]
+#DEFAULT_PLATFORM_TYPE = "buoy"
 
-DATA_SUBTYPES = {"buoy": "BUOY", "mooring": "MOORED", "ship": "SHIPBORNE", 'lowered': 'LOWERED'}
+#DATA_SUBTYPES = {"buoy": "BUOY", "mooring": "MOORED", "ship": "SHIPBORNE", 'lowered': 'LOWERED'}
 
-P01_CODES = dict(
-    time="ELTMEP01",
-
-    wind_mean="EWSBZZ01",
-    wind_max="EWDAZZ01",
-    wind_direction_mean="EGTSZZ01",
-    atm_temperature="CTMPZZ01",
-    atm_humidity="CRELZZ01",
-    atm_pressure="CAPHZZ01",
-    temperature="TEMPPR01",
-    conductivity="CNDCZZ01",
-    salinity="PSLTZZ01",
-    density="SIGTEQ01",
-    ph="PHXXZZXX",
-    fluorescence="FLUOZZZZ",
-    chlorophyll="CPHLPR01",
-    fdom="CCOMD002",
-    co2_a="ACO2XXXX",
-    co2_w="PCO2XXXX",
-    wave_mean_height="GAVHZZ01",
-    wave_maximal_height="GCMXZZ01",
-    wave_period="GTAMZZ01",
-    par="PFDPAR01",
-
-    u="LCEWAP01",
-    v="LCNSAP01",
-    w="LRZAAP01",
-    e="LERRAP01",
-    u_QC="LCEWAP01_QC",
-    v_QC="LCNSAP01_QC",
-    w_QC="LRZAAP01_QC",
-    pg="PCGDAP01",
-    pg1="PCGDAP00",
-    pg2="PCGDAP02",
-    pg3="PCGDAP03",
-    pg4="PCGDAP04",
-    corr1="CMAGZZ01",
-    corr2="CMAGZZ02",
-    corr3="CMAGZZ03",
-    corr4="CMAGZZ04",
-    amp1="TNIHCE01",
-    amp2="TNIHCE02",
-    amp3="TNIHCE03",
-    amp4="TNIHCE04",
-    bt_u="APEWBT01",
-    bt_v="APNSBT01",
-    bt_w="LRZABT01",  # FIXME Do not yet exist as a BODC sdn code
-    bt_e="LERRBT01",  # FIXME Do not yet exist as a BODC sdn code
-
-    lon="ALONZZ01",
-    lat="ALATZZ01",
-    heading="HEADCM01",
-    roll_="ROLLGP01",
-    pitch="PTCHGP01",
-    u_ship="APEWGP01",
-    v_ship="APNSGP01",
-
-)
+P01_CODES = {
+    'time': "ELTMEP01",
+    'wind_mean': "EWSBZZ01",
+    'wind_max': "EWDAZZ01",
+    'wind_direction_mean': "EGTSZZ01",
+    'atm_temperature': "CTMPZZ01",
+    'atm_humidity': "CRELZZ01",
+    'atm_pressure': "CAPHZZ01",
+    'temperature': "TEMPPR01",
+    'conductivity': "CNDCZZ01",
+    'salinity': "PSLTZZ01",
+    'density': "SIGTEQ01",
+    'ph': "PHXXZZXX",
+    'fluorescence': "FLUOZZZZ",
+    'chlorophyll': "CPHLPR01",
+    'fdom': "CCOMD002",
+    'co2_a': "ACO2XXXX",
+    'co2_w': "PCO2XXXX",
+    'wave_mean_height': "GAVHZZ01",
+    'wave_maximal_height': "GCMXZZ01",
+    'wave_period': "GTAMZZ01",
+    'par': "PFDPAR01",
+    'u': "LCEWAP01",
+    'v': "LCNSAP01",
+    'w': "LRZAAP01",
+    'e': "LERRAP01",
+    'u_QC': "LCEWAP01_QC",
+    'v_QC': "LCNSAP01_QC",
+    'w_QC': "LRZAAP01_QC",
+    'pg': "PCGDAP01",
+    'pg1': "PCGDAP00",
+    'pg2': "PCGDAP02",
+    'pg3': "PCGDAP03",
+    'pg4': "PCGDAP04",
+    'corr1': "CMAGZZ01",
+    'corr2': "CMAGZZ02",
+    'corr3': "CMAGZZ03",
+    'corr4': "CMAGZZ04",
+    'amp1': "TNIHCE01",
+    'amp2': "TNIHCE02",
+    'amp3': "TNIHCE03",
+    'amp4': "TNIHCE04",
+    'bt_u': "APEWBT01",
+    'bt_v': "APNSBT01",
+    'bt_w': "LRZABT01",
+    'bt_e': "LERRBT01",
+    'lon': "ALONZZ01",
+    'lat': "ALATZZ01",
+    'heading': "HEADCM01",
+    'roll_': "ROLLGP01",
+    'pitch': "PTCHGP01",
+    'u_ship': "APEWGP01",
+    'v_ship': "APNSGP01"
+}
 
 VAR_TO_ADD_SENSOR_TYPE = []
 
-TIME_ATTRS = {"cf_role": "profile_id"}
+#TIME_ATTRS = {"cf_role": "profile_id"}
 
-TIME_ENCODING = {
-    "units": "seconds since 1970-1-1 00:00:00Z",
-    "calendar": "gregorian",
-    "_FillValue": None,
-}
-TIME_STRING_ENCODING = {"dtype": "S1"}
+#TIME_ENCODING = {
+    # "units": "seconds since 1970-1-1 00:00:00Z",
+    # "calendar": "gregorian",
+    # "_FillValue": None,
+# }
+#TIME_STRING_ENCODING = {"dtype": "S1"}
 
-DATE_STRING_FILL_VALUE = "17-NOV-1858 00:00:00.00"  # filled value used by ODF format
-QC_FILL_VALUE = 127
-QC_ENCODING = {"dtype": "int8", "_FillValue": QC_FILL_VALUE}
+#DATE_STRING_FILL_VALUE = "17-NOV-1858 00:00:00.00"  # filled value used by ODF format
+#QC_FILL_VALUE = 127
+#QC_ENCODING = {"dtype": "int8", "_FillValue": QC_FILL_VALUE}
 
-DATA_FILL_VALUE = -9999.0
-DATA_ENCODING = {"dtype": "float32", "_FillValue": DATA_FILL_VALUE}
+#DATA_FILL_VALUE = -9999.0
+#DATA_ENCODING = {"dtype": "float32", "_FillValue": DATA_FILL_VALUE}
 
 
-class ProcessConfig:
-    # HEADER
-    sensor_type: str = None
-    platform_type: str = None
-
-    # INPUT
-    input_files: str = None
-    platform_file: str = None
-    platform_id: str = None
-
-    # NETCDF:
-    # source: str: None
-
-    # OUTPUT
-    netcdf_output: Union[str, bool] = None
-    odf_output: Union[str, bool] = None
-
+class ProcessConfig(BaseProcessConfig):
     # PROCESSING
     buoy_name: str = None
     data_format: str = None
     sensor_depth: float = None
-    navigation_file: str = None
     leading_trim: Union[int, str] = None
     trailing_trim: Union[int, str] = None
     magnetic_declination: float = None
     magnetic_declination_preset: float = None
 
-    #compute_density: bool = None
-    #ph_correction: bool = None
+    # CTD
+    compute_density: bool = None
+    ph_correction: bool = None
     ph_coeffs: Tuple[float] = None  # psal, k0, k2
-    #oxy_correction: bool = None
+    oxy_correction: bool = None
     oxy_coeffs: Tuple[float] = None
+
+    # ADCP
+    motion_correction_mode: str = None
 
     # QUALITY_CONTROL
     quality_control: bool = None
 
-    # motion_correction_mode: str = None
-
-    # OUTPUT
-    merge_output_files: bool = None
-    bodc_name: bool = None
-    force_platform_metadata: bool = None
-    odf_data: str = None
-    make_figures: bool = None
-    make_log: bool = None
-
-    # computed
-    metadata: dict = {}
-    platform_metadata: dict = {}
-
-    netcdf_path: str = None
-    odf_path: str = None
-    log_path: str = None
-    figures_path: str = None
-    figures_output: bool = None
-
-    # application
-    drop_empty_attrs: bool = False
-    headless: bool = False
-
     def __init__(self, config_dict: dict = None):
-        self.metadata: dict = {}
-        self.platform_metadata: dict = {}
-        self.platform_type = DEFAULT_PLATFORM_TYPE
-
-        if config_dict is not None:
-            self._load_config_dict(config_dict)
-
-        if isinstance(self.input_files, str):
-            self.input_files = ensure_list_format(self.input_files)
-
-        if len(self.input_files) == 0:
-            raise ValueError("No adcp file was provided in the configfile.")
-
-        self._get_platform_metadata()
-        self.platform_type = DEFAULT_PLATFORM_TYPE  # FIXME
-
-    def _load_config_dict(self, config: dict) -> dict:
-        """Split and flattens"""
-        for section, options in config.items():
-            if section in CONFIG_GLOBAL_ATTRS_SECTIONS:
-                for option in options:
-                    self.metadata[option] = config[section][option]
-            else:
-                for option in options:
-                    self.__dict__[option] = config[section][option]
-
-    def _get_platform_metadata(self):
-        pass
-
-    def resolve_outputs(self):
-        # TODO NEEDS TO BE UPDATED. FIX THIS BY MAKING A PROCESS COMON module.
-        # default_path, default_filename = None, None
-        # if self.config_file is not None:
-        #     config_file = Path(self.config_file)
-        #     default_path, default_filename = config_file.parent, config_file.name
-        #
-        # _resolve_outputs(self, default_path=default_path, default_filename=default_filename)
-        _resolve_outputs(self)
+        super().__init__(config_dict)
+        self.variables_to_add_sensor_type = VAR_TO_ADD_SENSOR_TYPE
+        self.variables_to_drop = VARIABLES_TO_DROP
+        self.global_attributes_to_drop = GLOBAL_ATTRS_TO_DROP
 
 
-def process_viking(config: dict,
-                   drop_empty_attrs: bool = False,
-                   headless: bool = False):
+def process_viking(config: dict, drop_empty_attrs: bool = False, headless: bool = False):
     """Process Viking data with parameters from a config file.
+
+    If `pconfig.merge_output_files` is False, each input file is process individually.
 
     Parameters
     ----------
     config :
         Dictionary make from a configfile (see config_handler.load_config).
     drop_empty_attrs :
-        If true, all netcdf empty ('') global attributes will be drop from
+        If true, all netcdf empty ('') global attributes will be dropped from
         the output.
     headless :
         If true, figures are not displayed.
 
-    The actual data processing is carried out by _process_adcp_data.
+    The actual data processing is carried out by _process_viking_data.
     """
     pconfig = ProcessConfig(config)
     pconfig.drop_empty_attrs = drop_empty_attrs
     pconfig.headless = headless
 
-    input_files = list(pconfig.input_files)
-    odf_output = pconfig.odf_output
-    netcdf_output = pconfig.netcdf_output
-    event_qualifier1 = pconfig.metadata['event_qualifier1']
-
     if pconfig.merge_output_files:
         pconfig.resolve_outputs()
         return _process_viking_data(pconfig)  # FIXME
     else:
+        input_files = list(pconfig.input_files)
+        odf_output = pconfig.odf_output
+        netcdf_output = pconfig.netcdf_output
+        event_qualifier1 = pconfig.metadata['event_qualifier1']
         for count, filename in enumerate(input_files):
             pconfig.input_files = [filename]
+            # If the user set path ...
             if isinstance(netcdf_output, str):
+                # If the path is a filename ...
                 if not Path(netcdf_output).is_dir():
+                    # An incrementing suffix is added to the filename
                     pconfig.netcdf_output = str(Path(netcdf_output).with_suffix("")) + f"_{count}"
-                else:
-                    pconfig.netcdf_output = netcdf_output
 
+            # If the user set path ...
             if isinstance(odf_output, str):
+                # If the path is a filename ...
                 if not Path(odf_output).is_dir():
+                    # An incrementing suffix is added to the filename
                     pconfig.odf_output = str(Path(odf_output).with_suffix("")) + f"_{count}"
+                # If it's a directory
                 else:
+                    # An incrementing suffix is added to the event_qualifier that builds the filename
+                    # PREVENTS FROM OVERWRITING THE SAME FILE
                     pconfig.metadata[
                         'event_qualifier1'] = event_qualifier1 + f"_{Path(filename).name}"  # PREVENTS FROM OVERWRITING THE SAME FILE
-                    pconfig.odf_output = odf_output
-            else:
-                pconfig.metadata[
-                    'event_qualifier1'] = event_qualifier1 + f"_{Path(filename).name}"  # PREVENTS FROM OVERWRITING THE SAME FILE
-                pconfig.odf_output = odf_output
+            elif odf_output is True:
+                # An incrementing suffix is added to the event_qualifier that builds the filename
+                # PREVENTS FROM OVERWRITING THE SAME FILE
+                pconfig.metadata['event_qualifier1'] = event_qualifier1 + f"_{Path(filename).name}"
 
             pconfig.resolve_outputs()
 
@@ -789,7 +720,6 @@ def _figure_output_handler(pconfig: ProcessConfig, default_path: Path, default_f
 
 
 if __name__ == "__main__":
-    import matplotlib.pyplot as plt
     file_path = '/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat'
     out_path = '/home/jeromejguay/Desktop/viking_test.nc'
     config = dict(

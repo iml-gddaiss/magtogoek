@@ -13,8 +13,20 @@ from magtogoek.utils import ensure_list_format
 DEFAULT_PLATFORM_TYPE = "buoy"
 CONFIG_GLOBAL_ATTRS_SECTIONS = ["NETCDF_CF", "PROJECT", "CRUISE", "GLOBAL_ATTRIBUTES"]
 
-DATA_TYPES = {"buoy": "madcp", "mooring": "madcp", "ship": "adcp", "lowered": "adcp"}
-DATA_SUBTYPES = {"buoy": "BUOY", "mooring": "MOORED", "ship": "SHIPBORNE", 'lowered': 'LOWERED'}
+ADCP_DATA_TYPES = {
+    "buoy": "madcp",
+    "mooring": "madcp",
+    "ship": "adcp",
+    "lowered": "adcp"
+}
+VIKING_BUOY_DATA_TYPE = "meteoce"
+
+DATA_SUBTYPES = {
+    "buoy": "BUOY",
+    "mooring": "MOORED",
+    "ship": "SHIPBORNE",
+    'lowered': 'LOWERED'
+}
 
 TIME_ENCODING = {
     "units": "seconds since 1970-1-1 00:00:00Z",
@@ -271,7 +283,7 @@ def parent_is_dir(path: str):
 def add_global_attributes(dataset: xr.Dataset, pconfig: BaseProcessConfig, standard_global_attributes: dict):
     dataset.attrs.update(standard_global_attributes)
 
-    dataset.attrs["data_type"] = DATA_TYPES[pconfig.platform_type]  # COMON
+    dataset.attrs["data_type"] = _get_data_type(pconfig.sensor_type,pconfig.platform_type)
     dataset.attrs["data_subtype"] = DATA_SUBTYPES[pconfig.platform_type]  # COMON
 
     pconfig.platform_metadata.add_to_dataset(dataset, pconfig.sensor_id, pconfig.force_platform_metadata)
@@ -282,6 +294,18 @@ def add_global_attributes(dataset: xr.Dataset, pconfig: BaseProcessConfig, stand
 
     if not dataset.attrs["source"]:  # COMON
         dataset.attrs["source"] = pconfig.platform_type
+
+
+def _get_data_type(sensor_type:str, platform_type: str=None):
+    """Return data_type for the given sensor_type and platform_type.
+    """
+    if sensor_type == 'viking_buoy':
+        return VIKING_BUOY_DATA_TYPE
+    elif sensor_type == "adcp":
+        if platform_type is None:
+            platform_type = DEFAULT_PLATFORM_TYPE
+        return ADCP_DATA_TYPES[platform_type]
+    raise ValueError(f"Invalid sensor type.")
 
 
 def write_netcdf(dataset: xr.Dataset, pconfig: BaseProcessConfig):

@@ -57,15 +57,13 @@ import xarray as xr
 from pathlib import Path
 
 import magtogoek.logger as l
-
 from magtogoek import TERMINAL_WIDTH
-
 from magtogoek.adcp.adcp_plots import make_adcp_figure
 from magtogoek.adcp.loader import load_adcp_binary
-from magtogoek.adcp.transform import coordsystem2earth, motion_correction
 from magtogoek.adcp.odf_exporter import make_odf
 from magtogoek.adcp.quality_control import (adcp_quality_control,
                                             no_adcp_quality_control)
+from magtogoek.adcp.transform import coordsystem2earth, motion_correction
 from magtogoek.attributes_formatter import (
     _add_data_min_max_to_var_attrs)
 from magtogoek.navigation import load_navigation
@@ -256,7 +254,7 @@ def process_adcp(config: dict, drop_empty_attrs: bool = False, headless: bool = 
     config :
         Dictionary make from a configfile (see config_handler.load_config).
     drop_empty_attrs :
-        If true, all netcdf empty ('') global attributes will be drop from
+        If true, all netcdf empty ('') global attributes will be dropped from
         the output.
     headless :
         If true, figures are not displayed.
