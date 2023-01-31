@@ -27,7 +27,7 @@ from typing import *
 from magtogoek import logger as l
 from magtogoek import TERMINAL_WIDTH
 from magtogoek.process_common import BaseProcessConfig, add_global_attributes, write_log, write_netcdf, \
-    add_processing_timestamp, clean_dataset_for_nc_output, format_data_encoding, _format_variables_names_and_attributes
+    add_processing_timestamp, clean_dataset_for_nc_output, format_data_encoding, format_variables_names_and_attributes
 from magtogoek.attributes_formatter import (
     compute_global_attrs, format_variables_names_and_attributes,
 )
@@ -45,7 +45,7 @@ from magtogoek.viking.quality_control import meteoce_quality_control, no_meteoce
 
 l.get_logger("viking_processing")
 
-STANDARD_VIKING_GLOBAL_ATTRIBUTES = {
+STANDARD_GLOBAL_ATTRIBUTES = {
     "sensor_type": "viking_buoy",
     "featureType": "timeSeriesProfile",
     "data_type": "meteoce",  # TODO CHECK IF ITS RIGHTS
@@ -273,7 +273,7 @@ def _process_viking_data(pconfig: ProcessConfig):
     # CORRECTION  #
     # ----------- #
 
-    l.section("Data correction")
+    l.section("Data Correction")
 
     if 'dissolved_oxygen' in dataset:
         _correction_dissolved_oxygen_rinko(dataset, pconfig)
@@ -281,75 +281,41 @@ def _process_viking_data(pconfig: ProcessConfig):
     if 'ph' in dataset:
         _correct_ph_for_salinity(dataset, pconfig)
 
-    if pconfig.magnetic_declination:
-        angle = pconfig.magnetic_declination
-        if pconfig.magnetic_declination_preset:
-            angle = round((pconfig.magnetic_declination - dataset.pconfig.magnetic_declination_preset), 4)
-        l.log(f"An additional correction of {angle} degree east was applied to the preset {pconfig.magnetic_declination_preset}.")
-        _apply_magnetic_correction(dataset, angle)
-        dataset.attrs["magnetic_declination"] = pconfig.magnetic_declination
-        l.log(f"Absolute magnetic declination: {dataset.attrs['magnetic_declination']} degree east.")
-
-    # ----------------------------- #
-    # ADDING SOME GLOBAL ATTRIBUTES #
-    # ----------------------------- #
-    # SECTION PAS CLAIR
-    l.section("Adding Global Attributes")
-
-    dataset = dataset.assign_attrs(STANDARD_VIKING_GLOBAL_ATTRIBUTES)
-
-    # dataset.attrs["data_type"] = DATA_TYPES[pconfig.platform_type] # DATA TYPE WILL DEPEND ON SENSOR
-    dataset.attrs["data_subtype"] = DATA_SUBTYPES[pconfig.platform_type]
-
-    #this could be a function in process/comon
-    if pconfig.platform_metadata["platform"]["longitude"]:
-        dataset.attrs["longitude"] = pconfig.platform_metadata["platform"]["longitude"]
-    if pconfig.platform_metadata["platform"]["latitude"]:
-        dataset.attrs["latitude"] = pconfig.platform_metadata["platform"]["latitude"]
-
-    compute_global_attrs(dataset)
-
-    dataset.attrs['sensor_depth'] = pconfig.sensor_depth
-    dataset.attrs['serial_number'] = dataset.attrs.pop('controller_serial_number')
-
-    if 'magnetic_declination' in dataset:
-        dataset.attrs["magnetic_declination"] = dataset['magnetic_declination'].mean()
-        dataset.attrs["magnetic_declination_units"] = "degree east"
-
-    # _set_platform_metadata(dataset, pconfig)
-
-    dataset = dataset.assign_attrs(pconfig.metadata)
-
-    if not dataset.attrs["source"]:
-        dataset.attrs["source"] = pconfig.platform_type
+    # MAGNETIC DECLINATION SHOULD BE ALREADY CORRECTED FOR VIKING
 
     # --------------- #
     # QUALITY CONTROL #
     # --------------- #
 
-    dataset.attrs["logbook"] += l.logbook
+    # TODO
 
     if pconfig.quality_control:
         _quality_control(dataset, pconfig)
-        #ADCP QUALITY CONTROL ?
+        #ADCP QUALITY CONTROL ? For adcp data.
     else:
         no_meteoce_quality_control(dataset)
+
+    # ----------------------------- #
+    # ADDING SOME GLOBAL ATTRIBUTES #
+    # ----------------------------- #
+
+    l.section("Adding Global Attributes")
+
+    add_global_attributes(dataset, pconfig, STANDARD_GLOBAL_ATTRIBUTES)
 
     # ------------- #
     # DATA ENCODING #
     # ------------- #
-    _format_data_encoding(dataset)
+    l.section("Data Encoding")
+
+    format_data_encoding(dataset)
 
     # -------------------- #
     # VARIABLES ATTRIBUTES #
     # -------------------- #
-    dataset.attrs['bodc_name'] = pconfig.bodc_name
-    dataset.attrs["VAR_TO_ADD_SENSOR_TYPE"] = VAR_TO_ADD_SENSOR_TYPE  # Sensor types is Viking (dict of sensor:[var]) ?
-    dataset.attrs["P01_CODES"] = P01_CODES
-    dataset.attrs["variables_gen_name"] = [var for var in dataset.variables]  # For Odf outputs
-
     l.section("Variables attributes")
-    dataset = format_variables_names_and_attributes(dataset)
+
+    dataset = format_variables_names_and_attributes(dataset, pconfig, P01_CODES)
 
     # ------------ #
     # MAKE FIGURES #
@@ -357,68 +323,45 @@ def _process_viking_data(pconfig: ProcessConfig):
 
     # TODO
 
-    # --------------------------- #
-    # ADDING OF GLOBAL ATTRIBUTES #
-    # ----------------------------#
+    # --------------- #
+    # POST-PROCESSING #
+    # --------------- #
+    l.section("Post-processing")
 
-    if not dataset.attrs["date_created"]:
-        dataset.attrs["date_created"] = pd.Timestamp.now().strftime("%Y-%m-%d")
-
-    dataset.attrs["date_modified"] = pd.Timestamp.now().strftime("%Y-%m-%d")
-
-    dataset.attrs["logbook"] += l.logbook
-
-    dataset.attrs["history"] = dataset.attrs["logbook"]
-    del dataset.attrs["logbook"]
-
-    if "platform_name" in dataset.attrs:
-        dataset.attrs["platform"] = dataset.attrs.pop("platform_name")
-
-    # ----------- #
-    # ODF OUTPUTS #
-    # ----------- #
-    # make a function process_comon.py
-    # l.section("Output")
-    # if pconfig.odf_output is True:
-    #     if pconfig.odf_data is None:
-    #         pconfig.odf_data = 'both'
-    #     #odf_data = {'both': ['VEL', 'ANC'], 'vel': ['VEL'], 'anc': ['ANC']}[pconfig.odf_data]
-    #     odf_data = "METEOCE" #?
-    #     for qualifier in odf_data:
-    #         _ = make_odf(
-    #             dataset=dataset,
-    #             platform_metadata=pconfig.platform_metadata,
-    #             config_attrs=pconfig.metadata,
-    #             bodc_name=pconfig.bodc_name,
-    #             event_qualifier2=qualifier,
-    #             output_path=pconfig.odf_path,
-    #         )
-
-    # ------------------------------------ #
-    # FORMATTING DATASET FOR NETCDF OUTPUT #
-    # ------------------------------------ #
-    # process_comon.py
-    dataset = _drop_variables(dataset)
-
-    dataset = _drop_global_attributes(dataset)
-
-    dataset = _handle_null_global_attributes(dataset, pconfig)
+    # TODO if needed
 
     # ---------- #
-    # NC OUTPUTS #
+    # ODF OUTPUT #
     # ---------- #
-    # make a function for process_comon.py
-    # if pconfig.netcdf_output is True:
-    #     netcdf_path = Path(pconfig.netcdf_path).with_suffix('.nc')
-    #     dataset.to_netcdf(netcdf_path)
-    #     l.log(f"netcdf file made -> {netcdf_path}")
-    #
-    # if pconfig.make_log is True:
-    #     log_path = Path(pconfig.log_path).with_suffix(".log")
-    #     l.write(log_path)
 
-    # FIXME
-    return dataset
+    l.section("Output")
+    if pconfig.odf_output is True:
+        l.warning('ODF output implemented yet') #TODO
+#        _write_odf(dataset, pconfig)
+
+    # ----------------- #
+    # NETCDF FORMATTING #
+    # ------------------#
+
+    add_processing_timestamp(dataset)
+
+    dataset = clean_dataset_for_nc_output(dataset, pconfig)
+
+    dataset.attrs["history"] = l.logbook
+
+    # ------------- #
+    # NETCDF OUTPUT #
+    # ------------- #
+    if pconfig.netcdf_output is True:
+        write_netcdf(dataset, pconfig)
+
+    # ---------- #
+    # LOG OUTPUT #
+    # ---------- #
+    if pconfig.make_log is True:
+        write_log(pconfig)
+
+    return dataset # FIXME to remove
 
 
 def _load_viking_data(pconfig: ProcessConfig):
@@ -551,24 +494,6 @@ def _load_navigation(dataset: xr.Dataset, navigation_files: str):
             return dataset
     l.warning('Could not load navigation data file.')
     return dataset
-
-
-def _format_data_encoding(dataset: xr.Dataset):
-    """Format data encoding with default value in module."""
-    l.section("Data Encoding")
-    for var in dataset.variables:
-        if var == "time":
-            dataset.time.encoding = TIME_ENCODING
-        elif "_QC" in var:
-            dataset[var].values = dataset[var].values.astype("int8")
-            dataset[var].encoding = QC_ENCODING
-        elif var == "time_string":
-            dataset[var].encoding = TIME_STRING_ENCODING
-        else:
-            dataset[var].encoding = DATA_ENCODING
-
-    l.log(f"Data _FillValue: {DATA_FILL_VALUE}")
-    l.log(f"Ancillary Data _FillValue: {QC_FILL_VALUE}")
 
 
 def _apply_magnetic_correction(dataset: xr.Dataset, magnetic_declination: float):

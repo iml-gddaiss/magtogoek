@@ -68,7 +68,7 @@ from magtogoek.attributes_formatter import (
     _add_data_min_max_to_var_attrs)
 from magtogoek.navigation import load_navigation
 from magtogoek.process_common import BaseProcessConfig, add_global_attributes, write_log, write_netcdf, \
-    add_processing_timestamp, clean_dataset_for_nc_output, format_data_encoding, _format_variables_names_and_attributes
+    add_processing_timestamp, clean_dataset_for_nc_output, format_data_encoding, format_variables_names_and_attributes
 from magtogoek.tools import (
     rotate_2d_vector, regrid_dataset, _prepare_flags_for_regrid, _new_flags_bin_regrid,
     _new_flags_interp_regrid, get_datetime_and_count, cut_bin_depths, cut_times)
@@ -409,7 +409,7 @@ def _process_adcp_data(pconfig: ProcessConfig):
 
     p01_codes = _get_p01_codes(dataset, pconfig)
 
-    dataset = _format_variables_names_and_attributes(dataset, pconfig, p01_codes)
+    dataset = format_variables_names_and_attributes(dataset, pconfig, p01_codes)
 
     # ------------ #
     # MAKE FIGURES #

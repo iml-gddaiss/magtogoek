@@ -373,7 +373,7 @@ def format_data_encoding(dataset: xr.Dataset):
     l.log(f"Ancillary Data _FillValue: {QC_FILL_VALUE}")
 
 
-def _format_variables_names_and_attributes(
+def format_variables_names_and_attributes(
         dataset: xr.Dataset,
         pconfig: BaseProcessConfig,
         p01_codes: dict
