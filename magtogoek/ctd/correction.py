@@ -371,7 +371,7 @@ def acid_dissociation_constant_HSO4(temp: np.ndarray, psal: np.ndarray) -> np.nd
     return (1 - 0.001005 * psal) * np.exp(a0 + a1 + a2 + a3 + a4)
 
 
-def log_of_HCl_activity_as_temperature_and_pressure_function(psal: np.temp,
+def log_of_HCl_activity_as_temperature_and_pressure_function(psal: np.ndarray,
                                                             temp: np.ndarray,
                                                             pres: np.ndarray) -> np.ndarray:
    """(Khoo et al. 1977)

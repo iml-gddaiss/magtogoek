@@ -48,6 +48,7 @@ def make_odf(
         platform_metadata: PlatformMetadata,
         sensor_id: str,
         config_attrs: dict,
+        generic_variables_name: List[str],
         bodc_name: bool = True,
         event_qualifier2: str = 'VEL',
         output_path: Optional[str] = None, ):
@@ -58,8 +59,12 @@ def make_odf(
         Dataset to which add the navigation data.
     platform_metadata :
         Metadata from the platform file.
+    sensor_id :
+
     config_attrs :
         Global attributes parameter from the configFile.
+    generic_variables_name :
+        List of the generic name fo the variables. Python variables used in the code.
     bodc_name:
         If True, map from the generic to the BODC p01 variables names.
     event_qualifier2:
@@ -77,7 +82,7 @@ def make_odf(
     _make_odf_header(odf)
     if platform_metadata.platform.platform_type == "buoy":
         _make_buoy_header(odf, platform_metadata)
-        _make_adcp_buoy_instrument_header(odf, dataset, platform_metadata, sensor_id)
+        _make_adcp_buoy_instrument_header(odf, dataset, platform_metadata, sensor_id, generic_variables_name)
         _make_other_buoy_instrument_header(odf, platform_metadata)
     else:
         _make_instrument_header(odf, dataset)
@@ -236,9 +241,26 @@ def _make_buoy_header(odf: Odf, platform_metadata: PlatformMetadata):
             odf.buoy[key] = str(platform_metadata.buoy_specs.__dict__[key])
 
 
-def _make_adcp_buoy_instrument_header(odf: Odf, dataset: xr.Dataset, platform_metadata: PlatformMetadata, sensor_id: str):
-    """Uses buoy_instrument_attrs
+def _make_adcp_buoy_instrument_header(odf: Odf, dataset: xr.Dataset, platform_metadata: PlatformMetadata, sensor_id: str,
+                                      generic_variables_name: List[str]):
     """
+
+    Parameters
+    ----------
+    odf
+    dataset
+    platform_metadata
+    sensor_id
+    generic_variables_name :
+        List of the generic name fo the variables. Python variables used in the code.
+
+    Returns
+    -------
+
+    """
+
+    #
+    #"""
     odf.add_buoy_instrument(sensor_id)
     header = odf.buoy_instrument[sensor_id]
 
@@ -253,7 +275,7 @@ def _make_adcp_buoy_instrument_header(odf: Odf, dataset: xr.Dataset, platform_me
     header["inst_end_date_time"] = odf_time_format(dataset.time.values.max())
 
     _make_adcp_buoy_instrument_comments(odf, sensor_id, dataset, platform_metadata)
-    _make_adcp_buoy_instrument_sensor_comments(odf, sensor_id, dataset)
+    _make_adcp_buoy_instrument_sensor_comments(odf, sensor_id, dataset, generic_variables_name)
 
 
 def _make_adcp_buoy_instrument_comments(odf: Odf, sensor_id: str, dataset: xr.Dataset, platform_metadata: PlatformMetadata):
@@ -303,21 +325,26 @@ def _make_adcp_buoy_instrument_comments(odf: Odf, sensor_id: str, dataset: xr.Da
         )
 
 
-def _make_adcp_buoy_instrument_sensor_comments(odf: Odf, sensor_id: str, dataset: xr.Dataset):
+def _make_adcp_buoy_instrument_sensor_comments(odf: Odf, sensor_id: str, dataset: xr.Dataset, generic_variables_name: List[str]):
     """
 
     Parameters
     ----------
     odf
 
+    sensor_id
+
     dataset
+
+    generic_variables_name :
+      List of the generic name fo the variables. Python variables used in the code.
 
     Returns
     -------
     """
     dataset_attrs = {'Manufacturer': 'manufacturer', 'Depth': 'sensor_depth', 'Serial_Number': 'serial_number'}
     for var, item in ADCP_COMMENTS_SENSOR.items():
-        if var in dataset.attrs['variables_gen_name']:
+        if var in generic_variables_name:
             for key, value in item['comments'].items():
                 odf.buoy_instrument[sensor_id]["sensors"].append(item['sensor'] + "." + key + ': ' + value)
             for key, value in dataset_attrs.items():

@@ -15,6 +15,7 @@ P01_TO_GENERIC_NAME = {
     "w_QC": "LRZAAP01_QC",
     "e": "LERRAP01",
 }
+GENERIC_VARIABLES_NAME = [var for var in DATASET.variables]
 DATASET.attrs['P01_CODES'] = P01_TO_GENERIC_NAME
 DATASET.attrs['variables_gen_name'] = [DATASET[var].attrs['generic_name'] for var in DATASET.variables]
 
@@ -33,7 +34,13 @@ PLATFORM_METADATA.add_sensor(sensor_id='ADCP_01', kwargs={'sensor_id': 'ADCP_01'
 
 
 def test_make():
-    odf = make_odf(DATASET, PLATFORM_METADATA, 'ADCP_01', GLOBAL_ATTRS)
+    odf = make_odf(
+        dataset=DATASET,
+        platform_metadata=PLATFORM_METADATA,
+        sensor_id='ADCP_01',
+        config_attrs=GLOBAL_ATTRS,
+        generic_variables_name=GENERIC_VARIABLES_NAME
+    )
     assert odf.data.shape == (40, 9)
 
 
@@ -51,6 +58,7 @@ def test_platform_type(platform_type, headers, cruise_platform):
                    platform_metadata=PLATFORM_METADATA,
                    sensor_id='ADCP_01',
                    config_attrs=GLOBAL_ATTRS,
+                   generic_variables_name=GENERIC_VARIABLES_NAME,
                    bodc_name=True,
                    event_qualifier2='VEL',
                    output_path=None,

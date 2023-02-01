@@ -37,7 +37,9 @@ from pathlib import Path
 import numpy as np
 import xarray as xr
 
+import magtogoek.logger as l
 from magtogoek.utils import json2dict
+
 
 STATIC_ATTRIBUTES_RELATIVE_FILE_PATH = "files/CF_P01_GF3_formats.json"
 STATIC_ATTRIBUTES_ABSOLUTE_FILE_PATH = (
@@ -47,9 +49,10 @@ STATIC_ATTRIBUTES_ABSOLUTE_FILE_PATH = (
 
 def format_variables_names_and_attributes(
         dataset: xr.Dataset,
-        bodc_name: bool,
-        p01_codes: dict,
-        variable_to_add_sensor_type: list
+        use_bodc_name: bool,
+        p01_codes_map: dict,
+        variable_to_add_sensor_type: list,
+        cf_profile_id: str = 'time',
 ) -> xr.Dataset:
     """Format variables names and attributes
 
@@ -57,7 +60,7 @@ def format_variables_names_and_attributes(
 
     Convert variables names to BODC and then adds CF and SeaDataNet metadata
     to variables attributes. Coordinates names are always changed back to their
-    original names (generic_name). Variable names can also be changed back to
+    original names (generic_name). Variable names can also be keep their
     their original names (generic_name) setting `use_bodc_codes` as `False`.
 
     None essential global attributes :
@@ -69,12 +72,14 @@ def format_variables_names_and_attributes(
     ----------
     dataset :
         dataset to format.
-    bodc_name :
+    use_bodc_name :
         True if the bodc_name are to be used.
-    p01_codes :
+    p01_codes_map :
         generic name to bodc p01_code mapping.
     variable_to_add_sensor_type :
         List of P01 parameters codes of variables to which add the sensor_type attributes.
+    cf_profile_id :
+        Name of the coordinate to add the attributes {'cf_role': 'profile_id'}
 
     Notes
     -----
@@ -84,7 +89,7 @@ def format_variables_names_and_attributes(
 
     original_coords_name = dataset.coords
 
-    dataset = _convert_variables_names(dataset, p01_codes)
+    dataset = _convert_variables_names(dataset, p01_codes_map)
 
     if "sensor_type" in dataset.attrs:
         for var in variable_to_add_sensor_type:
@@ -93,11 +98,11 @@ def format_variables_names_and_attributes(
 
     _add_sdn_and_cf_var_attrs(dataset, json2dict(STATIC_ATTRIBUTES_ABSOLUTE_FILE_PATH))
 
-    if bodc_name is not True:
-        dataset = _convert_variables_names(dataset, p01_codes, convert_back_to_generic=True)
+    if use_bodc_name is not True:
+        dataset = _convert_variables_names(dataset, p01_codes_map, convert_back_to_generic=True)
     else:
         dataset = dataset.rename(
-            {p01_codes[name]: name for name in original_coords_name}
+            {p01_codes_map[name]: name for name in original_coords_name}
         )
 
     _add_data_min_max_to_var_attrs(dataset)
@@ -109,6 +114,11 @@ def format_variables_names_and_attributes(
 
     _add_ancillary_variables_to_var_attrs(dataset)
     _add_names_to_qc_var_attrs(dataset)
+
+    if cf_profile_id in dataset.variables:
+        dataset[cf_profile_id].attrs['cf_role'] = 'profile_id'
+
+    l.log("Variables attributes added.")
 
     return dataset
 

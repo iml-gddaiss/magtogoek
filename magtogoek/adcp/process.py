@@ -64,11 +64,10 @@ from magtogoek.adcp.odf_exporter import make_odf
 from magtogoek.adcp.quality_control import (adcp_quality_control,
                                             no_adcp_quality_control)
 from magtogoek.adcp.transform import coordsystem2earth, motion_correction
-from magtogoek.attributes_formatter import (
-    _add_data_min_max_to_var_attrs)
-from magtogoek.navigation import load_navigation
+from magtogoek.attributes_formatter import format_variables_names_and_attributes, _add_data_min_max_to_var_attrs
 from magtogoek.process_common import BaseProcessConfig, add_global_attributes, write_log, write_netcdf, \
-    add_processing_timestamp, clean_dataset_for_nc_output, format_data_encoding, format_variables_names_and_attributes
+    add_processing_timestamp, clean_dataset_for_nc_output, format_data_encoding, format_variables_names_and_attributes, \
+    add_navigation, save_variables_name_for_odf_output
 from magtogoek.tools import (
     rotate_2d_vector, regrid_dataset, _prepare_flags_for_regrid, _new_flags_bin_regrid,
     _new_flags_interp_regrid, get_datetime_and_count, cut_bin_depths, cut_times)
@@ -407,9 +406,17 @@ def _process_adcp_data(pconfig: ProcessConfig):
     # -------------------- #
     l.section("Variables attributes")
 
-    p01_codes = _get_p01_codes(dataset, pconfig)
+    save_variables_name_for_odf_output(dataset, pconfig)
 
-    dataset = format_variables_names_and_attributes(dataset, pconfig, p01_codes)
+    p01_codes_map = _get_p01_codes(dataset, pconfig)
+
+    dataset = format_variables_names_and_attributes(
+        dataset=dataset,
+        use_bodc_name=pconfig.bodc_name,
+        p01_codes_map=p01_codes_map,
+        variable_to_add_sensor_type=pconfig.variables_to_add_sensor_type,
+        cf_profile_id='time'
+    )
 
     # ------------ #
     # MAKE FIGURES #
@@ -501,60 +508,6 @@ def _load_adcp_data(pconfig: ProcessConfig) -> xr.Dataset:
     )
     if not pconfig.keep_bt:
         dataset = _drop_bottom_track(dataset)
-
-    return dataset
-
-
-def add_navigation(dataset: xr.Dataset, navigation_files: str):
-    """Load navigation data to `dataset` from nmea, gpx or netcdf files.
-
-    Returns the dataset with the added navigation data. Data from the navigation file
-    are interpolated on the dataset time vector.
-
-    Use to load:
-        `lon, `lat`,
-        `u_shp`, `v_ship`
-        `roll_`, `pitch`, `heading`
-
-    Parameters
-    ----------
-    dataset :
-        Dataset to which add the navigation data.
-
-    navigation_files :
-        nmea(ascii), gpx(xml) or netcdf files containing the navigation data. For the
-        netcdf file, variable must be `lon`, `lat` and the coordinates `time`.
-
-    Notes
-    -----
-        Using the magtogoek function `mtgk compute nav`, u_ship, v_ship can be computed from `lon`, `lat`
-        data to correct the data for the platform motion by setting the config parameter `m_corr` to `nav`.
-    """
-    nav_ds = load_navigation(navigation_files)
-
-    if nav_ds is not None:
-        if 'time' in nav_ds.coords:
-            nav_ds = nav_ds.interp(time=dataset.time)
-            if all([var in nav_ds for var in ('lon', 'lat')]):
-                dataset['lon'] = nav_ds['lon']
-                dataset['lat'] = nav_ds['lat']
-                l.log("Platform GPS data loaded.")
-
-            if all([var in nav_ds for var in ('u_ship', 'v_ship')]):
-                dataset['u_ship'] = nav_ds['u_ship']
-                dataset['v_ship'] = nav_ds['v_ship']
-                l.log("Platform velocity data loaded.")
-
-            if all([var in nav_ds for var in ('heading', 'pitch', 'roll_')]):
-                dataset['heading'] = nav_ds['heading']
-                dataset['pitch'] = nav_ds['pitch']
-                dataset['roll_'] = nav_ds['roll_']
-                l.log("Platform inertial data loaded.")
-            nav_ds.close()
-        else:
-            l.warning('Could not load navigation data file. `time` coordinate was massing.')
-    else:
-        l.warning('Could not load navigation data file.')
 
     return dataset
 
@@ -764,6 +717,7 @@ def _write_odf(dataset: xr.Dataset, pconfig: ProcessConfig):
             platform_metadata=pconfig.platform_metadata,
             sensor_id=pconfig.sensor_id,
             config_attrs=pconfig.metadata,
+            generic_variables_name=pconfig.generic_variables_name,
             bodc_name=pconfig.bodc_name,
             event_qualifier2=qualifier,
             output_path=pconfig.odf_path,
