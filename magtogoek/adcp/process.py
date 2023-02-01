@@ -60,6 +60,8 @@ import magtogoek.logger as l
 from magtogoek import TERMINAL_WIDTH
 from magtogoek.adcp.adcp_plots import make_adcp_figure
 from magtogoek.adcp.loader import load_adcp_binary
+from magtogoek.adcp.transform import coordsystem2earth
+from magtogoek.adcp.correction import apply_motion_correction, apply_magnetic_correction
 from magtogoek.adcp.odf_exporter import make_odf
 from magtogoek.adcp.quality_control import (adcp_quality_control,
                                             no_adcp_quality_control)
@@ -68,7 +70,7 @@ from magtogoek.attributes_formatter import format_variables_names_and_attributes
 from magtogoek.process_common import BaseProcessConfig, add_global_attributes, write_log, write_netcdf, \
     add_processing_timestamp, clean_dataset_for_nc_output, format_data_encoding, add_navigation, save_variables_name_for_odf_output
 from magtogoek.tools import (
-    rotate_2d_vector, regrid_dataset, _prepare_flags_for_regrid, _new_flags_bin_regrid,
+    regrid_dataset, _prepare_flags_for_regrid, _new_flags_bin_regrid,
     _new_flags_interp_regrid, get_datetime_and_count, cut_bin_depths, cut_times)
 
 l.get_logger('adcp_processing')
@@ -355,7 +357,7 @@ def _process_adcp_data(pconfig: ProcessConfig):
 
     # motion correction #
     if pconfig.motion_correction_mode in ["bt", "nav"]:
-        motion_correction(dataset, pconfig.motion_correction_mode)
+        apply_motion_correction(dataset, pconfig.motion_correction_mode)
 
     # magnetic declination #
     if dataset.attrs['magnetic_declination'] is not None:
@@ -365,7 +367,7 @@ def _process_adcp_data(pconfig: ProcessConfig):
 
     if pconfig.magnetic_declination:
         if dataset.attrs['coord_system'] == 'earth':
-            _magnetic_correction(dataset, pconfig)
+            apply_magnetic_correction(dataset, pconfig.magnetic_declination)
         else:
             l.warning('Correction for magnetic declination was not carried out since '
                       'the velocity data are not in earth coordinates.')
@@ -522,68 +524,6 @@ def _coordinate_system_transformation(dataset: xr.Dataset):
                   'But magtogoek implementation was not properly tested.')
         dataset = coordsystem2earth(dataset)
     return dataset
-
-
-def _magnetic_correction(dataset: xr.Dataset, pconfig: ProcessConfig):
-    """Correct velocities and heading to true north and east.
-
-    Computes the magnetic correction to apply.
-
-    Rotates velocities vector clockwise by `magnetic_declination` angle effectively
-    rotating the frame fo reference by the `magnetic_declination` anti-clockwise.
-    Corrects the heading with the `magnetic_declination`:
-
-    Equation for the heading: (heading + 180 + magnetic_declination) % 360 - 180
-        [-180, 180[ -> [0, 360[ -> [MD, 360+MD[
-        -> [MD, 360+MD[ -> [0, 360[ -> [-180, 180[
-
-    Parameters
-    ----------
-    dataset:
-      requires global attribute : "magnetic_declination"
-    pconfig:
-
-    """
-
-    magnetic_correction = _compute_magnetic_correction_angle(dataset, pconfig)
-
-    dataset.u.values, dataset.v.values = rotate_2d_vector(
-        dataset.u, dataset.v, -magnetic_correction
-    )
-    l.log(f"Velocities transformed to true north and true east.")
-    if all(v in dataset for v in ["bt_u", "bt_v"]):
-        dataset.bt_u.values, dataset.bt_v.values = rotate_2d_vector(
-            dataset.bt_u, dataset.bt_v, -magnetic_correction
-        )
-        l.log(f"Bottom velocities transformed to true north and true east.")
-
-    # heading goes from -180 to 180
-    if "heading" in dataset:
-        dataset.heading.values = (
-                                         dataset.heading.data + 180 + magnetic_correction
-                                 ) % 360 - 180
-        l.log(f"Heading transformed to true north.")
-
-    dataset.attrs["magnetic_declination"] = pconfig.magnetic_declination
-
-    l.log(f"Absolute magnetic declination: {dataset.attrs['magnetic_declination']} degree east.")
-
-
-def _compute_magnetic_correction_angle(dataset: xr.Dataset, pconfig: ProcessConfig):
-    """
-
-    Parameters
-    ----------
-    dataset:
-      requires global attribute : "magnetic_declination"
-    pconfig:
-
-    """
-    angle = pconfig.magnetic_declination
-    if dataset.attrs["magnetic_declination"]:
-        angle = round((pconfig.magnetic_declination - dataset.attrs["magnetic_declination"]), 4)
-        l.log(f"An additional correction of {angle} degree east was applied.")
-    return angle
 
 
 def _quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):

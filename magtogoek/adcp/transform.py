@@ -10,35 +10,6 @@ from pycurrents.adcp import transform
 import magtogoek.logger as l
 
 
-def motion_correction(dataset: xr.Dataset, mode: str):
-    """Carry motion correction on velocities.
-
-    If mode is 'bt' the motion correction is along x, y, z.
-    If mode is 'nav' the motion correction is along x, y.
-    """
-
-    if mode == "bt":
-        if all(f"bt_{v}" in dataset for v in ["u", "v", "w"]):
-            for field in ["u", "v", "w"]:
-                dataset[field].values -= dataset[f"bt_{field}"].values
-            l.log("Motion correction carried out with bottom track")
-        else:
-            l.warning("Motion correction aborted. Bottom velocity (bt_u, bt_v, bt_w) missing")
-    elif mode == "nav":
-        if all(f"{v}_ship" in dataset for v in ["u", "v"]):
-            for field in ["u", "v"]:
-                if all([v in dataset for v in ['lon', 'lat']]):
-                    velocity_correction = dataset[field + "_ship"].where(np.isfinite(dataset.lon.values), 0)
-                else:
-                    velocity_correction = dataset[field + "_ship"]
-                dataset[field] += np.tile(velocity_correction, (dataset.depth.size, 1))
-            l.log("Motion correction carried out with navigation")
-        else:
-            l.warning("Motion correction aborted. Navigation velocity (u_ship, v_ship) missing")
-    else:
-        l.warning("Motion correction aborted. Motion correction mode invalid. ('bt' or 'nav')")
-
-
 def coordsystem2earth(dataset: xr.Dataset) -> xr.Dataset:
     """Transforms beam or xyz coordinates to enu coordinates
 
