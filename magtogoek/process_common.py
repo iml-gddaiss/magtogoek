@@ -6,7 +6,7 @@ import xarray as xr
 from pathlib import Path
 
 from magtogoek import logger as l, PLATFORM_TYPES
-from magtogoek.attributes_formatter import compute_global_attrs, format_variables_names_and_attributes
+from magtogoek.attributes_formatter import compute_global_attrs
 from magtogoek.navigation import load_navigation
 from magtogoek.platforms import PlatformMetadata, load_platform_metadata, default_platform_metadata
 from magtogoek.utils import ensure_list_format
