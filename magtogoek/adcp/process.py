@@ -60,12 +60,11 @@ import magtogoek.logger as l
 from magtogoek import TERMINAL_WIDTH
 from magtogoek.adcp.adcp_plots import make_adcp_figure
 from magtogoek.adcp.loader import load_adcp_binary
-from magtogoek.adcp.transform import coordsystem2earth
 from magtogoek.adcp.correction import apply_motion_correction, apply_magnetic_correction
 from magtogoek.adcp.odf_exporter import make_odf
 from magtogoek.adcp.quality_control import (adcp_quality_control,
                                             no_adcp_quality_control)
-from magtogoek.adcp.transform import coordsystem2earth, motion_correction
+from magtogoek.adcp.transform import coordsystem2earth
 from magtogoek.attributes_formatter import format_variables_names_and_attributes, _add_data_min_max_to_var_attrs
 from magtogoek.process_common import BaseProcessConfig, add_global_attributes, write_log, write_netcdf, \
     add_processing_timestamp, clean_dataset_for_nc_output, format_data_encoding, add_navigation, save_variables_name_for_odf_output
