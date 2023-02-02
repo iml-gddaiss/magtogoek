@@ -1,10 +1,12 @@
 import sys
+import click
 
 import pandas as pd
 import typing as tp
 import xarray as xr
 from pathlib import Path
 
+from magtogoek import TERMINAL_WIDTH
 from magtogoek import logger as l, PLATFORM_TYPES
 from magtogoek.attributes_formatter import compute_global_attrs
 from magtogoek.navigation import load_navigation
@@ -43,9 +45,6 @@ QC_FILL_VALUE = 127
 QC_ENCODING = {"dtype": "int8", "_FillValue": QC_FILL_VALUE}
 DATA_FILL_VALUE = -9999.0
 DATA_ENCODING = {"dtype": "float32", "_FillValue": DATA_FILL_VALUE}
-
-
-TIME_ATTRS = {"cf_role": "profile_id"}
 
 
 class BaseProcessConfig:
@@ -135,6 +134,76 @@ class BaseProcessConfig:
         _resolve_outputs(self)
 
 
+def process(process_function: tp.Callable[[BaseProcessConfig], None]):
+    """Decorator that wraps around a process_function e.g. viking.process.process_viking.
+
+    If `pconfig.merge_output_files` is False, each input file is process individually and output
+    names suffix are made for each file if needed, before calling the process_function.
+
+    Parameters
+    ----------
+    process_function
+
+    """
+    def inner(pconfig: BaseProcessConfig, *args):
+        if pconfig.merge_output_files is True:
+            pconfig.resolve_outputs()
+            process_function(pconfig, *args)
+
+        else:
+            config_file = pconfig.config_file
+            input_files = [fn for fn in pconfig.input_files]
+            odf_output = pconfig.odf_output
+            netcdf_output = pconfig.netcdf_output
+
+            if 'event_qualifier1' not in pconfig.metadata: # Maybe that is not the best way to do it. Only used for ODF
+                pconfig.metadata['event_qualifier1'] = ""
+
+            event_qualifier1 = pconfig.metadata['event_qualifier1']
+
+            for count, filename in enumerate(input_files):
+                pconfig.input_files = [filename]
+                pconfig.odf_output = odf_output
+                pconfig.netcdf_output = netcdf_output
+
+                # If the user set path ...
+                if isinstance(netcdf_output, str):
+                    # If the path is a filename ...
+                    if not Path(netcdf_output).is_dir():
+                        # An incrementing suffix is added to the filename
+                        pconfig.netcdf_output = str(Path(netcdf_output).with_suffix("")) + f"_{count}"
+
+                    else:
+                        pconfig.config_file = str(Path(config_file).with_suffix("")) + f"_{count}"
+                elif netcdf_output is True:
+                    pconfig.config_file = str(Path(config_file).with_suffix("")) + f"_{count}"
+
+                # If the user set path ...
+                if isinstance(odf_output, str):
+                    # If the path is a filename ...
+                    if not Path(odf_output).is_dir():
+                        # An incrementing suffix is added to the filename
+                        pconfig.odf_output = str(Path(odf_output).with_suffix("")) + f"_{count}"
+                    # If it's a directory
+                    else:
+                        # A suffix (input filename) is added to the event_qualifier that builds the filename
+                        # PREVENTS FROM OVERWRITING THE SAME FILE
+                        pconfig.metadata['event_qualifier1'] = event_qualifier1 + f"_{count}"
+                        pconfig.config_file = str(Path(config_file).with_suffix("")) + f"_{count}"
+                elif odf_output is True:
+                    # A suffix (input filename) is added to the event_qualifier that builds the filename
+                    # PREVENTS FROM OVERWRITING THE SAME FILE
+                    pconfig.metadata['event_qualifier1'] = event_qualifier1 + f"_{count}"
+                    pconfig.config_file = str(Path(config_file).with_suffix("")) + f"_{count}"
+
+                pconfig.resolve_outputs()
+
+                process_function(pconfig, *args)
+
+                click.echo(click.style("=" * TERMINAL_WIDTH, fg="white", bold=True))
+    return inner
+
+
 def _resolve_outputs(pconfig: BaseProcessConfig):
     """Figure out what outputs to make and their respective paths.
 
@@ -168,7 +237,8 @@ def _resolve_outputs(pconfig: BaseProcessConfig):
     4. If `odf_output` is not `None` or `False`:
         a) Depending on the value of `odf_output`: True, a filename, a path to directory or a path to a filename,
            an output path is build using `default_path` if needed. ODF doesn't require a filename since it is built
-           by default using metadata in the ODF file. Thus, `default_filename` is not used here.
+           by default using metadata in the ODF file. Thus, `default_filename` is not used and will only be updated
+           if `netcdf_output` is False and `odf_output` contains a filename.
 
         b) If `netcdf_output` is `False`:
            Updates `default_path` using `odf_path` value. Updates `default_filename` if `odf_path` has a filename
@@ -188,9 +258,9 @@ def _resolve_outputs(pconfig: BaseProcessConfig):
     """
 
     if pconfig.config_file is not None:
-        default_path, default_filename = Path(pconfig.config_file).parent, Path(pconfig.config_file).name
+        default_path, default_filename = Path(pconfig.config_file).parent, Path(pconfig.config_file).stem
     else:
-        default_path, default_filename = Path(pconfig.input_files[0]).parent, Path(pconfig.input_files[0]).name
+        default_path, default_filename = Path(pconfig.input_files[0]).parent, Path(pconfig.input_files[0]).stem
 
     if not pconfig.odf_output and not pconfig.netcdf_output:
         pconfig.netcdf_output = True
@@ -202,9 +272,10 @@ def _resolve_outputs(pconfig: BaseProcessConfig):
     if pconfig.odf_output:
         _make_odf_output_path(pconfig, default_path)
         if not pconfig.netcdf_output:
-            default_path = Path(pconfig.odf_path).parent
             if not is_directory(pconfig.odf_path):
-                default_filename = Path(pconfig.odf_path).stem
+                default_path, default_filename = Path(pconfig.odf_path).parent, Path(pconfig.odf_path).stem
+            else:
+                default_path = Path(pconfig.odf_path)
 
     if pconfig.make_figures:
         _make_figure_output_path(pconfig, default_path, default_filename)
@@ -218,7 +289,7 @@ def _make_netcdf_output_path(pconfig: BaseProcessConfig, default_path: Path, def
     elif pconfig.netcdf_output is True:
         pconfig.netcdf_path = str(default_path.joinpath(default_filename))
     else:
-        if is_filename(pconfig.netcdf_output):
+        if is_only_filename(pconfig.netcdf_output):
             netcdf_path = default_path.joinpath(Path(pconfig.netcdf_output)).resolve()
         elif is_directory(pconfig.netcdf_output):
             netcdf_path = Path(pconfig.netcdf_output).joinpath(default_filename)
@@ -237,7 +308,7 @@ def _make_odf_output_path(pconfig: BaseProcessConfig, default_path: Path):
     elif pconfig.odf_output is True:
         pconfig.odf_path = str(default_path)
     else:
-        if is_filename(pconfig.odf_output):
+        if is_only_filename(pconfig.odf_output):
             odf_path = default_path.joinpath(Path(pconfig.odf_output)).resolve()
         elif is_directory(pconfig.odf_output):
             odf_path = Path(pconfig.odf_output)
@@ -258,7 +329,7 @@ def _make_figure_output_path(pconfig: BaseProcessConfig, default_path: Path, def
         if pconfig.headless is True:
             pconfig.figures_path = str(default_path.joinpath(default_filename))
     else:
-        if is_filename(pconfig.make_figures):
+        if is_only_filename(pconfig.make_figures):
             figures_path = default_path.joinpath(Path(pconfig.make_figures)).resolve()
         elif is_directory(pconfig.make_figures):
             figures_path = Path(pconfig.make_figures).joinpath(default_filename)
@@ -271,7 +342,7 @@ def _make_figure_output_path(pconfig: BaseProcessConfig, default_path: Path, def
         pconfig.figures_output = True
 
 
-def is_filename(path: str):
+def is_only_filename(path: str):
     return Path(path).name == path
 
 
@@ -284,6 +355,21 @@ def parent_is_dir(path: str):
 
 
 def add_global_attributes(dataset: xr.Dataset, pconfig: BaseProcessConfig, standard_global_attributes: dict):
+    """
+    pconfig.metadata values will overwrite any values in the dataset global attributes previously set.
+    That is values in the configfile headers ["NETCDF_CF", "PROJECT", "CRUISE", "GLOBAL_ATTRIBUTES"].
+
+    Parameters
+    ----------
+    dataset
+    pconfig
+    standard_global_attributes
+
+    Returns
+    -------
+
+    """
+
     dataset.attrs.update(standard_global_attributes)
 
     dataset.attrs["data_type"] = _get_data_type(pconfig.sensor_type,pconfig.platform_type)
@@ -293,10 +379,9 @@ def add_global_attributes(dataset: xr.Dataset, pconfig: BaseProcessConfig, stand
 
     compute_global_attrs(dataset)  # already common
 
-    dataset.attrs.update(pconfig.metadata)
+    dataset.attrs["source"] = pconfig.platform_type
 
-    if not dataset.attrs["source"]:  # COMON
-        dataset.attrs["source"] = pconfig.platform_type
+    dataset.attrs.update(pconfig.metadata)
 
 
 def _get_data_type(sensor_type:str, platform_type: str=None):
