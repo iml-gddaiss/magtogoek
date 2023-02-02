@@ -47,17 +47,16 @@ Note DATA_TYPES: Missing for ship adcp. Set to adcp for now
 FIXME SOURCE : moored adcp ?
 """
 
-import getpass
+# import getpass
 
-import click
 import numpy as np
-import pandas as pd
+# import pandas as pd
 import typing as tp
 import xarray as xr
 from pathlib import Path
 
 import magtogoek.logger as l
-from magtogoek import TERMINAL_WIDTH
+
 from magtogoek.adcp.adcp_plots import make_adcp_figure
 from magtogoek.adcp.loader import load_adcp_binary
 from magtogoek.adcp.correction import apply_motion_correction, apply_magnetic_correction
@@ -66,7 +65,7 @@ from magtogoek.adcp.quality_control import (adcp_quality_control,
                                             no_adcp_quality_control)
 from magtogoek.adcp.transform import coordsystem2earth
 from magtogoek.attributes_formatter import format_variables_names_and_attributes, _add_data_min_max_to_var_attrs
-from magtogoek.process_common import BaseProcessConfig, add_global_attributes, write_log, write_netcdf, \
+from magtogoek.process_common import BaseProcessConfig, process, add_global_attributes, write_log, write_netcdf, \
     add_processing_timestamp, clean_dataset_for_nc_output, format_data_encoding, add_navigation, save_variables_name_for_odf_output
 from magtogoek.tools import (
     regrid_dataset, _prepare_flags_for_regrid, _new_flags_bin_regrid,
@@ -77,12 +76,6 @@ l.get_logger('adcp_processing')
 STANDARD_GLOBAL_ATTRIBUTES = {
     "sensor_type": "adcp",
     "featureType": "timeSeriesProfile",
-}
-
-DEFAULT_CONFIG_ATTRIBUTES = {
-    "date_created": pd.Timestamp.now().strftime("%Y-%m-%d"),
-    "publisher_name": getpass.getuser(),
-    "source": "adcp",
 }
 
 VARIABLES_TO_DROP = [
@@ -264,47 +257,9 @@ def process_adcp(config: dict, drop_empty_attrs: bool = False, headless: bool = 
     pconfig.drop_empty_attrs = drop_empty_attrs
     pconfig.headless = headless
 
-    if pconfig.merge_output_files is True:
-        pconfig.resolve_outputs()
-        _process_adcp_data(pconfig)
-    else:
-        input_files = list(pconfig.input_files)
-        odf_output = pconfig.odf_output
-        netcdf_output = pconfig.netcdf_output
-        event_qualifier1 = pconfig.metadata['event_qualifier1']
+    _process_adcp_data(pconfig)
 
-        for count, filename in enumerate(input_files):
-            pconfig.input_files = [filename]
-            # If the user set path ...
-            if isinstance(netcdf_output, str):
-                # If the path is a filename ...
-                if not Path(netcdf_output).is_dir():
-                    # An incrementing suffix is added to the filename
-                    pconfig.netcdf_output = str(Path(netcdf_output).with_suffix("")) + f"_{count}"
-
-            # If the user set path ...
-            if isinstance(odf_output, str):
-                # If the path is a filename ...
-                if not Path(odf_output).is_dir():
-                    # An incrementing suffix is added to the filename
-                    pconfig.odf_output = str(Path(odf_output).with_suffix("")) + f"_{count}"
-                # If it's a directory
-                else:
-                    # An incrementing suffix is added to the event_qualifier that builds the filename
-                    # PREVENTS FROM OVERWRITING THE SAME FILE
-                    pconfig.metadata['event_qualifier1'] = event_qualifier1 + f"_{Path(filename).name}"
-            elif odf_output is True:
-                # An incrementing suffix is added to the event_qualifier that builds the filename
-                # PREVENTS FROM OVERWRITING THE SAME FILE
-                pconfig.metadata['event_qualifier1'] = event_qualifier1 + f"_{Path(filename).name}"
-
-            pconfig.resolve_outputs()
-
-            _process_adcp_data(pconfig)
-
-            click.echo(click.style("=" * TERMINAL_WIDTH, fg="white", bold=True))
-
-
+@process
 def _process_adcp_data(pconfig: ProcessConfig):
     """Process adcp data
 

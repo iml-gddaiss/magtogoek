@@ -16,44 +16,27 @@ Maybe quality control should be done before and the transformation should check 
 
 """
 
-import getpass
 
 import numpy as np
-import pandas as pd
 import xarray as xr
-from pathlib import Path
 from typing import *
 
 from magtogoek import logger as l
-from magtogoek import TERMINAL_WIDTH
-from magtogoek.process_common import BaseProcessConfig, add_global_attributes, write_log, write_netcdf, \
-    add_processing_timestamp, clean_dataset_for_nc_output, format_data_encoding, format_variables_names_and_attributes, \
-    add_navigation, save_variables_name_for_odf_output
-from magtogoek.attributes_formatter import (
-    compute_global_attrs, format_variables_names_and_attributes,
-)
+from magtogoek.process_common import BaseProcessConfig, process, add_global_attributes, write_log, write_netcdf, \
+    add_processing_timestamp, clean_dataset_for_nc_output, format_data_encoding, add_navigation, save_variables_name_for_odf_output
+from magtogoek.attributes_formatter import format_variables_names_and_attributes
 from magtogoek.ctd.correction import RINKO_COEFFS_KEYS, dissolved_oxygen_rinko_correction, voltEXT_from_pHEXT, \
     pHEXT_from_voltEXT, compute_density
-from magtogoek.navigation import load_navigation
-from magtogoek.tools import rotate_2d_vector, north_polar2cartesian
-# from magtogoek.platforms import _add_platform
-from magtogoek.utils import ensure_list_format
+from magtogoek.tools import north_polar2cartesian
 from magtogoek.viking.loader import load_meteoce_data
-# from magtogoek.viking.odf_exporter import make_odf
+from magtogoek.viking.odf_exporter import make_odf
 from magtogoek.viking.quality_control import meteoce_quality_control, no_meteoce_quality_control
 
 # import click
 
 l.get_logger("viking_processing")
 
-STANDARD_GLOBAL_ATTRIBUTES = {
-    "sensor_type": "viking_buoy",
-    "featureType": "timeSeriesProfile",
-    "data_type": "meteoce",  # TODO CHECK IF ITS RIGHTS
-    "data_subtype": "BUOY",
-    "source": None,
-
-}
+STANDARD_GLOBAL_ATTRIBUTES = {"sensor_type": "viking_buoy", "featureType": "timeSeriesProfile"}
 
 VARIABLES_TO_DROP = ['ph_temperature', 'wind_direction_max', 'speed', 'course', 'magnetic_declination']
 
@@ -125,23 +108,7 @@ P01_CODES_MAP = {
     'v_ship': "APNSGP01"
 }
 
-VAR_TO_ADD_SENSOR_TYPE = []
-
-#TIME_ATTRS = {"cf_role": "profile_id"}
-
-#TIME_ENCODING = {
-    # "units": "seconds since 1970-1-1 00:00:00Z",
-    # "calendar": "gregorian",
-    # "_FillValue": None,
-# }
-#TIME_STRING_ENCODING = {"dtype": "S1"}
-
-#DATE_STRING_FILL_VALUE = "17-NOV-1858 00:00:00.00"  # filled value used by ODF format
-#QC_FILL_VALUE = 127
-#QC_ENCODING = {"dtype": "int8", "_FillValue": QC_FILL_VALUE}
-
-#DATA_FILL_VALUE = -9999.0
-#DATA_ENCODING = {"dtype": "float32", "_FillValue": DATA_FILL_VALUE}
+VAR_TO_ADD_SENSOR_TYPE = [] # TODO
 
 
 class ProcessConfig(BaseProcessConfig):
@@ -177,7 +144,7 @@ class ProcessConfig(BaseProcessConfig):
 def process_viking(config: dict, drop_empty_attrs: bool = False, headless: bool = False):
     """Process Viking data with parameters from a config file.
 
-    If `pconfig.merge_output_files` is False, each input file is process individually.
+    call process_common.process
 
     Parameters
     ----------
@@ -195,45 +162,10 @@ def process_viking(config: dict, drop_empty_attrs: bool = False, headless: bool 
     pconfig.drop_empty_attrs = drop_empty_attrs
     pconfig.headless = headless
 
-    if pconfig.merge_output_files:
-        pconfig.resolve_outputs()
-        return _process_viking_data(pconfig)  # FIXME
-    else:
-        input_files = list(pconfig.input_files)
-        odf_output = pconfig.odf_output
-        netcdf_output = pconfig.netcdf_output
-        event_qualifier1 = pconfig.metadata['event_qualifier1']
-        for count, filename in enumerate(input_files):
-            pconfig.input_files = [filename]
-            # If the user set path ...
-            if isinstance(netcdf_output, str):
-                # If the path is a filename ...
-                if not Path(netcdf_output).is_dir():
-                    # An incrementing suffix is added to the filename
-                    pconfig.netcdf_output = str(Path(netcdf_output).with_suffix("")) + f"_{count}"
-
-            # If the user set path ...
-            if isinstance(odf_output, str):
-                # If the path is a filename ...
-                if not Path(odf_output).is_dir():
-                    # An incrementing suffix is added to the filename
-                    pconfig.odf_output = str(Path(odf_output).with_suffix("")) + f"_{count}"
-                # If it's a directory
-                else:
-                    # An incrementing suffix is added to the event_qualifier that builds the filename
-                    # PREVENTS FROM OVERWRITING THE SAME FILE
-                    pconfig.metadata[
-                        'event_qualifier1'] = event_qualifier1 + f"_{Path(filename).name}"  # PREVENTS FROM OVERWRITING THE SAME FILE
-            elif odf_output is True:
-                # An incrementing suffix is added to the event_qualifier that builds the filename
-                # PREVENTS FROM OVERWRITING THE SAME FILE
-                pconfig.metadata['event_qualifier1'] = event_qualifier1 + f"_{Path(filename).name}"
-
-            pconfig.resolve_outputs()
-
-            _process_viking_data(pconfig)
+    _process_viking_data(pconfig)
 
 
+@process
 def _process_viking_data(pconfig: ProcessConfig):
     """
 
@@ -644,6 +576,8 @@ def _quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
 
 
 if __name__ == "__main__":
+    import getpass
+    import pandas as pd
     file_path = '/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat'
     out_path = '/home/jeromejguay/Desktop/viking_test.nc'
     config = dict(
@@ -661,7 +595,7 @@ if __name__ == "__main__":
             odf_output=None
         ),
         CRUISE=dict(
-            event_qualifier1="meteoc"
+            event_qualifier1="meteoce"
         ),
         NETCDF_CF=dict(
             date_created=pd.Timestamp.now().strftime("%Y-%m-%d"),
@@ -690,6 +624,8 @@ if __name__ == "__main__":
         )
     )
 
-    ds = process_viking(config)
+    process_viking(config)
+
+    ds = xr.open_dataset(out_path)
 
     print(list(ds.variables))
