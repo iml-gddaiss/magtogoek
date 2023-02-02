@@ -22,7 +22,7 @@ import xarray as xr
 from typing import *
 
 from magtogoek import logger as l
-from magtogoek.process_common import BaseProcessConfig, process, add_global_attributes, write_log, write_netcdf, \
+from magtogoek.process_common import BaseProcessConfig, resolve_output_paths, add_global_attributes, write_log, write_netcdf, \
     add_processing_timestamp, clean_dataset_for_nc_output, format_data_encoding, add_navigation, save_variables_name_for_odf_output
 from magtogoek.attributes_formatter import format_variables_names_and_attributes
 from magtogoek.ctd.correction import RINKO_COEFFS_KEYS, dissolved_oxygen_rinko_correction, voltEXT_from_pHEXT, \
@@ -165,7 +165,7 @@ def process_viking(config: dict, drop_empty_attrs: bool = False, headless: bool 
     _process_viking_data(pconfig)
 
 
-@process
+@resolve_output_paths
 def _process_viking_data(pconfig: ProcessConfig):
     """
 

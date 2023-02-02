@@ -131,11 +131,13 @@ class BaseProcessConfig:
             self.platform_metadata = default_platform_metadata(self.platform_type, self.sensor_id, self.sensor_type)
 
 
-def process(process_function: tp.Callable[[BaseProcessConfig], None]):
+def resolve_output_paths(process_function: tp.Callable[[BaseProcessConfig], None]):
     """Decorator that wraps around a process_function e.g. viking.process.process_viking.
 
     If `pconfig.merge_output_files` is False, each input file is process individually and output
     names suffixes are made for each file if needed, before calling the process_function.
+
+    Then paths are figures out. See `magtogoek.process_common._resolve_outputs`.
 
     Parameters
     ----------

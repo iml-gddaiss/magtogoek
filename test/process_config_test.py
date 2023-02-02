@@ -1,6 +1,6 @@
 import pytest
 from pathlib import Path
-from magtogoek.process_common import BaseProcessConfig, process, _resolve_outputs
+from magtogoek.process_common import BaseProcessConfig, resolve_output_paths, _resolve_outputs
 
 INPUT_FILE = str(Path('input_file').absolute())
 CONFIG_FILE = Path().cwd().joinpath("config_filename")
@@ -78,7 +78,7 @@ def test_process_no_merge_decorator(config_dict, netcdf_path, odf_path, log_path
     _assert_process_wrapper(pconfig, netcdf_path, odf_path, log_path, event_qualifier)
 
 
-@process
+@resolve_output_paths
 def _assert_process_wrapper(pconfig: BaseProcessConfig, netcdf_path: list, odf_path: list, log_path: list, event_qualifier: list):
     # print(pconfig.netcdf_path, netcdf_path.pop(0))
     # print(pconfig.odf_path, odf_path.pop(0))
