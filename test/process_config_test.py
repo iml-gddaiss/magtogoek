@@ -1,6 +1,6 @@
 import pytest
 from pathlib import Path
-from magtogoek.process_common import BaseProcessConfig, process
+from magtogoek.process_common import BaseProcessConfig, process, _resolve_outputs
 
 INPUT_FILE = str(Path('input_file').absolute())
 CONFIG_FILE = Path().cwd().joinpath("config_filename")
@@ -117,7 +117,7 @@ def test_resolve_outputs(config_file, config_dict, netcdf_output, odf_output, ne
     config_dict = {'header': {'sensor_type': 'adcp', 'config_file': config_file},
                    'input': {**{'input_files': INPUT_FILE}, **config_dict}}
     pconfig = BaseProcessConfig(config_dict=config_dict)
-    pconfig.resolve_outputs()
+    _resolve_outputs(pconfig)
 
     assert pconfig.netcdf_output == netcdf_output
     assert pconfig.odf_output == odf_output
@@ -125,34 +125,6 @@ def test_resolve_outputs(config_file, config_dict, netcdf_output, odf_output, ne
     assert pconfig.netcdf_path == netcdf_path
     assert pconfig.odf_path == odf_path
     assert pconfig.log_path == log_path
-
-#
-# @pytest.mark.parametrize(
-#     "config_dict, netcdf_output, odf_output, netcdf_path, odf_path, log_path",
-#     [
-#         ({'netcdf_output': True, 'odf_output': True}, True, True, INPUT_FILE, str(Path(INPUT_FILE).parent), INPUT_FILE),
-#         ({'netcdf_output': True, 'odf_output': False}, True, False, INPUT_FILE, None, INPUT_FILE),
-#         ({'netcdf_output': False, 'odf_output': True}, False, True, None, str(Path(INPUT_FILE).parent), INPUT_FILE),
-#         ({'netcdf_output': False, 'odf_output': False}, True, False, INPUT_FILE, None, INPUT_FILE),
-#         ({'netcdf_output': 'filename', 'odf_output': True}, True, True, str(Path(INPUT_FILE).parent) + '/filename', str(Path(INPUT_FILE).parent), str(Path(INPUT_FILE).parent) + '/filename'),
-#         ({'netcdf_output': '../magtogoek/filename_nc', 'odf_output': '../magtogoek/filename_odf'}, True, True, '../magtogoek/filename_nc', '../magtogoek/filename_odf', '../magtogoek/filename_nc',),
-#         ({'netcdf_output': False, 'odf_output': 'filename'}, False, True, None, str(Path(INPUT_FILE).parent) + '/filename', str(Path(INPUT_FILE).parent) + '/filename'),
-#     ],
-# )
-# def test_quick_outputs(config_dict, netcdf_output, odf_output, netcdf_path, odf_path, log_path):
-#     """Without a configfile"""
-#     config_dict = {'header': {'sensor_type': 'adcp'},
-#                    'input': {**{'input_files': INPUT_FILE}, **config_dict}}
-#     pconfig = BaseProcessConfig(config_dict=config_dict)
-#     pconfig.resolve_outputs()
-#
-#     assert pconfig.netcdf_output == netcdf_output
-#     assert pconfig.odf_output == odf_output
-#
-#     assert pconfig.netcdf_path == netcdf_path
-#     assert pconfig.odf_path == odf_path
-#     assert pconfig.log_path == log_path
-
 
 def test_outputs_error():
     config_dict = {
@@ -164,7 +136,7 @@ def test_outputs_error():
     }
     with pytest.raises(ValueError):
         pconfig = BaseProcessConfig(config_dict=config_dict)
-        pconfig.resolve_outputs()
+        _resolve_outputs(pconfig)
 
 
 @pytest.mark.parametrize(
@@ -184,6 +156,6 @@ def test_figures_outputs(config_dict, figure_output, figure_path):
     config_dict = {'header': {'sensor_type': 'adcp'},
                    'input': {**{'input_files': INPUT_FILE}, **config_dict}}
     pconfig = BaseProcessConfig(config_dict=config_dict)
-    pconfig.resolve_outputs()
+    _resolve_outputs(pconfig)
     assert pconfig.figures_output == figure_output
     assert pconfig.figures_path == figure_path

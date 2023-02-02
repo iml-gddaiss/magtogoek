@@ -130,15 +130,12 @@ class BaseProcessConfig:
                 self.sensor_id = self.sensor_type + "_01"
             self.platform_metadata = default_platform_metadata(self.platform_type, self.sensor_id, self.sensor_type)
 
-    def resolve_outputs(self):
-        _resolve_outputs(self)
-
 
 def process(process_function: tp.Callable[[BaseProcessConfig], None]):
     """Decorator that wraps around a process_function e.g. viking.process.process_viking.
 
     If `pconfig.merge_output_files` is False, each input file is process individually and output
-    names suffix are made for each file if needed, before calling the process_function.
+    names suffixes are made for each file if needed, before calling the process_function.
 
     Parameters
     ----------
@@ -147,7 +144,7 @@ def process(process_function: tp.Callable[[BaseProcessConfig], None]):
     """
     def inner(pconfig: BaseProcessConfig, *args):
         if pconfig.merge_output_files is True:
-            pconfig.resolve_outputs()
+            _resolve_outputs(pconfig)
             process_function(pconfig, *args)
 
         else:
@@ -196,7 +193,7 @@ def process(process_function: tp.Callable[[BaseProcessConfig], None]):
                     pconfig.metadata['event_qualifier1'] = event_qualifier1 + f"_{count}"
                     pconfig.config_file = str(Path(config_file).with_suffix("")) + f"_{count}"
 
-                pconfig.resolve_outputs()
+                _resolve_outputs(pconfig)
 
                 process_function(pconfig, *args)
 
