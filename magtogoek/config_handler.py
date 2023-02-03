@@ -174,7 +174,6 @@ def get_config_taskparser(sensor_type: Optional[str] = None):
     tparser.add_option(section, "odf_data", dtypes=["str"], default="both", choice=["vel", "anc", "both"],
                        comments='One of [vel, anc, both,].')
 
-
     section = "NETCDF_CF"
     tparser.add_option(section, "Conventions", dtypes=["str"], default="CF 1.8")
     tparser.add_option(section, "title", dtypes=["str"], default="")
@@ -254,6 +253,23 @@ def get_config_taskparser(sensor_type: Optional[str] = None):
         tparser.add_option(section, "drop_correlation", dtypes=["bool"], default=True, null_value=False)
         tparser.add_option(section, "drop_amplitude", dtypes=["bool"], default=True, null_value=False)
 
+    elif sensor_type == "viking":
+        section = "VIKING_PROCESSING"
+        tparser.add_option(section, "buoy_name", dtypes=["str"],  comments='Name of the buoy in the raw file.', is_required=True)
+        tparser.add_option(section, "sensor_depth", dtypes=["float"], default="")
+        tparser.add_option(section, "leading_trim", dtypes=["int", "str"], default="", is_time_stamp=True)
+        tparser.add_option(section, "trailing_trim", dtypes=["int", "str"], default="", is_time_stamp=True)
+        tparser.add_option(section, "magnetic_declination", dtypes=["float"], default="")
+        tparser.add_option(section, "magnetic_declination_preset", dtypes=["float"], default=None, comments="Found in the ADCP configuration file.")
+        tparser.add_option(section, "compute_density", dtypes=["bool"], default=True, null_value=False)
+        tparser.add_option(section, "ph_correction", dtypes=["bool"], default=True, null_value=False)
+        tparser.add_option(section, 'ph_coeffs', dtypes=["float"], nargs=3, default="", comments="Calibration coefficient: psal, k0, k2.")
+        tparser.add_option(section, "oxy_correction", dtypes=["bool"], default=True, null_value=False)
+        tparser.add_option(section, 'oxy_coeffs', dtypes=["float"], nargs = 12, default="", comments="Calibration coefficient: c0, c1, c2, d0, cp, b0, b1, b2, b3, b4, d1, d2.")
+        tparser.add_option(section, "motion_correction_mode", dtypes=["str"], default="bt", choice=["bt", "nav", "off"], comments='[bt, nav, off].')
+
+        section = "VIKING_QUALITY_CONTROL"
+        tparser.add_option(section, "quality_control", dtypes=["bool"], default=True, null_value=False)
 
     return tparser
 
@@ -264,3 +280,4 @@ if __name__ == "__main__":
     configuration = load_configfile(FILENAME)
 
     write_configfile("test", "adcp", configuration)
+

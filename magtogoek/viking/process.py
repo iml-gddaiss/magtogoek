@@ -126,7 +126,7 @@ class ProcessConfig(BaseProcessConfig):
     ph_correction: bool = None
     ph_coeffs: Tuple[float] = None  # psal, k0, k2
     oxy_correction: bool = None
-    oxy_coeffs: Tuple[float] = None
+    oxy_coeffs: Tuple[float] = None # c0,c1,c2,d0,cp,b0,b1,b2,b3,b4,d1,d2
 
     # ADCP
     motion_correction_mode: str = None
