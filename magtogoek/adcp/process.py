@@ -262,7 +262,7 @@ def process_adcp(config: dict, drop_empty_attrs: bool = False, headless: bool = 
 @resolve_output_paths
 def _process_adcp_data(pconfig: ProcessConfig):
     """Process adcp data
-
+;
     This is not good documentation...
     However, the code is pretty explicit. Go check it out if need be.
 

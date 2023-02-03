@@ -61,7 +61,7 @@ def polar_histo(dataset: xr.Dataset, x_vel: str, y_vel: str, r_max: float):
     return np.histogram2d(azimut, radius, bins=(abins, rbins))
 
 
-def cartesian2north_polar(x: np.ndarray, y: np.ndarray):
+def cartesian2north_polar(x: NDArray, y: NDArray):
     """Compute the azimut (north clockwise)  and the radius from x, y vector.
 
     Parameters
@@ -78,7 +78,7 @@ def cartesian2north_polar(x: np.ndarray, y: np.ndarray):
     return (np.arctan2(x, y) + 2 * np.pi) % (2 * np.pi), np.hypot(x, y)
 
 
-def north_polar2cartesian(radius: np.ndarray, azimut: np.ndarray) -> tp.Tuple[np.ndarray, np.ndarray]:
+def north_polar2cartesian(radius: NDArray, azimut: NDArray) -> tp.Tuple[NDArray, NDArray]:
     """ Compute x and y from radius and azimut (north clockwise)
 
     Parameters
