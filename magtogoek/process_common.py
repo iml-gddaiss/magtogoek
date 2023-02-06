@@ -49,17 +49,19 @@ DATA_ENCODING = {"dtype": "float32", "_FillValue": DATA_FILL_VALUE}
 
 class BaseProcessConfig:
     config_file: str = None
-    sensor_type: str = None
+    process: str = None
     platform_type: str = None
-    input_files: str = None
     platform_file: str = None
     platform_id: str = None
-    sensor_id: str = None
+
+    input_files: str = None
     netcdf_output: tp.Union[str, bool] = None
     odf_output: tp.Union[str, bool] = None
 
     navigation_file: str = None
 
+    leading_trim: tp.Union[int, str] = None
+    trailing_trim: tp.Union[int, str] = None
     merge_output_files: bool = None
     bodc_name: bool = None
     force_platform_metadata: bool = None
@@ -83,6 +85,7 @@ class BaseProcessConfig:
     global_attributes_to_drop: tp.List[str] = None
     drop_empty_attrs: bool = False
     headless: bool = False
+    sensors_id: tp.Dict[str: tp.List[str]] = None
 
     def __init__(self, config_dict: dict = None):
         self.metadata: dict = {}
@@ -98,7 +101,8 @@ class BaseProcessConfig:
 
         self._load_platform_metadata()
 
-        self.platform_type = self.platform_metadata.platform.platform_type
+        if self.platform_type is None:
+            self.platform_type = DEFAULT_PLATFORM_TYPE
 
     def _load_config_dict(self, config: dict) -> dict:
         """Split and flattens"""
@@ -108,7 +112,10 @@ class BaseProcessConfig:
                     self.metadata[option] = config[section][option]
             else:
                 for option in options:
-                    self.__dict__[option] = config[section][option]
+                    if hasattr(self, option):
+                        self.__dict__[option] = config[section][option]
+                    else:
+                        self.metadata[option] = config[section][option]
 
     def _load_platform_metadata(self):
         if self.platform_file is not None:
@@ -120,15 +127,10 @@ class BaseProcessConfig:
                     f"Aborting"
                 )
                 sys.exit()
+            self.platform_type = self.platform_metadata.platform.platform_type
 
         else:
-            if self.platform_type not in PLATFORM_TYPES:
-                self.platform_type = DEFAULT_PLATFORM_TYPE
-                l.warning(f"platform_type not specified or not one of {PLATFORM_TYPES}.")
-                l.warning(f"platform_type set to `{self.platform_type}` for platform_type.")
-            if not self.sensor_id:
-                self.sensor_id = self.sensor_type + "_01"
-            self.platform_metadata = default_platform_metadata(self.platform_type, self.sensor_id, self.sensor_type)
+            self.platform_metadata = None
 
 
 def resolve_output_paths(process_function: tp.Callable[[BaseProcessConfig], None]):
@@ -371,10 +373,10 @@ def add_global_attributes(dataset: xr.Dataset, pconfig: BaseProcessConfig, stand
 
     dataset.attrs.update(standard_global_attributes)
 
-    dataset.attrs["data_type"] = _get_data_type(pconfig.sensor_type,pconfig.platform_type)
-    dataset.attrs["data_subtype"] = DATA_SUBTYPES[pconfig.platform_type]  # COMON
+    dataset.attrs["data_type"] = _get_data_type(pconfig.process, pconfig.platform_type)
+    dataset.attrs["data_subtype"] = DATA_SUBTYPES[pconfig.platform_type]
 
-    pconfig.platform_metadata.add_to_dataset(dataset, pconfig.sensor_id, pconfig.force_platform_metadata)
+    pconfig.platform_metadata.add_to_dataset(dataset, list(pconfig.sensors_id.keys()), pconfig.force_platform_metadata)
 
     compute_global_attrs(dataset)  # already common
 
@@ -383,7 +385,7 @@ def add_global_attributes(dataset: xr.Dataset, pconfig: BaseProcessConfig, stand
     dataset.attrs.update(pconfig.metadata)
 
 
-def _get_data_type(sensor_type:str, platform_type: str=None):
+def _get_data_type(sensor_type: str, platform_type: str = None):
     """Return data_type for the given sensor_type and platform_type.
     """
     if sensor_type == 'viking_buoy':

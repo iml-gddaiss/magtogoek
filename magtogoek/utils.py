@@ -1,5 +1,5 @@
 """
-magotogek utils
+This module contains general `quality of live` functions. None scientific functions.
 """
 import json
 import typing as tp
@@ -8,8 +8,10 @@ from pathlib import Path
 import click
 
 
-def ensure_list_format(value: tp.Union[str, int, float, tp.List[tp.Union[str, int, float]]]) -> tp.List[str]:
+def ensure_list_format(value: tp.Union[bool, str, int, float, tp.List[tp.Union[str, int, float]]]) -> tp.List[str]:
     """
+    [str, int, float, bool] -> list[str, int, float, bool]
+    [tuple, set] -> [list]
     """
     if isinstance(value, (set, tuple)):
         value = list(value)

@@ -1,5 +1,5 @@
 """
-Algorithm to process Viking instrument data.
+Correction algorithm for Water Property Sensor (WPS) data.
 
 cal coeff      : c0, c1, c2, d0
 pressure coeff : cp
@@ -10,7 +10,7 @@ winkler coeff  : d1, d2
 """
 import numpy as np
 
-from magtogoek.ctd.tools import voltEXT_from_pHEXT, pHEXT_from_voltEXT
+from magtogoek.wps.sci_tools import voltEXT_from_pHEXT, pHEXT_from_voltEXT
 
 RINKO_COEFFS_KEYS = ('c0', 'c1', 'c2', 'd0', 'cp',
                      'b0', 'b1', 'b2', 'b3', 'b4',

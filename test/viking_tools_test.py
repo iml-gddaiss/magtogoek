@@ -1,5 +1,5 @@
 import numpy as np
-from magtogoek.ctd.tools import pHEXT_from_voltEXT
+from magtogoek.wps.sci_tools import pHEXT_from_voltEXT
 
 
 def test_pHEXT_from_vFET():

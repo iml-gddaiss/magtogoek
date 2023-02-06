@@ -16,8 +16,6 @@ Maybe quality control should be done before and the transformation should check 
 
 """
 
-
-import numpy as np
 import xarray as xr
 from typing import *
 
@@ -25,11 +23,10 @@ from magtogoek import logger as l
 from magtogoek.process_common import BaseProcessConfig, resolve_output_paths, add_global_attributes, write_log, write_netcdf, \
     add_processing_timestamp, clean_dataset_for_nc_output, format_data_encoding, add_navigation, save_variables_name_for_odf_output
 from magtogoek.attributes_formatter import format_variables_names_and_attributes
-from magtogoek.ctd.correction import RINKO_COEFFS_KEYS, dissolved_oxygen_rinko_correction, pH_correction_for_salinity
-from magtogoek.ctd.tools import compute_density
-from magtogoek.tools import north_polar2cartesian
+from magtogoek.wps.corrections import RINKO_COEFFS_KEYS, dissolved_oxygen_rinko_correction, pH_correction_for_salinity
+from magtogoek.wps.sci_tools import compute_density
+from magtogoek.sci_tools import north_polar2cartesian
 from magtogoek.viking.loader import load_meteoce_data
-from magtogoek.viking.odf_exporter import make_odf
 from magtogoek.viking.quality_control import meteoce_quality_control, no_meteoce_quality_control
 
 # import click
@@ -116,22 +113,26 @@ class ProcessConfig(BaseProcessConfig):
     buoy_name: str = None
     data_format: str = None
     sensor_depth: float = None
-    leading_trim: Union[int, str] = None
-    trailing_trim: Union[int, str] = None
-    magnetic_declination: float = None
-    magnetic_declination_preset: float = None
+
+    adcp_id: str = None
+    ctd_id: str = None
+    ctdo_id: str = None
+    nitrate_id: str = None
+    # ADD MORE
+
 
     # CTD
     compute_density: bool = None
+    # PH
     ph_correction: bool = None
     ph_coeffs: Tuple[float] = None  # psal, k0, k2
+    # OXY
     oxy_correction: bool = None
     oxy_coeffs: Tuple[float] = None # c0,c1,c2,d0,cp,b0,b1,b2,b3,b4,d1,d2
-
     # ADCP
-    motion_correction_mode: str = None
+    motion_correction_mode: str = None # maybe adcp/process/adcp_processing...c
 
-    # QUALITY_CONTROL
+    # QUALITY_CONTROL  ... adcp ...
     quality_control: bool = None
 
     def __init__(self, config_dict: dict = None):
@@ -176,6 +177,7 @@ def _process_viking_data(pconfig: ProcessConfig):
     # ------------------- #
 
     dataset = _load_viking_data(pconfig)
+    # TODO  set values of pconfig.sensors_id Dict of variables and sensors_id
 
     # ----------------------------------------- #
     # ADDING THE NAVIGATION DATA TO THE DATASET #
@@ -217,8 +219,11 @@ def _process_viking_data(pconfig: ProcessConfig):
 
     # TODO
 
+
     if pconfig.quality_control:
         _quality_control(dataset, pconfig)
+
+        # For adcp quality control, make a sub-dataset with a temporary depth coords.
         #ADCP QUALITY CONTROL ? For adcp data.
     else:
         no_meteoce_quality_control(dataset)
@@ -334,7 +339,7 @@ def _compute_ctdo_density(dataset: xr.Dataset):
 def _correct_ph_for_salinity(dataset: xr.Dataset, pconfig: ProcessConfig):
     """Ph correction for salinity.
 
-    ph_temperature (temperature is used to find the voltage measured by the probe, but the ctd
+    ph_temperature (temperature is used to find the voltage measured by the probe, but the wps
     temperature is used to find the ph.
 
     # TODO TEST THE DIFFERENCE BETWEEN USING PH AND TEMPERATURE_PH

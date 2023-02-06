@@ -22,7 +22,7 @@ If bodc_name False, generic variable names are used.
 """
 import getpass
 from typing import Dict, List, Union, Optional
-from magtogoek import SENSOR_TYPES
+from magtogoek import SENSOR_TYPES, PROCESSES
 from magtogoek.taskparser import TaskParser
 from datetime import datetime
 from pathlib import Path
@@ -33,28 +33,46 @@ ParserDict = Dict[str, Dict[str, ListStrIntFloatBool]]
 
 REFERENCE = "https://github.com/JeromeJGuay/magtogoek"
 
-CONFIG_TO_CLI_MAPS = dict(
-    adcp=dict(
-        quality_control="qc",
-        sidelobes_correction="sidelobes",
-        merge_output_files="merge",
-        drop_percent_good="drop_pg",
-        drop_correlation="drop_corr",
-        drop_amplitude="drop_amp",
-        make_figures="mk_fig",
-        make_log="mk_log",
-        odf_data="odf_dtype",
-        coord_transform="ct",
-    )
-)
+CONFIG_TO_CLI_MAPS = {
+    'global': {
+        'merge_output_files': "merge",
+        'quality_control': "qc",
+        'make_figures': "mk_fig",
+        'make_log': "mk_log",
+        'odf_data': "odf_dtype",
+    },
+    'adcp': {
+        'sidelobes_correction': "sidelobes",
+        'drop_percent_good': "drop_pg",
+        'drop_correlation': "drop_corr",
+        'drop_amplitude': "drop_amp",
+        'coord_transform': "ct"
+    },
+    'viking': {
+        # TODO
+    }
+}
 
 
-def _format_cli_options_to_config_dict(sensor_type: str, tparser: TaskParser, cli_options: dict) -> ParserDict:
+def _format_cli_options_to_config_dict(process: str, tparser: TaskParser, cli_options: dict) -> ParserDict:
     """Put the cli_options dict into a config_dict (ParserDict) structure.
 
-    Put the options under the correction sections.
+    Put the options under the correction config sections and map options names to config names.
+
+    Parameters
+    ----------
+    process
+
+    tparser :
+        TaskParser instance.
+
+    cli_options :
+        Options received from the cli.
+
     """
-    _map_cli_options_names_to_config_names(sensor_type, cli_options)
+    _map_cli_options_names_to_config_names("global", cli_options)
+    _map_cli_options_names_to_config_names(process, cli_options)
+
     config_struct = _get_configparser_structure(tparser.as_dict())
     cli_config = {section: {} for section in tparser.sections}
     for option, value in cli_options.items():
@@ -63,8 +81,8 @@ def _format_cli_options_to_config_dict(sensor_type: str, tparser: TaskParser, cl
     return cli_config
 
 
-def _map_cli_options_names_to_config_names(sensor_type: str, cli_options: dict):
-    for key, item in CONFIG_TO_CLI_MAPS[sensor_type].items():
+def _map_cli_options_names_to_config_names(process: str, cli_options: dict):
+    for key, item in CONFIG_TO_CLI_MAPS[process].items():
         if item in cli_options:
             cli_options[key] = cli_options.pop(item)
 
@@ -77,21 +95,21 @@ def _get_configparser_structure(configparser: Dict) -> Dict:
     return parser_struct
 
 
-def write_configfile(filename: str, sensor_type: str, cli_options: Optional[dict] = None):
-    """Make a configfile for the given sensor_type.
+def write_configfile(filename: str, process: str, cli_options: Optional[dict] = None):
+    """Make a configfile for the given process.
 
     Parameters
     ----------
     filename :
-    sensor_type :
+    process :
     cli_options :
         command line options.
     """
-    tparser = get_config_taskparser(sensor_type)
+    tparser = get_config_taskparser(process)
 
     cli_config = {}
     if cli_options is not None:
-        cli_config = _format_cli_options_to_config_dict(sensor_type, tparser, cli_options)
+        cli_config = _format_cli_options_to_config_dict(process, tparser, cli_options)
 
     tparser.write_from_dict(filename=filename, parser_dict=cli_config, add_missing=True, format_options=False)
 
@@ -110,58 +128,57 @@ def load_configfile(filename: str, cli_options: Optional[dict] = None) -> Parser
     if not Path(filename).exists():
         raise FileNotFoundError(f"{filename} not found")
 
-    sensor_type = _get_sensor_type(filename)
-    tparser = get_config_taskparser(sensor_type)
+    process = _get_config_process(filename)
+    tparser = get_config_taskparser(process)
 
     cli_config = None
     if cli_options is not None:
-        cli_config = _format_cli_options_to_config_dict(sensor_type, tparser, cli_options)
+        cli_config = _format_cli_options_to_config_dict(process, tparser, cli_options)
 
     config = tparser.load(filename, add_missing=True, new_values_dict=cli_config, format_options=True)
     config['HEADER']['config_file'] = filename
 
-    return config, sensor_type
+    return config, process
 
 
-def cli_options_to_config(sensor_type: str, cli_options: dict, cwd: Optional[str] = None) -> ParserDict:
+def cli_options_to_config(process, cli_options: dict, cwd: Optional[str] = None) -> ParserDict:
     """
 
     Parameters
     ----------
-    sensor_type :
+    process :
     cli_options :
         command line options.
     cwd :
        current working directory.
     """
-    tparser = get_config_taskparser(sensor_type)
+    tparser = get_config_taskparser(process)
     
-    cli_config = _format_cli_options_to_config_dict(sensor_type, tparser, cli_options)
+    cli_config = _format_cli_options_to_config_dict(process, tparser, cli_options)
 
     tparser.format_parser_dict(parser_dict=cli_config, add_missing=True, format_options=True, file_path=cwd)
 
     return cli_config
 
 
-def _get_sensor_type(filename):
+def _get_config_process(filename):
     tparser = get_config_taskparser()
-    return tparser.load(filename)["HEADER"]["sensor_type"]
+    return tparser.load(filename)["HEADER"]["process"]
 
 
-def get_config_taskparser(sensor_type: Optional[str] = None):
+def get_config_taskparser(process: Optional[str] = None):
     tparser = TaskParser()
 
     section = "HEADER"
     tparser.add_option(section, "made_by", dtypes=["str"], default=getpass.getuser())
     tparser.add_option(section, "last_updated", dtypes=["str"], default=datetime.now().strftime("%Y-%m-%d"))
-    tparser.add_option(section, "sensor_type", dtypes=["str"], default=sensor_type, is_required=True, choice=SENSOR_TYPES, comments='One of [adcp, ].')
+    tparser.add_option(section, "process", dtypes=["str"], default=process, is_required=True, choice=PROCESSES, comments=f'One of {PROCESSES}.')
     tparser.add_option(section, "platform_type", dtypes=["str"], choice=["buoy", "mooring", "ship", "lowered"], comments='One of [buoy, mooring, ship, lowered].')
 
     section = "INPUT"
     tparser.add_option(section, "input_files", dtypes=["str"], default="", nargs_min=1, is_file=True, is_required=True)
     tparser.add_option(section, "platform_file", dtypes=["str"], default=None, is_file=True)
     tparser.add_option(section, "platform_id", dtypes=["str"], default=None)
-    tparser.add_option(section, "sensor_id", dtypes=["str"], default=None)
 
     section = "OUTPUT"
     tparser.add_option(section, "netcdf_output", dtypes=["str", "bool"], default="", is_path=True, null_value=False)
@@ -214,14 +231,20 @@ def get_config_taskparser(sensor_type: Optional[str] = None):
     tparser.add_option(section, "standard_name_vocabulary", dtypes=["str"], default="CF v.52")
     tparser.add_option(section, "acknowledgment", dtypes=["str"], default="")
 
-    if sensor_type == 'adcp':
+    section = "PROCESSING"
+    tparser.add_option(section, "navigation_file", dtypes=["str"], default="", is_file=True)
+    tparser.add_option(section, "leading_trim", dtypes=["int", "str"], default="", is_time_stamp=True)
+    tparser.add_option(section, "trailing_trim", dtypes=["int", "str"], default="", is_time_stamp=True)
+
+    if process == 'adcp':
         section = "ADCP_PROCESSING"
+        tparser.add_option(section, "sensor_id", dtypes=["str"], default=None)
         tparser.add_option(section, "yearbase", dtypes=["int"], default="", is_required=False)
         tparser.add_option(section, "adcp_orientation", dtypes=["str"], default="down", choice=["up", "down"], comments='up or down')
         tparser.add_option(section, "sonar", dtypes=["str"], choice=["wh", "sv", "os", "sw", "sw_pd0"], comments='[wh, sv, os, sw, sw_pd0, ]', is_required=True)
-        tparser.add_option(section, "navigation_file", dtypes=["str"], default="", is_file=True)
-        tparser.add_option(section, "leading_trim", dtypes=["int", "str"], default="", is_time_stamp=True)
-        tparser.add_option(section, "trailing_trim", dtypes=["int", "str"], default="", is_time_stamp=True)
+    #    tparser.add_option(section, "navigation_file", dtypes=["str"], default="", is_file=True)
+    #    tparser.add_option(section, "leading_trim", dtypes=["int", "str"], default="", is_time_stamp=True)
+    #    tparser.add_option(section, "trailing_trim", dtypes=["int", "str"], default="", is_time_stamp=True)
         tparser.add_option(section, "sensor_depth", dtypes=["float"], default="")
         tparser.add_option(section, "depth_range", dtypes=["float"], nargs_min=0, nargs_max=2)
         tparser.add_option(section, "bad_pressure", dtypes=["bool"], default=False, null_value=False)
@@ -234,9 +257,9 @@ def get_config_taskparser(sensor_type: Optional[str] = None):
         tparser.add_option(section, "grid_method", dtypes=["str"], default="interp", choice=["interp", "bin"], comments='[interp, bin].')
         tparser.add_option(section, "coord_transform", dtypes=["bool"], default=True, null_value=False, comments="Won't do reverse transformation.")
         tparser.add_option(section, "motion_correction_mode", dtypes=["str"], default="bt", choice=["bt", "nav", "off"], comments='[bt, nav, off].')
+        tparser.add_option(section, "quality_control", dtypes=["bool"], default=True, null_value=False)
 
         section = "ADCP_QUALITY_CONTROL"
-        tparser.add_option(section, "quality_control", dtypes=["bool"], default=True, null_value=False)
         tparser.add_option(section, "amplitude_threshold", dtypes=["int"], default=0, value_min=0, value_max=255, comments='Value between 0 and 255.')
         tparser.add_option(section, "percentgood_threshold", dtypes=["int"], default=64, value_min=0, value_max=100, comments='Value between 0 and 100.')
         tparser.add_option(section, "correlation_threshold", dtypes=["int"], default=90, value_min=0, value_max=255, comments='Value between 0 and 255.')
@@ -253,23 +276,50 @@ def get_config_taskparser(sensor_type: Optional[str] = None):
         tparser.add_option(section, "drop_correlation", dtypes=["bool"], default=True, null_value=False)
         tparser.add_option(section, "drop_amplitude", dtypes=["bool"], default=True, null_value=False)
 
-    elif sensor_type == "viking":
+    elif process == "viking_buoy":
         section = "VIKING_PROCESSING"
         tparser.add_option(section, "buoy_name", dtypes=["str"],  comments='Name of the buoy in the raw file.', is_required=True)
-        tparser.add_option(section, "sensor_depth", dtypes=["float"], default="")
+        tparser.add_option(section, "sensor_id", dtypes=["str"], default=None)
+
         tparser.add_option(section, "leading_trim", dtypes=["int", "str"], default="", is_time_stamp=True)
         tparser.add_option(section, "trailing_trim", dtypes=["int", "str"], default="", is_time_stamp=True)
         tparser.add_option(section, "magnetic_declination", dtypes=["float"], default="")
         tparser.add_option(section, "magnetic_declination_preset", dtypes=["float"], default=None, comments="Found in the ADCP configuration file.")
+
+        section = "WPS_PROCESSING"
         tparser.add_option(section, "compute_density", dtypes=["bool"], default=True, null_value=False)
         tparser.add_option(section, "ph_correction", dtypes=["bool"], default=True, null_value=False)
         tparser.add_option(section, 'ph_coeffs', dtypes=["float"], nargs=3, default="", comments="Calibration coefficient: psal, k0, k2.")
         tparser.add_option(section, "oxy_correction", dtypes=["bool"], default=True, null_value=False)
-        tparser.add_option(section, 'oxy_coeffs', dtypes=["float"], nargs = 12, default="", comments="Calibration coefficient: c0, c1, c2, d0, cp, b0, b1, b2, b3, b4, d1, d2.")
-        tparser.add_option(section, "motion_correction_mode", dtypes=["str"], default="bt", choice=["bt", "nav", "off"], comments='[bt, nav, off].')
-
-        section = "VIKING_QUALITY_CONTROL"
+        tparser.add_option(section, 'oxy_coeffs', dtypes=["float"], nargs=12, default="", comments="Calibration coefficient: c0, c1, c2, d0, cp, b0, b1, b2, b3, b4, d1, d2.")
         tparser.add_option(section, "quality_control", dtypes=["bool"], default=True, null_value=False)
+
+        section = "ADCP_PROCESSING"
+        tparser.add_option(section, "keep_bt", dtypes=["bool"], default=True, null_value=False)
+        tparser.add_option(section, "motion_correction_mode", dtypes=["str"], default="bt", choice=["bt", "nav", "off"], comments='[bt, nav, off].')
+        tparser.add_option(section, "quality_control", dtypes=["bool"], default=True, null_value=False)
+
+        section = "WPS_QUALITY_CONTROL"
+        # nothing yes
+
+        section = "ADCP_QUALITY_CONTROL"
+        tparser.add_option(section, "amplitude_threshold", dtypes=["int"], default=0, value_min=0, value_max=255, comments='Value between 0 and 255.')
+        tparser.add_option(section, "percentgood_threshold", dtypes=["int"], default=64, value_min=0, value_max=100, comments='Value between 0 and 100.')
+        tparser.add_option(section, "correlation_threshold", dtypes=["int"], default=90, value_min=0, value_max=255, comments='Value between 0 and 255.')
+        tparser.add_option(section, "horizontal_velocity_threshold", dtypes=["float"], default=5)
+        tparser.add_option(section, "vertical_velocity_threshold", dtypes=["float"], default=5)
+        tparser.add_option(section, "error_velocity_threshold", dtypes=["float"], default=5)
+        tparser.add_option(section, "sidelobes_correction", dtypes=["bool"], default=True, null_value=False)
+        tparser.add_option(section, "bottom_depth", dtypes=["float"])
+        tparser.add_option(section, "pitch_threshold", dtypes=["int"], default=20, value_min=0, value_max=180, comments='Value between 0 and 180.')
+        tparser.add_option(section, "roll_threshold", dtypes=["int"], default=20, value_min=0, value_max=180, comments='Value between 0 and 180.')
+
+        tparser.add_option(section, "quality_control", dtypes=["bool"], default=True, null_value=False)
+
+        section = "ADCP_OUTPUT"
+        tparser.add_option(section, "drop_percent_good", dtypes=["bool"], default=True, null_value=False)
+        tparser.add_option(section, "drop_correlation", dtypes=["bool"], default=True, null_value=False)
+        tparser.add_option(section, "drop_amplitude", dtypes=["bool"], default=True, null_value=False)
 
     return tparser
 

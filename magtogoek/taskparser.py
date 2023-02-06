@@ -826,4 +826,4 @@ def _check_option_min_max(value: StrIntFloatBool, option_info: OptionInfos) -> S
 if __name__ == "__main__":
     from magtogoek.config_handler import write_configfile
 
-    write_configfile(filename="/home/jeromejguay/test.ini", sensor_type="adcp", cli_options={'motion_correction_mode': 'off'})
+    write_configfile(filename="/home/jeromejguay/test.ini", process="adcp", cli_options={'motion_correction_mode': 'off'})

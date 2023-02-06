@@ -55,7 +55,7 @@ import xarray as xr
 
 import magtogoek.logger as l
 
-from magtogoek.tools import circular_distance
+from magtogoek.sci_tools import circular_distance
 from pandas import Timestamp
 from scipy.stats import circmean
 

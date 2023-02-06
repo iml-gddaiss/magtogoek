@@ -2,7 +2,7 @@ import numpy as np
 import xarray as xr
 
 from magtogoek import logger as l
-from magtogoek.tools import rotate_2d_vector
+from magtogoek.sci_tools import rotate_2d_vector
 
 
 def apply_motion_correction(dataset: xr.Dataset, mode: str):

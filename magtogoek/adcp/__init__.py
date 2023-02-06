@@ -1,0 +1,1 @@
+SENSOR_TYPES = ['adcp']

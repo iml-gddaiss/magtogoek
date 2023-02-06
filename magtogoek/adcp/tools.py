@@ -1,5 +1,5 @@
 """
-Set of functions and objects used for adcp processing
+This module contains adcp related functions to manipulate data.
 """
 import typing as tp
 from datetime import datetime

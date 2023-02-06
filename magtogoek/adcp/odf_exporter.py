@@ -371,7 +371,7 @@ def _make_other_buoy_instrument_header(odf: Odf, platform_metadata: PlatformMeta
         if sensor_id in ['platform', 'buoy_specs']:
             continue
         odf.add_buoy_instrument(sensor_id)
-        odf.buoy_instrument[sensor_id]['type'] = sensor.sensor_type
+        odf.buoy_instrument[sensor_id]['type'] = sensor.process
         odf.buoy_instrument[sensor_id]['model'] = sensor.model
         odf.buoy_instrument[sensor_id]['serial_number'] = sensor.serial_number
         odf.buoy_instrument[sensor_id]['description'] = sensor.description

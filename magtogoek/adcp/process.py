@@ -56,7 +56,7 @@ import xarray as xr
 from pathlib import Path
 
 import magtogoek.logger as l
-
+from magtogoek.platforms import default_platform_metadata
 from magtogoek.adcp.adcp_plots import make_adcp_figure
 from magtogoek.adcp.loader import load_adcp_binary
 from magtogoek.adcp.correction import apply_motion_correction, apply_magnetic_correction
@@ -193,12 +193,10 @@ VAR_TO_ADD_SENSOR_TYPE = ["TEMPPR01", "PRESPR01", "ADEPZZ01", "BATHDPTH"]
 
 
 class ProcessConfig(BaseProcessConfig):
+    sensor_id: str = None
     yearbase: int = None
     adcp_orientation: str = None
     sonar: str = None
-
-    leading_trim: tp.Union[int, str] = None
-    trailing_trim: tp.Union[int, str] = None
 
     sensor_depth: float = None
     depth_range: list = None
@@ -208,8 +206,11 @@ class ProcessConfig(BaseProcessConfig):
     bad_pressure: bool = None
     start_time: str = None
     time_step: float = None
-
     quality_control: bool = None
+
+    coord_transform: bool = None
+    motion_correction_mode: str = None
+
     amplitude_threshold: int = None
     percentgood_threshold: int = None
     correlation_threshold: int = None
@@ -220,8 +221,7 @@ class ProcessConfig(BaseProcessConfig):
     bottom_depth: float = None
     pitch_threshold: float = None
     roll_threshold: float = None
-    coord_transform: bool = None
-    motion_correction_mode: str = None
+
     drop_percent_good: bool = None
     drop_correlation: bool = None
     drop_amplitude: bool = None
@@ -287,6 +287,7 @@ def _process_adcp_data(pconfig: ProcessConfig):
     # ----------------- #
 
     dataset = _load_adcp_data(pconfig)
+    # TODO  set values of pconfig.sensors_id Dict of variables and sensors_id
 
     # ----------------------------------------- #
     # ADDING THE NAVIGATION DATA TO THE DATASET #
@@ -342,8 +343,8 @@ def _process_adcp_data(pconfig: ProcessConfig):
     l.section("Adding Global Attributes")
 
     add_global_attributes(dataset, pconfig, STANDARD_GLOBAL_ATTRIBUTES)
-
-    if pconfig.platform_metadata.platform.platform_type in ["mooring", "buoy"]:  # ADCP SPECIFIC
+    if pconfig.platform_type in ["mooring", "buoy"]:
+    #if pconfig.platform_metadata.platform.platform_type in ["mooring", "buoy"]:  # ADCP SPECIFIC
         if "bt_depth" in dataset:
             dataset.attrs["sounding"] = np.round(np.median(dataset.bt_depth.data), 2)
 
@@ -604,10 +605,15 @@ def _write_odf(dataset: xr.Dataset, pconfig: ProcessConfig):
 
     dataset.attrs['history'] = l.logbook
 
+    if pconfig.platform_metadata is None:
+        platform_metadata = default_platform_metadata(pconfig.platform_type, pconfig.sensor_id, 'adcp')
+    else:
+        platform_metadata = pconfig.platform_metadata
+
     for qualifier in odf_data:
         _ = make_odf(
             dataset=dataset,
-            platform_metadata=pconfig.platform_metadata,
+            platform_metadata=platform_metadata,
             sensor_id=pconfig.sensor_id,
             config_attrs=pconfig.metadata,
             generic_variables_name=pconfig.generic_variables_name,

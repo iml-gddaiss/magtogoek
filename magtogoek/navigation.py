@@ -21,7 +21,7 @@ import numpy as np
 import pynmea2
 import xarray as xr
 import matplotlib.pyplot as plt
-from magtogoek.tools import get_gps_bearing, vincenty, north_polar2cartesian
+from magtogoek.sci_tools import north_polar2cartesian, vincenty, get_gps_bearing
 from magtogoek.utils import get_files_from_expression
 
 FILE_FORMATS = (".log", ".gpx", ".nc")

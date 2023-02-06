@@ -1,9 +1,42 @@
+"""
+This module contains Water Property Sensor (WPS) related mathematical and scientific functions.
+"""
 import numpy as np
 from seawater import eos80 as eos
 from typing import Union, List
 
+
 GAS_CONSTANT = 8.31446261815324  # the constant in seabird docs differs 8.3144621 J/(K mol). Application Note 99
 FARADAY_CONSTANT = 96485.365
+
+
+def compute_density(
+        temperature: np.ndarray,
+        salinity: np.ndarray,
+        pres: Union[float, List, np.ndarray] = None
+):
+    """Compute density using seawater package eos80 functions.
+
+    Compute at sea surface if no `pres` is provided.
+
+    Parameters
+    ----------
+    temperature :
+        (ITS-90)
+    salinity :
+        (pss-78)
+    pres :
+        dbar
+
+    Returns
+    -------
+        density
+    """
+
+    if pres is not None:
+        return eos.dens(salinity, temperature, pres)
+    else:
+        return eos.dens0(salinity, temperature)
 
 
 def voltEXT_from_pHEXT(temp: np.ndarray, psal: float, ph: np.ndarray, k0: float, k2: float) -> np.ndarray:
@@ -344,32 +377,3 @@ def partial_molal_volume_hcl(temp: np.ndarray) -> np.ndarray:
 
    """
     return 17.85 + 0.1044 * temp - 0.001316 * temp ** 2
-
-
-def compute_density(
-        temperature: np.ndarray,
-        salinity: np.ndarray,
-        pres: Union[float, List, np.ndarray] = None
-):
-    """Compute density using seawater package eos80 functions.
-
-    Compute at sea surface if no `pres` is provided.
-
-    Parameters
-    ----------
-    temperature :
-        (ITS-90)
-    salinity :
-        (pss-78)
-    pres :
-        dbar
-
-    Returns
-    -------
-        density
-    """
-
-    if pres is not None:
-        return eos.dens(salinity, temperature, pres)
-    else:
-        return eos.dens0(salinity, temperature)

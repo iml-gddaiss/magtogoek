@@ -29,8 +29,8 @@ from subprocess import run as subp_run
 
 import click
 
-from magtogoek.app_options import adcp_options, add_options
-#from magtogoek.configfile import _get_taskparser
+from magtogoek.app_options import general_options, adcp_options, adcp_shared_options, viking_options, add_options
+# from magtogoek.configfile import _get_taskparser
 from magtogoek.utils import is_valid_filename, json2dict, resolve_relative_path
 from magtogoek import VERSION, TERMINAL_WIDTH
 
@@ -51,6 +51,7 @@ CONTEXT_SETTINGS = dict(
     allow_extra_args=True,
     help_option_names=["-h", "--help"],
 )
+
 
 def _print_info(ctx, callback, info_called):
     """Show command information"""
@@ -87,7 +88,8 @@ common_options = [
 @click.option('-v', '--verbosis', is_flag=True, default=False)
 def magtogoek(info, verbosis):
     if verbosis is True:
-        logging.basicConfig(format='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',level=logging.INFO)
+        logging.basicConfig(format='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
+                            level=logging.INFO)
     pass
 
 
@@ -118,15 +120,17 @@ def process(info, config_file: str, **options):
         cli_options['mk_fig'] = options['mk_fig']
 
     try:
-        configuration, sensor_type = load_configfile(config_file, cli_options=cli_options)
+        configuration, process = load_configfile(config_file, cli_options=cli_options)
     except (ParsingError, UnicodeDecodeError):
         print("Failed to open the given configfile.\n mtgk process aborted.")
         sys.exit()
 
-    if sensor_type == "adcp":
+    if process == "adcp":
         from magtogoek.adcp.process import process_adcp
-
         process_adcp(configuration, headless=options['headless'])
+    elif process == "viking":
+        from magtogoek.viking.process import process_viking
+        process_viking(configuration, headless=options['headless'])
 
 
 # --------------------------- #
@@ -182,7 +186,9 @@ def config_platform(ctx, info, filename):
 @click.argument("config_name", metavar="[config_name]", type=str)
 @click.option("-T", "--platform", type=(click.Path(exists=True), str, str),
               help="platform_file, platform_id, sensor_id", default=(None, None, None), nargs=3)
+@add_options(general_options())
 @add_options(adcp_options())
+@add_options(adcp_shared_options())
 @click.pass_context
 def config_adcp(
         ctx, info, config_name, **options,
@@ -197,17 +203,46 @@ def config_adcp(
     options['sensor_type'] = 'adcp'
     options.update({k: v for k, v in zip(("platform_file", "platform_id", "sensor_id"), options.pop('platform'))})
 
-    write_configfile(filename=config_name, sensor_type="adcp", cli_options=options)
+    write_configfile(filename=config_name, process="adcp", cli_options=options)
     click.secho(f"Config file created for adcp processing -> {config_name}", bold=True)
 
 
-# --------------------------- #
-#       quick command         #
-# --------------------------- #
+@config.command("viking")
+@add_options(common_options)
+@click.argument("config_name", metavar="[config_name]", type=str)
+# SHOULD BE ONLY A PLATFORM ID OPTION
+# @click.option("-T", "--platform", type=(click.Path(exists=True), str, str),
+#               help="platform_file, platform_id, sensor_id", default=(None, None, None), nargs=3)
+@add_options(general_options())
+@add_options(viking_options())
+@add_options(adcp_shared_options())
+@click.pass_context
+def config_viking(
+        ctx, info, config_name, **options,
+):
+    """Command to make a viking config files. The [OPTIONS] can be added
+    before or after the [config_name]."""
+
+    from magtogoek.config_handler import write_configfile
+
+    _print_passed_options(options)
+    config_name = is_valid_filename(config_name, ext=".ini")
+    options['sensor_type'] = 'viking_buoy' # mhmmm k
+    # options.update({k: v for k, v in zip(("platform_file", "platform_id", "sensor_id"), options.pop('platform'))})
+
+    write_configfile(filename=config_name, process="viking_buoy", cli_options=options)
+    click.secho(f"Config file created for viking buoy processing -> {config_name}", bold=True)
+
+
+# ---------------------------- #
+#       quick commands         #
+# ---------------------------- #
 @quick.command("adcp")
 @add_options(common_options)
 @click.argument("input_files", metavar="[input_files]", nargs=-1, type=click.Path(exists=True), required=True)
-@add_options(adcp_options(input_files=False, sonar=False, yearbase=False))
+@add_options(general_options(input_files=False))
+@add_options(adcp_options(sonar=False, yearbase=False))
+@add_options(adcp_shared_options())
 @click.option(
     "-s", "--sonar", type=click.Choice(["wh", "sv", "os", "sw", "sw_pd0"]),
     help="String designating type of adcp. This  is fed to CODAS Multiread or switches to the magtogoek RTIReader.",
@@ -222,7 +257,6 @@ def config_adcp(
 def quick_adcp(ctx, info, input_files: tuple, sonar: str, yearbase: int, **options: dict):
     """Command to quickly process adcp files. The [OPTIONS] can be added
     before or after the [inputs_files]."""
-    # TODO TEST. So far not crashing
     from magtogoek.config_handler import cli_options_to_config
     from magtogoek.adcp.process import process_adcp
     options.update({"input_files": input_files, "sensor_type": "adcp", "yearbase": yearbase, "sonar": sonar})
@@ -234,9 +268,34 @@ def quick_adcp(ctx, info, input_files: tuple, sonar: str, yearbase: int, **optio
                  headless=options['headless'])
 
 
-# --------------------------- #
-#       check command         #
-# --------------------------- #
+# @quick.command("viking")
+# @add_options(common_options)
+# @click.argument("input_files", metavar="[input_files]", nargs=-1, type=click.Path(exists=True), required=True)
+# @add_options(general_options(input_files=False))
+# @add_options(viking_options())
+# @add_options(adcp_shared_options())
+# @click.option("--headless",
+#               is_flag=True,
+#               help="""Using remotely with no display capability""")
+# @click.pass_context
+# def quick_viking(ctx, info, input_files: tuple, sonar: str, yearbase: int, **options: dict):
+#     """Command to quickly process viking files. The [OPTIONS] can be added
+#     before or after the [inputs_files]."""
+#     from magtogoek.config_handler import cli_options_to_config
+#     from magtogoek.viking.process import process_viking
+#     options.update({"input_files": input_files, "sensor_type": "viking_buoy"})
+#     _print_passed_options(options)
+#
+#     configuration = cli_options_to_config('viking_buoy', options, cwd=str(Path().cwd()))
+#
+#     process_viking(configuration,
+#                    drop_empty_attrs=True,
+#                    headless=options['headless'])
+
+
+# ---------------------------- #
+#       check commands         #
+# ---------------------------- #
 @check.command("rti")
 @add_options(common_options)
 @click.argument("input_files", metavar="[input_files]", nargs=-1, type=click.Path(exists=True), required=True)
@@ -406,7 +465,7 @@ def _print_arguments(group, parent):
                         + "Filename (path/to/file) for the new configuration file.",
                 "platform": "  [filename]".ljust(20, " ")
                             + "Filename (path/to/file) for the new platform file.",
-    }
+                }
     if group in messages:
         click.secho(messages[group], fg="white")
 
@@ -422,7 +481,7 @@ def _print_description(group):
         "config": (
             "The config command is used to create `.ini` configuration files or `.json`"
             " platform files. Configuration `.ini` files are used to write the desired"
-            " processing configuration for different types of sensor (adcp, ctd, etc). Once"
+            " processing configuration for different types of sensor (adcp, wps, etc). Once"
             " created the configuration file   can be filled in any text editor or via"
             " optional arguments. Platform files are used to store platform metadata."
         ),
@@ -436,27 +495,27 @@ def _print_description(group):
             "Print some raw files information. Only available for adcp RTI .ENS files."
         ),
         "adcp": (
-                "\n"
-                "        sonar\n"
-                "        -----\n"
-                "           os : OceanSurveyor (RDI)\n"
-                "           wh : WorkHorse (RDI)\n"
-                "           sv : SentinelV (RDI)\n"
-                "           sw : SeaWatch (RTI)\n"
-                "           sw_pd0 : SeaWatch (RTI in RDI pd0 file format)\n"
-                "\n"
-                "        quality control\n"
-                "        ---------------\n"
-                "           - velocity, amplitude, correlation, percentgood, roll, pitch, \n"
-                "             side_lobe.\n"
-                "           - Temperatures outside [-2, 32] Celsius. \n"
-                "           - Pressures outside [0, 180] dbar.\n"
-                "\n"
-                "        plots\n"
-                "        -----\n"
-                "           - 2D velocity fields (u,v), time-series,\n"
-                "           - Polar Histogram of the Velocities amplitude and direction,\n"
-                "           - Pearson Correlation of velocity for consecutive bins,\n"
+            "\n"
+            "        sonar\n"
+            "        -----\n"
+            "           os : OceanSurveyor (RDI)\n"
+            "           wh : WorkHorse (RDI)\n"
+            "           sv : SentinelV (RDI)\n"
+            "           sw : SeaWatch (RTI)\n"
+            "           sw_pd0 : SeaWatch (RTI in RDI pd0 file format)\n"
+            "\n"
+            "        quality control\n"
+            "        ---------------\n"
+            "           - velocity, amplitude, correlation, percentgood, roll, pitch, \n"
+            "             side_lobe.\n"
+            "           - Temperatures outside [-2, 32] Celsius. \n"
+            "           - Pressures outside [0, 180] dbar.\n"
+            "\n"
+            "        plots\n"
+            "        -----\n"
+            "           - 2D velocity fields (u,v), time-series,\n"
+            "           - Polar Histogram of the Velocities amplitude and direction,\n"
+            "           - Pearson Correlation of velocity for consecutive bins,\n"
         ),
         "nav": (
             " Compute u_ship (eastward velocity), v_ship (northward velocity) and the bearing"
@@ -467,7 +526,7 @@ def _print_description(group):
         ),
         "platform": "Creates an empty platform.json file",
         "odf2nc": "Converts odf files to netcdf",
-        }
+    }
     if group in messages:
         if "\n" in messages[group]:
             click.echo(messages[group])

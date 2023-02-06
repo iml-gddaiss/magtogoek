@@ -8,8 +8,6 @@ Data That Need Processing
 -------------------------
     co2_a and co2_w: ppm values are divided by 1e6 and multiplied byt the cell_gas_pressure.
 
-    WpH -> Algorithm in magtogoek/viking/tools.py
-
     - BODC NAMES: https://vocab.nerc.ac.uk/search_nvs/P01/
 
     - VARIABLES NOT IN METEOCE odf.

@@ -51,11 +51,11 @@ def format_variables_names_and_attributes(
         dataset: xr.Dataset,
         use_bodc_name: bool,
         p01_codes_map: dict,
+        sensors_id: dict, # to replace variables_add_to_add_sensor_type
         variable_to_add_sensor_type: list,
         cf_profile_id: str = 'time',
 ) -> xr.Dataset:
     """Format variables names and attributes
-
     Returns dataset with variables attributes set.
 
     Convert variables names to BODC and then adds CF and SeaDataNet metadata
@@ -91,10 +91,20 @@ def format_variables_names_and_attributes(
 
     dataset = _convert_variables_names(dataset, p01_codes_map)
 
-    if "sensor_type" in dataset.attrs:
-        for var in variable_to_add_sensor_type:
-            if var in dataset:
-                dataset[var].attrs["sensor_type"] = dataset.attrs["sensor_type"]
+    _add_sensor_attributes(dataset, sensors_id)
+
+    # for sensor_id, variables in sensors_id.items():
+    #     for attr in ["sensor_type", "sensor_depth", "serial_number"]:
+    #         global_attr = "_".join([sensor_id, attr])
+    #         if global_attr in dataset.attrs:
+    #             for var in variables:
+    #                 if var in dataset:
+    #                     dataset[var].attrs[attr] = dataset.attrs[global_attr]
+
+    # if dataset.attrs["sensor_depth"]:
+    #     _add_sensor_depth_to_var_attrs(dataset)
+    # if dataset.attrs["serial_number"]:
+    #     _add_sensor_serial_to_var_attrs(dataset)
 
     _add_sdn_and_cf_var_attrs(dataset, json2dict(STATIC_ATTRIBUTES_ABSOLUTE_FILE_PATH))
 
@@ -106,11 +116,6 @@ def format_variables_names_and_attributes(
         )
 
     _add_data_min_max_to_var_attrs(dataset)
-
-    if dataset.attrs["sensor_depth"]:
-        _add_sensor_depth_to_var_attrs(dataset)
-    if dataset.attrs["serial_number"]:
-        _add_sensor_serial_to_var_attrs(dataset)
 
     _add_ancillary_variables_to_var_attrs(dataset)
     _add_names_to_qc_var_attrs(dataset)
@@ -199,20 +204,41 @@ def _add_data_min_max_to_var_attrs(dataset):
                 dataset[var].attrs["data_min"] = dataset[var].min().values
 
 
-def _add_sensor_depth_to_var_attrs(dataset: xr.Dataset):
-    """Add sensor depth to variables with sensor_type"""
-    for var in dataset.variables:
-        if "sensor_type" in dataset[var].attrs:
-            if dataset[var].attrs["sensor_type"] == dataset.attrs["sensor_type"]:
-                dataset[var].attrs["sensor_depth"] = dataset.attrs["sensor_depth"]
+def _add_sensor_attributes(dataset: xr.Dataset, sensors_id: tp.Dict[str,tp.List[str]]):
+    """
+    TODO
+    Parameters
+    ----------
+    dataset
+    sensors_id
+
+    Returns
+    -------
+
+    """
+    for sensor_id, variables in sensors_id.items():
+        for attr in ["sensor_type", "sensor_depth", "serial_number"]:
+            global_attr = "_".join([sensor_id, attr])
+            if global_attr in dataset.attrs:
+                for var in variables:
+                    if var in dataset:
+                        dataset[var].attrs[attr] = dataset.attrs[global_attr]
 
 
-def _add_sensor_serial_to_var_attrs(dataset: xr.Dataset):
-    """Add sensor serial number `dataset['serial_number'] to variables using XducerDepth."""
-    for var in dataset.variables:
-        if "sensor_type" in dataset[var].attrs:
-            if dataset[var].attrs["sensor_type"] == dataset.attrs["sensor_type"]:
-                dataset[var].attrs["serial_number"] = dataset.attrs["serial_number"]
+# def _add_sensor_depth_to_var_attrs(dataset: xr.Dataset):
+#     """Add sensor depth to variables with sensor_type"""
+#     for var in dataset.variables:
+#         if "sensor_type" in dataset[var].attrs:
+#             if dataset[var].attrs["sensor_type"] == dataset.attrs["sensor_type"]:
+#                 dataset[var].attrs["sensor_depth"] = dataset.attrs["sensor_depth"]
+#
+#
+# def _add_sensor_serial_to_var_attrs(dataset: xr.Dataset):
+#     """Add sensor serial number `dataset['serial_number'] to variables using XducerDepth."""
+#     for var in dataset.variables:
+#         if "sensor_type" in dataset[var].attrs:
+#             if dataset[var].attrs["sensor_type"] == dataset.attrs["sensor_type"]:
+#                 dataset[var].attrs["serial_number"] = dataset.attrs["serial_number"]
 
 
 def _add_ancillary_variables_to_var_attrs(dataset: xr.Dataset):
