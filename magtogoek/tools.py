@@ -359,7 +359,7 @@ def _xr_bin(dataset: tp.Union[xr.Dataset, xr.DataArray],
         labels = _bin_edges_to_centers(bins)
 
     # Skip for compatibility with DataArray
-    if isinstance(dataset, xr.core.dataset.Dataset):
+    if isinstance(dataset, xr.Dataset):
         # Save dimension orders for each variable
         dim_dict = dict()
         for key in dataset.keys():
@@ -375,7 +375,7 @@ def _xr_bin(dataset: tp.Union[xr.Dataset, xr.DataArray],
                   .rename({dim+'_bins': dim}))
 
     # Skip for compatibility with DataArray
-    if isinstance(dataset, xr.core.dataset.Dataset):
+    if isinstance(dataset, xr.Dataset):
         # Restore dataset attributes
         output.attrs = dataset.attrs
 
@@ -453,10 +453,8 @@ def _new_flags_interp_regrid(dataset: xr.Dataset, variable: str) -> xr.DataArray
 
     Parameters
     ----------
-    flags :
-        Dataset being regridded.
     variable :
-        Name of the variable for which flags are being transfered.
+        Name of the variable for which flags are being transferred.
 
     Returns
     -------
@@ -499,7 +497,7 @@ def get_datetime_and_count(trim_arg: tp.Union[str, int]):
     """Get datetime and count from trim_arg.
 
     If `trim_arg` is None, returns (None, None)
-    If 'T' in trim_arg, it is a datetimeand  returns (Timestamp(trim_arg), None)
+    If 'T' in trim_arg, it is a datetime and  returns (Timestamp(trim_arg), None)
     Else It returns a count returns (None, int(trim_arg))
 
     Returns:
