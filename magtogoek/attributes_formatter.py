@@ -47,12 +47,26 @@ STATIC_ATTRIBUTES_ABSOLUTE_FILE_PATH = (
 )
 
 
+CF_P01_GF3_ATTRS_KEY_TO_ADD = [
+    "standard_name",
+    "positive",
+    "units",
+    "sensor_type",
+    "long_name",
+    "sdn_parameter_urn",
+    "sdn_parameter_name",
+    "sdn_uom_urn",
+    "sdn_uom_name",
+    "legacy_GF3_code"
+]
+
+
 def format_variables_names_and_attributes(
         dataset: xr.Dataset,
         use_bodc_name: bool,
         p01_codes_map: dict,
         sensors_id: dict, # to replace variables_add_to_add_sensor_type
-        variable_to_add_sensor_type: list,
+        #variable_to_add_sensor_type: list,
         cf_profile_id: str = 'time',
 ) -> xr.Dataset:
     """Format variables names and attributes
@@ -61,7 +75,7 @@ def format_variables_names_and_attributes(
     Convert variables names to BODC and then adds CF and SeaDataNet metadata
     to variables attributes. Coordinates names are always changed back to their
     original names (generic_name). Variable names can also be keep their
-    their original names (generic_name) setting `use_bodc_codes` as `False`.
+    original names (generic_name) setting `use_bodc_codes` as `False`.
 
     None essential global attributes :
         `sensor_type` :
@@ -76,8 +90,6 @@ def format_variables_names_and_attributes(
         True if the bodc_name are to be used.
     p01_codes_map :
         generic name to bodc p01_code mapping.
-    variable_to_add_sensor_type :
-        List of P01 parameters codes of variables to which add the sensor_type attributes.
     cf_profile_id :
         Name of the coordinate to add the attributes {'cf_role': 'profile_id'}
 
@@ -89,9 +101,9 @@ def format_variables_names_and_attributes(
 
     original_coords_name = dataset.coords
 
-    dataset = _convert_variables_names(dataset, p01_codes_map)
+    _add_sensors_attributes_to_variables(dataset, sensors_id)
 
-    _add_sensor_attributes(dataset, sensors_id)
+    dataset = _convert_variables_names(dataset, p01_codes_map)
 
     # for sensor_id, variables in sensors_id.items():
     #     for attr in ["sensor_type", "sensor_depth", "serial_number"]:
@@ -166,12 +178,12 @@ def _convert_variables_names(
     return dataset
 
 
-def _add_sdn_and_cf_var_attrs(dataset: xr.Dataset, sdn: tp.Dict):
+def _add_sdn_and_cf_var_attrs(dataset: xr.Dataset, sdn_meta: tp.Dict):
     """add sdn (sea data net) attributes.
 
     Parameters
     ----------
-    sdn :
+    sdn_meta :
         sdn is a dictionary with the P01 variable Code as `key` and dictionary
     of attributes as `value`. The dictionary is saved as a json file in
     magtogoek/files/sdn.json
@@ -188,11 +200,11 @@ def _add_sdn_and_cf_var_attrs(dataset: xr.Dataset, sdn: tp.Dict):
      -'sdn_uom_urn'
      -'sdn_uom_name'
      -'legacy_GF3_code'
-
     """
-    variables = set(dataset.variables).intersection(set(sdn.keys()))
-    for var in variables:
-        dataset[var] = dataset[var].assign_attrs(sdn[var])
+    common_variables = set(dataset.variables).intersection(set(sdn_meta.keys()))
+    for var in common_variables:
+        var_attrs = {key: value for key, value in sdn_meta[var].attrs.items() if key in CF_P01_GF3_ATTRS_KEY_TO_ADD}
+        dataset[var].attrs.update(var_attrs)
 
 
 def _add_data_min_max_to_var_attrs(dataset):
@@ -204,25 +216,41 @@ def _add_data_min_max_to_var_attrs(dataset):
                 dataset[var].attrs["data_min"] = dataset[var].min().values
 
 
-def _add_sensor_attributes(dataset: xr.Dataset, sensors_id: tp.Dict[str,tp.List[str]]):
+def _add_sensors_attributes_to_variables(dataset: xr.Dataset, sensors_id: tp.Dict[str,tp.List[str]]):
     """
-    TODO
+        Adds attributes `sensor_type`, `sensor_depth` and `serial_number` to each variable
+    in the `dataset` if the dataset has the attributes
+    (`<sensor_id>_sensor_type`, `<sensor_id>_sensor_depth`, `<sensor_id>_serial_number`)
+    of the corresponding {`sensor_id`:'var'}.
+
     Parameters
     ----------
     dataset
     sensors_id
 
-    Returns
-    -------
-
     """
-    for sensor_id, variables in sensors_id.items():
-        for attr in ["sensor_type", "sensor_depth", "serial_number"]:
-            global_attr = "_".join([sensor_id, attr])
-            if global_attr in dataset.attrs:
-                for var in variables:
-                    if var in dataset:
-                        dataset[var].attrs[attr] = dataset.attrs[global_attr]
+    for s_id, variables in sensors_id.items():
+        for var in variables:
+            if var in dataset:
+                _add_sensor_attributes(s_id, var, dataset)
+
+
+def _add_sensor_attributes(sensor_id: str, variable: str, dataset: xr.Dataset):
+    """
+    Adds attributes `sensor_type`, `sensor_depth` and `serial_number` to the `variable` attribute
+    using the `dataset` attribute `<sensor_id>_sensor_type`, `<sensor_id>_sensor_depth`
+    and `<sensor_id>_serial_number`.
+
+    Parameters
+    ----------
+    sensor_id
+    variable
+    dataset
+    """
+    for attr in ["sensor_type", "sensor_depth", "serial_number"]:
+        global_attr = "_".join([sensor_id, attr])
+        if global_attr in dataset.attrs:
+            dataset[variable].attrs[attr] = dataset.attrs[global_attr]
 
 
 # def _add_sensor_depth_to_var_attrs(dataset: xr.Dataset):

@@ -189,7 +189,41 @@ P01_CODES = {
     'bt_depth': "BATHDPTH"
 }
 
-VAR_TO_ADD_SENSOR_TYPE = ["TEMPPR01", "PRESPR01", "ADEPZZ01", "BATHDPTH"]
+#VAR_TO_ADD_SENSOR_TYPE = ["TEMPPR01", "PRESPR01", "ADEPZZ01", "BATHDPTH"]
+
+SENSOR_TYPE_TO_SENSORS_ID_MAP = {
+    'adcp': [
+        'u',
+        'v',
+        'w',
+        'e',
+        'bt_u',
+        'bt_v',
+        'bt_w',
+        'bt_e',
+        'pg',
+        'pg1',
+        'pg2',
+        'pg3',
+        'pg4',
+        'corr1',
+        'corr2',
+        'corr3',
+        'corr4',
+        'amp1',
+        'amp2',
+        'amp3',
+        'amp4',
+        'vb_vel',
+        'vb_pg',
+        'vb_cor',
+        'vb_amp',
+        'temperature',
+        'pres',
+        'xducer_depth',
+        'bt_depth'
+    ]
+}
 
 
 class ProcessConfig(BaseProcessConfig):
@@ -231,7 +265,8 @@ class ProcessConfig(BaseProcessConfig):
 
     def __init__(self, config_dict: dict = None):
         super().__init__(config_dict)
-        self.variables_to_add_sensor_type = VAR_TO_ADD_SENSOR_TYPE
+ #       self.variables_to_add_sensor_type = VAR_TO_ADD_SENSOR_TYPE
+        self.sensors_id = None # TODO
         self.variables_to_drop = VARIABLES_TO_DROP
         self.global_attributes_to_drop = GLOBAL_ATTRS_TO_DROP
 
@@ -258,6 +293,7 @@ def process_adcp(config: dict, drop_empty_attrs: bool = False, headless: bool = 
     pconfig.headless = headless
 
     _process_adcp_data(pconfig)
+
 
 @resolve_output_paths
 def _process_adcp_data(pconfig: ProcessConfig):
@@ -307,7 +343,6 @@ def _process_adcp_data(pconfig: ProcessConfig):
     # ---------- #
     # CORRECTION #
     # ---------- #
-
     l.section("Data Correction")
 
     # motion correction #
@@ -370,7 +405,8 @@ def _process_adcp_data(pconfig: ProcessConfig):
         dataset=dataset,
         use_bodc_name=pconfig.bodc_name,
         p01_codes_map=p01_codes_map,
-        variable_to_add_sensor_type=pconfig.variables_to_add_sensor_type,
+        sensors_id=pconfig.sensors_id,
+        #variable_to_add_sensor_type=pconfig.variables_to_add_sensor_type,
         cf_profile_id='time'
     )
 
@@ -401,7 +437,7 @@ def _process_adcp_data(pconfig: ProcessConfig):
 
     add_processing_timestamp(dataset)
 
-    dataset = _drop_beam_metadata(dataset, pconfig) # ADCP SPECIFIC
+    dataset = _drop_beam_metadata(dataset, pconfig)  # ADCP SPECIFIC
 
     dataset = clean_dataset_for_nc_output(dataset, pconfig)
 
