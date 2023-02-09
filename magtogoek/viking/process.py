@@ -7,9 +7,9 @@ Made by: jeromejguay
 
 Notes
 -----
-Missing BODC: 'chlorophyle', 'fdom', 'par'.
+Missing BODC: oxy
 
-At the moment for some of the data correction. If the variable used has nans, the corrected value will (should) be a nan as well.
+At the moment for some data correction. If the variable used has nans, the corrected value will (should) be a nan as well.
 Therefore, if a variable is present but all the values are nan, the corrected data will also be all nan.
 
 Maybe quality control should be done before and the transformation should check the flag values.
@@ -39,7 +39,11 @@ VARIABLES_TO_DROP = ['ph_temperature', 'wind_direction_max', 'speed', 'course', 
 
 GLOBAL_ATTRS_TO_DROP = [
     "sensor_type",
-    "platform_type",
+    "platform_t  "
+    ""
+    "  "
+    ""
+    "ype",
     "VAR_TO_ADD_SENSOR_TYPE",
     "P01_CODES",
     "xducer_depth",
@@ -106,10 +110,24 @@ P01_CODES_MAP = {
 }
 
 SENSOR_TYPE_TO_SENSORS_ID_MAP = {
-    'adcp': ["u","v","w","e","bt_u","bt_v","bt_w","bt_e"],
-    "ctd": [],
-    "ctdo": [],
+    'adcp': [
+        "u", "v", "w", "e", "bt_u", "bt_v", "bt_w", "bt_e",
+        'pg', 'pg1', 'pg2', 'pg3', 'pg4',
+        'corr1', 'corr2', 'corr3', 'corr4',
+        'amp1', 'amp2', 'amp3', 'amp4'
+    ],
+    "ct": ["conductivity", "salinity", "temperature", "density", "depth"],
+    "ctd": ["conductivity", "salinity", "temperature", "density", "depth"],
+    "ctdo": ["conductivity", "salinity", "temperature", "density", "depth", "oxy"],
+    "rinko": ["oxygen"],
+    'nitrate': [],
     "ph": [],
+    'par': [],
+    'triplet': [],
+    'co2w': [],
+    'co2a': [],
+    'wave': [],
+    'meteo': ['wind_mean', 'wind_max', 'wind_direction_mean', 'atm_temperature', 'atm_humidity', 'atm_pressure'],
 }
 
 
@@ -377,7 +395,7 @@ def _correction_dissolved_oxygen_rinko(dataset: xr.Dataset, pconfig: ProcessConf
     required_variables = ['dissolved_oxygen', 'temperature', 'salinity', 'atm_pressure']
     if pconfig.oxy_coeffs is not None:
         coeffs = dict(zip(RINKO_COEFFS_KEYS, pconfig.oxy_coeffs))
-        if all((var in dataset for var in required_variables)):
+        if all((var in dataset.variables for var in required_variables)):
             dataset['dissolved_oxygen'].values = dissolved_oxygen_rinko_correction(
                 doxy=dataset.dissolved_oxygen.data,
                 temp=dataset.temperature.data,

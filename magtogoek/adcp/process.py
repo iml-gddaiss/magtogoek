@@ -371,6 +371,9 @@ def _process_adcp_data(pconfig: ProcessConfig):
     else:
         no_adcp_quality_control(dataset)
 
+    # needs to be done before renaming the variables.
+    dataset = _drop_beam_metadata(dataset, pconfig)  # ADCP SPECIFIC
+
     # ------------------------ #
     # ADDING GLOBAL ATTRIBUTES #
     # ------------------------ #
@@ -436,8 +439,6 @@ def _process_adcp_data(pconfig: ProcessConfig):
     # ------------------#
 
     add_processing_timestamp(dataset)
-
-    dataset = _drop_beam_metadata(dataset, pconfig)  # ADCP SPECIFIC
 
     dataset = clean_dataset_for_nc_output(dataset, pconfig)
 

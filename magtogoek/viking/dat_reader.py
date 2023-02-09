@@ -41,10 +41,10 @@ The Buoy Data `.dat` files
     (9) date: ddmmyy
     (10) variation, magnetic x.x
     (11) E/W, mode + checksum : ((A)utonomous, (D)ifferential, (E)stimated, (M)anual input, (N) data not valid.
-[CTD]: Surface Temperature, Salinity et Density
+[CTD]: Temperature, Conductivity, Salinity, Density
     '   7.3413,  2.45966,  23.2697, 18.1612'
-[CTDO]: Surace Temperature, Salinity, Dissolved Oxygen
-    '...'
+[CTDO]: Temperature, Conductivity, Dissolved Oxygen, Salinity
+    dissolved oxygen is in [umol / kg]
 [RTI]: Rowetech ADCP. Near surface velocities (6 meter deep ?)
     bin number, position_cm, 4-beam_vel, 4-enu, 4-corr, 4-amp, ... 16 more for bt.
     '1,407,-258,-157,-263,-32,-160,-369,-202,-30,100,100,100,100,84,83,83,84'
@@ -629,7 +629,7 @@ def _decode_CTDO(data: str) -> dict:
     data = data.strip('\n').replace(' ', '').split(',')
     return {'temperature': _safe_float(data[0]),
             'conductivity': _safe_float(data[1]),
-            'oxygen': _safe_float(data[2]),
+            'dissolved_oxygen': _safe_float(data[2]),
             'salinity': _safe_float(data[3])}
 
 

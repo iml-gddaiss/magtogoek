@@ -9,7 +9,10 @@ SENSOR_TYPES =[
     'ct',  # Conductivity Temperature
     'ctd',  # Conductivity Temperature Depth
     'ctdo',  # Conductivity Temperature Depth Oxygen
-    'pH',  # pH
+    'rinko',  # only oxygen
+    'nitrate', # e.g. SUNA
+    'ph',  # pH
     'par',  # Photo-Active Radiation
-    # More to come
+    'triplet',  # Eco-Triplet Chloro, FDOM Fluorescence
+    'co2w',  # co2 water
 ]

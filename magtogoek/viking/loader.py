@@ -162,7 +162,7 @@ def get_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.MaskedArr
         _data.update(
             {'temperature': (viking_data.ctdo['temperature'], {}),
              'salinity': (viking_data.ctdo['salinity'], {}),
-             'dissolved_oxygen': (viking_data.ctd['oxygen'], {})}
+             'dissolved_oxygen': (viking_data.ctdo['dissolved_oxygen'], {})}
         )
         l.log('Ctdo data loaded.')
 

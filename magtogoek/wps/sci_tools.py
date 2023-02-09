@@ -39,6 +39,95 @@ def compute_density(
         return eos.dens0(salinity, temperature)
 
 
+def dissolved_oxygen_correction_for_pressure_and_salinity():
+    # MOVE TO WPS CORRECTION
+    pass
+
+
+def compute_salinity_compensated_dissolved_oxygen(dissolved_oxygen: np.array, salinity: np.array, temperature: np.array, coeffs: List[float]):
+    """
+
+    ```(Benson and Krause, 1984; Garcia and Gordon, 1992)
+    DO_sc = DO_pc*exp[S(b0 + b1*T_s + b2*T_s**2 + b3*T_s**3) + c0*S**2]
+
+    DO_pc : pressure compensated dissolved oxygen,
+    T_s : Standard Salinity ?. See compute_standard_temperature().
+    S : Salinity [PSU]
+    ```
+
+    Parameters
+    ----------
+    dissolved_oxygen :
+        Pressure compensated dissolved oxygen
+    salinity : [PSU]
+        Practical salinity
+    temperature :
+        Standard temperature
+    coeffs :
+        [c0, b0, b1, b2, b3]
+
+    Returns
+    -------
+        Salinity compensated dissolved oxygen
+
+    References
+    ----------
+    .. [1] Benson and Krause 1984, Limnology and Oceanography, The concentration and isotopic fractionation of oxygen
+            dissolved in freshwater and seawater in equilibrium with the atmosphere.
+    .. [2] Garcia and Gordon 1992, Limnology and Oceanography, Oxygen solubility in seawater: Better fitting equations.
+
+    """
+    c0, b0, b1, b2, b3 = coeffs
+
+    return dissolved_oxygen * np.exp(
+        salinity*(b0 + b1*temperature + b2*temperature**2 + b3*temperature**3) + c0*salinity**2
+    )
+
+
+def compute_pressure_compensated_dissolved_oxygen(dissolved_oxygen: np.array, pressure: np.array, cp: float) -> np.array:
+    """
+    ```(TODO Citation Missing)
+    DO_pc = DO * (1 + C_p * Pressure)
+    ```
+
+    Parameters
+    ----------
+    dissolved_oxygen :
+        Dissolved oxygen as measured by in-situ sensor.
+    pressure :
+        Pressure in MPa.
+    cp :
+        Calibration coefficient for pressure.
+
+    Returns
+    -------
+        Pressure compensated dissolved oxygen.
+
+    References
+    ----------
+    .. [1] MISSING
+    """
+    return dissolved_oxygen * (1 + cp * pressure)
+
+
+def compute_standard_temperature(temperature: np.array) -> np.array:
+    """
+
+    ```
+    T_s = ln[(298.15 - T) / (273.15 + T)]```
+
+    Parameters
+    ----------
+    temperature :
+        Temperature as measured by in-situ sensor.
+
+    Returns
+    -------
+
+    """
+    return np.log((298.15 - temperature) / (273.15 + temperature))
+
+
 def voltEXT_from_pHEXT(temp: np.ndarray, psal: float, ph: np.ndarray, k0: float, k2: float) -> np.ndarray:
     """Based on Seabird documentations
 
