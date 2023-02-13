@@ -5,7 +5,6 @@ import numpy as np
 from seawater import eos80 as eos
 from typing import Union, List
 
-
 GAS_CONSTANT = 8.31446261815324  # the constant in seabird docs differs 8.3144621 J/(K mol). Application Note 99
 FARADAY_CONSTANT = 96485.365
 
@@ -39,78 +38,54 @@ def compute_density(
         return eos.dens0(salinity, temperature)
 
 
-def dissolved_oxygen_correction_for_pressure_and_salinity():
-    # MOVE TO WPS CORRECTION
-    pass
-
-
-def compute_salinity_compensated_dissolved_oxygen(dissolved_oxygen: np.array, salinity: np.array, temperature: np.array, coeffs: List[float]):
+def dissolved_oxygen_ml_per_L_to_umol_per_L(dissolved_oxygen: np.array) -> np.array:
     """
+    ```(García and Gordon, 1992)
 
-    ```(Benson and Krause, 1984; Garcia and Gordon, 1992)
-    DO_sc = DO_pc*exp[S(b0 + b1*T_s + b2*T_s**2 + b3*T_s**3) + c0*S**2]
+    O2 [umol/L] = 44.6596 * O2 [ml/L]
 
-    DO_pc : pressure compensated dissolved oxygen,
-    T_s : Standard Salinity ?. See compute_standard_temperature().
-    S : Salinity [PSU]
     ```
 
     Parameters
     ----------
-    dissolved_oxygen :
-        Pressure compensated dissolved oxygen
-    salinity : [PSU]
-        Practical salinity
-    temperature :
-        Standard temperature
-    coeffs :
-        [c0, b0, b1, b2, b3]
+    dissolved_oxygen [ml/L]
 
     Returns
     -------
-        Salinity compensated dissolved oxygen
+    dissolved_oxygen [umol/L]
 
     References
     ----------
-    .. [1] Benson and Krause 1984, Limnology and Oceanography, The concentration and isotopic fractionation of oxygen
-            dissolved in freshwater and seawater in equilibrium with the atmosphere.
-    .. [2] Garcia and Gordon 1992, Limnology and Oceanography, Oxygen solubility in seawater: Better fitting equations.
-
+    .. [1] García and Gordon 1992, Limnology and Oceanography, Oxygen solubility in seawater: Better fitting equations.
     """
-    c0, b0, b1, b2, b3 = coeffs
 
-    return dissolved_oxygen * np.exp(
-        salinity*(b0 + b1*temperature + b2*temperature**2 + b3*temperature**3) + c0*salinity**2
-    )
+    return 44.6596 * dissolved_oxygen
 
 
-def compute_pressure_compensated_dissolved_oxygen(dissolved_oxygen: np.array, pressure: np.array, cp: float) -> np.array:
+def dissolved_oxygen_umol_per_L_to_umol_per_kg(dissolved_oxygen: np.array, density: np.array) -> np.array:
     """
-    ```(TODO Citation Missing)
-    DO_pc = DO * (1 + C_p * Pressure)
+    ```
+
+    O2 [umol/kg] =  1000 [L/m3] * O2 [umol/L] / density [kg/m3]
+
     ```
 
     Parameters
     ----------
-    dissolved_oxygen :
-        Dissolved oxygen as measured by in-situ sensor.
-    pressure :
-        Pressure in MPa.
-    cp :
-        Calibration coefficient for pressure.
+    dissolved_oxygen : [umol/L]
+    density : [kg/m3]
+        potential density
 
     Returns
     -------
-        Pressure compensated dissolved oxygen.
+    dissolved_oxygen [umol/kg]
 
-    References
-    ----------
-    .. [1] MISSING
     """
-    return dissolved_oxygen * (1 + cp * pressure)
+
+    return 1000 * dissolved_oxygen / density
 
 
-def compute_standard_temperature(temperature: np.array) -> np.array:
+def compute_scaled_temperature(temperature: np.array) -> np.array:
     """
 
     ```

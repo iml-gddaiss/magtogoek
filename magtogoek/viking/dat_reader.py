@@ -44,7 +44,7 @@ The Buoy Data `.dat` files
 [CTD]: Temperature, Conductivity, Salinity, Density
     '   7.3413,  2.45966,  23.2697, 18.1612'
 [CTDO]: Temperature, Conductivity, Dissolved Oxygen, Salinity
-    dissolved oxygen is in [umol / kg]
+    dissolved oxygen is in [ml / L]
 [RTI]: Rowetech ADCP. Near surface velocities (6 meter deep ?)
     bin number, position_cm, 4-beam_vel, 4-enu, 4-corr, 4-amp, ... 16 more for bt.
     '1,407,-258,-157,-263,-32,-160,-369,-202,-30,100,100,100,100,84,83,83,84'
