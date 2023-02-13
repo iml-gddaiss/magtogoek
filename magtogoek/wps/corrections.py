@@ -61,72 +61,12 @@ def pH_correction_for_salinity(temperature: np.ndarray,
     return ph
 
 
-# def dissolved_oxygen_rinko_correction(
-#         doxy: np.ndarray,
-#         temp: np.ndarray,
-#         pres: np.ndarray,
-#         psal: np.ndarray,
-#         coeffs: dict
-# ) -> np.ndarray:
-#     f"""
-#
-#
-#     Parameters
-#     ----------
-#     doxy :
-#         oxygen in ml/l
-#     temp :
-#     pres :
-#         pressure in dbar
-#     psal :
-#     coeffs :
-#         keys = ('c0','c1','c2','d0','cp','b0','b1','b2','b3','b4','d1','d2')
-#
-#     Returns
-#     -------
-#         compensated_doxy in ml/L
-#
-#     Notes
-#     -----
-#     cal coeff      : c0, c1, c2, d0
-#     pressure coeff : cp
-#     salinity coeff : b0, b1, b2, b3, b4
-#     winkler coeff  : d1, d2
-#
-#     Notes
-#     -----
-#         Seabird documentation ? Maybe FIXME
-#
-#         OGSL: archive in mL*L-1 but SI umol*m-3
-#         mL*L-1 = 44.66 umol*m-3
-#
-#
-#     """
-#     if not all(key in coeffs.keys() for key in RINKO_COEFFS_KEYS):
-#         raise ValueError(f'Some coefficients are missing from `coeffs`. Required keys are {RINKO_COEFFS_KEYS}')
-#
-#     _doxy = doxy * 44.66  # ml/L -> uM
-#     _pres = pres / 100  # dbar -> MPa
-#
-#     doxy_pc = _doxy * (1 + coeffs['cp'] * _pres)
-#
-#     temp_s = np.log((298.15 - temp) / (273.15 + temp))
-#
-#     doxy_sc = doxy_pc * (np.exp(coeffs['b0']
-#                                 + coeffs['b1'] * temp_s
-#                                 + coeffs['b2'] * temp_s ** 2
-#                                 + coeffs['b3'] * temp_s ** 3)
-#                          + coeffs['b4'] * psal ** 2)
-#
-#     return doxy_sc / 44.66  # uM -> ml/
-
-
 def dissolved_oxygen_correction_for_salinity_SCOR_WG_142(dissolved_oxygen: np.array, salinity: np.array, temperature: np.array):
     """Compute salinity compensated dissolved oxygen using SCOR WG 142 recommended coefficients.
 
     ```(Benson and Krause, 1984; García and Gordon, 1992)
     DO_sc = DO*exp[
-            a0 + a1*T_s + a2*T_s**2 + a3*T_s**3 + a5*T_s**3 + a5*T_s**3
+            a0 + a1*T_s + a2*T_s**2 + a3*T_s**3 + a4*T_s**4 + a5*T_s**5
             + (b0 + b1*T_s + b2*T_s**2 + b3*T_s**3)*S
             + c0*S**2
             ]
@@ -138,7 +78,8 @@ def dissolved_oxygen_correction_for_salinity_SCOR_WG_142(dissolved_oxygen: np.ar
     T : temperature as measured by the in-situ sensor
     S : Salinity [PSU]
     a0, a1, a2, a3, a4, a5 = 2.00907, 3.22014, 4.0501, 4.94457, -0.256847, 3.88767
-    b0, b1, b2, b3, c0 = -6.24523e-3, -7.37614e-3, -1.03410e-2, -8.17083e-3, -4.8868e-7,
+    b0, b1, b2, b3 = -6.24523e-3, -7.37614e-3, -1.03410e-2, -8.17083e-3
+    c0 = -4.8868e-7
     ```
 
     Parameters
@@ -164,17 +105,16 @@ def dissolved_oxygen_correction_for_salinity_SCOR_WG_142(dissolved_oxygen: np.ar
             other autonomous sensor platforms. https://doi.org/10.13155/45915
 
     """
-    a_i = [a0, a1, a2, a3, a4, a5] = 2.00907, 3.22014, 4.0501, 4.94457, -0.256847, 3.88767
-    b_j = [b0, b1, b2, b3] = -6.24523e-3, -7.37614e-3, -1.03410e-2, -8.17083e-3
+    a0, a1, a2, a3, a4, a5 = 2.00907, 3.22014, 4.0501, 4.94457, -0.256847, 3.88767
+    b0, b1, b2, b3 = -6.24523e-3, -7.37614e-3, -1.03410e-2, -8.17083e-3
     c0 = -4.8868e-7
 
     t_s = compute_scaled_temperature(temperature)
 
-    oxy_solubility = np.exp(
-        a_i[i] * t_s ** i for i in range(a_i) +
-        (b_j[j] * t_s ** j for j in range(b_j)) * salinity +
-        c0 * salinity ** 2
-    )
+    poly_a = a0 + a1*t_s + a2*t_s**2 + a3*t_s**3 + a4*t_s**4 + a5*t_s**5
+    poly_b = b0 + b1*t_s + b2*t_s**2 + b3*t_s**3
+
+    oxy_solubility = np.exp(poly_a + poly_b*salinity + c0*salinity**2)
 
     return dissolved_oxygen * oxy_solubility
 
@@ -225,8 +165,7 @@ def dissolved_oxygen_correction_for_pressure_JAC(
     DO : dissolved oxygen
     Pressure : pressure in dbar
 
-    cp2 : Pressure coefficient = 0
-    cp3 : Pressure coefficient = 0.032
+    cp : Pressure coefficient = 0.032
 
     ```
 

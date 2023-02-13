@@ -705,7 +705,7 @@ def _decode_WXT520(data: str) -> dict:
             'Ta', 'Ua', 'Pa',
             'Th', 'Vh', 'Vs', 'Vr']
     regex = r'([A-z]+)=(\d+(?:\.\d+)?)'
-    decoded_data = dict()#.fromkeys(keys, float(FILL_VALUE))
+    decoded_data = dict()#.fromkeys(keys, float(FILL_VALUE)) already finds keys and values
     for key, value in re.findall(regex, data.strip('\n')):
         decoded_data[key] = _safe_float(value)
     return decoded_data

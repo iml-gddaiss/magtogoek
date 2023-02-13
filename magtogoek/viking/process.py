@@ -220,7 +220,7 @@ def _process_viking_data(pconfig: ProcessConfig):
 
     # TODO CHANGE DISSOLVED OXYGEN UNITS ?
 
-    if 'dissolved_oxygen' in dataset.variables:
+    if 'dissolved_oxygen' in dataset.variables: # do this here or below ?
         _dissolved_oxygen_ml_per_L_to_umol_per_L(dataset)
 
     # ----------- #
@@ -340,15 +340,24 @@ def _load_viking_data(pconfig: ProcessConfig):
 def _compute_ctdo_potential_density(dataset: xr.Dataset):
     """Compute potential density as sigma_t:= Density(S,T,P) - 1000
 
+    -Pressure used needs to be in dbar
+
     """
 
     required_variables = ['temperature', 'salinity']
     if all((var in dataset for var in required_variables)):
+        pres = None
+        if 'pres' in dataset.variables:
+            if dataset.pres.attrs['units'] == 'dbar':
+                pres = dataset.atm_pressure.data
+            else:
+                l.warning(f"Wrong pressure units {dataset.pres.attrs['units']}.")
+        elif 'atm_pressure' in dataset.variables:
+            if dataset.atm_pressure.attrs['units'] == 'dbar':
+                pres = dataset.atm_pressure.data
+            else:
+                l.warning(f"Wrong pressure units {dataset.atm_pressure.attrs['units']}.")
 
-        if 'pres' in dataset:
-            pres = dataset.pres.data
-        else:
-            pres = None
         density = compute_density(
             temperature=dataset.temperature.data,
             salinity=dataset.salinity.data,

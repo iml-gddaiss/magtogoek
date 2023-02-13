@@ -38,6 +38,7 @@ matplotlib.use('Qt5Agg')
 KNOTS_TO_METER_PER_SECONDS = 1 / 1.944   # 1 kt = (1/1.944) m/s
 MILLIMETER_TO_METER = 1 / 1000
 CENTIMETER_TO_METER = 1 / 100
+MILLIBAR_TO_DECIBAR = 1 / 100
 
 
 def load_meteoce_data(
@@ -139,15 +140,18 @@ def get_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.MaskedArr
         _data.update(
             {'atm_temperature': (viking_data.wxt520['Ta'], {}),
              'atm_humidity': (viking_data.wxt520['Ua'], {}),
-             'atm_pressure': (viking_data.wxt520['Pa'], {})}
+             'atm_pressure': (viking_data.wxt520['Pa'] * MILLIBAR_TO_DECIBAR, {"units": "dbar"})}  # mbar to dbar
         )
-        for nc_name, viking_name in zip(('wind_mean', 'wind_direction_mean', 'wind_max', 'wind_direction_max'),
-                                        ('Sm', 'Dm', 'Sx', 'Dx')):
+        for nc_name, viking_name, unit in zip(
+                ('wind_mean', 'wind_direction_mean', 'wind_max', 'wind_direction_max'),
+                ('Sm', 'Dm', 'Sx', 'Dx'),
+                ('', '', '', '')
+        ):
             if nc_name in _data:
                 if not (~_data[nc_name][0].mask).any():
-                    _data[nc_name] = (viking_data.wxt520[viking_name], {})
+                    _data[nc_name] = (viking_data.wxt520[viking_name], {'units': unit})
             else:
-                _data[nc_name] = (viking_data.wxt520[viking_name], {})
+                _data[nc_name] = (viking_data.wxt520[viking_name], {'units': unit})
         l.log('wxt520 data loaded.')
 
     if viking_data.ctd is not None:
