@@ -8,7 +8,7 @@
     ],
 
     "vel_beam_1": {
-        "units": "m s-1",
+        "units": "m/s",
         "sensor_type": "adcp",
         "long_name": "sea water velocity along beam 1",
         "sdn_parameter_urn": "SDN:P01::XXXXXXXX",
@@ -17,7 +17,7 @@
         "sdn_uom_name": "Metres per second"
     },
     "vel_beam_2": {
-        "units": "m s-1",
+        "units": "m/s",
         "sensor_type": "adcp",
         "long_name": "sea water velocity along beam 2",
         "sdn_parameter_urn": "SDN:P01::XXXXXXXX",
@@ -26,7 +26,7 @@
         "sdn_uom_name": "Metres per second"
     },
     "vel_beam_3": {
-        "units": "m s-1",
+        "units": "m/s",
         "sensor_type": "adcp",
         "long_name": "sea water velocity along beam 3",
         "sdn_parameter_urn": "SDN:P01::XXXXXXXX",
@@ -35,7 +35,7 @@
         "sdn_uom_name": "Metres per second"
     },
     "vel_beam_4": {
-        "units": "m s-1",
+        "units": "m/s",
         "sensor_type": "adcp",
         "long_name": "sea water velocity along beam 4",
         "sdn_parameter_urn": "SDN:P01::XXXXXXXX",
@@ -45,7 +45,7 @@
     },
 
     "bt_vel_beam_1": {
-        "units": "m s-1",
+        "units": "m/s",
         "sensor_type": "adcp",
         "long_name": "seabed velocity along beam 1",
         "sdn_parameter_urn": "SDN:P01::XXXXXXXX",
@@ -54,7 +54,7 @@
         "sdn_uom_name": "Metres per second"
     },
     "bt_vel_beam_2": {
-        "units": "m s-1",
+        "units": "m/s",
         "sensor_type": "adcp",
         "long_name": "seabed velocity along beam 2",
         "sdn_parameter_urn": "SDN:P01::XXXXXXXX",
@@ -63,7 +63,7 @@
         "sdn_uom_name": "Metres per second"
     },
     "bt_vel_beam_3": {
-        "units": "m s-1",
+        "units": "m/s",
         "sensor_type": "adcp",
         "long_name": "seabed velocity along beam 3",
         "sdn_parameter_urn": "SDN:P01::XXXXXXXX",
@@ -72,7 +72,7 @@
         "sdn_uom_name": "Metres per second"
     },
     "bt_vel_beam_4": {
-        "units": "m s-1",
+        "units": "m/s",
         "sensor_type": "adcp",
         "long_name": "seabed velocity along beam 4",
         "sdn_parameter_urn": "SDN:P01::XXXXXXXX",
@@ -82,7 +82,7 @@
     },
 
     "vel_x_axis": {
-        "units": "m s-1",
+        "units": "m/s",
         "sensor_type": "adcp",
         "long_name": "sea water velocity along the x-axis",
         "sdn_parameter_urn": "SDN:P01::XXXXXXXX",
@@ -91,7 +91,7 @@
         "sdn_uom_name": "Metres per second"
     },
     "vel_y_axis": {
-        "units": "m s-1",
+        "units": "m/s",
         "sensor_type": "adcp",
         "long_name": "sea water velocity along the y-axis",
         "sdn_parameter_urn": "SDN:P01::XXXXXXXX",
@@ -100,7 +100,7 @@
         "sdn_uom_name": "Metres per second"
     },
     "vel_z_axis": {
-        "units": "m s-1",
+        "units": "m/s",
         "sensor_type": "adcp",
         "long_name": "sea water velocity along the z-axis",
         "sdn_parameter_urn": "SDN:P01::XXXXXXXX",
@@ -109,7 +109,7 @@
         "sdn_uom_name": "Metres per second"
     },
     "vel_e": {
-        "units": "m s-1",
+        "units": "m/s",
         "sensor_type": "adcp",
         "long_name": "sea water velocity error",
         "sdn_parameter_urn": "SDN:P01::XXXXXXXX",
@@ -119,7 +119,7 @@
     },
 
     "bt_vel_x_axis": {
-        "units": "m s-1",
+        "units": "m/s",
         "sensor_type": "adcp",
         "long_name": "seabed velocity along the x-axis",
         "sdn_parameter_urn": "SDN:P01::XXXXXXXX",
@@ -128,7 +128,7 @@
         "sdn_uom_name": "Metres per second"
     },
     "bt_vel_y_axis": {
-        "units": "m s-1",
+        "units": "m/s",
         "sensor_type": "adcp",
         "long_name": "seabed velocity along the y-axis",
         "sdn_parameter_urn": "SDN:P01::XXXXXXXX",
@@ -137,7 +137,7 @@
         "sdn_uom_name": "Metres per second"
     },
     "bt_vel_z_axis": {
-        "units": "m s-1",
+        "units": "m/s",
         "sensor_type": "adcp",
         "long_name": "seabed velocity along the z-axis",
         "sdn_parameter_urn": "SDN:P01::XXXXXXXX",
@@ -146,7 +146,7 @@
         "sdn_uom_name": "Metres per second"
     },
     "bt_vel_e": {
-        "units": "m s-1",
+        "units": "m/s",
         "sensor_type": "adcp",
         "long_name": "seabed velocity error",
         "sdn_parameter_urn": "SDN:P01::XXXXXXXX",
@@ -157,7 +157,7 @@
 
     "LCEWLW01": {
         "standard_name": "eastward_sea_water_velocity",
-        "units": "m s-1",
+        "units": "m/s",
         "sensor_type": "adcp",
         "long_name": "eastward sea water velocity",
         "sdn_parameter_urn": "SDN:P01::LCEWLW01",
@@ -168,7 +168,7 @@
     },
     "LCNSLW01": {
         "standard_name": "northward_sea_water_velocity",
-        "units": "m s-1",
+        "units": "m/s",
         "sensor_type": "adcp",
         "long_name": "northward sea water velocity",
         "sdn_parameter_urn": "SDN:P01::LCNSLW01",
@@ -179,7 +179,7 @@
     },
     "LRZALW01": {
         "standard_name": "upward_sea_water_velocity",
-        "units": "m s-1",
+        "units": "m/s",
         "sensor_type": "adcp",
         "long_name": "upward sea water velocity",
         "sdn_parameter_urn": "SDN:P01::LRZALW01",
@@ -189,7 +189,7 @@
         "legacy_GF3_code": "SDN:GF3::VCSP"
     },
     "ERRVLW01": {
-        "units": "m s-1",
+        "units": "m/s",
         "sensor_type": "adcp",
         "long_name": "error velocity in sea water",
         "sdn_parameter_urn": "SDN:P01::LERRLW01",
@@ -201,7 +201,7 @@
 
     "LCEWAP01": {
         "standard_name": "eastward_sea_water_velocity",
-        "units": "m s-1",
+        "units": "m/s",
         "sensor_type": "adcp",
         "long_name": "eastward sea water velocity",
         "sdn_parameter_urn": "SDN:P01::LCEWAP01",
@@ -212,7 +212,7 @@
     },
     "LCNSAP01": {
         "standard_name": "northward_sea_water_velocity",
-        "units": "m s-1",
+        "units": "m/s",
         "sensor_type": "adcp",
         "long_name": "northward sea water velocity",
         "sdn_parameter_urn": "SDN:P01::LCNSAP01",
@@ -223,7 +223,7 @@
     },
     "LRZAAP01": {
         "standard_name": "upward_sea_water_velocity",
-        "units": "m s-1",
+        "units": "m/s",
         "sensor_type": "adcp",
         "long_name": "upward sea water velocity",
         "sdn_parameter_urn": "SDN:P01::LRZAAP01",
@@ -233,7 +233,7 @@
         "legacy_GF3_code": "SDN:GF3::VCSP"
     },
     "LERRAP01": {
-        "units": "m s-1",
+        "units": "m/s",
         "sensor_type": "adcp",
         "long_name": "error velocity in sea water",
         "sdn_parameter_urn": "SDN:P01::LERRAP01",
@@ -245,7 +245,7 @@
 
     "LCEWAS01": {
         "standard_name": "eastward_sea_water_velocity",
-        "units": "m s-1",
+        "units": "m/s",
         "sensor_type": "adcp",
         "long_name": "eastward sea water velocity",
         "sdn_parameter_urn": "SDN:P01::LCEWAS01",
@@ -256,7 +256,7 @@
     },
     "LCNSAS01": {
         "standard_name": "northward_sea_water_velocity",
-        "units": "m s-1",
+        "units": "m/s",
         "sensor_type": "adcp",
         "long_name": "northward sea water velocity",
         "sdn_parameter_urn": "SDN:P01::LCNSAS01",
@@ -267,7 +267,7 @@
     },
     "LRZAAS01": {
         "standard_name": "upward_sea_water_velocity",
-        "units": "m s-1",
+        "units": "m/s",
         "sensor_type": "adcp",
         "long_name": "upward sea water velocity",
         "sdn_parameter_urn": "SDN:P01::LRZAAS01",
@@ -277,7 +277,7 @@
         "legacy_GF3_code": "SDN:GF3::VCSP"
     },
     "LERRAS01": {
-        "units": "m s-1",
+        "units": "m/s",
         "sensor_type": "adcp",
         "long_name": "error velocity in sea water",
         "sdn_parameter_urn": "SDN:P01::LERRAS01",
@@ -288,7 +288,7 @@
     },
 
     "LCNSBT01": {
-        "units": "m s-1",
+        "units": "m/s",
         "sensor_type": "adcp",
         "long_name": "northward seabed velocity",
         "sdn_parameter_urn": "SDN:P01::LCNSBT01",
@@ -297,7 +297,7 @@
         "sdn_uom_name": "Metres per second"
     },
     "LCEWBT01": {
-        "units": "m s-1",
+        "units": "m/s",
         "sensor_type": "adcp",
         "long_name": "eastward seabed velocity",
         "sdn_parameter_urn": "SDN:P01::LCEWBT01",
@@ -306,7 +306,7 @@
         "sdn_uom_name": "Metres per second"
     },
     "LRZABT01": {
-        "units": "m s-1",
+        "units": "m/s",
         "sensor_type": "adcp",
         "long_name": "upward seabed velocity",
         "sdn_parameter_urn": "SDN:P01::LRZABT01",
@@ -315,7 +315,7 @@
         "sdn_uom_name": "Metres per second"
     },
     "LERRBT01": {
-        "units": "m s-1",
+        "units": "m/s",
         "sensor_type": "adcp",
         "long_name": "seabed error velocity",
         "sdn_parameter_urn": "SDN:P01::LERRBT01",
@@ -460,7 +460,7 @@
     },
     "LRZUVP01": {
         "standard_name": "upward_sea_water_velocity",
-        "units": "m s-1",
+        "units": "m/s",
         "sensor_type": "adcp",
         "long_name": "upward sea water velocity by vertical beam",
         "sdn_parameter_urn": "SDN:P01::LRZUVP01",
@@ -550,7 +550,7 @@
     },
     "SVELCV01": {
         "standard_name": "speed of sound in sea water",
-        "units": "m s-1",
+        "units": "m/s",
         "long_name": "speed of sound",
         "sdn_parameter_urn": "SDN:P01::SVELCV01",
         "sdn_parameter_name": "Sound velocity in the water body by computation from temperature and salinity by unspecified algorithm",
@@ -605,7 +605,7 @@
         "legacy_GF3_code": "SDN:GF3::PRES"
     },
     "APEWGP01": {
-        "units": "m s-1",
+        "units": "m/s",
         "long_name": "eastward velocity of the measurement platform",
         "sdn_parameter_urn": "SDN:P01::APEWGP01",
         "sdn_parameter_name": "Eastward velocity of measurement platform relative to ground surface by unspecified GPS system",
@@ -613,7 +613,7 @@
         "sdn_uom_name": "Metres per second"
     },
     "APNSGP01": {
-        "units": "m s-1",
+        "units": "m/s",
         "long_name": "northward velocity of the measurement platform",
         "sdn_parameter_urn": "SDN:P01::APNSGP01",
         "sdn_parameter_name": "Northward velocity of measurement platform relative to ground surface by unspecified GPS system",
@@ -641,7 +641,7 @@
         "legacy_GF3_code": "SDN:GF3::N/A"
     },
     "APNSBT01": {
-        "units": "m s-1",
+        "units": "m/s",
         "sensor_type": "adcp",
         "long_name": "northward velocity of the measurement platform by bottom tracking",
         "sdn_parameter_urn": "SDN:P01::",
@@ -650,7 +650,7 @@
         "sdn_uom_name": "Metres per second"
     },
     "APEWBT01": {
-        "units": "m s-1",
+        "units": "m/s",
         "sensor_type": "adcp",
         "long_name": "eastward velocity of the measurement platform by bottom tracking",
         "sdn_parameter_urn": "SDN:P01::APEWBT01",
@@ -659,7 +659,7 @@
         "sdn_uom_name": "Metres per second"
     },
     "APZABT01": {
-        "units": "m s-1",
+        "units": "m/s",
         "sensor_type": "adcp",
         "long_name": "upward velocity of the measurement platform by bottom tracking",
         "sdn_parameter_urn": "SDN:P01::APZABT01",
@@ -668,7 +668,7 @@
         "sdn_uom_name": "Metres per second"
     },
     "APERBT01": {
-        "units": "m s-1",
+        "units": "m/s",
         "sensor_type": "adcp",
         "long_name": "error velocity of the measurement platform by bottom tracking",
         "sdn_parameter_urn": "SDN:P01::APERBT01",
@@ -685,7 +685,7 @@
         "sdn_uom_name": "Metres"
     },
     "EWSBZZ01": {
-        "units": "m s-1",
+        "units": "m/s",
         "long_name": "Speed of wind in the atmosphere",
         "sdn_parameter_urn": "SDN:P01::EWSBZZ01",
         "sdn_parameter_name": "Speed of wind {wind speed} in the atmosphere",
@@ -694,7 +694,7 @@
         "legacy_GF3_code": "WSPD"
     },
     "EGTSZZ01": {
-        "units": "m s-1",
+        "units": "m/s",
         "long_name": "Speed of wind (gust) in the atmosphere",
         "sdn_parameter_urn": "SDN:P01::EGTSZZ01",
         "sdn_parameter_name": "Speed of wind (gust) {wind speed} in the atmosphere",
@@ -739,7 +739,7 @@
         "legacy_GF3_code": "ATMP"
     },
     "CNDCZZ01": {
-        "units": "S m-1",
+        "units": "S/m",
         "long_name": "electrical_conductivity",
         "sdn_parameter_urn": "SDN:P01::CNDCZZ01",
         "sdn_parameter_name": "Electrical conductivity of the water body",
@@ -757,7 +757,7 @@
         "legacy_GF3_code": "PSAL"
     },
     "SIGTEQ01": {
-        "units": "kg m-3",
+        "units": "kg/m**3",
         "long_name": "sigma_theta",
         "sdn_parameter_urn": "SDN:P01::SIGTEQ01",
         "sdn_parameter_name": "Sigma-theta of the water body by computation from salinity and potential temperature using UNESCO algorithm",
@@ -767,12 +767,12 @@
     },
 
     "PFDPAR01": {
-        "units": "uE m-2 s-1",
+        "units": "umol/m**2/s",
         "long_name": "Photosynthetically Active Radiation",
         "sdn_parameter_urn": "SDN:P01::PFDPAR01",
         "sdn_parameter_name": "Irradiance as photons of electromagnetic radiation (PAR wavelengths)",
-        "sdn_uom_urn": "SDN:P06:UMES",
-        "sdn_uom_name": "MicroEinsteins per square metre per second"
+        "sdn_uom_urn": "SDN:P06:UM2S",
+        "sdn_uom_name": "Micromoles per square metre per second"
     },
     "PHXXZZXX": {
         "units": "NBS_scale",
@@ -793,7 +793,7 @@
         "legacy_GF3_code": ""
     },
     "CPHLPR01": {
-        "units": "mg L-1",
+        "units": "mg/L",
         "long_name": "Chlorophyll-a concentration",
         "sdn_parameter_urn": "SDN:P01::CPHLPR01",
         "sdn_parameter_name": "Concentration of chlorophyll-a {chl-a CAS 479-61-8} per unit volume of the water body [particulate >unknown phase] by in-situ chlorophyll fluorometer",
