@@ -266,7 +266,7 @@ class ProcessConfig(BaseProcessConfig):
     def __init__(self, config_dict: dict = None):
         super().__init__(config_dict)
  #       self.variables_to_add_sensor_type = VAR_TO_ADD_SENSOR_TYPE
-        self.sensors_id = None # TODO
+        self.sensors_id = SENSOR_TYPE_TO_SENSORS_ID_MAP # FIXME TEST
         self.variables_to_drop = VARIABLES_TO_DROP
         self.global_attributes_to_drop = GLOBAL_ATTRS_TO_DROP
 

@@ -34,12 +34,13 @@ from magtogoek.viking.quality_control import meteoce_quality_control, no_meteoce
 
 l.get_logger("viking_processing")
 
-STANDARD_GLOBAL_ATTRIBUTES = {"sensor_type": "viking_buoy", "featureType": "timeSeriesProfile"}
+STANDARD_GLOBAL_ATTRIBUTES = {"process": "viking_buoy", "featureType": "timeSeriesProfile"}
 
 VARIABLES_TO_DROP = ['ph_temperature', 'wind_direction_max', 'speed', 'course', 'magnetic_declination']
 
 GLOBAL_ATTRS_TO_DROP = [
-    "sensor_type",
+    #"sensor_type",
+    "process",
     "platform_type",
     "VAR_TO_ADD_SENSOR_TYPE",
     "P01_CODES",
@@ -113,18 +114,18 @@ SENSOR_TYPE_TO_SENSORS_ID_MAP = {
         'corr1', 'corr2', 'corr3', 'corr4',
         'amp1', 'amp2', 'amp3', 'amp4'
     ],
-    "ct": ["conductivity", "salinity", "temperature", "density", "depth"],
-    "ctd": ["conductivity", "salinity", "temperature", "density", "depth"],
-    "ctdo": ["conductivity", "salinity", "temperature", "density", "depth", "oxy"],
-    "rinko": ["oxygen"],
-    'nitrate': [],
-    "ph": [],
-    'par': [],
-    'triplet': [],
-    'co2w': [],
-    'co2a': [],
-    'wave': [],
-    'meteo': ['wind_mean', 'wind_max', 'wind_direction_mean', 'atm_temperature', 'atm_humidity', 'atm_pressure'],
+    "ctd": ["conductivity", "salinity", "temperature", "density"],
+    "ctdo": ["conductivity", "salinity", "temperature", "density", "dissolved_oxygen"],
+    "doxy": ["dissolved_oxygen"],
+    # 'nitrate': [],  # Not implemented yet.
+    "ph": ['ph'],
+    'par': ['par'],
+    'triplet': ['fluorescence', 'chlorophyll', 'fdom'],
+    'co2w': ['co2_w'],
+    'co2a': ['co2_a'],
+    'wave': ['wave_mean_height', 'wave_maximal_height', 'wave_period'],
+    'meteo': ['wind_mean', 'wind_max', 'wind_direction_mean','wind_direction_max',
+              'atm_temperature', 'atm_humidity', 'atm_pressure'],
 }
 
 
@@ -158,7 +159,7 @@ class ProcessConfig(BaseProcessConfig):
 
     def __init__(self, config_dict: dict = None):
         super().__init__(config_dict)
-        self.sensors_id = SENSOR_TYPE_TO_SENSORS_ID_MAP  # TODO
+        self.sensors_id = SENSOR_TYPE_TO_SENSORS_ID_MAP
         self.variables_to_drop = VARIABLES_TO_DROP
         self.global_attributes_to_drop = GLOBAL_ATTRS_TO_DROP
 
@@ -198,7 +199,6 @@ def _process_viking_data(pconfig: ProcessConfig):
     # ------------------- #
 
     dataset = _load_viking_data(pconfig)
-    # TODO  set values of pconfig.sensors_id Dict of variables and sensors_id
 
     # ----------------------------------------- #
     # ADDING THE NAVIGATION DATA TO THE DATASET #
@@ -363,9 +363,9 @@ def _compute_ctdo_potential_density(dataset: xr.Dataset):
             pres=pres
         )
         dataset['density'] = (['time'], density - 1000)
+        l.log('Potential density computed.')
     else:
-        l.warning(
-            f'density computation aborted. One of more variables in {required_variables} was missing.')
+        l.warning(f'Potential density computation aborted. One of more variables in {required_variables} was missing.')
 
 
 def _correct_ph_for_salinity(dataset: xr.Dataset, pconfig: ProcessConfig):
@@ -509,7 +509,7 @@ if __name__ == "__main__":
         VIKING_QUALITY_CONTROL=dict(quality_control=None),
         VIKING_OUTPUT=dict(
             merge_output_files=True,
-            bodc_name=False,
+            bodc_name=True,
             force_platform_metadata=None,
             odf_data=False,
             make_figures=False,
@@ -520,5 +520,3 @@ if __name__ == "__main__":
     process_viking(config)
 
     ds = xr.open_dataset(out_path)
-
-    print(list(ds.variables))

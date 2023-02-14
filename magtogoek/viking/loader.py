@@ -38,7 +38,7 @@ matplotlib.use('Qt5Agg')
 KNOTS_TO_METER_PER_SECONDS = 1 / 1.944   # 1 kt = (1/1.944) m/s
 MILLIMETER_TO_METER = 1 / 1000
 CENTIMETER_TO_METER = 1 / 100
-MILLIBAR_TO_DECIBAR = 1 / 100
+#MILLIBAR_TO_DECIBAR = 1 / 100
 
 
 def load_meteoce_data(
@@ -140,7 +140,7 @@ def get_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.MaskedArr
         _data.update(
             {'atm_temperature': (viking_data.wxt520['Ta'], {}),
              'atm_humidity': (viking_data.wxt520['Ua'], {}),
-             'atm_pressure': (viking_data.wxt520['Pa'] * MILLIBAR_TO_DECIBAR, {"units": "dbar"})}  # mbar to dbar
+             'atm_pressure': (viking_data.wxt520['Pa'], {"units": "mbar"})}
         )
         for nc_name, viking_name, unit in zip(
                 ('wind_mean', 'wind_direction_mean', 'wind_max', 'wind_direction_max'),
