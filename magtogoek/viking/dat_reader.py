@@ -101,7 +101,7 @@ The Buoy Data `.dat` files
 
 [MO]: Short string. Not Used
     '942+03272+00360##########799290270601014514000902010401417310###73000502F9FF0300,000,[W]A forced start yoyo was sent'
-    Used to get information about the winch (wps-yoyo) that is a [W] tag within the short string.
+    Used to get information about the winch (ctd-yoyo) that is a [W] tag within the short string.
 
     [W]Not in time slot
     -Indicate that we’re not inside the time slot designed to do a MiniWinch mission.
@@ -263,7 +263,7 @@ data: (length: {len(self)})
 
     @property
     def tags(self):
-        return ['comp', 'triplet', 'par_digi', 'suna', 'gps', 'wps', 'ctdo', 'rti', 'rdi',
+        return ['comp', 'triplet', 'par_digi', 'suna', 'gps', 'ctd', 'ctdo', 'rti', 'rdi',
                 'wave_m', 'wave_s', 'wxt520', 'wmt700', 'wph', 'co2_w', 'co2_a', 'debit', 'vemco']
 
     def reformat(self):
@@ -400,7 +400,7 @@ buoys:\n"""
                                                controller_sn=value['controller_sn'])
             self.__setattr__(key, self._buoys_data[key])
 
-        tags = ['comp', 'triplet', 'par_digi', 'suna', 'gps', 'wps', 'ctdo', 'rti', 'rdi',
+        tags = ['comp', 'triplet', 'par_digi', 'suna', 'gps', 'ctd', 'ctdo', 'rti', 'rdi',
                 'wave_m', 'wave_s', 'wxt520', 'wmt700', 'wph', 'co2_w', 'co2_a', 'debit', 'vemco']
 
         for data_block in decoded_data:
@@ -458,7 +458,7 @@ def _decode_transmitted_data(data_received: str, century: int = 21) -> list:
     ]
     """
     decoded_data = []
-    tag_key = ['comp', 'triplet', 'par_digi', 'suna', 'gps', 'wps', 'ctdo', 'rti', 'rdi',
+    tag_key = ['comp', 'triplet', 'par_digi', 'suna', 'gps', 'ctd', 'ctdo', 'rti', 'rdi',
                'wave_m', 'wave_s', 'wxt520', 'wmt700', 'wph', 'co2_w', 'co2_a', 'debit', 'vemco']
     for data_block in DATA_BLOCK_REGEX.finditer(data_received):
         wxt520 = dict().fromkeys(TAG_VARS['WXT520_KEYS'], float(FILL_VALUE))
@@ -479,7 +479,7 @@ def _decode_transmitted_data(data_received: str, century: int = 21) -> list:
             elif tag == "GPS":
                 decoded_block["gps"] = _decode_GPS(data, century=century)
             elif tag == "CTD":
-                decoded_block["wps"] = _decode_CTD(data)
+                decoded_block["ctd"] = _decode_CTD(data)
             elif tag == "CTDO":
                 decoded_block["ctdo"] = _decode_CTDO(data)
             elif tag == "RTI":
@@ -705,7 +705,7 @@ def _decode_WXT520(data: str) -> dict:
             'Ta', 'Ua', 'Pa',
             'Th', 'Vh', 'Vs', 'Vr']
     regex = r'([A-z]+)=(\d+(?:\.\d+)?)'
-    decoded_data = dict()#.fromkeys(keys, float(FILL_VALUE)) already finds keys and values
+    decoded_data = dict()#.fromkeys(keys, float(FILL_VALUE))
     for key, value in re.findall(regex, data.strip('\n')):
         decoded_data[key] = _safe_float(value)
     return decoded_data

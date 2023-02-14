@@ -203,7 +203,7 @@ def _add_sdn_and_cf_var_attrs(dataset: xr.Dataset, sdn_meta: tp.Dict):
     """
     common_variables = set(dataset.variables).intersection(set(sdn_meta.keys()))
     for var in common_variables:
-        var_attrs = {key: value for key, value in sdn_meta[var].attrs.items() if key in CF_P01_GF3_ATTRS_KEY_TO_ADD}
+        var_attrs = {key: value for key, value in sdn_meta[var].items() if key in CF_P01_GF3_ATTRS_KEY_TO_ADD}
         dataset[var].attrs.update(var_attrs)
 
 

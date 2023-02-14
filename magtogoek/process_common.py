@@ -85,7 +85,7 @@ class BaseProcessConfig:
     global_attributes_to_drop: tp.List[str] = None
     drop_empty_attrs: bool = False
     headless: bool = False
-    sensors_id: tp.Dict[str: tp.List[str]] = None
+    sensors_id: tp.Dict[str, tp.List[str]] = None
 
     def __init__(self, config_dict: dict = None):
         self.metadata: dict = {}
@@ -376,7 +376,8 @@ def add_global_attributes(dataset: xr.Dataset, pconfig: BaseProcessConfig, stand
     dataset.attrs["data_type"] = _get_data_type(pconfig.process, pconfig.platform_type)
     dataset.attrs["data_subtype"] = DATA_SUBTYPES[pconfig.platform_type]
 
-    pconfig.platform_metadata.add_to_dataset(dataset, list(pconfig.sensors_id.keys()), pconfig.force_platform_metadata)
+    if isinstance(pconfig.platform_metadata,PlatformMetadata): # PATCH FIXME
+        pconfig.platform_metadata.add_to_dataset(dataset, list(pconfig.sensors_id.keys()), pconfig.force_platform_metadata)
 
     compute_global_attrs(dataset)  # already common
 
@@ -394,7 +395,7 @@ def _get_data_type(sensor_type: str, platform_type: str = None):
         if platform_type is None:
             platform_type = DEFAULT_PLATFORM_TYPE
         return ADCP_DATA_TYPES[platform_type]
-    raise ValueError(f"Invalid sensor type.")
+    raise ValueError(f"Invalid sensor type. {sensor_type}")
 
 
 def write_netcdf(dataset: xr.Dataset, pconfig: BaseProcessConfig):

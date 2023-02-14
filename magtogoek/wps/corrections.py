@@ -119,38 +119,38 @@ def dissolved_oxygen_correction_for_salinity_SCOR_WG_142(dissolved_oxygen: np.ar
     return dissolved_oxygen * oxy_solubility
 
 
-def dissolved_oxygen_correction_for_pressure(dissolved_oxygen: np.array, pressure: np.array) -> np.array:
-    """
-    ```(Uchida et al., 2008)
-    DO_pc = DO * (1 + C_p * Pressure/1000)
-
-    DO : dissolved oxygen
-    Pressure : pressure in dbar
-    cp : Pressure coefficient = 0.032
-    ```
-
-    Parameters
-    ----------
-    dissolved_oxygen :
-        Dissolved oxygen [umol/kg]
-    pressure :
-        Pressure in dbar
-
-    Returns
-    -------
-        Pressure compensated dissolved oxygen.
-
-    Notes
-    -----
-    Pressure coefficients could be subject to change over time.
-
-    References
-    ----------
-    .. [1] Uchida et al. 2008, Journal of Atmospheric and Oceanic Technology, In Situ Calibration of
-            ptode-Based Oxygen Sensors.
-    """
-    cp = 0.032
-    return dissolved_oxygen * (1 + cp * pressure / 1000)
+# def dissolved_oxygen_correction_for_pressure(dissolved_oxygen: np.array, pressure: np.array) -> np.array:
+#     """
+#     ```(Uchida et al., 2008)
+#     DO_pc = DO * (1 + C_p * Pressure/1000)
+#
+#     DO : dissolved oxygen
+#     Pressure : pressure in dbar
+#     cp : Pressure coefficient = 0.032
+#     ```
+#
+#     Parameters
+#     ----------
+#     dissolved_oxygen :
+#         Dissolved oxygen [umol/kg]
+#     pressure :
+#         Pressure in dbar
+#
+#     Returns
+#     -------
+#         Pressure compensated dissolved oxygen.
+#
+#     Notes
+#     -----
+#     Pressure coefficients could be subject to change over time.
+#
+#     References
+#     ----------
+#     .. [1] Uchida et al. 2008, Journal of Atmospheric and Oceanic Technology, In Situ Calibration of
+#             ptode-Based Oxygen Sensors.
+#     """
+#     cp = 0.032
+#     return dissolved_oxygen * (1 + cp * pressure / 1000)
 
 
 def dissolved_oxygen_correction_for_pressure_JAC(
@@ -158,7 +158,7 @@ def dissolved_oxygen_correction_for_pressure_JAC(
 ) -> np.array:
     """Dissolved oxygen pressure correction for JAC(ARO-FT) oxygen sensor.
 
-    ```(Thierry et al, 2022)
+    ```(Thierry et al., 2022; Uchida et al., 2008)
 
     DO_pc = DO * [1 + cp * Pressure / 1000]
 
@@ -172,7 +172,7 @@ def dissolved_oxygen_correction_for_pressure_JAC(
     Parameters
     ----------
     dissolved_oxygen :
-        Dissolved oxygen [umol/kg]
+        Dissolved oxygen [umol/kg] (I don't know why the units matters)...
     pressure :
         Pressure in dbar
 
@@ -185,6 +185,9 @@ def dissolved_oxygen_correction_for_pressure_JAC(
     ----------
     .. [1] Thierry Virginie, Bittig Henry, Gilbert Denis, Kobayashi Taiyo, Kanako Sato, Schmid Claudia (2022).
             Processing Argo oxygen data at the DAC level. https://doi.org/10.13155/39795
+    .. [2] Uchida et al. 2008, Journal of Atmospheric and Oceanic Technology, In Situ Calibration of
+            ptode-Based Oxygen Sensors.
+
     """
     cp = 0.032
 
