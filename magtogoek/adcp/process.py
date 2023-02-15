@@ -946,12 +946,12 @@ def cut_times(
         if start_time > dataset.time.max():
             out_off_bound_time = True
         else:
-            msg.append(f"Start={start_time.strftime('%Y-%m-%dT%H:%M:%S')}")
+            msg.append(f"Start={start_time.strftime('%Y-%m-%dT%H:%M:%S')} [UTC]")
     if end_time is not None:
         if end_time < dataset.time.min():
             out_off_bound_time = True
         else:
-            msg.append(f"end={end_time.strftime('%Y-%m-%dT%H:%M:%S')}")
+            msg.append(f"end={end_time.strftime('%Y-%m-%dT%H:%M:%S')}  [UTC]")
     if out_off_bound_time is True:
         l.warning("Trimming datetimes out of bounds. Time slicing aborted.")
     else:

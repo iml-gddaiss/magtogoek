@@ -184,7 +184,7 @@ class TaskParserError(SystemExit):
         if self.error == "choice":
             self.msg = f"`{self.section}/{self.option}` expected a value in `{self.option_info.choice}` but received `{self.value}`."
         if self.error == "string_format":
-            self.msg = f"`{self.section}/{self.option}` is an invalid datetime format. Use `YYYY-MM-DDThh:mm:ss.ssss`"
+            self.msg = f"`{self.section}/{self.option}` is an invalid datetime format or timezone (TMZ). Use `YYYY-MM-DDThh:mm:ss.ssss` with `+HH` or ` TMZ`."
         if self.error == "path":
             self.msg = f"`{self.section}/{self.option}` path or path/to/file does not exist."
         if self.error == "file":
@@ -554,7 +554,7 @@ def _format_parser_options(parser_dict: dict, parser_infos: ParserInfos, file_pa
                 if option in parser_dict[section]:
                     option_info = parser_infos[section][option]
                     value = parser_dict[section][option]
-                    if value == "":
+                    if value == "" or value is None: # to test if it does the right thing.
                         _value = option_info.null_value
                         if option_info.is_required is True:
                             raise TaskParserError("required", option_info, value)
@@ -622,15 +622,22 @@ def _format_option_type(value: str, option_info: OptionInfos, file_path: Optiona
                 raise TaskParserError('file', option_info, value)
 
         elif option_info.is_time_stamp is True:
-            try:
-                value = dateutil.parser.parse(value).astimezone(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.f')[:-2]
-            except dateutil.parser.ParserError:
-                raise TaskParserError("string_format", option_info, value)
+            value = _format_timestring(value, option_info)
 
     if isinstance(value, (int, float)) and (option_info.value_min or option_info.value_max):
         _check_option_min_max(value, option_info)
 
     return value
+
+
+def _format_timestring(value: str, option_info: OptionInfos) -> str:
+    try:
+        date_time = dateutil.parser.parse(value)
+        if date_time.tzinfo is not None:
+            date_time = date_time.astimezone(timezone.utc)
+        return date_time.strftime('%Y-%m-%dT%H:%M:%S.f')[:-2]
+    except dateutil.parser.ParserError:
+        raise TaskParserError("string_format", option_info, value)
 
 
 def _format_value_dtypes(value: str, dtypes: List[str]) -> StrIntFloatBool:
@@ -657,7 +664,7 @@ def _get_sequence_from_string(sequence: str) -> List:
     """Decode string containing a sequence of value.
 
     The sequence can be between brackets, parenthesis or nothing
-    and have comma, colon, semi-colon, newlines or spaces as separators.
+    and have comma, colon, semicolon, newlines or spaces as separators.
 
     Example
     -------
@@ -706,8 +713,8 @@ def main():
     section = "HEADER"
     parser.add_option(section, "made_by", dtypes=["str"], default=getpass.getuser())
     parser.add_option(section, "last_updated", dtypes=["str"], default=datetime.now().strftime("%Y-%m-%d"))
-    parser.add_option(section, "sensor_type", dtypes=["str"], default="", is_required=True, choice=["adcp"])
-    parser.add_option(section, "platform_type", dtypes=["str"], default="", choice=["buoy", "mooring", "ship"])
+    #parser.add_option(section, "sensor_type", dtypes=["str"], default="", is_required=True, choice=["adcp"])
+    #parser.add_option(section, "platform_type", dtypes=["str"], default="", choice=["buoy", "mooring", "ship"])
 
     section = "INPUT"
     parser.add_option(section, "input_files", dtypes=["str"], default="", nargs_min=1, is_file=True, is_required=True)
@@ -806,9 +813,19 @@ if __name__ == "__main__":
     _parser = main()
     d = _parser.as_dict()
 
-    # d["HEADER"]["sensor_type"] = "adcp"
-    # d["INPUT"]["input_files"] = "taskparser.py"
-    # d["ADCP_PROCESSING"]["yearbase"] = 2018
-    # d["ADCP_PROCESSING"]["sonar"] = "wh"
+    d["HEADER"]["sensor_type"] = "adcp"
+    d["INPUT"]["input_files"] = "taskparser.py"
+    d["ADCP_PROCESSING"]["yearbase"] = 2018
+    d["ADCP_PROCESSING"]["sonar"] = "wh"
+    d["ADCP_PROCESSING"]["adcp_orientation"] = "up"
+
+    d["ADCP_PROCESSING"]["leading_trim"] = '2000-06-10T12:00:00 + ABC'
+    d["ADCP_PROCESSING"]["trailing_trim"] = 100
 
     _parser.format_parser_dict(d)
+
+    print(type(d["ADCP_PROCESSING"]["leading_trim"]))
+    print(type(d["ADCP_PROCESSING"]["trailing_trim"]))
+    print(d["ADCP_QUALITY_CONTROL"]["bottom_depth"])
+
+
