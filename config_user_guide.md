@@ -58,8 +58,12 @@ cruise_name                   =
 cruise_description            = 
 organization                  = 
 chief_scientist               = 
-start_date                    = 
-end_date                      = 
+start_date                    = Format: `YYYY-MM-DD` or `YYYY-MM-DDThh:mm:ss.ssss`.
+                                A timezone can be specified with `+HH` or a timezone code ` TMZ`. Default: UTC.
+                                Ex: 2000-01-01T00:00:00.0000 -> 2000-01-01T00:00:00.0000 or 2000-01-01.
+end_date                      = Format: `YYYY-MM-DD` or `YYYY-MM-DDThh:mm:ss.ssss`.
+                                A timezone can be specified with `+HH` or a timezone code ` TMZ`. Default: UTC.
+                                Ex: 2000-01-01T00:00:00.0000 -> 2000-01-01T00:00:00.0000 or 2000-01-01.
 event_number                  = 
 event_qualifier1              = 
 event_comments                = 
@@ -89,9 +93,11 @@ navigation_file               = `path/to/netcdf_file` with navigation data. See 
                                 command for more info.
 leading_trim                  = Removes a count of leading data or data before a given date or datetime.
                                 Formats: Date (`YYYY-MM-DD` or `YYYY-MM-DDThh:mm:ss.ssss`) or Count (integer).
+                                A timezone can be specified with `+HH` or a timezone code ` TMZ`. Default: UTC.
                                 Date ex: 2000-01-01T00:00:00.0000 -> 2000-01-01T00:00:00.0000 or 2000-01-01.
 trailing_trim                 = Removes a count of trailing data or data after a given date or datetime.
                                 Formats: Date (`YYYY-MM-DD` or `YYYY-MM-DDThh:mm:ss.ssss`) or Count (integer).
+                                A timezone can be specified with `+HH` or a timezone code ` TMZ`. Default: UTC.
                                 Date ex: 2000-01-01T00:00:00.0000 -> 2000-01-01T00:00:00.0000 or 2000-01-01.
 sensor_depth                  = Sensor depth in meter. Will overwrite the one found in the adcp file.
 depth_range                   = Value in meter. Cut the bin outside this range. Either `min` or `min, max`.
@@ -99,11 +105,13 @@ bad_presssure                 = If True, XducerDepth is set to 0 or to `sensor_d
 magnetic_declination          = Declination of the magnetic north in degree east. The value given 
                                 should be absolute, not relative to the one configured in the adcp.
 keep_bt                       = If True, bottom track data are kept and can be used for motion correction.
-start_time                    = Format 'YYYY-MM-DDThh:mm:ss.ssss'.
+start_time                    = Format: `YYYY-MM-DD` or `YYYY-MM-DDThh:mm:ss.ssss`.
+                                A timezone can be specified with `+HH` or a timezone code ` TMZ`. Default: UTC.
                                 If provided, a new time coordinate vector, starting at `start_time`, 
                                 is used instead of the one found in the raw adcp file. Use the parameter 
                                 `time_step` to use a different time step than the one found in the adcp 
                                 raw adcp file. 
+                                Ex: 2000-01-01T00:00:00.0000 -> 2000-01-01T00:00:00.0000 or 2000-01-01.
 time_step                     = Time step in seconds. Only use if a `start_time` value is provided.
 grid_depth                    = Path and name of the file containing depths
                                 to which the dataset should be regridded. Setting this value activates the

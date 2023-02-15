@@ -184,7 +184,7 @@ class TaskParserError(SystemExit):
         if self.error == "choice":
             self.msg = f"`{self.section}/{self.option}` expected a value in `{self.option_info.choice}` but received `{self.value}`."
         if self.error == "string_format":
-            self.msg = f"`{self.section}/{self.option}` is an invalid datetime format. Use `YYYY-MM-DDThh:mm:ss.ssss`"
+            self.msg = f"`{self.section}/{self.option}` is an invalid datetime format or timezone (TMZ). Use `YYYY-MM-DDThh:mm:ss.ssss` with `+HH` or ` TMZ`."
         if self.error == "path":
             self.msg = f"`{self.section}/{self.option}` path or path/to/file does not exist."
         if self.error == "file":
@@ -819,7 +819,7 @@ if __name__ == "__main__":
     d["ADCP_PROCESSING"]["sonar"] = "wh"
     d["ADCP_PROCESSING"]["adcp_orientation"] = "up"
 
-    d["ADCP_PROCESSING"]["leading_trim"] = '100'
+    d["ADCP_PROCESSING"]["leading_trim"] = '2000-06-10T12:00:00 + ABC'
     d["ADCP_PROCESSING"]["trailing_trim"] = 100
 
     _parser.format_parser_dict(d)
