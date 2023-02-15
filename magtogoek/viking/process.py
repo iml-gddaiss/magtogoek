@@ -328,8 +328,6 @@ def _process_viking_data(pconfig: ProcessConfig):
     if pconfig.make_log is True:
         write_log(pconfig)
 
-    return dataset # FIXME to remove
-
 
 def _load_viking_data(pconfig: ProcessConfig):
     dataset = load_meteoce_data(
@@ -471,6 +469,7 @@ def _quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
 if __name__ == "__main__":
     import getpass
     import pandas as pd
+    import matplotlib.pyplot as plt
     file_path = '/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat'
     out_path = '/home/jeromejguay/Desktop/viking_test.nc'
     config = dict(
@@ -509,7 +508,7 @@ if __name__ == "__main__":
         VIKING_QUALITY_CONTROL=dict(quality_control=None),
         VIKING_OUTPUT=dict(
             merge_output_files=True,
-            bodc_name=True,
+            bodc_name=False,
             force_platform_metadata=None,
             odf_data=False,
             make_figures=False,

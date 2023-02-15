@@ -53,6 +53,10 @@ import typing as tp
 import numpy as np
 import xarray as xr
 
+from magtogoek import IMPLAUSIBLE_VEL_TRESHOLD, \
+    MIN_TEMPERATURE, MAX_TEMPERATURE, \
+    MIN_PRESSURE, MAX_PRESSURE
+
 import magtogoek.logger as l
 
 from magtogoek.sci_tools import circular_distance
@@ -64,11 +68,11 @@ from scipy.stats import circmean
 #    rdi_qc_defaults = dict(amp_th=0)
 
 
-IMPLAUSIBLE_VEL_TRESHOLD = 15  # meter per second
-MIN_TEMPERATURE = -2  # Celcius
-MAX_TEMPERATURE = 32  # Celcius
-MIN_PRESSURE = 0  # dbar
-MAX_PRESSURE = 10000  # dbar (mariana trench pressure)
+#IMPLAUSIBLE_VEL_TRESHOLD = 15  # meter per second
+#MIN_TEMPERATURE = -2  # Celcius -2.5
+#MAX_TEMPERATURE = 32  # Celcius 25
+#MIN_PRESSURE = 0  # dbar
+#MAX_PRESSURE = 10000  # dbar (mariana trench pressure)
 
 FLAG_REFERENCE = "BODC SeaDataNet"
 FLAG_VALUES = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9)

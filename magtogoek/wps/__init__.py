@@ -9,7 +9,7 @@ SENSOR_TYPES =[
     'ct',  # Conductivity Temperature
     'ctd',  # Conductivity Temperature Depth
     'ctdo',  # Conductivity Temperature Depth Oxygen
-    'doxy',  # only oxygen
+    'doxy',  # only oxygen # RINKO maybe
     'nitrate', # e.g. SUNA
     'ph',  # pH
     'par',  # Photo-Active Radiation
