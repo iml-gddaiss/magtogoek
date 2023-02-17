@@ -129,10 +129,10 @@ def get_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.MaskedArr
 
     if viking_data.wmt700 is not None:
         _data.update(
-            {'wind_mean': (viking_data.wmt700['Sm'] * KNOTS_TO_METER_PER_SECONDS, {}),
+            {'wind_mean': (viking_data.wmt700['Sm'] * KNOTS_TO_METER_PER_SECONDS, {'units': 'm/s'}),
              'wind_direction_mean': (viking_data.wmt700['Dm'], {}),
-             'wind_max': (viking_data.wmt700['Sx'], {}),
-             'wind_direction_max': (viking_data.wmt700['Dx'] * KNOTS_TO_METER_PER_SECONDS, {})}
+             'wind_max': (viking_data.wmt700['Sx'] * KNOTS_TO_METER_PER_SECONDS , {'units': 'm/s'}),
+             'wind_direction_max': (viking_data.wmt700['Dx'], {})}
         )
         l.log('wmt700 data loaded.')
 
@@ -142,16 +142,20 @@ def get_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.MaskedArr
              'atm_humidity': (viking_data.wxt520['Ua'], {}),
              'atm_pressure': (viking_data.wxt520['Pa'], {"units": "mbar"})}
         )
-        for nc_name, viking_name, unit in zip(
-                ('wind_mean', 'wind_direction_mean', 'wind_max', 'wind_direction_max'),
-                ('Sm', 'Dm', 'Sx', 'Dx'),
-                ('', '', '', '')
-        ):
-            if nc_name in _data:
-                if not (~_data[nc_name][0].mask).any():
-                    _data[nc_name] = (viking_data.wxt520[viking_name], {'units': unit})
-            else:
-                _data[nc_name] = (viking_data.wxt520[viking_name], {'units': unit})
+        # A parameter could be added to choose where to load wind data from. TODO
+        # wind data from wxt520 are not loaded at the moment.
+        # for nc_name, viking_name, scale, unit in zip(
+        #         ('wind_mean', 'wind_direction_mean', 'wind_max', 'wind_direction_max'),
+        #         ('Sm', 'Dm', 'Sx', 'Dx'),
+        #         (KNOTS_TO_METER_PER_SECONDS, 1, KNOTS_TO_METER_PER_SECONDS, 1),
+        #         ('m/s', '', 'm/s', '')
+        # ):
+        #     if nc_name in _data:
+        #         print(_data[nc_name], type(_data[nc_name]))
+        #         if not (~_data[nc_name][0].mask).any():
+        #             _data[nc_name] = (viking_data.wxt520[viking_name] * scale, {'units': unit})
+        #     else:
+        #         _data[nc_name] = (viking_data.wxt520[viking_name] * scale, {'units': unit})
         l.log('wxt520 data loaded.')
 
     if viking_data.ctd is not None:

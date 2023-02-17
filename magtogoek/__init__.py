@@ -17,7 +17,7 @@ PLATFORM_TYPES = ["buoy", "mooring", "ship", "lowered"]
 
 
 
-###  GLOBAL IMPOSSIBLE PARAMTER VALUES ###
+###  GLOBAL IMPOSSIBLE PARAMETER VALUES ###
 # For Quality Control | Impossible Value #
 
 IMPLAUSIBLE_VEL_TRESHOLD = 15  # meter per second

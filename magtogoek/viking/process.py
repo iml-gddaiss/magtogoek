@@ -124,8 +124,8 @@ SENSOR_TYPE_TO_SENSORS_ID_MAP = {
     'co2w': ['co2_w'],
     'co2a': ['co2_a'],
     'wave': ['wave_mean_height', 'wave_maximal_height', 'wave_period'],
-    'meteo': ['wind_mean', 'wind_max', 'wind_direction_mean','wind_direction_max',
-              'atm_temperature', 'atm_humidity', 'atm_pressure'],
+    'wind': ['wind_mean', 'wind_max', 'wind_direction_mean', 'wind_direction_max'],
+    'meteo': ['atm_temperature', 'atm_humidity', 'atm_pressure']
 }
 
 
@@ -134,6 +134,7 @@ class ProcessConfig(BaseProcessConfig):
     buoy_name: str = None
     data_format: str = None
     sensor_depth: float = None
+    wind_sensor: str = None # wmt700 or wxt520
 
     adcp_id: str = None
     ctd_id: str = None
@@ -470,6 +471,7 @@ if __name__ == "__main__":
     import getpass
     import pandas as pd
     import matplotlib.pyplot as plt
+    import scipy as sp
     file_path = '/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat'
     out_path = '/home/jeromejguay/Desktop/viking_test.nc'
     config = dict(

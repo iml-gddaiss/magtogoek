@@ -38,7 +38,7 @@ def compute_density(
         return eos.dens0(salinity, temperature)
 
 
-def dissolved_oxygen_ml_per_L_to_umol_per_L(dissolved_oxygen: np.array) -> np.array:
+def dissolved_oxygen_ml_per_L_to_umol_per_L(dissolved_oxygen: np.ndarray) -> np.ndarray:
     """
     ```(García and Gordon, 1992)
 
@@ -62,7 +62,7 @@ def dissolved_oxygen_ml_per_L_to_umol_per_L(dissolved_oxygen: np.array) -> np.ar
     return 44.6596 * dissolved_oxygen
 
 
-def dissolved_oxygen_umol_per_L_to_umol_per_kg(dissolved_oxygen: np.array, density: np.array) -> np.array:
+def dissolved_oxygen_umol_per_L_to_umol_per_kg(dissolved_oxygen: np.ndarray, density: np.ndarray) -> np.ndarray:
     """
     ```
 
@@ -85,7 +85,7 @@ def dissolved_oxygen_umol_per_L_to_umol_per_kg(dissolved_oxygen: np.array, densi
     return 1000 * dissolved_oxygen / density
 
 
-def compute_scaled_temperature(temperature: np.array) -> np.array:
+def compute_scaled_temperature(temperature: np.ndarray) -> np.ndarray:
     """
 
     ```
