@@ -231,6 +231,8 @@ def _process_viking_data(pconfig: ProcessConfig):
 
     l.section("Data Correction")
 
+    # IN-SITU WINKLER CORRECTION TODO
+
     if 'dissolved_oxygen' in dataset.variables and pconfig.d_oxy_correction is True:
         # SDN:P01::DOXYAAOP .. uncompensated for salinity and pressure, umol/L
         # SDN:P01::DOXYMMOP .. Salinity compensated maybe
@@ -238,6 +240,10 @@ def _process_viking_data(pconfig: ProcessConfig):
 
     if 'ph' in dataset:
         _correct_ph_for_salinity(dataset, pconfig)
+
+    # DRIFT CORRECTION TODO
+
+    # IN-SITU CORRECTION TODO
 
     # MAGNETIC DECLINATION SHOULD BE ALREADY CORRECTED FOR VIKING
 
@@ -469,11 +475,12 @@ def _quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
 
 if __name__ == "__main__":
     import getpass
+    import numpy as np
     import pandas as pd
     import matplotlib.pyplot as plt
-    import scipy as sp
+
     file_path = '/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat'
-    out_path = '/home/jeromejguay/Desktop/viking_test.nc'
+    out_path = '/home/jeromejguay/ImlSpace/Data/iml4_2021/meteoc_riki_2021.nc'
     config = dict(
         HEADER=dict(
             process="viking_buoy",
@@ -518,6 +525,6 @@ if __name__ == "__main__":
         )
     )
 
-    process_viking(config)
+    #process_viking(config)
 
     ds = xr.open_dataset(out_path)

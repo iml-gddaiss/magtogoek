@@ -8,7 +8,10 @@ winkler coeff  : d1, d2
 
 
 """
+from nptyping import NDArray
 import numpy as np
+#import pandas as pd
+import xarray as xr
 from typing import List
 
 from magtogoek.wps.sci_tools import voltEXT_from_pHEXT, pHEXT_from_voltEXT, compute_scaled_temperature
@@ -18,10 +21,10 @@ RINKO_COEFFS_KEYS = ('c0', 'c1', 'c2', 'd0', 'cp',
                      'd1', 'd2')
 
 
-def pH_correction_for_salinity(temperature: np.ndarray,
-                               salinity: np.ndarray,
-                               ph_temperature: np.ndarray,
-                               cal_psal: float, k0: float, k2: float) -> np.ndarray:
+def pH_correction_for_salinity(temperature: NDArray,
+                               salinity: NDArray,
+                               ph_temperature: NDArray,
+                               cal_psal: float, k0: float, k2: float) -> NDArray:
     """
     Recompute pH using in-situ salinity from a CTD.
     1. Compute the pH probe voltage using:
@@ -61,16 +64,12 @@ def pH_correction_for_salinity(temperature: np.ndarray,
     return ph
 
 
-def dissolved_oxygen_correction_for_salinity_SCOR_WG_142(dissolved_oxygen: np.array, salinity: np.array, temperature: np.array):
+def dissolved_oxygen_correction_for_salinity_SCOR_WG_142(dissolved_oxygen: NDArray, salinity: NDArray, temperature: NDArray):
     """Compute salinity compensated dissolved oxygen using SCOR WG 142 recommended coefficients.
 
     ```(Benson and Krause, 1984; García and Gordon, 1992)
     DO_sc = DO*exp[
-            a0 + a1*T_s + a2*T_s**2 + a3*T_s**3 + a4*T_s**4 + a5*T_s**5
-            + (b0 + b1*T_s + b2*T_s**2 + b3*T_s**3)*S
-            + c0*S**2
-            ]
-
+            a0 + ac
     T_s = ln[(298.15 - T) / (273.15 + T)]
 
     DO: dissolved oxygen
@@ -117,48 +116,11 @@ def dissolved_oxygen_correction_for_salinity_SCOR_WG_142(dissolved_oxygen: np.ar
     oxy_solubility = np.exp(poly_a + poly_b*salinity + c0*salinity**2)
 
     return dissolved_oxygen * oxy_solubility
-#######################3
-# WIND DATA FIXME FIXME ############################################################
-##############33
-
-
-# def dissolved_oxygen_correction_for_pressure(dissolved_oxygen: np.array, pressure: np.array) -> np.array:
-#     """
-#     ```(Uchida et al., 2008)
-#     DO_pc = DO * (1 + C_p * Pressure/1000)
-#
-#     DO : dissolved oxygen
-#     Pressure : pressure in dbar
-#     cp : Pressure coefficient = 0.032
-#     ```
-#
-#     Parameters
-#     ----------
-#     dissolved_oxygen :
-#         Dissolved oxygen [umol/kg]
-#     pressure :
-#         Pressure in dbar
-#
-#     Returns
-#     -------
-#         Pressure compensated dissolved oxygen.
-#
-#     Notes
-#     -----
-#     Pressure coefficients could be subject to change over time.
-#
-#     References
-#     ----------
-#     .. [1] Uchida et al. 2008, Journal of Atmospheric and Oceanic Technology, In Situ Calibration of
-#             ptode-Based Oxygen Sensors.
-#     """
-#     cp = 0.032
-#     return dissolved_oxygen * (1 + cp * pressure / 1000)
 
 
 def dissolved_oxygen_correction_for_pressure_JAC(
-        dissolved_oxygen: np.array, pressure: np.array
-) -> np.array:
+        dissolved_oxygen: NDArray, pressure: NDArray
+) -> NDArray:
     """Dissolved oxygen pressure correction for JAC(ARO-FT) oxygen sensor.
 
     ```(Thierry et al., 2022; Uchida et al., 2008)
@@ -195,4 +157,162 @@ def dissolved_oxygen_correction_for_pressure_JAC(
     cp = 0.032
 
     return dissolved_oxygen * (1 + cp * pressure / 1000)
+
+
+def time_drift_correction(data: NDArray, data_time: NDArray, drift: NDArray, drift_time: NDArray) -> NDArray:
+    """Apply correction for drift over time as a linear drift. fixme Test
+
+    ```
+    data_corrected(time) = data(time) - drift(time)
+    ```
+
+    Drift slope can vary between drift_time segments.
+
+    Drift and time_drift should include the drift for the first and last times of the data_time.
+
+    Drifts values are relative to the initial drift which should be 0.
+
+    Parameters
+    ----------
+    data
+    data_time
+
+    drift :
+        Vector of the amount of drift.
+    drift_time
+        Drift times for the corresponding drifts.
+
+    Returns
+    -------
+
+    """
+    if len(drift) < 2:
+        raise ValueError('`drift` must contains at least 2 values.')
+
+    _data = xr.DataArray(data, coords={'time': data_time})
+    _drift = xr.DataArray(drift, coords={'time': drift_time})
+
+    return data - _drift.interp(time=_data.time).data
+
+
+def in_situ_sample_correction(data: NDArray, slope: float, offset: float):
+    """Apply a linear correction using pre-computed linear regression coefficient. fixme TEST
+
+    ```
+    data_corr = slope * data + offset
+    ```
+
+
+    Parameters
+    ----------
+    data
+    slope
+    offset
+
+    Returns
+    -------
+
+    """
+
+    return slope * data + offset
+
+
+
+# def compute_daily_drift_coefficient(total_drift: float, t0: str, t1: str):
+#     """Compute the daily drift coefficient.
+#
+#     ```
+#     daily_drift = total_drift / number_of_days
+#     ```
+#
+#     Parameters
+#     ----------
+#     total_drift
+#     t0 :
+#         Initial time. Format `YYYY-MM-DDThh:mm:ss.ssss`
+#     t1 :
+#         Final time. Format `YYYY-MM-DDThh:mm:ss.ssss`
+#     Returns
+#     -------
+#
+#     """
+#
+#     return
+
+
+#
+# def in_situ_sample_correction_linear_regression():
+#     """Do a linear regression of:
+#
+#         In-Situ[d_i] =  A * Sensor[d_i]} + B
+#
+#     Then:
+#         corrected_data = A * sensor_data + B
+#
+#
+#     depths : (bin center)
+#
+#     bin_size :
+#
+#     values :
+#
+#     data:
+#
+#     Returns
+#     -------
+#
+#     Notes
+#     -----
+#     Would requires new json file for the post calibrations ?
+#
+#     Or add a 'insitu_sample' key for each sensor.
+#
+#     or in the `.ini` file would be more logical.
+#
+#     à méditer...
+#
+#     ```json
+#
+#     {
+#     'sensor_01':
+#         {'values': [a0, a1, ..., aN],
+#          'depths': [d0, d1, ..., dN]},
+#     'sensor_02':
+#         {'values': [a0, a1, ..., aN],
+#          'times': [t0, t1, ..., tN]}
+#     }
+#
+#
+#     ```
+#
+#
+#
+#
+#
+#     """
+#     pass
+
+if __name__ == "__main__":
+    import pandas as pd
+    import matplotlib.pyplot as plt
+
+    data = np.random.random(200)
+    data_time = pd.date_range('2020-05-01', '2020-09-01', 200)
+
+    drift = np.array([0, 1, 3, 3.5])
+    drift_time = pd.date_range('2020-05-01', '2020-09-01', 4)
+
+    data_raw = time_drift_correction(data, data_time, -drift, drift_time)
+
+    data_c = time_drift_correction(data_raw, data_time, drift, drift_time)
+
+
+    plt.figure()
+    plt.plot(data_raw, data_time, label='raw')
+    plt.plot(data_c, data_time, label='corrected')
+    plt.plot(drift, drift_time, label='drift')
+
+    plt.legend()
+    plt.show()
+
 

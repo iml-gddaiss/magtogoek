@@ -68,7 +68,7 @@ import numpy as np
 import xarray as xr
 from magtogoek import logger as l
 
-THRESHOLD_1 = {
+THRESHOLD_1 = { # TO BE REMOVED MAYBE
     "pres": 5, # db docs says `m`
     "temperature": 2,
     "salinity": 0.3,
@@ -94,34 +94,32 @@ def meteoce_quality_control(dataset: xr.Dataset):
     return dataset
 
 
-def spike_detection(data: NDArray, threshold_1: float, threshold_2: float):
-    """ # FIXME
-
-    # use some fraction of the variance of the diff. ?
-
-        |V2 - (V3+V1)/2| - |(V1-V3)/2|  >= Thres
+def climatology_outlier(
+        data: NDArray,
+        clim_time_format: str,
+        clim_mean: NDArray,
+        clim_std: NDArray,
+        threshold: float):
+    """
 
     Parameters
     ----------
     data
-    threshold_1 :
-        Threshold for data without first and last values.
-    threshold_2 :
-        Threshold for the first and last values.
+
+    clim_time_format:
+        Possible values: `dayofyear, week, month`
+
+    clim_mean:
+        Length depends on clim_time_format: [365, 52, 12]
+
+    clim_std:
+        Length depends on clim_time_format: [365, 52, 12]
+
+    threshold
 
     Returns
     -------
 
     """
-    spikes = np.zeros(data.shape).astype(bool)
-    v1 = data[0:-2]
-    v2 = data[1:-1]
-    v3 = data[2:]
-
-    spikes[0] = np.abs(data[1] - data[0]) >= threshold_2
-    spikes[1:-1] = np.abs(v2 - (v3 + v1)/2) - np.abs(v1 - v3)/2 >= threshold_1
-    spikes[-1] = np.abs(data[-1] - data[-2]) >= threshold_2
-
-    return spikes
-
-
+    # check lengths
+    pass
