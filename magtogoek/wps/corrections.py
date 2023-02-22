@@ -16,9 +16,9 @@ from typing import List
 
 from magtogoek.wps.sci_tools import voltEXT_from_pHEXT, pHEXT_from_voltEXT, compute_scaled_temperature
 
-RINKO_COEFFS_KEYS = ('c0', 'c1', 'c2', 'd0', 'cp',
-                     'b0', 'b1', 'b2', 'b3', 'b4',
-                     'd1', 'd2')
+# RINKO_COEFFS_KEYS = ('c0', 'c1', 'c2', 'd0', 'cp',
+#                      'b0', 'b1', 'b2', 'b3', 'b4',
+#                      'd1', 'd2')
 
 
 def pH_correction_for_salinity(temperature: NDArray,
