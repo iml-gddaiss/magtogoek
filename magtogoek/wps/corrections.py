@@ -14,7 +14,8 @@ import numpy as np
 import xarray as xr
 from typing import List
 
-from magtogoek.wps.sci_tools import voltEXT_from_pHEXT, pHEXT_from_voltEXT, compute_scaled_temperature
+from magtogoek.wps.sci_tools import voltEXT_from_pHEXT, pHEXT_from_voltEXT, compute_scaled_temperature, \
+    rinko_raw_measurement_from_dissolved_oxygen, dissolved_oxygen_from_rinko_raw_measurement
 
 # RINKO_COEFFS_KEYS = ('c0', 'c1', 'c2', 'd0', 'cp',
 #                      'b0', 'b1', 'b2', 'b3', 'b4',
@@ -62,6 +63,42 @@ def pH_correction_for_salinity(temperature: NDArray,
     ph = pHEXT_from_voltEXT(temp=temperature, psal=salinity, volt=volt, k0=k0, k2=k2)
 
     return ph
+
+
+def dissolved_oxygen_correction_winkler(
+        dissolved_oxygen: NDArray,
+        temperature: NDArray,
+        coeffs: List[float],
+        winkler_coeffs: List[float],
+):
+    """
+    Sensor raw values are retro computed using the calibration coefficients [d0, d1, d2, c0, c1, c2],
+    and then the dissolved oxygen is re-computed using the Winkler coefficients [d1_w, d2_w] for [d1, d2].
+
+    Parameters
+    ----------
+    dissolved_oxygen :
+
+    temperature :
+
+    coeffs :
+        [d0, d1, d2, c0, c1, c2]
+    winkler_coeffs :
+        Winkler coefficients [d1_w. d2_w]
+
+    Returns
+    -------
+        Winkler corrected dissolved oxygen.
+
+    Notes
+    -----
+    Needs to be done on uncorrected data (in pressure or salinity).
+    """
+    raw = rinko_raw_measurement_from_dissolved_oxygen(dissolved_oxygen=dissolved_oxygen, temperature=temperature, coeffs=coeffs)
+
+    coeffs[1:3] = winkler_coeffs
+
+    return dissolved_oxygen_from_rinko_raw_measurement(raw=raw, temperature=temperature, coeffs=coeffs)
 
 
 def dissolved_oxygen_correction_for_salinity_SCOR_WG_142(dissolved_oxygen: NDArray, salinity: NDArray, temperature: NDArray):
@@ -123,7 +160,7 @@ def dissolved_oxygen_correction_for_pressure_JAC(
 ) -> NDArray:
     """Dissolved oxygen pressure correction for JAC(ARO-FT) oxygen sensor.
 
-    ```(Thierry et al., 2022; Uchida et al., 2008)
+    ```(Thierry et al., 2022; Uchida et al., 2010)
 
     DO_pc = DO * [1 + cp * Pressure / 1000]
 
@@ -149,9 +186,9 @@ def dissolved_oxygen_correction_for_pressure_JAC(
     References
     ----------
     .. [1] Thierry Virginie, Bittig Henry, Gilbert Denis, Kobayashi Taiyo, Kanako Sato, Schmid Claudia (2022).
-            Processing Argo oxygen data at the DAC level. https://doi.org/10.13155/39795
-    .. [2] Uchida et al. 2008, Journal of Atmospheric and Oceanic Technology, In Situ Calibration of
-            ptode-Based Oxygen Sensors.
+            Processing Argo oxygen data at the DAC level. DOI: https://doi.org/10.13155/39795
+    .. [2] Uchida et al. 2010, IOCCP Report Number 14; ICPO Publication Series Number 134,
+            CTD Oxygen Sensor Calibration Procedures, DOI: https://doi.org/10.25607/OBP-1344
 
     """
     cp = 0.032
@@ -218,79 +255,6 @@ def in_situ_sample_correction(data: NDArray, slope: float, offset: float):
 
 
 
-# def compute_daily_drift_coefficient(total_drift: float, t0: str, t1: str):
-#     """Compute the daily drift coefficient.
-#
-#     ```
-#     daily_drift = total_drift / number_of_days
-#     ```
-#
-#     Parameters
-#     ----------
-#     total_drift
-#     t0 :
-#         Initial time. Format `YYYY-MM-DDThh:mm:ss.ssss`
-#     t1 :
-#         Final time. Format `YYYY-MM-DDThh:mm:ss.ssss`
-#     Returns
-#     -------
-#
-#     """
-#
-#     return
-
-
-#
-# def in_situ_sample_correction_linear_regression():
-#     """Do a linear regression of:
-#
-#         In-Situ[d_i] =  A * Sensor[d_i]} + B
-#
-#     Then:
-#         corrected_data = A * sensor_data + B
-#
-#
-#     depths : (bin center)
-#
-#     bin_size :
-#
-#     values :
-#
-#     data:
-#
-#     Returns
-#     -------
-#
-#     Notes
-#     -----
-#     Would requires new json file for the post calibrations ?
-#
-#     Or add a 'insitu_sample' key for each sensor.
-#
-#     or in the `.ini` file would be more logical.
-#
-#     à méditer...
-#
-#     ```json
-#
-#     {
-#     'sensor_01':
-#         {'values': [a0, a1, ..., aN],
-#          'depths': [d0, d1, ..., dN]},
-#     'sensor_02':
-#         {'values': [a0, a1, ..., aN],
-#          'times': [t0, t1, ..., tN]}
-#     }
-#
-#
-#     ```
-#
-#
-#
-#
-#
-#     """
-#     pass
 
 if __name__ == "__main__":
     import pandas as pd

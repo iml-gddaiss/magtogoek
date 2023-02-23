@@ -142,15 +142,19 @@ class ProcessConfig(BaseProcessConfig):
     nitrate_id: str = None
     # ADD MORE
 
-
     # CTD
     compute_density: bool = None
+
     # PH
-    ph_correction: bool = None
-    ph_coeffs: Tuple[float] = None  # psal, k0, k2
+    ph_salinity_correction: bool = None
+    ph_coeffs: List[float] = None  # psal, k0, k2
+
     # OXY
-    d_oxy_correction: bool = None
-    #winkler ?
+    d_oxy_winkler_correction: bool = None
+    rinko_coeffs: List[float] = None
+    winkler_coeffs: List[float] = None
+    d_oxy_pressure_correction: bool = None
+    d_oxy_salinity_correction: bool = None
 
     # ADCP
     motion_correction_mode: str = None # maybe adcp/process/adcp_processing...c
@@ -233,12 +237,14 @@ def _process_viking_data(pconfig: ProcessConfig):
 
     # IN-SITU WINKLER CORRECTION TODO
 
-    if 'dissolved_oxygen' in dataset.variables and pconfig.d_oxy_correction is True:
-        # SDN:P01::DOXYAAOP .. uncompensated for salinity and pressure, umol/L
-        # SDN:P01::DOXYMMOP .. Salinity compensated maybe
-        _dissolved_oxygen_corrections(dataset)
+    # SHOULD WINKLER, PRES and SALINITY be done separately.
 
-    if 'ph' in dataset:
+    # if 'dissolved_oxygen' in dataset.variables and pconfig.d_oxy_correction is True:
+    #     # SDN:P01::DOXYAAOP .. uncompensated for salinity and pressure, umol/L
+    #     # SDN:P01::DOXYMMOP .. Salinity compensated maybe
+    #     _dissolved_oxygen_corrections(dataset)
+
+    if pconfig.ph_salinity_correction is True and 'ph' in dataset:
         _correct_ph_for_salinity(dataset, pconfig)
 
     # DRIFT CORRECTION TODO
@@ -423,6 +429,13 @@ def _dissolved_oxygen_umol_per_L_to_umol_per_kg(dataset: xr.Dataset):
             l.warning(f"Density missing for oxygen conversion from [umol/L] to [umol/kg].")
     else:
         l.warning(f"Wrong dissolved oxygen units {dataset.dissolved_oxygen.attrs['units']} for conversion from [umol/L] to [umol/kg].")
+
+
+def _disslved_oxygen_winkler_correction(dataset: xr.Dataset, pconfig: ProcessConfig):
+    # Check temperature
+    # Check the required coefficients.
+    # Call correction function.
+    pass
 
 
 def _dissolved_oxygen_corrections(dataset: xr.Dataset):

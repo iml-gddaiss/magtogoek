@@ -2,6 +2,7 @@
 This module contains Water Property Sensor (WPS) related mathematical and scientific functions.
 """
 import numpy as np
+from nptyping import NDArray
 from seawater import eos80 as eos
 from typing import Union, List
 
@@ -36,6 +37,110 @@ def compute_density(
         return eos.dens(salinity, temperature, pres)
     else:
         return eos.dens0(salinity, temperature)
+
+
+def rinko_raw_measurement_from_dissolved_oxygen(
+        dissolved_oxygen: NDArray,
+        temperature: NDArray,
+        coeffs: List[float],
+):
+    """Compute raw measurements from dissolved oxygen using the temperature and calibration coefficients.
+
+
+    ```(Uchida et al., 2010)
+
+    The equation used, differs from the one in Uchida et al. (2010) since we are settings {e0=1, t=0}.
+
+                        1 + d0 * T
+              ----------------------------------  - d1
+        N =     DO * (c0 + c1 + c2 * T**2) + 1
+             -------------------------------------------
+                             d2
+
+    DO: dissolved oxygen [umol/L]
+    N: raw values
+    T: temperatures
+    d0, d1, d2, c0, c1, c2: Calibration Coefficients.
+    ```
+
+    Parameters
+    ----------
+    dissolved_oxygen :
+
+    temperature :
+
+    coeffs :
+        [d0, d1, d2, c0, c1, c2]
+
+    Returns
+    -------
+    Raw measurements of dissolved oxygen.
+
+    References
+    ----------
+    .. [1] Uchida et al. 2010, IOCCP Report Number 14; ICPO Publication Series Number 134,
+            CTD Oxygen Sensor Calibration Procedures, DOI: https://doi.org/10.25607/OBP-1344
+    """
+    d0, d1, d2, c0, c1, c2 = coeffs
+
+    A = 1 + d0 * temperature
+    B = dissolved_oxygen * (c0 + c1 + c2 * temperature ** 2) + 1
+
+    return (A / B - d1) / d2
+
+
+def dissolved_oxygen_from_rinko_raw_measurement(
+        raw: NDArray,
+        temperature: NDArray,
+        coeffs: List[float]
+):
+    """Compute dissolved oxygen from raw measurements using the temperature and calibration coefficients.
+
+    ```(Uchida et al., 2010)
+
+    The equation used, differs from the one in Uchida et al. (2010) since we are settings {e0=1, t=0}.
+
+    Equation used:
+
+                   1 + d0 * T
+                -----------------  - 1
+        D0 =      d1 + d2 * raw
+             ----------------------------
+                 c0 + c1 + c2 * T**2
+
+    DO: dissolved oxygen [umol/L]
+    N: raw values
+    T: temperatures
+    d0, d1, d2, c0, c1, c2: Calibration Coefficients.
+    ```
+
+    Parameters
+    ----------
+    raw :
+
+    temperature :
+
+    coeffs :
+        [d0, d1, d2, c0, c1, c2]
+
+    Returns
+    -------
+    Dissolved oxygen [umol/L]
+
+    References
+    ----------
+    .. [1] Uchida et al. 2010, IOCCP Report Number 14; ICPO Publication Series Number 134,
+            CTD Oxygen Sensor Calibration Procedures, DOI: https://doi.org/10.25607/OBP-1344
+
+    """
+
+    d0, d1, d2, c0, c1, c2 = coeffs
+
+    A = 1 + d0 * temperature
+    B = d1 + d2 * raw
+    C = (c0 + c1 + c2 * temperature ** 2)
+
+    return (A / B - 1) / C
 
 
 def dissolved_oxygen_ml_per_L_to_umol_per_L(dissolved_oxygen: np.ndarray) -> np.ndarray:

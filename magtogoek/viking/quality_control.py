@@ -77,6 +77,7 @@ CLIMATOLOGY_TIME_FORMATS = {
     }
 SEASONS_ID = ('DJF', 'JJA', 'MAM', 'SON')
 
+
 def no_meteoce_quality_control(dataset: xr.Dataset):
     l.warning('NO QUALITY CONTROL AVAILABLE')
     return dataset
