@@ -810,6 +810,24 @@
         "sdn_uom_name": "Dimensionless",
         "legacy_GF3_code": "FLOR"
     },
+    "DOXYUZ02": {
+        "standard_name": "",
+        "units": "umol/L",
+        "long_name": "Oxygen concentration with no calibration against sample data.",
+        "sdn_parameter_urn": "SDN:P01::DOXYUZ02",
+        "sdn_parameter_name": "Concentration of oxygen {O2 CAS 7782-44-7} per unit volume of the water body [dissolved plus reactive particulate phase] by in-situ sensor (second sensor) and no calibration against sample data",
+        "sdn_uom_urn": "SDN:P06::UPOX",
+        "sdn_uom_name": "Micromoles per litre"
+    },
+    "DOXYCZ01": {
+        "standard_name": "",
+        "units": "umol/L",
+        "long_name": "Oxygen concentration calibrated against sample data.",
+        "sdn_parameter_urn": "SDN:P01::DOXYCZ01",
+        "sdn_parameter_name": "Concentration of oxygen {O2 CAS 7782-44-7} per unit volume of the water body [dissolved plus reactive particulate phase] by in-situ sensor and calibration against sample data",
+        "sdn_uom_urn": "SDN:P06::UPOX",
+        "sdn_uom_name": "Micromoles per litre"
+    },
     "ACO2XXXX": {
         "units": "uatm",
         "long_name": "partial_pressure_of_carbon_dioxide_in_the_atmosphere",

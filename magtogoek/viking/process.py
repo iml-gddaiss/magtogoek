@@ -240,8 +240,8 @@ def _process_viking_data(pconfig: ProcessConfig):
     # SHOULD WINKLER, PRES and SALINITY be done separately.
 
     # if 'dissolved_oxygen' in dataset.variables and pconfig.d_oxy_correction is True:
-    #     # SDN:P01::DOXYAAOP .. uncompensated for salinity and pressure, umol/L
-    #     # SDN:P01::DOXYMMOP .. Salinity compensated maybe
+    #     # SDN:P01::DOXYUZ02 .. Not calibrated against sampled data (Winkler).
+    #     # SDN:P01::DOXYCZ01 .. Calibrated against sampled data (Winkler).
     #     _dissolved_oxygen_corrections(dataset)
 
     if pconfig.ph_salinity_correction is True and 'ph' in dataset:
@@ -431,7 +431,7 @@ def _dissolved_oxygen_umol_per_L_to_umol_per_kg(dataset: xr.Dataset):
         l.warning(f"Wrong dissolved oxygen units {dataset.dissolved_oxygen.attrs['units']} for conversion from [umol/L] to [umol/kg].")
 
 
-def _disslved_oxygen_winkler_correction(dataset: xr.Dataset, pconfig: ProcessConfig):
+def _dissolved_oxygen_winkler_correction(dataset: xr.Dataset, pconfig: ProcessConfig):
     # Check temperature
     # Check the required coefficients.
     # Call correction function.
