@@ -161,10 +161,31 @@
         "print_field_width": 10,
         "print_decimal_places": 4
     },
+    "wave_mean_height": {
+        "code": "VRMS_01",
+        "name": "Wave mean height",
+        "units": "m",
+        "print_field_width": 10,
+        "print_decimal_places": 4
+    },
+    "wave_maximal_height": {
+        "code": "VMXL_01",
+        "name": "Wave maximum height",
+        "units": "m",
+        "print_field_width": 10,
+        "print_decimal_places": 4
+    },
+    "wave_period": {
+        "code": "VTCA_01",
+        "name": "Wave period",
+        "units": "s",
+        "print_field_width": 10,
+        "print_decimal_places": 4
+    },
     "conductivity": {
         "code": "CNDC_01",
         "name": "Electrical Conductivity",
-        "units": "mhos/m",
+        "units": "S/m",
         "print_field_width": 10,
         "print_decimal_places": 4
     },
@@ -196,6 +217,27 @@
         "print_field_width": 10,
         "print_decimal_places": 4
     },
+    "chlorophyll": {
+        "code": "CPHL",
+        "name": "Chlorophyll-a Content",
+        "units": "mg/L",
+        "print_field_width": 10,
+        "print_decimal_places": 4
+    },
+    "par": {
+        "code": "PSAR",
+        "name": "Photosynthetic Active Radiation",
+        "units": "umol/m**2/s",
+        "print_field_width": 10,
+        "print_decimal_places": 4
+    },
+    "dissolved_oxygen": {
+        "code": "DOXY_01",
+        "name": "Dissolved Oxygen",
+        "units": "umol/L",
+        "print_field_width": 10,
+        "print_decimal_places": 4
+    },
     "co2_a": {
         "code": "ACO2_01",
         "name": "Partial pressure of carbon dioxide in the atmosphere",
@@ -209,26 +251,6 @@
         "units": "ppm",
         "print_field_width": 10,
         "print_decimal_places": 4
-    },
-    "wave_mean_height": {
-        "code": "VRMS_01",
-        "name": "Wave mean height",
-        "units": "m",
-        "print_field_width": 10,
-        "print_decimal_places": 4
-    },
-    "wave_maximal_height": {
-        "code": "VMXL_01",
-        "name": "Wave maximum height",
-        "units": "m",
-        "print_field_width": 10,
-        "print_decimal_places": 4
-    },
-    "wave_period": {
-        "code": "VTCA_01",
-        "name": "Wave period",
-        "units": "s",
-        "print_field_width": 10,
-        "print_decimal_places": 4
     }
+
 }

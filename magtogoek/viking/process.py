@@ -60,6 +60,9 @@ P01_CODES_MAP = {
     'atm_temperature': "CTMPZZ01",
     'atm_humidity': "CRELZZ01",
     'atm_pressure': "CAPHZZ01",
+    'wave_mean_height': "GAVHZZ01",
+    'wave_maximal_height': "GCMXZZ01",
+    'wave_period': "GTAMZZ01",
     'temperature': "TEMPPR01",
     'conductivity': "CNDCZZ01",
     'salinity': "PSLTZZ01",
@@ -70,9 +73,6 @@ P01_CODES_MAP = {
     'fdom': "CCOMD002",
     'co2_a': "ACO2XXXX",
     'co2_w': "PCO2XXXX",
-    'wave_mean_height': "GAVHZZ01",
-    'wave_maximal_height': "GCMXZZ01",
-    'wave_period': "GTAMZZ01",
     'par': "PFDPAR01",
     'u': "LCEWAP01",
     'v': "LCNSAP01",
@@ -227,7 +227,7 @@ def _process_viking_data(pconfig: ProcessConfig):
 
     if 'dissolved_oxygen' in dataset.variables:
         _dissolved_oxygen_ml_per_L_to_umol_per_L(dataset)
-        _dissolved_oxygen_umol_per_L_to_umol_per_kg(dataset)
+        #_dissolved_oxygen_umol_per_L_to_umol_per_kg(dataset) # Units in metadata would need to be changed.
 
     # ----------- #
     # CORRECTION  #
@@ -240,7 +240,7 @@ def _process_viking_data(pconfig: ProcessConfig):
     # SHOULD WINKLER, PRES and SALINITY be done separately.
 
     # if 'dissolved_oxygen' in dataset.variables and pconfig.d_oxy_correction is True:
-    #     # SDN:P01::DOXYUZ02 .. Not calibrated against sampled data (Winkler).
+    #     # SDN:P01::DOXYUZ01 .. Not calibrated against sampled data (Winkler).
     #     # SDN:P01::DOXYCZ01 .. Calibrated against sampled data (Winkler).
     #     _dissolved_oxygen_corrections(dataset)
 
@@ -454,7 +454,7 @@ def _dissolved_oxygen_corrections(dataset: xr.Dataset):
         l.warning(f'Dissolved oxygen correction for salinity aborted. `temperature` and/or `salinity` not found.')
 
     # Pressure Compensation
-    if all(var in dataset.variables for var in ['atm_pressure', 'density']):
+    if all(var in dataset.variables for var in ['atm_pressure', 'density']):  # FIXME break in two function. Dont change untis
         if dataset.dissolved_oxygen.attrs['units'] == ['umol/kg']:
             dataset.dissolved_oxygen.values = dissolved_oxygen_correction_for_pressure_JAC(
                 dissolved_oxygen=dataset.dissolved_oxygen.data,

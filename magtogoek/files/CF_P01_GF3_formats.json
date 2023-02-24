@@ -789,17 +789,15 @@
         "sdn_parameter_urn": "SDN:P01::CCOMD002",
         "sdn_parameter_name": "Concentration of coloured dissolved organic matter {CDOM Gelbstoff} per unit volume of the water body [dissolved plus reactive particulate phase] by in-situ WET Labs FDOM ECO fluorometer",
         "sdn_uom_urn": "SDN:P06:UPPB",
-        "sdn_uom_name": "Parts per billion",
-        "legacy_GF3_code": ""
+        "sdn_uom_name": "Parts per billion"
     },
     "CPHLPR01": {
-        "units": "mg/L",
+        "units": "mg/m**3",
         "long_name": "Chlorophyll-a concentration",
         "sdn_parameter_urn": "SDN:P01::CPHLPR01",
         "sdn_parameter_name": "Concentration of chlorophyll-a {chl-a CAS 479-61-8} per unit volume of the water body [particulate >unknown phase] by in-situ chlorophyll fluorometer",
         "sdn_uom_urn": "SDN:P06:UMMC",
-        "sdn_uom_name": "Milligrams per cubic metre",
-        "legacy_GF3_code": ""
+        "sdn_uom_name": "Milligrams per cubic metre"
     },
     "FLUOZZZZ": {
         "units": "dimensionless",
@@ -810,23 +808,25 @@
         "sdn_uom_name": "Dimensionless",
         "legacy_GF3_code": "FLOR"
     },
-    "DOXYUZ02": {
-        "standard_name": "",
+    "DOXYUZ01": {
+        "standard_name": "mole_concentration_of_dissolved_molecular_oxygen_in_sea_water",
         "units": "umol/L",
         "long_name": "Oxygen concentration with no calibration against sample data.",
-        "sdn_parameter_urn": "SDN:P01::DOXYUZ02",
-        "sdn_parameter_name": "Concentration of oxygen {O2 CAS 7782-44-7} per unit volume of the water body [dissolved plus reactive particulate phase] by in-situ sensor (second sensor) and no calibration against sample data",
+        "sdn_parameter_urn": "SDN:P01::DOXYUZ0",
+        "sdn_parameter_name": "Concentration of oxygen {O2 CAS 7782-44-7} per unit volume of the water body [dissolved plus reactive particulate phase] by in-situ sensor and no calibration against sample data",
         "sdn_uom_urn": "SDN:P06::UPOX",
-        "sdn_uom_name": "Micromoles per litre"
+        "sdn_uom_name": "Micromoles per litre",
+        "legacy_GF3_code": "DOXY"
     },
     "DOXYCZ01": {
-        "standard_name": "",
+        "standard_name": "mole_concentration_of_dissolved_molecular_oxygen_in_sea_water",
         "units": "umol/L",
         "long_name": "Oxygen concentration calibrated against sample data.",
         "sdn_parameter_urn": "SDN:P01::DOXYCZ01",
         "sdn_parameter_name": "Concentration of oxygen {O2 CAS 7782-44-7} per unit volume of the water body [dissolved plus reactive particulate phase] by in-situ sensor and calibration against sample data",
         "sdn_uom_urn": "SDN:P06::UPOX",
-        "sdn_uom_name": "Micromoles per litre"
+        "sdn_uom_name": "Micromoles per litre",
+        "legacy_GF3_code": "DOXY"
     },
     "ACO2XXXX": {
         "units": "uatm",

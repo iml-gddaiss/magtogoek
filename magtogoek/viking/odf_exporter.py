@@ -21,6 +21,8 @@ METEOCE BODC:
         Sea Density                                          : DENS_01 : SDN:P01::SIGTEQ01
         Hydrogen Ion Concentration (pH)                      : PHPH_01 : SDN:P01::PHXXZZXX
         Fluorescence                                         : FLOR_01 : SDN:P01::FLUOZZZZ
+        par                                                  : PSAR_01 :
+        chlorophyll                                          : CPHL_01 :
         Partial pressure of carbon dioxide in the atmosphere : ACO2_01 : SDN:P01::ACO2XXXX
         Partial pressure of carbon dioxide in the water body : PCO2_01 : SDN:P01::PCO2XXXX
         Wave mean height                                     : VRMS_01 : SDN:P01::GAVHZZ01
@@ -34,6 +36,11 @@ METEOCE BODC:
         bt_v
         bt_w
         bt_e
+
+Notes
+-----
+
+- Dissoled Oxygen units should be in [ml/L] not [umol/L]
 
 """
 import re

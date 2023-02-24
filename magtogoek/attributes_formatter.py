@@ -203,8 +203,17 @@ def _add_sdn_and_cf_var_attrs(dataset: xr.Dataset, sdn_meta: tp.Dict):
     """
     common_variables = set(dataset.variables).intersection(set(sdn_meta.keys()))
     for var in common_variables:
+        _check_units(dataset[var], sdn_meta[var])
         var_attrs = {key: value for key, value in sdn_meta[var].items() if key in CF_P01_GF3_ATTRS_KEY_TO_ADD}
         dataset[var].attrs.update(var_attrs)
+
+
+def _check_units(dataarray: xr.DataArray, sdn_meta: dict):
+    """Raise error if units don't match. Use for development."""
+    if "units" in dataarray.attrs:
+        if dataarray.attrs['units']: # not none or empty string
+            if sdn_meta['units'] != dataarray.attrs['units']:
+                raise ValueError("Dataarray units and SND_META units don't match")
 
 
 def _add_data_min_max_to_var_attrs(dataset):

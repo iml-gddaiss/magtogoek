@@ -113,7 +113,7 @@ def get_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.MaskedArr
 
     if viking_data.gps is not None:
         _data.update(
-            {'speed': (viking_data.gps['speed'] * KNOTS_TO_METER_PER_SECONDS, {}),
+            {'speed': (viking_data.gps['speed'] * KNOTS_TO_METER_PER_SECONDS, {"units": "m/s"}),
              'course': (viking_data.gps['course'], {}),
              'magnetic_declination': (viking_data.gps['variation_E'], {})}
         )
@@ -161,6 +161,7 @@ def get_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.MaskedArr
     if viking_data.ctd is not None:
         _data.update(
             {'temperature': (viking_data.ctd['temperature'], {}),
+             'conductivity': (viking_data.ctd['conductivity'], {'units': 'S/m'}),
              'salinity': (viking_data.ctd['salinity'], {}),
              'density': (viking_data.ctd['density'], {})}
         )
@@ -169,6 +170,7 @@ def get_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.MaskedArr
     elif viking_data.ctdo is not None:
         _data.update(
             {'temperature': (viking_data.ctdo['temperature'], {}),
+             'conductivity': (viking_data.ctdo['conductivity'], {'units': 'S/m'}),
              'salinity': (viking_data.ctdo['salinity'], {}),
              'dissolved_oxygen': (viking_data.ctdo['dissolved_oxygen'], {'units': 'ml/L'})}
         )
@@ -190,9 +192,11 @@ def get_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.MaskedArr
         _attrs = {'serial_number': viking_data.triplet['serial_number'][~viking_data.triplet['serial_number'].mask][0],
                   'model_number': viking_data.triplet['model_number'][~viking_data.triplet['model_number'].mask][0]}
         _data.update(
-            {'fluorescence': (viking_data.triplet['fluo_calculated'], _attrs),
-             'chlorophyll': (viking_data.triplet['chloro_calculated'], _attrs),
-             'fdom': (viking_data.triplet['fdom_calculated'], _attrs)}
+            {
+                'fluorescence': (viking_data.triplet['fluo_calculated'], {**_attrs, **{"units": "mg/m**3"}}),
+                'chlorophyll': (viking_data.triplet['chloro_calculated'], {**_attrs, **{"units": "mg/m**3"}}),
+                'fdom': (viking_data.triplet['fdom_calculated'], {**_attrs, **{"units": "mg/m**3"}})
+            }
         )
         l.log('Triplet data loaded.')
 
@@ -201,7 +205,7 @@ def get_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.MaskedArr
             'serial_number': viking_data.par_digi['serial_number'][~viking_data.par_digi['serial_number'].mask][0],
             'model_number': viking_data.par_digi['model_number'][~viking_data.par_digi['model_number'].mask][0]
         }
-        _data['par'] = (viking_data.par_digi['PAR'], _attrs)
+        _data['par'] = (viking_data.par_digi['PAR'], {**_attrs, **{"units": "umol/m**2/s"}})
         l.log('Par Digi data loaded.')
 
     if viking_data.co2_a is not None: # co2 partial pressure = (ppm / 1e6)* cell gas pressure
@@ -230,15 +234,15 @@ def get_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.MaskedArr
 
     if viking_data.rdi is not None:
         for _name in ['u', 'v', 'w', 'e']:
-            _data[_name] = (viking_data.rdi[_name] * MILLIMETER_TO_METER, {})
+            _data[_name] = (viking_data.rdi[_name] * MILLIMETER_TO_METER, {"units": "m/s"})
         l.log('Rdi data loaded.')
 
     elif viking_data.rti is not None:
         _attrs = {'bin': viking_data.rti['bin'][~viking_data.rti['bin'].mask],
                   'position': viking_data.rti['position_cm'][~viking_data.rti['position_cm'].mask] * CENTIMETER_TO_METER}
         for _name in ['u', 'v', 'w', 'e']:
-            _data[_name] = (viking_data.rti[_name] * MILLIMETER_TO_METER, _attrs)
-            _data["bt_" + _name] = (viking_data.rti["bt_" + _name] * MILLIMETER_TO_METER, _attrs)
+            _data[_name] = (viking_data.rti[_name] * MILLIMETER_TO_METER, {**_attrs, **{"units": "m/s"}})
+            _data["bt_" + _name] = (viking_data.rti["bt_" + _name] * MILLIMETER_TO_METER, {**_attrs, **{"units": "m/s"}})
         for _name in ['corr1', 'corr2', 'corr3', 'corr4', 'amp1', 'amp2', 'amp3', 'amp4']:
             _data[_name] = (viking_data.rti[_name], _attrs)
             _data["bt_"+_name] = (viking_data.rti["bt_"+_name], _attrs)
