@@ -143,7 +143,7 @@ def dissolved_oxygen_from_rinko_raw_measurement(
     return (A / B - 1) / C
 
 
-def dissolved_oxygen_ml_per_L_to_umol_per_L(dissolved_oxygen: np.ndarray) -> np.ndarray:
+def dissolved_oxygen_ml_per_L_to_umol_per_L(dissolved_oxygen: np.ndarray, inverse=False) -> np.ndarray:
     """
     ```(García and Gordon, 1992)
 
@@ -153,18 +153,23 @@ def dissolved_oxygen_ml_per_L_to_umol_per_L(dissolved_oxygen: np.ndarray) -> np.
 
     Parameters
     ----------
-    dissolved_oxygen [ml/L]
+    dissolved_oxygen : [ml/L] or [umol/L] if inverse is True
+
+    inverse :
+        Do the reverse conversion.
 
     Returns
     -------
-    dissolved_oxygen [umol/L]
+    dissolved_oxygen: [umol/L] or [ml/L] if inverse is True,
 
     References
     ----------
     .. [1] García and Gordon 1992, Limnology and Oceanography, Oxygen solubility in seawater: Better fitting equations.
     """
-
-    return 44.6596 * dissolved_oxygen
+    coeff = 44.6596
+    if inverse:
+        return dissolved_oxygen / coeff
+    return coeff * dissolved_oxygen
 
 
 def dissolved_oxygen_umol_per_L_to_umol_per_kg(dissolved_oxygen: np.ndarray, density: np.ndarray) -> np.ndarray:

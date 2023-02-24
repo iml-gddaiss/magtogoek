@@ -24,7 +24,8 @@ from magtogoek import logger as l
 from magtogoek.process_common import BaseProcessConfig, resolve_output_paths, add_global_attributes, write_log, write_netcdf, \
     add_processing_timestamp, clean_dataset_for_nc_output, format_data_encoding, add_navigation, save_variables_name_for_odf_output
 from magtogoek.attributes_formatter import format_variables_names_and_attributes
-from magtogoek.wps.corrections import pH_correction_for_salinity, dissolved_oxygen_correction_for_salinity_SCOR_WG_142, dissolved_oxygen_correction_for_pressure_JAC
+from magtogoek.wps.corrections import pH_correction_for_salinity, dissolved_oxygen_correction_for_salinity_SCOR_WG_142, dissolved_oxygen_correction_for_pressure_JAC, \
+    dissolved_oxygen_correction_winkler
 from magtogoek.wps.sci_tools import compute_density, dissolved_oxygen_ml_per_L_to_umol_per_L, dissolved_oxygen_umol_per_L_to_umol_per_kg
 from magtogoek.sci_tools import north_polar2cartesian
 from magtogoek.viking.loader import load_meteoce_data
@@ -67,6 +68,7 @@ P01_CODES_MAP = {
     'conductivity': "CNDCZZ01",
     'salinity': "PSLTZZ01",
     'density': "SIGTEQ01",
+    'dissolved_oxygen': "DOXYUZ01",
     'ph': "PHXXZZXX",
     'fluorescence': "FLUOZZZZ",
     'chlorophyll': "CPHLPR01",
@@ -235,14 +237,15 @@ def _process_viking_data(pconfig: ProcessConfig):
 
     l.section("Data Correction")
 
-    # IN-SITU WINKLER CORRECTION TODO
-
-    # SHOULD WINKLER, PRES and SALINITY be done separately.
-
-    # if 'dissolved_oxygen' in dataset.variables and pconfig.d_oxy_correction is True:
-    #     # SDN:P01::DOXYUZ01 .. Not calibrated against sampled data (Winkler).
-    #     # SDN:P01::DOXYCZ01 .. Calibrated against sampled data (Winkler).
-    #     _dissolved_oxygen_corrections(dataset)
+    # THis should be its own thing.
+    if 'dissolved_oxygen' in dataset.variables:
+        dataset['dissolved_oxygen'].attrs["corrections"] = []
+        if pconfig.d_oxy_winkler_correction:
+            _dissolved_oxygen_winkler_correction(dataset, pconfig)
+        if pconfig.d_oxy_salinity_correction:
+            _dissolved_oxygen_salinity_correction(dataset)
+        if pconfig.d_oxy_pressure_correction:
+            _dissolved_oxygen_pressure_correction(dataset)
 
     if pconfig.ph_salinity_correction is True and 'ph' in dataset:
         _correct_ph_for_salinity(dataset, pconfig)
@@ -432,17 +435,29 @@ def _dissolved_oxygen_umol_per_L_to_umol_per_kg(dataset: xr.Dataset):
 
 
 def _dissolved_oxygen_winkler_correction(dataset: xr.Dataset, pconfig: ProcessConfig):
-    # Check temperature
-    # Check the required coefficients.
-    # Call correction function.
-    pass
-
-
-def _dissolved_oxygen_corrections(dataset: xr.Dataset):
-    """Dissolved oxygen correction for salinity, temperature and pressure.
-    Atmospheric pressure is used since the probe is on a buoy.
     """
-    # Temperature and Salinity Compensation
+    If the correction can be made, the p01_code_map for dissolved_oxygen is updated.
+    """
+    if all(var in dataset.variables for var in ['temperature']):
+        if len(pconfig.rinko_coeffs) == 6:
+            if len(pconfig.winkler_coeffs) == 2:
+                dissolved_oxygen_correction_winkler(
+                    dataset['dissolved_oxygen'], coeffs=pconfig.rinko_coeffs, winkler_coeffs=pconfig.winkler_coeffs
+                )
+                P01_CODES_MAP['dissolved_oxygen'] = "DOXYCZ01"
+                dataset['dissolved_oxygen'].attrs["corrections"].append('Winkler correction carried out.')
+            else:
+                l.warning(
+                    f'Winkler dissolved oxygen correction aborted. Wrong number of winkler coefficient. Expected 2.')
+        else:
+            l.warning(
+                f'Winkler dissolved oxygen correction aborted. Wrong number of rinko coefficient. Expected 6.')
+    else:
+        l.warning(
+            f'Winkler dissolved oxygen correction aborted. Temperature data missing.')
+
+
+def _dissolved_oxygen_salinity_correction(dataset: xr.Dataset):
     if all(var in dataset.variables for var in ['temperature', 'salinity']):
         dataset.dissolved_oxygen.values = dissolved_oxygen_correction_for_salinity_SCOR_WG_142(
             dissolved_oxygen=dataset.dissolbed_oxygen.data,
@@ -450,24 +465,53 @@ def _dissolved_oxygen_corrections(dataset: xr.Dataset):
             salinity=dataset.salinity.data
         )
         l.log(f'Dissolved oxygen correction for salinity was carried out')
+        dataset['dissolved_oxygen'].attrs["corrections"].append('Salinity correction carried out.')
     else:
         l.warning(f'Dissolved oxygen correction for salinity aborted. `temperature` and/or `salinity` not found.')
 
-    # Pressure Compensation
-    if all(var in dataset.variables for var in ['atm_pressure', 'density']):  # FIXME break in two function. Dont change untis
-        if dataset.dissolved_oxygen.attrs['units'] == ['umol/kg']:
-            dataset.dissolved_oxygen.values = dissolved_oxygen_correction_for_pressure_JAC(
+
+def _dissolved_oxygen_pressure_correction(dataset: xr.Dataset):
+    if all(var in dataset.variables for var in ['atm_pressure']):
+        dataset.dissolved_oxygen.values = dissolved_oxygen_correction_for_pressure_JAC(
                 dissolved_oxygen=dataset.dissolved_oxygen.data,
                 pressure=dataset.atm_pressure.pint.quantify().to('dbar').data
             )
-            l.log(f'Dissolved oxygen correction for pressure was carried out')
-        else:
-            l.warning(f'Dissolved oxygen correction for pressure aborted. Wrong dissolved oxygen units.')
-
+        l.log(f'Dissolved oxygen correction for pressure was carried out')
+        dataset['dissolved_oxygen'].attrs["corrections"].append('Pressure correction carried out.')
     else:
-        l.warning(f'Dissolved oxygen correction for pressure aborted. `atm_pressure` and or `density` not found.')
+        l.warning(f'Dissolved oxygen correction for pressure aborted. `atm_pressure` ot found.')
 
-    # FIXME, Look a the BODC possible names for each correction.
+
+# def _dissolved_oxygen_corrections(dataset: xr.Dataset):
+#     """Dissolved oxygen correction for salinity, temperature and pressure.
+#     Atmospheric pressure is used since the probe is on a buoy.
+#     """
+#     # Temperature and Salinity Compensation
+#     if all(var in dataset.variables for var in ['temperature', 'salinity']):
+#         dataset.dissolved_oxygen.values = dissolved_oxygen_correction_for_salinity_SCOR_WG_142(
+#             dissolved_oxygen=dataset.dissolbed_oxygen.data,
+#             temperature=dataset.temperature.data,
+#             salinity=dataset.salinity.data
+#         )
+#         l.log(f'Dissolved oxygen correction for salinity was carried out')
+#     else:
+#         l.warning(f'Dissolved oxygen correction for salinity aborted. `temperature` and/or `salinity` not found.')
+#
+#     # Pressure Compensation
+#     if all(var in dataset.variables for var in ['atm_pressure', 'density']):  # FIXME break in two function. Dont change untis
+#         if dataset.dissolved_oxygen.attrs['units'] == ['umol/kg']:
+#             dataset.dissolved_oxygen.values = dissolved_oxygen_correction_for_pressure_JAC(
+#                 dissolved_oxygen=dataset.dissolved_oxygen.data,
+#                 pressure=dataset.atm_pressure.pint.quantify().to('dbar').data
+#             )
+#             l.log(f'Dissolved oxygen correction for pressure was carried out')
+#         else:
+#             l.warning(f'Dissolved oxygen correction for pressure aborted. Wrong dissolved oxygen units.')
+#
+#     else:
+#         l.warning(f'Dissolved oxygen correction for pressure aborted. `atm_pressure` and or `density` not found.')
+#
+#     # FIXME, Look a the BODC possible names for each correction.
 
 
 def _compute_uv_ship(dataset: xr.Dataset):

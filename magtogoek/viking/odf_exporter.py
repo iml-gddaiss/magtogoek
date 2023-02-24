@@ -52,6 +52,7 @@ import xarray as xr
 from typing import List, Union, Tuple, Dict, Optional
 from magtogoek.odf_format import Odf, odf_time_format
 from magtogoek.utils import json2dict, resolve_relative_path
+from magtogoek.wps.sci_tools import dissolved_oxygen_ml_per_L_to_umol_per_L
 
 REPOSITORY_ADDRESS = "https://github.com/JeromeJGuay/magtogoek"
 
@@ -139,5 +140,11 @@ def make_odf(
         output_path = Path(output_path).with_suffix(".ODF")
         odf.save(output_path)
         print(f"odf {event_qualifier2.upper()} file made -> {output_path}")
+
+
+    # Change oxygen value back to ml/L
+    # if dissolved oxygen units are not ml/L:
+    # dissolved_oxygen_ml_per_L_to_umol_per_L(dissolved_oxygen, inverse=True)
+
 
     return odf
