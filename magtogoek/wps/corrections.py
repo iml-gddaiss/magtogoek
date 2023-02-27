@@ -8,12 +8,14 @@ winkler coeff  : d1, d2
 
 
 """
+from typing import Union, List
 from nptyping import NDArray
 import numpy as np
 #import pandas as pd
 import xarray as xr
 from typing import List
 
+from magtogoek.utils import ensure_list_format
 from magtogoek.wps.sci_tools import voltEXT_from_pHEXT, pHEXT_from_voltEXT, compute_scaled_temperature, \
     rinko_raw_measurement_from_dissolved_oxygen, dissolved_oxygen_from_rinko_raw_measurement
 
@@ -196,58 +198,72 @@ def dissolved_oxygen_correction_for_pressure_JAC(
     return dissolved_oxygen * (1 + cp * pressure / 1000)
 
 
-def time_drift_correction(data: NDArray, data_time: NDArray, drift: NDArray, drift_time: NDArray) -> NDArray:
-    """Apply correction for drift over time as a linear drift. fixme Test
+def time_drift_correction(
+        data: NDArray, data_time: NDArray,
+        drift: Union[float, List[float]], drift_time: List[str] = None
+) -> NDArray:
+    """Apply correction for drift over time as a linear drift. fixme Make a test.
 
     ```
     data_corrected(time) = data(time) - drift(time)
     ```
 
-    Drift slope can vary between drift_time segments.
+    If a single drift value is passed:
+        drift(t_initial) = 0 and drift(t_final) = drift
 
-    Drift and time_drift should include the drift for the first and last times of the data_time.
+    If multiple drift values are passed, `drift_time` needs to have the corresponding times.
+        - `len(drift_time)` must be equal to `len(drift)`.
 
-    Drifts values are relative to the initial drift which should be 0.
+        - Drift will be extrapolated if:
+            `drift_time[0]` > `data_time[0]` and/or `drift_time[-1]` < `data_time[-1]`.
+
+        - Drift slope can vary between drift_time segments.
+
 
     Parameters
     ----------
-    data
-    data_time
-
+    data :
+        Data to be corrected.
+    data_time :
+        Data time.
     drift :
-        Vector of the amount of drift.
-    drift_time
+        Total drift time or  list of drift values for the corresponding `drift_time`.
+    drift_time :
         Drift times for the corresponding drifts.
 
     Returns
     -------
 
     """
-    if len(drift) < 2:
-        raise ValueError('`drift` must contains at least 2 values.')
+    drift = ensure_list_format(drift)
+
+    if len(drift) == 1:
+        drift = [0] + drift
+        drift_time = [data_time[0], data_time[-1]]
+
+    elif drift_time is None:
+        raise ValueError(f'Drift time need to be provided if more than one drift values are given.')
+
+    elif len(drift_time) != len(drift):
+        raise ValueError(f'Mismatch length for `drift_time` and `drift`. {len(drift_time), len(drift)}')
+
+    print(drift)
+    print(drift_time)
 
     _data = xr.DataArray(data, coords={'time': data_time})
     _drift = xr.DataArray(drift, coords={'time': drift_time})
 
-    return data - _drift.interp(time=_data.time).data
+    _drift_correction = _drift.interp(time=_data.time, kwargs={'fill_value': 'extrapolate'}).data
+
+    return data - _drift_correction
 
 
-def in_situ_sample_correction(data: NDArray, slope: float, offset: float):
+def in_situ_sample_correction(data: NDArray, slope: float, offset: float) -> NDArray:
     """Apply a linear correction using pre-computed linear regression coefficient. fixme TEST
 
     ```
     data_corr = slope * data + offset
     ```
-
-
-    Parameters
-    ----------
-    data
-    slope
-    offset
-
-    Returns
-    -------
 
     """
 
@@ -260,16 +276,18 @@ if __name__ == "__main__":
     import pandas as pd
     import matplotlib.pyplot as plt
 
-    data = np.random.random(200)
+    data = np.random.random(200) - .5
     data_time = pd.date_range('2020-05-01', '2020-09-01', 200)
 
-    drift = np.array([0, 1, 3, 3.5])
-    drift_time = pd.date_range('2020-05-01', '2020-09-01', 4)
+    # drift = np.array([0, 1, 3, 3.5])
+    # drift_time = pd.date_range('2020-04-01', '2020-09-01', 4)
 
-    data_raw = time_drift_correction(data, data_time, -drift, drift_time)
+    drift = np.array([.6, 2])
+    drift_time = list(pd.date_range('2020-06-01', '2020-08-01', 5))
 
-    data_c = time_drift_correction(data_raw, data_time, drift, drift_time)
+    data_raw = time_drift_correction(data, data_time, list(-drift), drift_time)
 
+    data_c = time_drift_correction(data_raw, data_time, list(drift), drift_time)
 
     plt.figure()
     plt.plot(data_raw, data_time, label='raw')

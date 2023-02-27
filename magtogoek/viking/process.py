@@ -16,7 +16,6 @@ Maybe quality control should be done before and the transformation should check 
 
 """
 
-import pint_xarray as px
 import xarray as xr
 from typing import *
 
@@ -24,9 +23,9 @@ from magtogoek import logger as l
 from magtogoek.process_common import BaseProcessConfig, resolve_output_paths, add_global_attributes, write_log, write_netcdf, \
     add_processing_timestamp, clean_dataset_for_nc_output, format_data_encoding, add_navigation, save_variables_name_for_odf_output
 from magtogoek.attributes_formatter import format_variables_names_and_attributes
-from magtogoek.wps.corrections import pH_correction_for_salinity, dissolved_oxygen_correction_for_salinity_SCOR_WG_142, dissolved_oxygen_correction_for_pressure_JAC, \
-    dissolved_oxygen_correction_winkler
-from magtogoek.wps.sci_tools import compute_density, dissolved_oxygen_ml_per_L_to_umol_per_L, dissolved_oxygen_umol_per_L_to_umol_per_kg
+from magtogoek.viking.correction import meteoce_correction
+from magtogoek.wps.sci_tools import compute_density, dissolved_oxygen_ml_per_L_to_umol_per_L, \
+    dissolved_oxygen_umol_per_L_to_umol_per_kg
 from magtogoek.sci_tools import north_polar2cartesian
 from magtogoek.viking.loader import load_meteoce_data
 from magtogoek.viking.quality_control import meteoce_quality_control, no_meteoce_quality_control
@@ -52,7 +51,7 @@ GLOBAL_ATTRS_TO_DROP = [
     "bodc_name"
 ]
 
-
+# This mapping can be updating by the viking.corrections modules.
 P01_CODES_MAP = {
     'time': "ELTMEP01",
     'wind_mean': "EWSBZZ01",
@@ -138,28 +137,64 @@ class ProcessConfig(BaseProcessConfig):
     sensor_depth: float = None
     wind_sensor: str = None # wmt700 or wxt520
 
+    ### ID
     adcp_id: str = None
     ctd_id: str = None
     ctdo_id: str = None
     nitrate_id: str = None
     # ADD MORE
 
+    ### COMPUTE
     # CTD
     compute_density: bool = None
 
+    ### CORRECTION
     # PH
     ph_salinity_correction: bool = None
     ph_coeffs: List[float] = None  # psal, k0, k2
 
     # OXY
-    d_oxy_winkler_correction: bool = None
+    dissolved_oxygen_winkler_correction: bool = None
     rinko_coeffs: List[float] = None
     winkler_coeffs: List[float] = None
-    d_oxy_pressure_correction: bool = None
-    d_oxy_salinity_correction: bool = None
+    dissolved_oxygen_pressure_correction: bool = None
+    dissolved_oxygen_salinity_correction: bool = None
+
+    # WPS sample and drift correction
+    salinity_drift: List[float] = None
+    salinity_drift_time: List[str] = None
+    salinity_sample_correction: List[float] = None # a*x + b
+
+    temperature_drift: List[float] = None
+    temperature_drift_time: List[str] = None
+    temperature_sample_correction: List[float] = None
+
+    dissolved_oxygen_drift: List[float] = None
+    dissolved_oxygen_drift_time: List[str] = None
+    dissolved_oxygen_sample_correction: List[float] = None
+
+    co2w_drift: List[float] = None
+    co2w_drift_time: List[str] = None
+    co2w_sample_correction: List[float] = None
+
+    ph_drift: List[float] = None
+    ph_drift_time: List[str] = None
+    ph_sample_correction: List[float] = None
+
+    fluorescence_drift: List[float] = None
+    fluorescence_drift_time: List[str] = None
+    fluorescence_sample_correction: List[float] = None
+
+    chlorophyll_drift: List[float] = None
+    chlorophyll_drift_time: List[str] = None
+    chlorophyll_sample_correction: List[float] = None
+
+    fdom_drift: List[float] = None
+    fdom_drift_time: List[str] = None
+    fdom_sample_correction: List[float] = None
 
     # ADCP
-    motion_correction_mode: str = None # maybe adcp/process/adcp_processing...c
+    motion_correction_mode: str = None  # maybe adcp/process/adcp_processing...c
 
     # QUALITY_CONTROL  ... adcp ...
     quality_control: bool = None
@@ -198,6 +233,9 @@ def process_viking(config: dict, drop_empty_attrs: bool = False, headless: bool 
 @resolve_output_paths
 def _process_viking_data(pconfig: ProcessConfig):
     """
+    Notes
+    -----
+    Time drift corrections are the last to be carried out.
 
     """
 
@@ -215,46 +253,30 @@ def _process_viking_data(pconfig: ProcessConfig):
         l.section("Navigation data")
         dataset = add_navigation(dataset, pconfig.navigation_file)
 
-    # ------- #
-    # Compute #
-    # ------- #
-
-    l.section("Data Computation")
-
-    if 'density' not in dataset:
-        _compute_ctdo_potential_density(dataset)
-
-    if all(x in dataset for x in ('speed', 'course')):
-        _compute_uv_ship(dataset)
-
-    if 'dissolved_oxygen' in dataset.variables:
-        _dissolved_oxygen_ml_per_L_to_umol_per_L(dataset)
-        #_dissolved_oxygen_umol_per_L_to_umol_per_kg(dataset) # Units in metadata would need to be changed.
-
     # ----------- #
     # CORRECTION  #
     # ----------- #
 
     l.section("Data Correction")
 
-    # THis should be its own thing.
-    if 'dissolved_oxygen' in dataset.variables:
-        dataset['dissolved_oxygen'].attrs["corrections"] = []
-        if pconfig.d_oxy_winkler_correction:
-            _dissolved_oxygen_winkler_correction(dataset, pconfig)
-        if pconfig.d_oxy_salinity_correction:
-            _dissolved_oxygen_salinity_correction(dataset)
-        if pconfig.d_oxy_pressure_correction:
-            _dissolved_oxygen_pressure_correction(dataset)
+    meteoce_correction(dataset, pconfig)
 
-    if pconfig.ph_salinity_correction is True and 'ph' in dataset:
-        _correct_ph_for_salinity(dataset, pconfig)
+    # ADCP MOTION CORRECTION with Speed and Course
 
-    # DRIFT CORRECTION TODO
+    # ------- #
+    # COMPUTE #
+    # ------- #
 
-    # IN-SITU CORRECTION TODO
+    l.section("Data Computation")
 
-    # MAGNETIC DECLINATION SHOULD BE ALREADY CORRECTED FOR VIKING
+    if 'density' not in dataset:
+        # density should be recomputed if correction were made
+        # to Salinity or Temperature.
+        _compute_ctdo_potential_density(dataset)
+
+    if all(x in dataset for x in ('speed', 'course')):
+        _compute_uv_ship(dataset)
+
 
     # --------------- #
     # QUALITY CONTROL #
@@ -382,106 +404,6 @@ def _compute_ctdo_potential_density(dataset: xr.Dataset):
         l.warning(f'Potential density computation aborted. One of more variables in {required_variables} was missing.')
 
 
-def _correct_ph_for_salinity(dataset: xr.Dataset, pconfig: ProcessConfig):
-    """Ph correction for salinity.
-
-    ph_temperature (temperature is used to find the voltage measured by the probe, but the CTD
-    temperature is used to find the ph.
-
-    # TODO TEST THE DIFFERENCE BETWEEN USING PH AND TEMPERATURE_PH
-    # Maje a test.
-
-    Notes
-    -----
-    The algorithm used were not tested (As of December 6 2022)
-    """
-    required_variables = ['ph_temperature', 'temperature', 'salinity']
-    if pconfig.ph_coeffs is not None:
-        if all((var in dataset for var in required_variables)):
-            [psal, k0, k2] = pconfig.ph_coeffs
-            ph = pH_correction_for_salinity(temperature=dataset.temperature.data,
-                                            salinity=dataset.salinity.data,
-                                            ph_temperature=dataset.ph_temperature.data,
-                                            cal_psal=psal, k0=k0, k2=k2)
-            dataset['ph'].values = ph
-            l.log('pH correction was carried out')
-        else:
-            l.warning(f'pH correction aborted. One of more variables in {required_variables} was missing.')
-    else:
-        l.warning(f'pH correction aborted. `ph_coeffs` were not provided.')
-
-
-def _dissolved_oxygen_ml_per_L_to_umol_per_L(dataset: xr.Dataset):
-    """
-    """
-    if dataset.dissolved_oxygen.attrs['units'] == ['ml/L']:
-        dataset.dissolved_oxygen.values = dissolved_oxygen_ml_per_L_to_umol_per_L(dataset.dissolved_oxygen)
-        dataset.dissolved_oxygen.attrs['units'] = 'umol/L'
-        l.log('Dissolved Oxygen converted from [ml/L] to [umol/L].')
-    else:
-        l.warning(f"Wrong dissolved oxygen units {dataset.dissolved_oxygen.attrs['units']} for conversion from [ml/L] to [umol/L].")
-
-
-def _dissolved_oxygen_umol_per_L_to_umol_per_kg(dataset: xr.Dataset):
-    if dataset.dissolved_oxygen.attrs['units'] == ['umol/L']:
-        if 'density' in dataset.variables:
-            dataset.dissolved_oxygen.values = dissolved_oxygen_umol_per_L_to_umol_per_kg(dataset.dissolved_oxygen. dataset.density)
-            dataset.dissolved_oxygen.attrs['units'] = 'umol/kg'
-            l.log('Dissolved Oxygen converted from [umol/L] to [umol/kg].')
-        else:
-            l.warning(f"Density missing for oxygen conversion from [umol/L] to [umol/kg].")
-    else:
-        l.warning(f"Wrong dissolved oxygen units {dataset.dissolved_oxygen.attrs['units']} for conversion from [umol/L] to [umol/kg].")
-
-
-def _dissolved_oxygen_winkler_correction(dataset: xr.Dataset, pconfig: ProcessConfig):
-    """
-    If the correction can be made, the p01_code_map for dissolved_oxygen is updated.
-    """
-    if all(var in dataset.variables for var in ['temperature']):
-        if len(pconfig.rinko_coeffs) == 6:
-            if len(pconfig.winkler_coeffs) == 2:
-                dissolved_oxygen_correction_winkler(
-                    dataset['dissolved_oxygen'], coeffs=pconfig.rinko_coeffs, winkler_coeffs=pconfig.winkler_coeffs
-                )
-                P01_CODES_MAP['dissolved_oxygen'] = "DOXYCZ01"
-                dataset['dissolved_oxygen'].attrs["corrections"].append('Winkler correction carried out.')
-            else:
-                l.warning(
-                    f'Winkler dissolved oxygen correction aborted. Wrong number of winkler coefficient. Expected 2.')
-        else:
-            l.warning(
-                f'Winkler dissolved oxygen correction aborted. Wrong number of rinko coefficient. Expected 6.')
-    else:
-        l.warning(
-            f'Winkler dissolved oxygen correction aborted. Temperature data missing.')
-
-
-def _dissolved_oxygen_salinity_correction(dataset: xr.Dataset):
-    if all(var in dataset.variables for var in ['temperature', 'salinity']):
-        dataset.dissolved_oxygen.values = dissolved_oxygen_correction_for_salinity_SCOR_WG_142(
-            dissolved_oxygen=dataset.dissolbed_oxygen.data,
-            temperature=dataset.temperature.data,
-            salinity=dataset.salinity.data
-        )
-        l.log(f'Dissolved oxygen correction for salinity was carried out')
-        dataset['dissolved_oxygen'].attrs["corrections"].append('Salinity correction carried out.')
-    else:
-        l.warning(f'Dissolved oxygen correction for salinity aborted. `temperature` and/or `salinity` not found.')
-
-
-def _dissolved_oxygen_pressure_correction(dataset: xr.Dataset):
-    if all(var in dataset.variables for var in ['atm_pressure']):
-        dataset.dissolved_oxygen.values = dissolved_oxygen_correction_for_pressure_JAC(
-                dissolved_oxygen=dataset.dissolved_oxygen.data,
-                pressure=dataset.atm_pressure.pint.quantify().to('dbar').data
-            )
-        l.log(f'Dissolved oxygen correction for pressure was carried out')
-        dataset['dissolved_oxygen'].attrs["corrections"].append('Pressure correction carried out.')
-    else:
-        l.warning(f'Dissolved oxygen correction for pressure aborted. `atm_pressure` ot found.')
-
-
 # def _dissolved_oxygen_corrections(dataset: xr.Dataset):
 #     """Dissolved oxygen correction for salinity, temperature and pressure.
 #     Atmospheric pressure is used since the probe is on a buoy.
@@ -530,11 +452,32 @@ def _quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
     return dataset
 
 
+def _dissolved_oxygen_ml_per_L_to_umol_per_L(dataset: xr.Dataset):
+    """
+    """
+    if dataset.dissolved_oxygen.attrs['units'] == ['ml/L']:
+        dataset.dissolved_oxygen.values = dissolved_oxygen_ml_per_L_to_umol_per_L(dataset.dissolved_oxygen)
+        dataset.dissolved_oxygen.attrs['units'] = 'umol/L'
+        l.log('Dissolved Oxygen converted from [ml/L] to [umol/L].')
+    else:
+        l.warning(f"Wrong dissolved oxygen units {dataset.dissolved_oxygen.attrs['units']} for conversion from [ml/L] to [umol/L].")
+
+
+def _dissolved_oxygen_umol_per_L_to_umol_per_kg(dataset: xr.Dataset):
+    if dataset.dissolved_oxygen.attrs['units'] == ['umol/L']:
+        if 'density' in dataset.variables:
+            dataset.dissolved_oxygen.values = dissolved_oxygen_umol_per_L_to_umol_per_kg(dataset.dissolved_oxygen. dataset.density)
+            dataset.dissolved_oxygen.attrs['units'] = 'umol/kg'
+            l.log('Dissolved Oxygen converted from [umol/L] to [umol/kg].')
+        else:
+            l.warning(f"Density missing for oxygen conversion from [umol/L] to [umol/kg].")
+    else:
+        l.warning(f"Wrong dissolved oxygen units {dataset.dissolved_oxygen.attrs['units']} for conversion from [umol/L] to [umol/kg].")
+
+
 if __name__ == "__main__":
     import getpass
-    import numpy as np
     import pandas as pd
-    import matplotlib.pyplot as plt
 
     file_path = '/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat'
     out_path = '/home/jeromejguay/ImlSpace/Data/iml4_2021/meteoc_riki_2021.nc'

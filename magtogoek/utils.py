@@ -9,8 +9,12 @@ import click
 
 
 def ensure_list_format(value: tp.Union[bool, str, int, float, tp.List[tp.Union[str, int, float]]]) -> tp.List[str]:
-    """
+    """ Returns element as a list.
+
+    Description
+    -----------
     [str, int, float, bool] -> list[str, int, float, bool]
+
     [tuple, set] -> [list]
     """
     if isinstance(value, (set, tuple)):

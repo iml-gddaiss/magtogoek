@@ -105,6 +105,10 @@ def climatology_outlier(
 
     ORDINAL DAY CLIMATOLOGY
 
+    IMPORTANT
+    ---------
+    Flag propagation for Density/Oxygen/pH after correction.
+
     """
     # Check for the variable in the dataset
     if variable not in dataset:
