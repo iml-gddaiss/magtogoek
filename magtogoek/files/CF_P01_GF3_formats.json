@@ -711,6 +711,15 @@
         "sdn_uom_name": "Degrees True",
         "legacy_GF3_code": "WDIR"
     },
+    "EGTDSS01": {
+        "units": "degree_true",
+        "long_name": "Direction (from) of wind (gust) relative to True North in the atmosphere",
+        "sdn_parameter_urn": "SDN:P01::EGTDSS01",
+        "sdn_parameter_name": "Direction (from) of wind (gust) relative to True North {wind direction} in the atmosphere by in-situ anemometer",
+        "sdn_uom_urn": "SDN:P06:UABB",
+        "sdn_uom_name": "Degrees True",
+        "legacy_GF3_code": "GDIR"
+    },
     "CTMPZZ01": {
         "units": "degree_C",
         "long_name": "Temperature of the atmosphere",
