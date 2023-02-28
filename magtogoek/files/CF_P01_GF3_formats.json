@@ -776,7 +776,7 @@
     },
     "PHXXZZXX": {
         "units": "NBS_scale",
-        "long_name": "pH",
+        "long_name": "pH_NBS_scale",
         "sdn_parameter_urn": "SDN:P01::PHXXZZXX",
         "sdn_parameter_name": "pH (unspecified scale) of the water body",
         "sdn_uom_urn": "SDN:P06:UUPH",

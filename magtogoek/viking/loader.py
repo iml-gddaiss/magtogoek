@@ -185,7 +185,7 @@ def get_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.MaskedArr
         }
         _data.update(
             {
-                'ph': (viking_data.wph['ext_ph'], _attrs),
+                'ph': (viking_data.wph['ext_ph'], {**_attrs, **{"units": "pH_NBS_scale"}}),
                 'ph_temperature': (viking_data.wph['ext_ph'], _attrs)}
         )
         l.log('Wph data loaded.')
