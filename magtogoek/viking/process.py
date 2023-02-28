@@ -278,7 +278,6 @@ def _process_viking_data(pconfig: ProcessConfig):
     if all(x in dataset for x in ('speed', 'course')):
         _compute_uv_ship(dataset)
 
-
     # --------------- #
     # QUALITY CONTROL #
     # --------------- #
