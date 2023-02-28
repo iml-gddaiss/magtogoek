@@ -43,7 +43,7 @@ GLOBAL_ATTRS_TO_DROP = [
     "process",
     "platform_type",
     "VAR_TO_ADD_SENSOR_TYPE",
-    "P01_CODES",
+    "P01_CODES_MAP",
     "xducer_depth",
     "variables_gen_name",
     "binary_mask_tests",
@@ -135,7 +135,7 @@ class ProcessConfig(BaseProcessConfig):
     buoy_name: str = None
     data_format: str = None
     sensor_depth: float = None
-    wind_sensor: str = None # wmt700 or wxt520
+    #wind_sensor: str = None # only the wmt700 is used for wind.
 
     ### ID
     adcp_id: str = None
@@ -204,6 +204,7 @@ class ProcessConfig(BaseProcessConfig):
         self.sensors_id = SENSOR_TYPE_TO_SENSORS_ID_MAP
         self.variables_to_drop = VARIABLES_TO_DROP
         self.global_attributes_to_drop = GLOBAL_ATTRS_TO_DROP
+        self.p01_codes_map = P01_CODES_MAP
 
 
 def process_viking(config: dict, drop_empty_attrs: bool = False, headless: bool = False):
@@ -316,7 +317,7 @@ def _process_viking_data(pconfig: ProcessConfig):
     dataset = format_variables_names_and_attributes(
         dataset=dataset,
         use_bodc_name=pconfig.bodc_name,
-        p01_codes_map=P01_CODES_MAP,
+        p01_codes_map=pconfig.p01_codes_map,
         sensors_id=pconfig.sensors_id,
         #variable_to_add_sensor_type=pconfig.variables_to_add_sensor_type,
         cf_profile_id='time'

@@ -142,7 +142,9 @@ def get_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.MaskedArr
              'atm_humidity': (viking_data.wxt520['Ua'], {}),
              'atm_pressure': (viking_data.wxt520['Pa'], {"units": "mbar"})}
         )
-        # A parameter could be added to choose where to load wind data from. TODO
+        ###### Wind data are on loaded from wmt7000 #####
+
+        # A parameter could be added to choose where to load wind data from.
         # wind data from wxt520 are not loaded at the moment.
         # for nc_name, viking_name, scale, unit in zip(
         #         ('wind_mean', 'wind_direction_mean', 'wind_max', 'wind_direction_max'),

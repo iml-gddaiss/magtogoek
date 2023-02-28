@@ -172,9 +172,9 @@ def _set_event_header_geospatials(odf: Odf, dataset: xr.Dataset) -> None:
         if 'xducer_depth' in dataset:
             odf.event['min_depth'] = dataset['xducer_depth'].values.min()
             odf.event['max_depth'] = dataset['xducer_depth'].values.max()
-        elif dataset.attrs['P01_CODES']['xducer_depth'] in dataset:
-            odf.event['min_depth'] = dataset[dataset.attrs['P01_CODES']['xducer_depth']].values.min()
-            odf.event['max_depth'] = dataset[dataset.attrs['P01_CODES']['xducer_depth']].values.max()
+        elif dataset.attrs['P01_CODES_MAP']['xducer_depth'] in dataset:
+            odf.event['min_depth'] = dataset[dataset.attrs['P01_CODES_MAP']['xducer_depth']].values.min()
+            odf.event['max_depth'] = dataset[dataset.attrs['P01_CODES_MAP']['xducer_depth']].values.max()
         else:
             odf.event['min_depth'] = dataset.attrs['sensor_depth']
             odf.event['max_depth'] = dataset.attrs['sensor_depth']
@@ -450,7 +450,7 @@ def _make_parameter_headers(odf, dataset, variables: List[str], bodc_name=False)
     for var in variables:
         dataset_variable_name = var
         if bodc_name is True and not var in ('time', 'depth'):
-            dataset_variable_name = dataset.attrs["P01_CODES"][var]
+            dataset_variable_name = dataset.attrs["P01_CODES_MAP"][var]
         if dataset_variable_name in dataset.variables:
             parameters_metadata[dataset_variable_name] = PARAMETERS_METADATA[var]
             parameters.append(dataset_variable_name)

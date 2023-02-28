@@ -16,7 +16,7 @@ P01_TO_GENERIC_NAME = {
     "e": "LERRAP01",
 }
 GENERIC_VARIABLES_NAME = [var for var in DATASET.variables]
-DATASET.attrs['P01_CODES'] = P01_TO_GENERIC_NAME
+DATASET.attrs['P01_CODES_MAP'] = P01_TO_GENERIC_NAME
 DATASET.attrs['variables_gen_name'] = [DATASET[var].attrs['generic_name'] for var in DATASET.variables]
 
 PLATFORM_METADATA = PlatformMetadata(

@@ -5,7 +5,7 @@ import xarray as xr
 
 from magtogoek import logger as l
 from magtogoek.utils import ensure_list_format
-from magtogoek.viking.process import ProcessConfig, P01_CODES_MAP
+from magtogoek.viking.process import ProcessConfig
 from magtogoek.wps.corrections import pH_correction_for_salinity, dissolved_oxygen_correction_winkler, \
     dissolved_oxygen_correction_for_salinity_SCOR_WG_142, dissolved_oxygen_correction_for_pressure_JAC, \
     time_drift_correction, in_situ_sample_correction
@@ -30,7 +30,7 @@ def meteoce_correction(
 
     Notes
     -----
-    magtogoek.viking.process.P01_CODES_MAP values can be modified when certain corrections are carried out.
+    pconfig.p01_codes_map values can be modified when certain corrections are carried out.
     """
 
     if 'dissolved_oxygen' in dataset.variables:
@@ -106,7 +106,7 @@ def _dissolved_oxygen_winkler_correction(dataset: xr.Dataset, pconfig: ProcessCo
                 dissolved_oxygen_correction_winkler(
                     dataset['dissolved_oxygen'], coeffs=pconfig.rinko_coeffs, winkler_coeffs=pconfig.winkler_coeffs
                 )
-                P01_CODES_MAP['dissolved_oxygen'] = "DOXYCZ01"
+                pconfig.p01_codes_map['dissolved_oxygen'] = "DOXYCZ01"
                 dataset['dissolved_oxygen'].attrs["corrections"].append('Winkler correction carried out.')
             else:
                 l.warning(

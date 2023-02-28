@@ -148,7 +148,7 @@ P01_VEL_CODES = {
     }
 }
 P01_VEL_CODES["mooring"] = P01_VEL_CODES["buoy"]
-P01_CODES = {
+P01_CODES_MAP = {
     'time': "ELTMEP01",
     'depth': "PPSAADCP",
     'pg': "PCGDAP01",
@@ -269,7 +269,7 @@ class ProcessConfig(BaseProcessConfig):
         self.sensors_id = SENSOR_TYPE_TO_SENSORS_ID_MAP # FIXME TEST
         self.variables_to_drop = VARIABLES_TO_DROP
         self.global_attributes_to_drop = GLOBAL_ATTRS_TO_DROP
-
+        self.p01_codes_map = P01_CODES_MAP
 
 def process_adcp(config: dict, drop_empty_attrs: bool = False, headless: bool = False):
     """Process adcp data with parameters from a config file.
@@ -402,12 +402,12 @@ def _process_adcp_data(pconfig: ProcessConfig):
 
     save_variables_name_for_odf_output(dataset, pconfig)
 
-    p01_codes_map = _get_p01_codes(dataset, pconfig)
+    _update_p01_codes_map(dataset, pconfig)
 
     dataset = format_variables_names_and_attributes(
         dataset=dataset,
         use_bodc_name=pconfig.bodc_name,
-        p01_codes_map=p01_codes_map,
+        p01_codes_map=pconfig.p01_codes_map,
         sensors_id=pconfig.sensors_id,
         #variable_to_add_sensor_type=pconfig.variables_to_add_sensor_type,
         cf_profile_id='time'
@@ -568,18 +568,18 @@ def _drop_beam_metadata(dataset: xr.Dataset, pconfig: ProcessConfig):
     return dataset
 
 
-def _get_p01_codes(dataset: xr.Dataset, pconfig: ProcessConfig) -> dict:
-    """Make a dictionnary of p01_code depending on the data coordinate_system.
+def _update_p01_codes_map(dataset: xr.Dataset, pconfig: ProcessConfig) -> dict:
     """
-    p01_codes = {**P01_CODES}
+    Update the p01_codes_map for the velocities based of the coordinate system.
 
+    TODO should work fine. but test it.
+    """
     if dataset.attrs['coord_system'] == 'earth':
-        p01_codes.update((P01_VEL_CODES[pconfig.platform_type]))
+        pconfig.p01_codes_map.update((P01_VEL_CODES[pconfig.platform_type]))
     elif dataset.attrs['coord_system'] == 'xyz':
-        p01_codes.update(XYZ_VEL_CODES)
+        pconfig.p01_codes_map.update(XYZ_VEL_CODES)
     elif dataset.attrs['coord_system'] == 'beam':
-        p01_codes.update(BEAM_VEL_CODES)
-    return p01_codes
+        pconfig.p01_codes_map.update(BEAM_VEL_CODES)
 
 
 def _regrid_dataset(dataset: xr.Dataset, pconfig: ProcessConfig) -> xr.Dataset:
