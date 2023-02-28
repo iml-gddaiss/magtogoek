@@ -234,6 +234,11 @@ def time_drift_correction(
     Returns
     -------
 
+    Raises
+    ------
+    Value Error for invalid prameters values:
+       - len(drift) != 1 and drift_time is None
+       - len(drift) != 1 and len(drift) != len(drift_time)
     """
     drift = ensure_list_format(drift)
 

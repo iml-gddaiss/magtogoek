@@ -95,6 +95,10 @@ def format_variables_names_and_attributes(
 
     Notes
     -----
+
+    Raises
+    ------
+    `ValueError` if units in dataarray attributes don't match those in the CF_P01_GF3_formats.json file.
     """
     for var in dataset.variables:
         dataset[var].attrs["generic_name"] = var

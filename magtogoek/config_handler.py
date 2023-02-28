@@ -287,7 +287,7 @@ def get_config_taskparser(process: Optional[str] = None):
         tparser.add_option(section, "magnetic_declination_preset", dtypes=["float"], default=None, comments="Found in the ADCP configuration file.")
 
         section = "WPS_PROCESSING"
-        tparser.add_option(section, "compute_density", dtypes=["bool"], default=True, null_value=False)
+        tparser.add_option(section, "recompute_density", dtypes=["bool"], default=True, null_value=False)
         tparser.add_option(section, "ph_correction", dtypes=["bool"], default=True, null_value=False)
         tparser.add_option(section, 'ph_coeffs', dtypes=["float"], nargs=3, default="", comments="Calibration coefficient: psal, k0, k2.")
         tparser.add_option(section, "oxy_correction", dtypes=["bool"], default=True, null_value=False)

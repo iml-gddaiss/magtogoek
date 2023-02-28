@@ -46,19 +46,6 @@ TODO
     - PH: 0.5
 
 
-
-
-+ Data Drift over Time:
-++ Linear regression on data ?
-++ Linear correction with post-mission calibration.
-  - Considering constant drift: t_start = 0, t_end = 1
-
-+ Median Filter
-
-+ Calibration with In-Situ Measurements.
-
-+ Oxygen Winkler
-
 + GLOBAL IMPOSSIBLE PARAMETER VALUES
 
 """
@@ -67,6 +54,7 @@ from typing import *
 import numpy as np
 import xarray as xr
 from magtogoek import logger as l
+from magtogoek.wps.quality_control import spike_detection
 
 
 CLIMATOLOGY_TIME_FORMATS = {

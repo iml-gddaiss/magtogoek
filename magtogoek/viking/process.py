@@ -29,7 +29,7 @@ from magtogoek.wps.sci_tools import compute_density, dissolved_oxygen_ml_per_L_t
 from magtogoek.sci_tools import north_polar2cartesian
 from magtogoek.viking.loader import load_meteoce_data
 from magtogoek.viking.quality_control import meteoce_quality_control, no_meteoce_quality_control
-
+from magtogoek.adcp.correction import apply_motion_correction
 # import click
 
 l.get_logger("viking_processing")
@@ -146,7 +146,7 @@ class ProcessConfig(BaseProcessConfig):
 
     ### COMPUTE
     # CTD
-    compute_density: bool = None
+    recompute_density: bool = None
 
     ### CORRECTION
     # PH
@@ -254,29 +254,33 @@ def _process_viking_data(pconfig: ProcessConfig):
         l.section("Navigation data")
         dataset = add_navigation(dataset, pconfig.navigation_file)
 
+    l.section("Data Computation (pre-correction).")
+
+    # --------- #
+    # COMPUTE 1 #
+    # --------- #
+
+    if all(x in dataset for x in ('speed', 'course')):
+        _compute_uv_ship(dataset)
+
     # ----------- #
     # CORRECTION  #
     # ----------- #
 
     l.section("Data Correction")
 
-    meteoce_correction(dataset, pconfig)
+    _meteoce_correction(dataset, pconfig)
 
-    # ADCP MOTION CORRECTION with Speed and Course
+    _adcp_correction(dataset, pconfig)
 
-    # ------- #
-    # COMPUTE #
-    # ------- #
+    # --------- #
+    # COMPUTE 2 #
+    # --------- #
 
-    l.section("Data Computation")
+    l.section("Data Computation (post-correction).")
 
-    if 'density' not in dataset:
-        # density should be recomputed if correction were made
-        # to Salinity or Temperature.
+    if 'density' not in dataset or pconfig.recompute_density is True:
         _compute_ctdo_potential_density(dataset)
-
-    if all(x in dataset for x in ('speed', 'course')):
-        _compute_uv_ship(dataset)
 
     # --------------- #
     # QUALITY CONTROL #
@@ -286,7 +290,6 @@ def _process_viking_data(pconfig: ProcessConfig):
 
     if pconfig.quality_control:
         _quality_control(dataset, pconfig)
-
         # For adcp quality control, make a sub-dataset with a temporary depth coords.
         #ADCP QUALITY CONTROL ? For adcp data.
     else:
@@ -379,7 +382,9 @@ def _load_viking_data(pconfig: ProcessConfig):
 def _compute_ctdo_potential_density(dataset: xr.Dataset):
     """Compute potential density as sigma_t:= Density(S,T,P) - 1000
 
+    Density computed using UNESCO 1983 (EOS 80) polynomial
     -Pressure used needs to be in dbar
+
 
     """
 
@@ -399,41 +404,18 @@ def _compute_ctdo_potential_density(dataset: xr.Dataset):
             pres=pres
         )
         dataset['density'] = (['time'], density - 1000)
-        l.log('Potential density computed.')
+        l.log('Potential density computed using UNESCO 1983 (EOS 80) polynomial.')
     else:
         l.warning(f'Potential density computation aborted. One of more variables in {required_variables} was missing.')
 
 
-# def _dissolved_oxygen_corrections(dataset: xr.Dataset):
-#     """Dissolved oxygen correction for salinity, temperature and pressure.
-#     Atmospheric pressure is used since the probe is on a buoy.
-#     """
-#     # Temperature and Salinity Compensation
-#     if all(var in dataset.variables for var in ['temperature', 'salinity']):
-#         dataset.dissolved_oxygen.values = dissolved_oxygen_correction_for_salinity_SCOR_WG_142(
-#             dissolved_oxygen=dataset.dissolbed_oxygen.data,
-#             temperature=dataset.temperature.data,
-#             salinity=dataset.salinity.data
-#         )
-#         l.log(f'Dissolved oxygen correction for salinity was carried out')
-#     else:
-#         l.warning(f'Dissolved oxygen correction for salinity aborted. `temperature` and/or `salinity` not found.')
-#
-#     # Pressure Compensation
-#     if all(var in dataset.variables for var in ['atm_pressure', 'density']):  # FIXME break in two function. Dont change untis
-#         if dataset.dissolved_oxygen.attrs['units'] == ['umol/kg']:
-#             dataset.dissolved_oxygen.values = dissolved_oxygen_correction_for_pressure_JAC(
-#                 dissolved_oxygen=dataset.dissolved_oxygen.data,
-#                 pressure=dataset.atm_pressure.pint.quantify().to('dbar').data
-#             )
-#             l.log(f'Dissolved oxygen correction for pressure was carried out')
-#         else:
-#             l.warning(f'Dissolved oxygen correction for pressure aborted. Wrong dissolved oxygen units.')
-#
-#     else:
-#         l.warning(f'Dissolved oxygen correction for pressure aborted. `atm_pressure` and or `density` not found.')
-#
-#     # FIXME, Look a the BODC possible names for each correction.
+def _meteoce_correction(dataset: xr.Dataset, pconfig: ProcessConfig):
+    meteoce_correction(dataset, pconfig)
+
+
+def _adcp_correction(dataset: xr.Dataset, pconfig: ProcessConfig):
+    if pconfig.motion_correction_mode in ["bt", "nav"]:
+        apply_motion_correction(dataset, pconfig.motion_correction_mode)
 
 
 def _compute_uv_ship(dataset: xr.Dataset):

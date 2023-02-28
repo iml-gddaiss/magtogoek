@@ -2,13 +2,17 @@
 Module containing the correction functions for viking data processing.
 """
 import xarray as xr
+from typing import TYPE_CHECKING
 
 from magtogoek import logger as l
 from magtogoek.utils import ensure_list_format
-from magtogoek.viking.process import ProcessConfig
 from magtogoek.wps.corrections import pH_correction_for_salinity, dissolved_oxygen_correction_winkler, \
     dissolved_oxygen_correction_for_salinity_SCOR_WG_142, dissolved_oxygen_correction_for_pressure_JAC, \
     time_drift_correction, in_situ_sample_correction
+
+
+if TYPE_CHECKING:
+    from magtogoek.viking.process import ProcessConfig
 
 
 WPS_VARIABLES_TO_CORRECT = [
@@ -22,11 +26,13 @@ WPS_VARIABLES_TO_CORRECT = [
     'fdom'
 ]
 
+
 def meteoce_correction(
         dataset: xr.Dataset,
-        pconfig: ProcessConfig
+        pconfig: "ProcessConfig"
 ):
-    """Function that calls all the meteoce data corrections.
+    """
+    Function that calls all the meteoce data corrections.
 
     Notes
     -----
@@ -42,6 +48,7 @@ def meteoce_correction(
 
     for variable in WPS_VARIABLES_TO_CORRECT:
         if variable in dataset.variables:
+            _add_correction_attributes_to_dataarray(dataset[variable])
             if pconfig.__dict__[variable + " _drift"] is not None:
                 _time_drift_correction(dataset, variable, pconfig)
 
@@ -49,7 +56,26 @@ def meteoce_correction(
                 _in_situ_sample_correction(dataset, variable, pconfig)
 
 
-def _correct_ph_for_salinity(dataset: xr.Dataset, pconfig: ProcessConfig):
+def _dissolved_oxygen_corrections(dataset: xr.Dataset, pconfig: "ProcessConfig"):
+    """
+    Calls:
+            _dissolved_oxygen_winkler_correction
+
+            _dissolved_oxygen_salinity_correction
+
+            _dissolved_oxygen_pressure_correction
+
+    """
+    _add_correction_attributes_to_dataarray(dataset['dissolved_oxygen'])
+    if pconfig.dissolved_oxygen_winkler_correction:
+        _dissolved_oxygen_winkler_correction(dataset, pconfig)
+    if pconfig.dissolved_oxygen_salinity_correction:
+        _dissolved_oxygen_salinity_correction(dataset)
+    if pconfig.dissolved_oxygen_pressure_correction:
+        _dissolved_oxygen_pressure_correction(dataset)
+
+
+def _correct_ph_for_salinity(dataset: xr.Dataset, pconfig: "ProcessConfig"):
     """Ph correction for salinity.
 
     ph_temperature (temperature is used to find the voltage measured by the probe, but the CTD
@@ -77,26 +103,7 @@ def _correct_ph_for_salinity(dataset: xr.Dataset, pconfig: ProcessConfig):
         l.warning(f'pH correction aborted. `ph_coeffs` were not provided.')
 
 
-def _dissolved_oxygen_corrections(dataset: xr.Dataset, pconfig: ProcessConfig):
-    """
-    Calls:
-            _dissolved_oxygen_winkler_correction
-
-            _dissolved_oxygen_salinity_correction
-
-            _dissolved_oxygen_pressure_correction
-
-    """
-    _add_correction_attributes_to_dataarray(dataset['dissolved_oxygen'])
-    if pconfig.dissolved_oxygen_winkler_correction:
-        _dissolved_oxygen_winkler_correction(dataset, pconfig)
-    if pconfig.dissolved_oxygen_salinity_correction:
-        _dissolved_oxygen_salinity_correction(dataset)
-    if pconfig.dissolved_oxygen_pressure_correction:
-        _dissolved_oxygen_pressure_correction(dataset)
-
-
-def _dissolved_oxygen_winkler_correction(dataset: xr.Dataset, pconfig: ProcessConfig):
+def _dissolved_oxygen_winkler_correction(dataset: xr.Dataset, pconfig: "ProcessConfig"):
     """
     If the correction can be made, the p01_code_map for dissolved_oxygen is updated.
     """
@@ -156,25 +163,30 @@ def _add_correction_attributes_to_dataarray(dataarray: xr.DataArray):
         dataarray.attrs[attr_name] = ensure_list_format(dataarray.attrs[attr_name])
 
 
-def _time_drift_correction(dataset: xr.Dataset, variable: str, pconfig: ProcessConfig):
+def _time_drift_correction(dataset: xr.Dataset, variable: str, pconfig: "ProcessConfig"):
     """
     """
-    # TODO ADD LOGGING MESSAGES
-    # CATCH VALUE ERROR
-    dataset[variable].data = time_drift_correction(
-        data=dataset[variable].data,
-        data_time=dataset.time.data,
-        drift=pconfig.__dict__[variable + " _drift"],
-        drift_time=pconfig.__dict__[variable + " _drift_time"]
-    )
+    try:
+        dataset[variable].data = time_drift_correction(
+            data=dataset[variable].data,
+            data_time=dataset.time.data,
+            drift=pconfig.__dict__[variable + " _drift"],
+            drift_time=pconfig.__dict__[variable + " _drift_time"]
+        )
+        l.log(f'Time drift correction applied to {variable}.')
+    except ValueError as msg:
+        l.warning(f'Time drift correction for {variable} failed. Error: {msg}.')
 
 
-def _in_situ_sample_correction(dataset: xr.Dataset, variable:str, pconfig: ProcessConfig):
+
+def _in_situ_sample_correction(dataset: xr.Dataset, variable: str, pconfig: "ProcessConfig"):
     """
     """
-    # TODO ADD LOGGING MESSAGES
+    slope = pconfig.__dict__[variable + " _sample_correction"][0]
+    offset = pconfig.__dict__[variable + " _sample_correction"][1]
     dataset[variable].data = in_situ_sample_correction(
         data=dataset[variable].data,
-        slope=pconfig.__dict__[variable + " _sample_correction"][0],
-        offset=pconfig.__dict__[variable + " _sample_correction"][1]
+        slope=slope,
+        offset=offset
     )
+    l.log(f'In situ sample correction applied to {variable}. Slope: {slope}, Offset: {offset}.')
