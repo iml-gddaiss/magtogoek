@@ -540,8 +540,8 @@ def _decode_COMP(data: str) -> dict:
     sum_cosinus = struct.unpack('>i', bytes.fromhex(data[1]))[0]
     pitch = _safe_float(data[6])
     roll = _safe_float(data[4])
-    hsin, hcos = _compass_tilt_correction(sum_sinus, sum_cosinus, pitch, roll)
-    heading = round(atan2(hsin, hcos) / pi * 180, 2)
+    #sum_sinus, sum_cosinus = _compass_tilt_correction(sum_sinus, sum_cosinus, pitch, roll)
+    heading = round(atan2(sum_sinus, sum_cosinus) / pi * 180, 2)
     return {'heading': heading,
             'pitch': pitch,
             'roll': roll,

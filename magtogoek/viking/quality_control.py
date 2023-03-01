@@ -78,20 +78,6 @@ def meteoce_quality_control(dataset: xr.Dataset):
 
     Pressure -> Depth
     Depth, Temperature, Salinity -> Density
-
-
-      '
-
-
-
-
-
-
-
-
-
-
-
     Pressure, Temperature, Salinity -> Dissolved Oxygen
     Temperature, Salinity -> pH
 
