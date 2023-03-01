@@ -55,7 +55,7 @@ import xarray as xr
 
 from magtogoek import IMPLAUSIBLE_VEL_TRESHOLD, \
     MIN_TEMPERATURE, MAX_TEMPERATURE, \
-    MIN_PRESSURE, MAX_PRESSURE
+    MIN_PRESSURE, MAX_PRESSURE, FLAG_REFERENCE, FLAG_VALUES, FLAG_MEANINGS
 
 import magtogoek.logger as l
 
@@ -73,21 +73,6 @@ from scipy.stats import circmean
 #MAX_TEMPERATURE = 32  # Celcius 25
 #MIN_PRESSURE = 0  # dbar
 #MAX_PRESSURE = 10000  # dbar (mariana trench pressure)
-
-FLAG_REFERENCE = "BODC SeaDataNet"
-FLAG_VALUES = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9)
-FLAG_MEANINGS = (
-    "no_quality_control",
-    "good_value",
-    "probably_good_value",
-    "probably_bad_value",
-    "bad_value",
-    "changed_value",
-    "value_below_detection",
-    "value_in_excess",
-    "interpolated_value",
-    "missing_value",
-)
 
 
 def no_adcp_quality_control(dataset: xr.Dataset):
@@ -174,7 +159,7 @@ def adcp_quality_control(
     -----
        Tests return `True` where cells fail a test.
 
-       - Cells that haven't fail any test are given a flag value of `2` (probably_good_value).
+       - Cells that haven't failed any test are given a flag value of `2` (probably_good_value).
        - Failing amplitude, correlation, percentgood, roll, pitch, side_lobe, horizontal
        velocity or vertical velocity test returns a flag_value of `3` (probably_bad_value)
        for the corresponding velocity cells.
@@ -353,7 +338,7 @@ def adcp_quality_control(
 
     dataset.attrs["quality_comments"] = l.logbook.split("[Quality Control]\n")[1]
 
-    l.log(f"Quality Control was carried out with {l.w_count} warnings")
+    #l.log(f"Quality Control was carried out with {l.w_count} warnings") # l.log is not reseted anymore.
     percent_good_vel = (np.sum(vel_flags == 1) + np.sum(vel_flags == 2)) / (len(dataset.depth) * len(dataset.time))
     l.log(f"{round(percent_good_vel * 100, 2)}% of the velocities have a flag of 1 or 2.")
 

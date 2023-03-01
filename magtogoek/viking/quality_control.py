@@ -3,47 +3,6 @@
 TODO
 -----
 
-+ Spike Detection:  From CTD_ODF_qualite_en.docx
-
-    + This should depend on the frequency of the Probe.
-
-    + Without First and Last Records
-
-           V2
-           +
-          / \  V3
-       V1/   +---
-    ----+
-    Spike when:
-        |V2 - (V3+V1)/2| - |(V1-V3)/2| >= Thres
-        |V2 - V2'| - dV >= Thres
-
-    Thresholds
-
-    - Pres: 5 db  (docs says in `m`).
-    - Temp: 2 C
-    - PSAL: 0.3 psu
-    - DOXY: 0.3 mL/L
-    - PH: 0.03
-
-    + For First and Last Records
-
-           V2      V1
-           +     ---+
-          /   Or     \
-       V1/            \ V2
-    ----+              +
-
-    Spike when:
-        |V1 - V2| >= Thres
-
-    Thresholds
-
-    - Pres: 25 db  (docs says in `m`).
-    - Temp: 10 C
-    - PSAL: 5 psu
-    - DOXY: 3.5 mL/L
-    - PH: 0.5
 
 
 + GLOBAL IMPOSSIBLE PARAMETER VALUES
@@ -52,8 +11,9 @@ TODO
 from nptyping import NDArray
 from typing import *
 import numpy as np
+from pandas import Timestamp
 import xarray as xr
-from magtogoek import logger as l
+from magtogoek import logger as l, FLAG_VALUES, FLAG_MEANINGS, FLAG_REFERENCE
 from magtogoek.wps.quality_control import spike_detection
 
 
@@ -65,13 +25,43 @@ CLIMATOLOGY_TIME_FORMATS = {
     }
 SEASONS_ID = ('DJF', 'JJA', 'MAM', 'SON')
 
+QC_VARIABLES = [
+    'atm_pressure',  # Need since atm_pressure is used for correction Dissolved Oxygen or compute Density
+    'temperature',
+    'salinity',
+    'density',
+    'dissolved_oxygen',
+    'ph',
+    'par',
+    'fluorescence',
+    'chlorophyll',
+    'fdom',
+    'co2_w',
+]
+
 
 def no_meteoce_quality_control(dataset: xr.Dataset):
-    l.warning('NO QUALITY CONTROL AVAILABLE')
-    return dataset
+    l.section("Quality Controlled")
+
+    l.log("No quality control carried out")
+
+    _add_ancillary_variables_to_dataset(dataset, default_flag=0)
+
+    dataset.attrs["flags_reference"] = FLAG_REFERENCE
+    dataset.attrs["flags_values"] = FLAG_VALUES
+    dataset.attrs["flags_meanings"] = FLAG_MEANINGS
+    dataset.attrs["quality_comments"] = "No quality control."
 
 
-def meteoce_quality_control(dataset: xr.Dataset):
+def meteoce_quality_control(
+        dataset: xr.Dataset,
+
+        climatology_variables: List[str] = None,
+        climatology_dataset: xr.Dataset = None,
+        climatology_threshold: float = None,
+        climatology_depth_interpolation_method: str = None,
+
+):
     """
 
     Flag propagation:
@@ -86,20 +76,95 @@ def meteoce_quality_control(dataset: xr.Dataset):
     ----------
     dataset
 
+    climatology_variables
+    climatology_dataset
+    climatology_threshold
+    climatology_depth_interpolation_method
+
+
     Returns
     -------
 
     """
-    l.warning('NO QUALITY CONTROL AVAILABLE')
-    return dataset
+    l.section("Quality Control")
+
+    l.warning('QUALITY CONTROL IN DEVELOPMENT')
+
+    _add_ancillary_variables_to_dataset(dataset)
+
+    if climatology_variables is not None:
+        for variables in climatology_variables:
+            _flag_climatology_outlier(
+                dataset=dataset,
+                climatology_dataset=climatology_dataset,
+                variables=variables,
+                threshold=climatology_threshold,
+                depth_interpolation_method=climatology_depth_interpolation_method
+            )
 
 
-def climatology_outlier(
+    # spike detection
+
+
+    # absolute limit detection
+
+
+    # Flag propagation
+
+
+    # Flag Comments attrs.
+
+    dataset.attrs["quality_comments"] = l.logbook.split("[Quality Control]\n")[1]
+
+    dataset.attrs["flags_reference"] = FLAG_REFERENCE
+    dataset.attrs["flags_values"] = FLAG_VALUES
+    dataset.attrs["flags_meanings"] = FLAG_MEANINGS
+
+
+def _add_ancillary_variables_to_dataset(dataset: xr.Dataset, default_flag: int = 1):
+    for variable in QC_VARIABLES:
+        if variable in dataset.variables:
+            dataset[variable + "_QC"] = (
+                ['time'], np.ones(dataset.time.shape).astype(int) * default_flag,
+                {
+                    'quality_test': "",
+                    "quality_date": Timestamp.now().strftime("%Y-%m-%d"),
+                    "flag_meanings": FLAG_MEANINGS,
+                    "flag_values": FLAG_VALUES,
+                    "flag_reference": FLAG_REFERENCE
+                }
+            )
+
+
+def _flag_climatology_outlier(
+        dataset: xr.Dataset,
+        climatology_dataset: xr.Dataset,
+        variables: str,
+        threshold: float,
+        depth_interpolation_method: str,
+):
+
+    for variable in variables:
+        try:
+            find_climatology_outlier(
+                dataset=dataset,
+                climatology_dataset=climatology_dataset,
+                variable=variable,
+                threshold=threshold,
+                depth_interpolation_method=depth_interpolation_method
+            )
+            l.log(f'Climatology outlier QC carried out on {variable}.') # TODO
+        except ValueError as msg:
+            l.warning(f'Unable to carry out climatology outlier qc on {variable}.\n\t Error: {msg}') #TODO
+    pass
+
+
+def find_climatology_outlier(
         dataset: xr.Dataset,
         climatology_dataset: xr.Dataset,
         variable: str,
         threshold: float,
-        depth_interpolation_method='linear',
+        depth_interpolation_method ='linear'
 ):
     """
     Fixme Test needs to be carried out for:
@@ -138,56 +203,33 @@ def climatology_outlier(
     lower_limits = climatology_dataset[variable + '_mean'] - threshold * climatology_dataset[variable + '_std']
     upper_limits = climatology_dataset[variable + '_mean'] + threshold * climatology_dataset[variable + '_std']
 
-    # Returns boolean array where oulier return True.
+    # Returns boolean array where outlier return True.
     return (grouped_data > upper_limits) | (grouped_data < lower_limits)
 
 
 def get_climatology_time_coord(dataset: xr.Dataset, variable: str) -> str:
-    """
-    FIXME TEST
-    Parameters
-    ----------
-    dataset:
-
-    variable:
-
-    Returns
-    -------
-
-    """
-
-    mean_clim_time = _get_climatology_time_coord(dataset[variable + '_mean'])
-    std_clim_time = _get_climatology_time_coord(dataset[variable + '_std'])
+    """TODO"""
+    mean_clim_time = _get_climatology_dataarray_time_coord(dataset[variable + '_mean'])
+    std_clim_time = _get_climatology_dataarray_time_coord(dataset[variable + '_std'])
     if mean_clim_time != std_clim_time:
-        raise ValueError('The mean and std climatology for {variable} have different climatological time coords.')
+        raise ValueError(f'The mean and std climatology for {variable} have different climatological time coords.')
 
     clim_time = mean_clim_time
 
     if clim_time == 'time.season':
         if set(dataset.season.values) != set(SEASONS_ID):
-            raise ValueError("Invalid season ID for climatology. Season IDs: ['DJF', 'JJA', 'MAM', 'SON']")
+            raise ValueError("Invalid season ID for climatology. Season IDs: ['DJF', 'JJA', 'MAM', 'SON'].")
 
     return clim_time
 
 
-def _get_climatology_time_coord(dataarray: xr.DataArray) -> str:
-    """
-
-    Parameters
-    ----------
-    dataarray
-
-    Returns
-    -------
-
-    """
+def _get_climatology_dataarray_time_coord(dataarray: xr.DataArray) -> str:
+    """TODO"""
     intersection = set(dataarray.coords).intersection(set(CLIMATOLOGY_TIME_FORMATS.keys()))
     if len(intersection) == 1:
         return intersection[0]
     else:
         raise ValueError(f'Climatology time not found in climatology dataset for variable: {dataarray.name}.')
-
-
 
 
 if __name__ == "__main__":
@@ -208,7 +250,7 @@ if __name__ == "__main__":
     _variable = 'discharge'
     threshold = 1
 
-    outlier = climatology_outlier(
+    outlier = find_climatology_outlier(
         dataset=ds,
         climatology_dataset=clim_ds,
         variable=_variable,

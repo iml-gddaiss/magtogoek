@@ -17,8 +17,9 @@ PLATFORM_TYPES = ["buoy", "mooring", "ship", "lowered"]
 
 
 
-###  GLOBAL IMPOSSIBLE PARAMETER VALUES ###
-# For Quality Control | Impossible Value #
+### QUALITY CONTROL ###
+
+# Global impossible parameter values
 
 IMPLAUSIBLE_VEL_TRESHOLD = 15  # meter per second
 
@@ -38,3 +39,20 @@ MAX_DISSOLVED_OXYGEN = 11  # mL/L
 MIN_PH = 6
 MAX_PH = 9.3
 
+
+# Flag attributes
+
+FLAG_REFERENCE = "BODC SeaDataNet"
+FLAG_VALUES = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9)
+FLAG_MEANINGS = (
+    "no_quality_control",
+    "good_value",
+    "probably_good_value",
+    "probably_bad_value",
+    "bad_value",
+    "changed_value",
+    "value_below_detection",
+    "value_in_excess",
+    "interpolated_value",
+    "missing_value",
+)
