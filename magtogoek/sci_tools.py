@@ -167,3 +167,21 @@ def rotate_2d_vector(
     return X_r, Y_r
 
 
+def _rotate_heading(heading: NDArray, angle: tp.Union[NDArray, float]) -> NDArray:
+    """
+    Equation for the heading: (heading + 180 + angle) % 360 - 180
+        1. [-180, 180[ -> [0, 360[ -> [angle, 360+angle[
+        2. [angle, 360+angle[ -> [0, 360[ -> [-180, 180[
+
+    Parameters
+    ----------
+    heading :
+        heading (-180 to 180) | North = 0, East = 90
+    angle :
+        Clockwise angle to rotate.
+
+    Returns
+    -------
+    Rotated Heading
+    """
+    return (heading + 180 + angle) % 360 - 180

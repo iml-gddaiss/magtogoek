@@ -72,6 +72,38 @@ def no_meteoce_quality_control(dataset: xr.Dataset):
 
 
 def meteoce_quality_control(dataset: xr.Dataset):
+    """
+
+    Flag propagation:
+
+    Pressure -> Depth
+    Depth, Temperature, Salinity -> Density
+
+
+      '
+
+
+
+
+
+
+
+
+
+
+
+    Pressure, Temperature, Salinity -> Dissolved Oxygen
+    Temperature, Salinity -> pH
+
+
+    Parameters
+    ----------
+    dataset
+
+    Returns
+    -------
+
+    """
     l.warning('NO QUALITY CONTROL AVAILABLE')
     return dataset
 

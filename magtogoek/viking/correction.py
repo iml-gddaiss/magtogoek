@@ -111,7 +111,8 @@ def _dissolved_oxygen_winkler_correction(dataset: xr.Dataset, pconfig: "ProcessC
         if len(pconfig.rinko_coeffs) == 6:
             if len(pconfig.winkler_coeffs) == 2:
                 dissolved_oxygen_correction_winkler(
-                    dataset['dissolved_oxygen'], coeffs=pconfig.rinko_coeffs, winkler_coeffs=pconfig.winkler_coeffs
+                    dataset['dissolved_oxygen'], dataset['temperature'],
+                    coeffs=pconfig.rinko_coeffs, winkler_coeffs=pconfig.winkler_coeffs
                 )
                 pconfig.p01_codes_map['dissolved_oxygen'] = "DOXYCZ01"
                 dataset['dissolved_oxygen'].attrs["corrections"].append('Winkler correction carried out.')
@@ -176,7 +177,6 @@ def _time_drift_correction(dataset: xr.Dataset, variable: str, pconfig: "Process
         l.log(f'Time drift correction applied to {variable}.')
     except ValueError as msg:
         l.warning(f'Time drift correction for {variable} failed. Error: {msg}.')
-
 
 
 def _in_situ_sample_correction(dataset: xr.Dataset, variable: str, pconfig: "ProcessConfig"):

@@ -154,7 +154,7 @@ Notes
 import re
 import struct
 from datetime import datetime, timedelta
-from math import atan2, sqrt, pi
+from math import atan2, sqrt, pi, sin, cos
 from typing import List, Dict, Union
 
 import numpy as np
@@ -530,13 +530,21 @@ def _decode_NOM(data: str, century: int) -> dict:
 
 
 def _decode_COMP(data: str) -> dict:
+    """
+    [COMP],FFCFBEF1,FFE17319,-2.565,17.36,-0.033,5.205,4.869,8.062
+    0: total of the sinus of the heading.
+    1: total of the cosine of the heading.
+    """
     data = data.strip('\n').split(',')
-    heading = round(atan2(
-        struct.unpack('>i', bytes.fromhex(data[0]))[0],
-        struct.unpack('>i', bytes.fromhex(data[1]))[0]) / pi * 180, 2)
+    sum_sinus = struct.unpack('>i', bytes.fromhex(data[0]))[0]
+    sum_cosinus = struct.unpack('>i', bytes.fromhex(data[1]))[0]
+    pitch = _safe_float(data[6])
+    roll = _safe_float(data[4])
+    hsin, hcos = _compass_tilt_correction(sum_sinus, sum_cosinus, pitch, roll)
+    heading = round(atan2(hsin, hcos) / pi * 180, 2)
     return {'heading': heading,
-            'pitch': _safe_float(data[2]),
-            'roll': _safe_float(data[4]),
+            'pitch': pitch,
+            'roll': roll,
             'tilt': _safe_float(data[6]),
             'pitch_std': round(sqrt(_safe_float(data[3])), 2),
             'roll_std': round(sqrt(_safe_float(data[5])), 2),
@@ -783,6 +791,19 @@ def _safe_float(value: str) -> Union[float]:
 
 # def _safe_int(value: str) -> Union[int]: everything is loaded in float
 #     return FILL_VALUE if '#' in value else int(value)
+
+
+def _compass_tilt_correction(hsin, hcos, pitch: float, roll: float):
+    """
+    x: sum of the sin
+    y: sum of the cos
+
+    Xh = X*cos(tilt) + Y*sin(roll)*sin(pitch)
+    Yh = Y*cos(roll)
+    """
+    hsin_c = hsin*cos(pitch) + hcos*sin(roll)*sin(pitch)
+    hcos_c = hcos*cos(roll)
+    return hsin_c, hcos_c
 
 
 def _make_timestamp(Y: str, M: str, D: str, h: str, m: str, s: str) -> str:

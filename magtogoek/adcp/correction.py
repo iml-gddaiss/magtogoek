@@ -2,7 +2,7 @@ import numpy as np
 import xarray as xr
 
 from magtogoek import logger as l
-from magtogoek.sci_tools import rotate_2d_vector
+from magtogoek.sci_tools import rotate_2d_vector, _rotate_heading
 
 
 def apply_motion_correction(dataset: xr.Dataset, mode: str):
@@ -102,21 +102,3 @@ def _compute_relative_magnetic_declination(dataset: xr.Dataset, magnetic_declina
     return magnetic_declination
 
 
-def _rotate_heading(heading: np.ndarray, angle: float) -> np.ndarray:
-    """
-    Equation for the heading: (heading + 180 + angle) % 360 - 180
-        1. [-180, 180[ -> [0, 360[ -> [angle, 360+angle[
-        2. [angle, 360+angle[ -> [0, 360[ -> [-180, 180[
-
-    Parameters
-    ----------
-    heading :
-        heading (-180 to 180) | North = 0, East = 90
-    angle :
-        Clockwise angle to rotate.
-
-    Returns
-    -------
-    Rotated Heading
-    """
-    return (heading + 180 + angle) % 360 - 180

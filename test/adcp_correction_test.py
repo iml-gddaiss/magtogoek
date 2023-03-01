@@ -1,5 +1,5 @@
 import numpy as np
-from magtogoek.adcp.correction import _rotate_heading
+from magtogoek.sci_tools import _rotate_heading
 
 
 def test__rotate_heading():

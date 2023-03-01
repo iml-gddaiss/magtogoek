@@ -20,6 +20,7 @@ import xarray as xr
 from typing import *
 
 from magtogoek import logger as l
+from magtogoek. sci_tools import _rotate_heading
 from magtogoek.process_common import BaseProcessConfig, resolve_output_paths, add_global_attributes, write_log, write_netcdf, \
     add_processing_timestamp, clean_dataset_for_nc_output, format_data_encoding, add_navigation, save_variables_name_for_odf_output
 from magtogoek.attributes_formatter import format_variables_names_and_attributes
@@ -36,7 +37,7 @@ l.get_logger("viking_processing")
 
 STANDARD_GLOBAL_ATTRIBUTES = {"process": "viking_buoy", "featureType": "timeSeriesProfile"}
 
-VARIABLES_TO_DROP = ['ph_temperature', 'wind_direction_max', 'speed', 'course', 'magnetic_declination']
+VARIABLES_TO_DROP = ['ph_temperature', 'speed', 'course', 'magnetic_declination']
 
 GLOBAL_ATTRS_TO_DROP = [
     #"sensor_type",
@@ -150,6 +151,9 @@ class ProcessConfig(BaseProcessConfig):
     recompute_density: bool = None
 
     ### CORRECTION
+    # Compass
+    magnetic_declination_correction: bool
+
     # PH
     ph_salinity_correction: bool = None
     ph_coeffs: List[float] = None  # psal, k0, k2
@@ -269,6 +273,8 @@ def _process_viking_data(pconfig: ProcessConfig):
     # ----------- #
 
     l.section("Data Correction")
+
+    _magnetic_declination_correction(dataset, pconfig)
 
     _meteoce_correction(dataset, pconfig)
 
@@ -433,6 +439,15 @@ def _quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
         dataset
     )
     return dataset
+
+
+def _magnetic_declination_correction(dataset: xr.Dataset, pconfig: ProcessConfig):
+    if pconfig.magnetic_declination_correction is True:
+        if all(var in dataset.variables for var in ['heading', 'magnetic_declination']):
+            dataset.heading.values = _rotate_heading(dataset.heading.data, dataset.magnetic_declination.data)
+            l.log(f"Heading transformed to true north.")
+        else:
+            l.warning("Unable to transform heading to true north. Variables missing.")
 
 
 def _dissolved_oxygen_ml_per_L_to_umol_per_L(dataset: xr.Dataset):
