@@ -427,13 +427,20 @@ def clean_dataset_for_nc_output(dataset: xr.Dataset,
         else sets them to an empty string.
 
     """
-    for var in pconfig.variables_to_drop:
-        if var in dataset.variables:
-            dataset = dataset.drop_vars([var])
+    dataset = dataset.drop_vars(
+        set(pconfig.variables_to_drop).intersection(set(dataset.variables))
+    )
+    # REMOVE AFTER TESTING fixme
+    # for var in pconfig.variables_to_drop:
+    #     if var in dataset.variables:
+    #         dataset = dataset.drop_vars([var])
 
-    for attr in pconfig.global_attributes_to_drop:
-        if attr in dataset.attrs:
-            del dataset.attrs[attr]
+    for attr in set(pconfig.global_attributes_to_drop).intersection(set(dataset.attrs)):
+        del dataset.attrs[attr]
+    # REMOVE AFTER TESTING fixme
+    # for attr in pconfig.global_attributes_to_drop:
+    #     if attr in dataset.attrs:
+    #         del dataset.attrs[attr]
 
     for attr in list(dataset.attrs.keys()):
         if not dataset.attrs[attr]:

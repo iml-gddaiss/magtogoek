@@ -251,10 +251,12 @@ class ProcessConfig(BaseProcessConfig):
     horizontal_velocity_threshold: float = None
     vertical_velocity_threshold: float = None
     error_velocity_threshold: float = None
-    sidelobes_correction: bool = None
-    bottom_depth: float = None
     pitch_threshold: float = None
     roll_threshold: float = None
+
+    sidelobes_correction: bool = None
+    bottom_depth: float = None
+
 
     drop_percent_good: bool = None
     drop_correlation: bool = None
@@ -523,18 +525,20 @@ def _quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
 
     Wrapper for adcp_quality_control"""
 
-    adcp_quality_control(dataset=dataset,
-                         amp_th=pconfig.amplitude_threshold,
-                         corr_th=pconfig.correlation_threshold,
-                         pg_th=pconfig.percentgood_threshold,
-                         roll_th=pconfig.roll_threshold,
-                         pitch_th=pconfig.pitch_threshold,
-                         horizontal_vel_th=pconfig.horizontal_velocity_threshold,
-                         vertical_vel_th=pconfig.vertical_velocity_threshold,
-                         error_vel_th=pconfig.error_velocity_threshold,
-                         sidelobes_correction=pconfig.sidelobes_correction,
-                         bottom_depth=pconfig.bottom_depth,
-                         bad_pressure=pconfig.bad_pressure)
+    adcp_quality_control(
+        dataset=dataset,
+        amp_th=pconfig.amplitude_threshold,
+        corr_th=pconfig.correlation_threshold,
+        pg_th=pconfig.percentgood_threshold,
+        roll_th=pconfig.roll_threshold,
+        pitch_th=pconfig.pitch_threshold,
+        horizontal_vel_th=pconfig.horizontal_velocity_threshold,
+        vertical_vel_th=pconfig.vertical_velocity_threshold,
+        error_vel_th=pconfig.error_velocity_threshold,
+        sidelobes_correction=pconfig.sidelobes_correction,
+        bottom_depth=pconfig.bottom_depth,
+        bad_pressure=pconfig.bad_pressure
+    )
 
 
 def _set_xducer_depth_as_sensor_depth(dataset: xr.Dataset):

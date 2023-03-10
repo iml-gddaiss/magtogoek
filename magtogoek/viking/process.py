@@ -7,13 +7,32 @@ Made by: jeromejguay
 
 Notes
 -----
-Missing BODC: oxy
 
-At the moment for some data correction. If the variable used has nans, the corrected value will (should) be a nan as well.
-Therefore, if a variable is present but all the values are nan, the corrected data will also be all nan.
+[February 2023]
+    Missing BODC: oxy
 
-Maybe quality control should be done before and the transformation should check the flag values.
+    At the moment for some data correction. If the variable used has nans, the corrected value will (should) be a nan as well.
+    Therefore, if a variable is present but all the values are nan, the corrected data will also be all nan.
 
+    Maybe quality control should be done before and the transformation should check the flag values.
+
+[March 2023]
+    + Data from the wave_s wave heights are truncated to the first decimal.
+    + Wind and Compass sample for 1 minute.
+    + Direction are from 0 to 360 except for compass which is computed.
+
+
+Todos
+-----
+[March 2023]
+    For Wind and Wave directions:
+    + The last heading value need to be subtracted (located in the short string)
+    + Then the compass heading value needs to be added.
+
+    For Flow Meter:
+    + Add a correction option to correct for buoy uship,vship assuming that the flow meter
+      measured the direction along the heading and that the heading "always" correspond the the surface
+      current direction.
 """
 
 import xarray as xr
@@ -31,6 +50,7 @@ from magtogoek.sci_tools import north_polar2cartesian
 from magtogoek.viking.loader import load_meteoce_data
 from magtogoek.viking.quality_control import meteoce_quality_control, no_meteoce_quality_control
 from magtogoek.adcp.correction import apply_motion_correction
+from magtogoek.adcp.quality_control import adcp_quality_control, no_adcp_quality_control
 # import click
 
 l.get_logger("viking_processing")
@@ -128,6 +148,15 @@ SENSOR_TYPE_TO_SENSORS_ID_MAP = {
     'meteo': ['atm_temperature', 'atm_humidity', 'atm_pressure']
 }
 
+ADCP_VARIABLES_FOR_QC = [
+    "u", "v", "w", "e",
+    "bt_u", "bt_v", "bt_w", "bt_e",
+    'pg', 'pg1', 'pg2', 'pg3', 'pg4',
+    'corr1', 'corr2', 'corr3', 'corr4',
+    'amp1', 'amp2', 'amp3', 'amp4',
+    'roll_', 'pitch',
+]
+
 
 class ProcessConfig(BaseProcessConfig):
     # PROCESSING
@@ -198,8 +227,24 @@ class ProcessConfig(BaseProcessConfig):
     # ADCP
     motion_correction_mode: str = None  # maybe adcp/process/adcp_processing...c
 
-    # QUALITY_CONTROL  ... adcp ...
+    # QUALITY_CONTROL
+
+    # meteoce
     quality_control: bool = None
+    # climatology_variables: List[str] = None,
+    # climatology_dataset: xr.Dataset = None, A PATH MAYBE
+    # climatology_threshold: float = None,
+    # climatology_depth_interpolation_method: str = None,
+
+    # adcp quality_control
+    amplitude_threshold: int = None
+    percentgood_threshold: int = None
+    correlation_threshold: int = None
+    horizontal_velocity_threshold: float = None
+    vertical_velocity_threshold: float = None
+    error_velocity_threshold: float = None
+    pitch_threshold: float = None
+    roll_threshold: float = None
 
     def __init__(self, config_dict: dict = None):
         super().__init__(config_dict)
@@ -271,11 +316,11 @@ def _process_viking_data(pconfig: ProcessConfig):
 
     l.section("Data Correction")
 
-    _magnetic_declination_correction(dataset, pconfig)
+    _magnetic_declination_correction(dataset, pconfig)         # <--+
 
     _meteoce_correction(dataset, pconfig)
 
-    _adcp_correction(dataset, pconfig)
+    _adcp_correction(dataset, pconfig) # ADD MAGNETIC DECLINATION --+
 
     # --------- #
     # COMPUTE 2 #
@@ -290,14 +335,7 @@ def _process_viking_data(pconfig: ProcessConfig):
     # QUALITY CONTROL #
     # --------------- #
 
-    # TODO
-
-    if pconfig.quality_control:
-        _quality_control(dataset, pconfig)
-        # For adcp quality control, make a sub-dataset with a temporary depth coords.
-        #ADCP QUALITY CONTROL ? For adcp data.
-    else:
-        no_meteoce_quality_control(dataset)
+    _quality_control(dataset, pconfig)
 
     # ----------------------------- #
     # ADDING SOME GLOBAL ATTRIBUTES #
@@ -428,14 +466,59 @@ def _compute_uv_ship(dataset: xr.Dataset):
     l.log('Platform velocities (u_ship, v_ship) computed from speed and course.')
 
 
-def _quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
-    """Pipe to adcp quality control for adcp data ?
+def _quality_control(dataset: xr.Dataset, pconfig: ProcessConfig) -> xr.Dataset:
     """
+    Pipe a sub-dataset to adcp quality control for adcp data ?
+    Or call the qc function from viking_quality_control. ??
+    """
+    if pconfig.quality_control is True:  # one for meteo, one for wps, one for adcp
+        dataset = meteoce_quality_control(
+            dataset,
+            # FIXME
+        )
+    else:
+        dataset = no_meteoce_quality_control(dataset)
 
-    dataset = meteoce_quality_control(
-        dataset
-    )
+    _adcp_quality_control(dataset, pconfig)
+
     return dataset
+
+
+def _adcp_quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
+    #### ADCP ####
+
+    adcp_qc_variable_subset = set(dataset.variables).intersection(set(ADCP_VARIABLES_FOR_QC))
+
+    adcp_qc_dataset = dataset[adcp_qc_variable_subset]
+
+    if pconfig.quality_control is True:  # one for meteo, one for wps, one for adcp
+        adcp_qc_dataset = adcp_qc_dataset.expand_dims(dim={'depth': [0]})
+
+        adcp_qc_dataset.attrs['coord_system'] = "earth"
+
+        adcp_qc_dataset = adcp_quality_control(
+            adcp_qc_dataset,
+            amp_th=pconfig.amplitude_threshold,
+            corr_th=pconfig.correlation_threshold,
+            pg_th=pconfig.percentgood_threshold,
+            roll_th=pconfig.roll_threshold,
+            pitch_th=pconfig.pitch_threshold,
+            horizontal_vel_th=pconfig.horizontal_velocity_threshold,
+            vertical_vel_th=pconfig.vertical_velocity_threshold,
+            error_vel_th=pconfig.error_velocity_threshold,
+            sidelobes_correction=False,
+            bottom_depth=None,
+            bad_pressure=False,
+        )
+
+        adcp_qc_dataset.squeeze(['depth'])
+    else:
+        adcp_qc_dataset = no_adcp_quality_control(adcp_qc_dataset)
+
+    for var in {v + "_QC" for v in ADCP_VARIABLES_FOR_QC}.intersection(set(adcp_qc_dataset.variables)):
+        dataset[var] = adcp_qc_dataset[var]
+
+    dataset.attrs["quality_comments"] += adcp_qc_dataset.attrs["quality_comments"]
 
 
 def _magnetic_declination_correction(dataset: xr.Dataset, pconfig: ProcessConfig):
@@ -518,6 +601,9 @@ if __name__ == "__main__":
             make_figures=False,
             make_log=False
         )
+        #METEO_QC
+        #WPS_QC
+        #ADCP_QC
     )
 
     #process_viking(config)

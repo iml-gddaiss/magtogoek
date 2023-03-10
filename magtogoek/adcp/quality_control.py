@@ -57,6 +57,7 @@ from magtogoek import IMPLAUSIBLE_VEL_TRESHOLD, \
 from magtogoek.sci_tools import circular_distance
 from magtogoek.tools import outlier_values_test
 
+
 def no_adcp_quality_control(dataset: xr.Dataset):
     """Adds var_QC ancillary variables to dataset with value 0.
 
@@ -70,7 +71,7 @@ def no_adcp_quality_control(dataset: xr.Dataset):
     dataset :
         ADCP dataset formatted as done by adcp_init.
     """
-    l.section("Quality Controlled")
+    l.section("Adcp Quality Controlled")
 
     l.log("No quality control carried out")
 
@@ -83,6 +84,13 @@ def no_adcp_quality_control(dataset: xr.Dataset):
     for var in variables:
         if var in dataset:
             dataset[var + "_QC"] = dataset[var].copy().astype("int8") * 0
+            dataset[var + "_QC"].attrs.update({
+                'quality_test': "",
+                "quality_date": Timestamp.now().strftime("%Y-%m-%d"),
+                "flag_meanings": FLAG_MEANINGS,
+                "flag_values": FLAG_VALUES,
+                "flag_reference": FLAG_REFERENCE
+            })
 
     dataset.attrs["flags_reference"] = FLAG_REFERENCE
     dataset.attrs["flags_values"] = FLAG_VALUES
@@ -166,7 +174,7 @@ def adcp_quality_control(
        * 8: interpolated_value
        * 9: missing_value
     """
-    l.section("Quality Control")
+    l.section("Adcp Quality Control")
 
     vel_flags = np.ones(dataset.depth.shape + dataset.time.shape).astype(int)
     binary_mask = np.zeros(dataset.depth.shape + dataset.time.shape).astype(int)
@@ -319,7 +327,7 @@ def adcp_quality_control(
             dataset[var].attrs["flag_values"] = FLAG_VALUES
             dataset[var].attrs["flag_reference"] = FLAG_REFERENCE
 
-    dataset.attrs["quality_comments"] = l.logbook.split("[Quality Control]\n")[1]
+    dataset.attrs["quality_comments"] = l.logbook.split("[Adcp Quality Control]\n")[1]
 
     #l.log(f"Quality Control was carried out with {l.w_count} warnings") # l.log is not reseted anymore.
     percent_good_vel = (np.sum(vel_flags == 1) + np.sum(vel_flags == 2)) / (len(dataset.depth) * len(dataset.time))

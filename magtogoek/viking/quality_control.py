@@ -44,7 +44,7 @@ def no_meteoce_quality_control(dataset: xr.Dataset):
         SeaDataNet Quality Control Flags Value
         * 0: no_quality_control
     """
-    l.section("Quality Controlled")
+    l.section("Meteoce Quality Control")
 
     l.log("No quality control carried out")
 
@@ -112,7 +112,7 @@ def meteoce_quality_control(
     + Flag Comments attrs.
 
     """
-    l.section("Quality Control")
+    l.section("Meteoce Quality Control")
 
     l.warning('QUALITY CONTROL IN DEVELOPMENT')
 
@@ -140,7 +140,7 @@ def meteoce_quality_control(
 
     # Flag Comments attrs.
 
-    dataset.attrs["quality_comments"] = l.logbook.split("[Quality Control]\n")[1]
+    dataset.attrs["quality_comments"] = l.logbook.split("[Meteoce Quality Control]\n")[1]
 
     dataset.attrs["flags_reference"] = FLAG_REFERENCE
     dataset.attrs["flags_values"] = FLAG_VALUES
