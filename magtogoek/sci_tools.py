@@ -185,3 +185,5 @@ def _rotate_heading(heading: NDArray, angle: tp.Union[NDArray, float]) -> NDArra
     Rotated Heading
     """
     return (heading + 180 + angle) % 360 - 180
+
+
