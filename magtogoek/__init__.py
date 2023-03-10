@@ -32,9 +32,8 @@ MAX_SALINITY = 40  # PSU
 MIN_PRESSURE = 0  # dbar
 MAX_PRESSURE = 10000  # dbar (mariana trench pressure)
 
-
-MIN_DISSOLVED_OXYGEN = 0  # mL/L
-MAX_DISSOLVED_OXYGEN = 11  # mL/L
+MIN_DISSOLVED_OXYGEN = 0  # umol/L and or 0 mL/L
+MAX_DISSOLVED_OXYGEN = 491.26 # umol/L or 11  # mL/L
 
 MIN_PH = 6
 MAX_PH = 9.3

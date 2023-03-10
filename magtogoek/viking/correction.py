@@ -141,6 +141,7 @@ def _dissolved_oxygen_salinity_correction(dataset: xr.Dataset):
 
 
 def _dissolved_oxygen_pressure_correction(dataset: xr.Dataset):
+    """The pressure data_variable needs to have units attributes."""
     if all(var in dataset.variables for var in ['atm_pressure']):
         dataset.dissolved_oxygen.values = dissolved_oxygen_correction_for_pressure_JAC(
                 dissolved_oxygen=dataset.dissolved_oxygen.data,
