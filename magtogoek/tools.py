@@ -10,6 +10,8 @@ import numpy as np
 import xarray as xr
 import warnings
 
+from nptyping import NDArray
+
 from magtogoek import logger as l
 from magtogoek.sci_tools import cartesian2north_polar
 
@@ -437,3 +439,22 @@ def cut_times(
             l.log('Time slicing: ' + ', '.join(msg) + '.')
 
     return dataset
+
+
+def outlier_values_test(data: NDArray, lower_limit: float, upper_limit: float) -> NDArray:
+    """Check for data outlier
+
+    Parameters
+    ----------
+    data :
+        Data to check
+    lower_limit :
+        Outlier need to be smaller than the `lower_limit`.
+    upper_limit :
+        Outlier need to be greater than the `upper_limit`.
+
+    Returns
+    -------
+    Boolean array of the same shape as `data`
+    """
+    return np.bitwise_or(data < lower_limit, data > upper_limit)
