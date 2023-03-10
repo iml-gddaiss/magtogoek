@@ -8,14 +8,11 @@ TODO
 + GLOBAL IMPOSSIBLE PARAMETER VALUES
 
 """
-from nptyping import NDArray
 from typing import *
 import numpy as np
 from pandas import Timestamp
 import xarray as xr
 from magtogoek import logger as l, FLAG_VALUES, FLAG_MEANINGS, FLAG_REFERENCE
-from magtogoek.wps.quality_control import spike_detection
-
 
 CLIMATOLOGY_TIME_FORMATS = {
         'dayofyear': 'time.dayofyear',
@@ -41,6 +38,12 @@ QC_VARIABLES = [
 
 
 def no_meteoce_quality_control(dataset: xr.Dataset):
+    """
+    Notes
+    -----
+        SeaDataNet Quality Control Flags Value
+        * 0: no_quality_control
+    """
     l.section("Quality Controlled")
 
     l.log("No quality control carried out")
@@ -82,8 +85,31 @@ def meteoce_quality_control(
     climatology_depth_interpolation_method
 
 
-    Returns
-    -------
+    Notes
+    -----
+       Tests return `True` where cells fail a test.
+
+       SeaDataNet Quality Control Flags Value
+       * 0: no_quality_control
+       * 1: good_value
+       * 2: probably_good_value
+       * 3: probably_bad_value
+           - Unusual data value, inconsistent with real phenomena.
+       * 4: bad_value
+           - Obviously erroneous data value.
+       * 5: changed_value
+       * 6: value_below_detection
+       * 7: value_in_excess
+       * 8: interpolated_value
+       * 9: missing_value
+
+
+    Todos
+    -----
+    + spike detection
+    + absolute limit detection
+    + Flag propagation
+    + Flag Comments attrs.
 
     """
     l.section("Quality Control")
@@ -134,6 +160,11 @@ def _add_ancillary_variables_to_dataset(dataset: xr.Dataset, default_flag: int =
                     "flag_reference": FLAG_REFERENCE
                 }
             )
+
+
+def meteoce_absolute_outlier_test(dataset: xr.Dataset):
+    #TODO
+    pass
 
 
 def _flag_climatology_outlier(
@@ -233,7 +264,6 @@ def _get_climatology_dataarray_time_coord(dataarray: xr.DataArray) -> str:
 
 
 if __name__ == "__main__":
-    import matplotlib.pyplot as plt
     import xarray as xr
 
     # CLIMATOLOGY COMPARISON TEST #

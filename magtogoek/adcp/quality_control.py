@@ -7,7 +7,7 @@ Notes
 -----
    Tests return `True` where cells fail a test.
 
-   - Cells that haven't fail any test are given a flag value of `1` (probably_good_value).
+   - Cells that haven't failed any test are given a flag value of `1` (probably_good_value).
    - Velocities in any direction are set to NaN if greater than 15 meters per second gets a 4.
    - Failing amplitude, correlation, percentgood, roll, pitch, side_lobe, horizontal
    velocity or vertical velocity test returns a flag_value of `3` (probably_bad_value)
@@ -43,42 +43,24 @@ IML flags meaning : (Basically the same)
    * 5: value_was_modified
    * 9: value_missing
 
-TODO:
-   - Add a test with the pearson correlation
-   - A processing value could be use to tell every fonction which xducer_depth to take instead of checking everytime.
-
 """
-import typing as tp
-
 import numpy as np
+import typing as tp
 import xarray as xr
-
-from magtogoek import IMPLAUSIBLE_VEL_TRESHOLD, \
-    MIN_TEMPERATURE, MAX_TEMPERATURE, \
-    MIN_PRESSURE, MAX_PRESSURE, FLAG_REFERENCE, FLAG_VALUES, FLAG_MEANINGS
-
-import magtogoek.logger as l
-
-from magtogoek.sci_tools import circular_distance
 from pandas import Timestamp
 from scipy.stats import circmean
 
-# Brand dependent quality control defaults
-#    rti_qc_defaults = dict(amp_th=20)
-#    rdi_qc_defaults = dict(amp_th=0)
-
-
-#IMPLAUSIBLE_VEL_TRESHOLD = 15  # meter per second
-#MIN_TEMPERATURE = -2  # Celcius -2.5
-#MAX_TEMPERATURE = 32  # Celcius 25
-#MIN_PRESSURE = 0  # dbar
-#MAX_PRESSURE = 10000  # dbar (mariana trench pressure)
-
+import magtogoek.logger as l
+from magtogoek import IMPLAUSIBLE_VEL_TRESHOLD, \
+    MIN_TEMPERATURE, MAX_TEMPERATURE, \
+    MIN_PRESSURE, MAX_PRESSURE, FLAG_REFERENCE, FLAG_VALUES, FLAG_MEANINGS
+from magtogoek.sci_tools import circular_distance
+from magtogoek.tools import outlier_values_test
 
 def no_adcp_quality_control(dataset: xr.Dataset):
     """Adds var_QC ancillary variables to dataset with value 0.
 
-    AAncillary variables:  temperature, pres, u, v, w.
+    Ancillary variables:  temperature, pres, u, v, w.
 
     SeaDataNet Quality Control Flags Value
     * 0: no_quality_control
@@ -288,7 +270,8 @@ def adcp_quality_control(
     if "temperature" in dataset:
         l.log(f"Good temperature range {MIN_TEMPERATURE} to {MAX_TEMPERATURE} celsius")
         temperature_QC = np.ones(dataset.temperature.shape)
-        temperature_QC[temperature_test(dataset)] = 4
+        temperature_flags = temperature_test(dataset)
+        temperature_QC[temperature_flags] = 4
         dataset["temperature_QC"] = (["time"], temperature_QC)
         dataset["temperature_QC"].attrs[
             "quality_test"
@@ -526,10 +509,10 @@ def sidelobe_test(dataset: xr.Dataset, bottom_depth: float = None) -> tp.Union[t
             if "bt_depth" in dataset:
                 sounding = dataset.bt_depth.data
                 msg += ", sounding: bottom range"
-            elif bottom_depth:
+            elif bottom_depth is not None:
                 sounding = bottom_depth
                 msg += f", sounding: constant {sounding}"
-            elif not bottom_depth:
+            else:
                 l.warning(
                     "Sidelobes correction aborted. Bottom depth not found and one was not provided."
                 )
@@ -554,14 +537,16 @@ def sidelobe_test(dataset: xr.Dataset, bottom_depth: float = None) -> tp.Union[t
 
 def temperature_test(dataset: xr.Dataset) -> np.ndarray:
     """"""
-    return np.bitwise_or(
-        dataset.temperature > MAX_TEMPERATURE, dataset.temperature < MIN_TEMPERATURE
-    ).data
+    return outlier_values_test(
+        dataset.temperature.data, lower_limit=MIN_TEMPERATURE, upper_limit=MAX_TEMPERATURE
+    )
 
 
 def pressure_test(dataset: xr.Dataset) -> np.ndarray:
     """FIXME"""
-    return np.bitwise_or(dataset.pres > MAX_PRESSURE, dataset.pres < MIN_PRESSURE).data
+    return outlier_values_test(
+            dataset.pres.data, lower_limit=MIN_PRESSURE, upper_limit=MAX_PRESSURE
+        )
 
 
 if __name__ == "__main__":
