@@ -1,26 +1,41 @@
 """
+Module that contains function for viking data quality control.
 
-TODO
+
+Tests Flags
+-----------
+
+Notes
 -----
+    + Spike return a flag of 3
+    + Climatology outliers get a flag of 3
+    + Absolute outliers get a flag of 4
 
 
+   Tests return `True` where cells fail a test.
 
-+ GLOBAL IMPOSSIBLE PARAMETER VALUES
+   SeaDataNet Quality Control Flags Value
+   * 0: no_quality_control
+   * 1: good_value
+   * 2: probably_good_value
+   * 3: probably_bad_value
+       - Unusual data value, inconsistent with real phenomena.
+   * 4: bad_value
+       - Obviously erroneous data value.
+   * 5: changed_value
+   * 6: value_below_detection
+   * 7: value_in_excess
+   * 8: interpolated_value
+   * 9: missing_value
+
 
 """
 from typing import *
 import numpy as np
 from pandas import Timestamp
 import xarray as xr
-from magtogoek import logger as l, FLAG_VALUES, FLAG_MEANINGS, FLAG_REFERENCE
-
-CLIMATOLOGY_TIME_FORMATS = {
-        'dayofyear': 'time.dayofyear',
-        'weekofyear': 'time.week',
-        'monthofyear': 'time.month',
-        'season': 'time.season'
-    }
-SEASONS_ID = ('DJF', 'JJA', 'MAM', 'SON')
+from magtogoek import logger as l, FLAG_VALUES, FLAG_MEANINGS, FLAG_REFERENCE, GLOBAL_IMPOSSIBLE_PARAMETERS
+from magtogoek.tools import outlier_values_test, climatology_outlier_test
 
 QC_VARIABLES = [
     'atm_pressure',  # Need since atm_pressure is used for correction Dissolved Oxygen or compute Density
@@ -120,7 +135,7 @@ def meteoce_quality_control(
 
     if climatology_variables is not None:
         for variables in climatology_variables:
-            _flag_climatology_outlier(
+            _climatology_outlier_tests(
                 dataset=dataset,
                 climatology_dataset=climatology_dataset,
                 variables=variables,
@@ -128,20 +143,20 @@ def meteoce_quality_control(
                 depth_interpolation_method=climatology_depth_interpolation_method
             )
 
+    _absolute_outlier_tests(dataset)
 
     # spike detection
 
 
     # absolute limit detection
 
-
     # Flag propagation
-
 
     # Flag Comments attrs.
 
-    dataset.attrs["quality_comments"] = l.logbook.split("[Meteoce Quality Control]\n")[1]
+    #log the percent of good data for each variables
 
+    dataset.attrs["quality_comments"] = l.logbook.split("[Meteoce Quality Control]\n")[1]
     dataset.attrs["flags_reference"] = FLAG_REFERENCE
     dataset.attrs["flags_values"] = FLAG_VALUES
     dataset.attrs["flags_meanings"] = FLAG_MEANINGS
@@ -162,105 +177,54 @@ def _add_ancillary_variables_to_dataset(dataset: xr.Dataset, default_flag: int =
             )
 
 
-def meteoce_absolute_outlier_test(dataset: xr.Dataset):
-    #TODO
-    pass
+def _absolute_outlier_tests(dataset: xr.Dataset):
+    """
+    Iterates over GLOBAL_IMPOSSIBLE_PARAMETERS (in magtogoek/__init__) for min and max absolute values.
+
+    """
+    for variable in set(dataset.variables).intersection(set(GLOBAL_IMPOSSIBLE_PARAMETERS.keys())):
+        outliers_flag = outlier_values_test(
+            dataset[variable].data,
+            lower_limit=GLOBAL_IMPOSSIBLE_PARAMETERS[variable]['min'],
+            upper_limit=GLOBAL_IMPOSSIBLE_PARAMETERS[variable]['max']
+        )
+        dataset[variable + "_QC"][outliers_flag] = 4
+
+        test_comments = \
+            f"Absolute outlier threshold: less than {GLOBAL_IMPOSSIBLE_PARAMETERS[variable]['min']} {GLOBAL_IMPOSSIBLE_PARAMETERS[variable]['units']} " \
+            f"and greater than {GLOBAL_IMPOSSIBLE_PARAMETERS[variable]['max']} {GLOBAL_IMPOSSIBLE_PARAMETERS[variable]['units']}\n."
+
+        l.log(f"{variable }" + test_comments)
+        dataset[variable+"_QC"].attrs['quality_test'].append(test_comments)
 
 
-def _flag_climatology_outlier(
+def _climatology_outlier_tests(
         dataset: xr.Dataset,
         climatology_dataset: xr.Dataset,
         variables: str,
         threshold: float,
         depth_interpolation_method: str,
 ):
-
+    # TODO set the flag value to the variable and test_comment
+    # FLAG OF 3
     for variable in variables:
         try:
-            find_climatology_outlier(
+            outliers_flag = climatology_outlier_test(
                 dataset=dataset,
                 climatology_dataset=climatology_dataset,
                 variable=variable,
                 threshold=threshold,
                 depth_interpolation_method=depth_interpolation_method
             )
-            l.log(f'Climatology outlier QC carried out on {variable}.') # TODO
+            dataset[variable + "_QC"][outliers_flag] = 3
+
+            test_comments = f"Climatology outlier test.\n"
+            l.log(f"{variable}" + test_comments)
+            dataset[variable + "_QC"].attrs['quality_test'].append(test_comments)
+
         except ValueError as msg:
-            l.warning(f'Unable to carry out climatology outlier qc on {variable}.\n\t Error: {msg}') #TODO
+            l.warning(f'Unable to carry out climatology outlier qc on {variable}.\n\t Error: {msg}')
     pass
-
-
-def find_climatology_outlier(
-        dataset: xr.Dataset,
-        climatology_dataset: xr.Dataset,
-        variable: str,
-        threshold: float,
-        depth_interpolation_method ='linear'
-):
-    """
-    Fixme Test needs to be carried out for:
-     - different resolutions
-     - missing values
-    Interpolation Method:
-        Default: linear.
-        - nearest, cubic, (see xarray documentation)
-
-    ORDINAL DAY CLIMATOLOGY
-
-    IMPORTANT
-    ---------
-    Flag propagation for Density/Oxygen/pH after correction.
-
-    """
-    # Check for the variable in the dataset
-    if variable not in dataset:
-        raise KeyError(f'Variable not found in dataset {variable}')
-
-    # Check for climatology variables `mean` and `std
-    for var in [variable + s for s in ('_mean', '_std')]:
-        if var not in climatology_dataset:
-            raise KeyError(f'variable not in climatology dataset {var}')
-
-    clim_time = get_climatology_time_coord(climatology_dataset, variable)
-
-    # Group Data into clim_time
-    grouped_data = dataset[variable].groupby(clim_time)
-
-    # Nearest interpolation of the climatology to over the dataset depths.
-    if 'depth' in dataset.variables and 'depth' in climatology_dataset:
-        climatology_dataset = climatology_dataset.interp(depth=dataset.depth, method=depth_interpolation_method)
-
-    # Defining upper and lower limits
-    lower_limits = climatology_dataset[variable + '_mean'] - threshold * climatology_dataset[variable + '_std']
-    upper_limits = climatology_dataset[variable + '_mean'] + threshold * climatology_dataset[variable + '_std']
-
-    # Returns boolean array where outlier return True.
-    return (grouped_data > upper_limits) | (grouped_data < lower_limits)
-
-
-def get_climatology_time_coord(dataset: xr.Dataset, variable: str) -> str:
-    """TODO"""
-    mean_clim_time = _get_climatology_dataarray_time_coord(dataset[variable + '_mean'])
-    std_clim_time = _get_climatology_dataarray_time_coord(dataset[variable + '_std'])
-    if mean_clim_time != std_clim_time:
-        raise ValueError(f'The mean and std climatology for {variable} have different climatological time coords.')
-
-    clim_time = mean_clim_time
-
-    if clim_time == 'time.season':
-        if set(dataset.season.values) != set(SEASONS_ID):
-            raise ValueError("Invalid season ID for climatology. Season IDs: ['DJF', 'JJA', 'MAM', 'SON'].")
-
-    return clim_time
-
-
-def _get_climatology_dataarray_time_coord(dataarray: xr.DataArray) -> str:
-    """TODO"""
-    intersection = set(dataarray.coords).intersection(set(CLIMATOLOGY_TIME_FORMATS.keys()))
-    if len(intersection) == 1:
-        return intersection[0]
-    else:
-        raise ValueError(f'Climatology time not found in climatology dataset for variable: {dataarray.name}.')
 
 
 if __name__ == "__main__":
@@ -278,13 +242,13 @@ if __name__ == "__main__":
     clim_ds = xr.open_dataset(clim_2d_path)
 
     _variable = 'discharge'
-    threshold = 1
+    _threshold = 1
 
-    outlier = find_climatology_outlier(
+    outlier = climatology_outlier_test(
         dataset=ds,
         climatology_dataset=clim_ds,
         variable=_variable,
-        threshold=threshold,
+        threshold=_threshold,
         depth_interpolation_method='linear'
     )
     outlier.plot()

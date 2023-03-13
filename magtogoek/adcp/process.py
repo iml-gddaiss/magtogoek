@@ -619,7 +619,7 @@ def _regrid_dataset(dataset: xr.Dataset, pconfig: ProcessConfig) -> xr.Dataset:
 
     # Regridding
     msg = f"to grid from file: {pconfig.grid_depth}"
-    l.log(f"Regridded dataset with method {pconfig.grid_method} {msg}")
+    l.log(f"Regrided dataset with method {pconfig.grid_method} {msg}")
     dataset = regrid_dataset(dataset,
                              grid=_new_depths,
                              dim='depth',

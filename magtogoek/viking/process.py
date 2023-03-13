@@ -39,9 +39,11 @@ import xarray as xr
 from typing import *
 
 from magtogoek import logger as l
-from magtogoek. sci_tools import _rotate_heading
-from magtogoek.process_common import BaseProcessConfig, resolve_output_paths, add_global_attributes, write_log, write_netcdf, \
-    add_processing_timestamp, clean_dataset_for_nc_output, format_data_encoding, add_navigation, save_variables_name_for_odf_output
+from magtogoek.sci_tools import _rotate_heading
+from magtogoek.process_common import BaseProcessConfig, resolve_output_paths, add_global_attributes, write_log, \
+    write_netcdf, \
+    add_processing_timestamp, clean_dataset_for_nc_output, format_data_encoding, add_navigation, \
+    save_variables_name_for_odf_output
 from magtogoek.attributes_formatter import format_variables_names_and_attributes
 from magtogoek.viking.correction import meteoce_correction
 from magtogoek.wps.sci_tools import compute_density, dissolved_oxygen_ml_per_L_to_umol_per_L, \
@@ -51,6 +53,7 @@ from magtogoek.viking.loader import load_meteoce_data
 from magtogoek.viking.quality_control import meteoce_quality_control, no_meteoce_quality_control
 from magtogoek.adcp.correction import apply_motion_correction
 from magtogoek.adcp.quality_control import adcp_quality_control, no_adcp_quality_control
+
 # import click
 
 l.get_logger("viking_processing")
@@ -60,7 +63,7 @@ STANDARD_GLOBAL_ATTRIBUTES = {"process": "viking_buoy", "featureType": "timeSeri
 VARIABLES_TO_DROP = ['ph_temperature', 'speed', 'course', 'magnetic_declination']
 
 GLOBAL_ATTRS_TO_DROP = [
-    #"sensor_type",
+    # "sensor_type",
     "process",
     "platform_type",
     "VAR_TO_ADD_SENSOR_TYPE",
@@ -163,7 +166,7 @@ class ProcessConfig(BaseProcessConfig):
     buoy_name: str = None
     data_format: str = None
     sensor_depth: float = None
-    #wind_sensor: str = None # only the wmt700 is used for wind.
+    # wind_sensor: str = None # only the wmt700 is used for wind.
 
     ### ID
     adcp_id: str = None
@@ -194,7 +197,7 @@ class ProcessConfig(BaseProcessConfig):
     # WPS sample and drift correction
     salinity_drift: List[float] = None
     salinity_drift_time: List[str] = None
-    salinity_sample_correction: List[float] = None # a*x + b
+    salinity_sample_correction: List[float] = None  # a*x + b
 
     temperature_drift: List[float] = None
     temperature_drift_time: List[str] = None
@@ -231,10 +234,11 @@ class ProcessConfig(BaseProcessConfig):
 
     # meteoce
     quality_control: bool = None
-    # climatology_variables: List[str] = None,
-    # climatology_dataset: xr.Dataset = None, A PATH MAYBE
-    # climatology_threshold: float = None,
-    # climatology_depth_interpolation_method: str = None,
+    climatology_variables: List[str] = None,
+    climatology_dataset: str = None,  # A PATH to a netcdf
+    climatology_threshold: float = None,
+    # Set choices in tparser: linear, nearest, "linear", "nearest", "zero", "slinear", "quadratic", "cubic"
+    climatology_depth_interpolation_method: str = None,
 
     # adcp quality_control
     amplitude_threshold: int = None
@@ -316,11 +320,11 @@ def _process_viking_data(pconfig: ProcessConfig):
 
     l.section("Data Correction")
 
-    _magnetic_declination_correction(dataset, pconfig)         # <--+
+    _magnetic_declination_correction(dataset, pconfig)  # <--+
 
     _meteoce_correction(dataset, pconfig)
 
-    _adcp_correction(dataset, pconfig) # ADD MAGNETIC DECLINATION --+
+    _adcp_correction(dataset, pconfig)  # ADD MAGNETIC DECLINATION --+
 
     # --------- #
     # COMPUTE 2 #
@@ -363,7 +367,7 @@ def _process_viking_data(pconfig: ProcessConfig):
         use_bodc_name=pconfig.bodc_name,
         p01_codes_map=pconfig.p01_codes_map,
         sensors_id=pconfig.sensors_id,
-        #variable_to_add_sensor_type=pconfig.variables_to_add_sensor_type,
+        # variable_to_add_sensor_type=pconfig.variables_to_add_sensor_type,
         cf_profile_id='time'
     )
     # ------------ #
@@ -386,8 +390,8 @@ def _process_viking_data(pconfig: ProcessConfig):
 
     l.section("Output")
     if pconfig.odf_output is True:
-        l.warning('ODF output implemented yet') #TODO
-#        _write_odf(dataset, pconfig)
+        l.warning('ODF output implemented yet')  # TODO
+    #        _write_odf(dataset, pconfig)
 
     # ----------------- #
     # NETCDF FORMATTING #
@@ -471,54 +475,80 @@ def _quality_control(dataset: xr.Dataset, pconfig: ProcessConfig) -> xr.Dataset:
     Pipe a sub-dataset to adcp quality control for adcp data ?
     Or call the qc function from viking_quality_control. ??
     """
-    if pconfig.quality_control is True:  # one for meteo, one for wps, one for adcp
-        dataset = meteoce_quality_control(
-            dataset,
-            # FIXME
-        )
+    adcp_dataset = _make_adcp_sub_dataset(dataset)
+
+    if pconfig.quality_control is True:
+        dataset = _meteoce_quality_control(dataset, pconfig)
+        adcp_dataset = _adcp_quality_control(dataset, pconfig)
     else:
         dataset = no_meteoce_quality_control(dataset)
+        adcp_dataset = no_adcp_quality_control(adcp_dataset)
 
-    _adcp_quality_control(dataset, pconfig)
+    _merge_adcp_quality_control(dataset, adcp_dataset)
 
     return dataset
 
 
+def _make_adcp_sub_dataset(dataset: xr.Dataset) -> xr.Dataset:
+    """Return dataset with the adcp variables.
+
+    `temperature` and `pres` variables are omitted since they are not from the adcp.
+
+    """
+    adcp_variable_subset = set(dataset.variables).intersection(set(ADCP_VARIABLES_FOR_QC))
+    return dataset[adcp_variable_subset]
+
+
+def _merge_adcp_quality_control(dataset: xr.Dataset, adcp_dataset: xr.Dataset):
+    """add `adcp_dataset` ancillary variables and `quality_comments` `global_attrs` to `dataset`."""
+    for var in {v + "_QC" for v in ADCP_VARIABLES_FOR_QC}.intersection(set(adcp_dataset.variables)):
+        dataset[var] = adcp_dataset[var]
+
+    dataset.attrs["quality_comments"] += adcp_dataset.attrs["quality_comments"]
+
+
+def _meteoce_quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
+    """fixme"""
+    try:
+        climatology_dataset = xr.load_dataset(pconfig.climatology_dataset)
+    except ValueError:
+        # FIXME
+        climatology_dataset = None
+
+    dataset = meteoce_quality_control(
+        dataset,
+
+        climatology_variables=pconfig.climatology_variables,
+        climatology_dataset=pconfig.climatology_dataset,
+        climatology_threshold=pconfig.climatology_threshold,
+        climatology_depth_interpolation_method=pconfig.climatology_depth_interpolation_method,
+    )
+    return dataset
+
+
 def _adcp_quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
-    #### ADCP ####
+    """fixme"""
+    dataset = dataset.expand_dims(dim={'depth': [0]})
 
-    adcp_qc_variable_subset = set(dataset.variables).intersection(set(ADCP_VARIABLES_FOR_QC))
+    dataset.attrs['coord_system'] = "earth"
 
-    adcp_qc_dataset = dataset[adcp_qc_variable_subset]
+    dataset = adcp_quality_control(
+        dataset,
+        amp_th=pconfig.amplitude_threshold,
+        corr_th=pconfig.correlation_threshold,
+        pg_th=pconfig.percentgood_threshold,
+        roll_th=pconfig.roll_threshold,
+        pitch_th=pconfig.pitch_threshold,
+        horizontal_vel_th=pconfig.horizontal_velocity_threshold,
+        vertical_vel_th=pconfig.vertical_velocity_threshold,
+        error_vel_th=pconfig.error_velocity_threshold,
+        sidelobes_correction=False,
+        bottom_depth=None,
+        bad_pressure=False,
+    )
 
-    if pconfig.quality_control is True:  # one for meteo, one for wps, one for adcp
-        adcp_qc_dataset = adcp_qc_dataset.expand_dims(dim={'depth': [0]})
-
-        adcp_qc_dataset.attrs['coord_system'] = "earth"
-
-        adcp_qc_dataset = adcp_quality_control(
-            adcp_qc_dataset,
-            amp_th=pconfig.amplitude_threshold,
-            corr_th=pconfig.correlation_threshold,
-            pg_th=pconfig.percentgood_threshold,
-            roll_th=pconfig.roll_threshold,
-            pitch_th=pconfig.pitch_threshold,
-            horizontal_vel_th=pconfig.horizontal_velocity_threshold,
-            vertical_vel_th=pconfig.vertical_velocity_threshold,
-            error_vel_th=pconfig.error_velocity_threshold,
-            sidelobes_correction=False,
-            bottom_depth=None,
-            bad_pressure=False,
-        )
-
-        adcp_qc_dataset.squeeze(['depth'])
-    else:
-        adcp_qc_dataset = no_adcp_quality_control(adcp_qc_dataset)
-
-    for var in {v + "_QC" for v in ADCP_VARIABLES_FOR_QC}.intersection(set(adcp_qc_dataset.variables)):
-        dataset[var] = adcp_qc_dataset[var]
-
-    dataset.attrs["quality_comments"] += adcp_qc_dataset.attrs["quality_comments"]
+    dataset = dataset.squeeze(['depth'])
+    return dataset
 
 
 def _magnetic_declination_correction(dataset: xr.Dataset, pconfig: ProcessConfig):
@@ -538,19 +568,22 @@ def _dissolved_oxygen_ml_per_L_to_umol_per_L(dataset: xr.Dataset):
         dataset.dissolved_oxygen.attrs['units'] = 'umol/L'
         l.log('Dissolved Oxygen converted from [ml/L] to [umol/L].')
     else:
-        l.warning(f"Wrong dissolved oxygen units {dataset.dissolved_oxygen.attrs['units']} for conversion from [ml/L] to [umol/L].")
+        l.warning(
+            f"Wrong dissolved oxygen units {dataset.dissolved_oxygen.attrs['units']} for conversion from [ml/L] to [umol/L].")
 
 
 def _dissolved_oxygen_umol_per_L_to_umol_per_kg(dataset: xr.Dataset):
     if dataset.dissolved_oxygen.attrs['units'] == ['umol/L']:
         if 'density' in dataset.variables:
-            dataset.dissolved_oxygen.values = dissolved_oxygen_umol_per_L_to_umol_per_kg(dataset.dissolved_oxygen. dataset.density)
+            dataset.dissolved_oxygen.values = dissolved_oxygen_umol_per_L_to_umol_per_kg(
+                dataset.dissolved_oxygen.dataset.density)
             dataset.dissolved_oxygen.attrs['units'] = 'umol/kg'
             l.log('Dissolved Oxygen converted from [umol/L] to [umol/kg].')
         else:
             l.warning(f"Density missing for oxygen conversion from [umol/L] to [umol/kg].")
     else:
-        l.warning(f"Wrong dissolved oxygen units {dataset.dissolved_oxygen.attrs['units']} for conversion from [umol/L] to [umol/kg].")
+        l.warning(
+            f"Wrong dissolved oxygen units {dataset.dissolved_oxygen.attrs['units']} for conversion from [umol/L] to [umol/kg].")
 
 
 if __name__ == "__main__":
@@ -601,11 +634,11 @@ if __name__ == "__main__":
             make_figures=False,
             make_log=False
         )
-        #METEO_QC
-        #WPS_QC
-        #ADCP_QC
+        # METEO_QC
+        # WPS_QC
+        # ADCP_QC
     )
 
-    #process_viking(config)
+    # process_viking(config)
 
     ds = xr.open_dataset(out_path)

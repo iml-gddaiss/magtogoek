@@ -4,6 +4,7 @@
 from nptyping import NDArray
 
 import numpy as np
+from magtogoek import SPIKE_DETECTION_PARAMETERS
 
 INNER_THRESHOLDS = { # TO BE REMOVED MAYBE
     "pres": 5, # db docs says `m`

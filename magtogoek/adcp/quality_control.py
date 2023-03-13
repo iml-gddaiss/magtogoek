@@ -1,5 +1,5 @@
 """
-Module that contains fonction for adcp data quality control.
+Module that contains function for adcp data quality control.
 
 Based on the adcp2nc package by jeanlucshaw: https://github.com/jeanlucshaw/adcp2nc/
 
@@ -51,9 +51,7 @@ from pandas import Timestamp
 from scipy.stats import circmean
 
 import magtogoek.logger as l
-from magtogoek import IMPLAUSIBLE_VEL_TRESHOLD, \
-    MIN_TEMPERATURE, MAX_TEMPERATURE, \
-    MIN_PRESSURE, MAX_PRESSURE, FLAG_REFERENCE, FLAG_VALUES, FLAG_MEANINGS
+from magtogoek import GLOBAL_IMPOSSIBLE_PARAMETERS, FLAG_REFERENCE, FLAG_VALUES, FLAG_MEANINGS
 from magtogoek.sci_tools import circular_distance
 from magtogoek.tools import outlier_values_test
 
@@ -265,25 +263,25 @@ def adcp_quality_control(
             dataset["pres_QC"].attrs[
                 "quality_test"] = "Flagged as bad (4) by the user."
         else:
-            l.log(f"Good pressure range {MIN_PRESSURE} to {MAX_PRESSURE} dbar")
+            l.log(f"Good pressure range {GLOBAL_IMPOSSIBLE_PARAMETERS['pres']['min']} to {GLOBAL_IMPOSSIBLE_PARAMETERS['pres']['max']} dbar")
             pressure_flags = pressure_test(dataset)
             dataset["pres_QC"].values[pressure_flags] = 4
             dataset["pres_QC"].attrs["quality_test"] = (
-                f"pressure_threshold: less than {MIN_PRESSURE} dbar and greater than {MAX_PRESSURE} dbar"
+                f"pressure_threshold: less than {GLOBAL_IMPOSSIBLE_PARAMETERS['pres']['min']} dbar and greater than {GLOBAL_IMPOSSIBLE_PARAMETERS['pres']['max']} dbar"
             )
 
             vel_flags[np.tile(pressure_flags, dataset.depth.shape + (1,))] = 3
             vel_qc_test.append(dataset["pres_QC"].attrs["quality_test"])
 
     if "temperature" in dataset:
-        l.log(f"Good temperature range {MIN_TEMPERATURE} to {MAX_TEMPERATURE} celsius")
+        l.log(f"Good temperature range {GLOBAL_IMPOSSIBLE_PARAMETERS['temperature']['min']} to {GLOBAL_IMPOSSIBLE_PARAMETERS['temperature']['max']} celsius")
         temperature_QC = np.ones(dataset.temperature.shape)
         temperature_flags = temperature_test(dataset)
         temperature_QC[temperature_flags] = 4
         dataset["temperature_QC"] = (["time"], temperature_QC)
         dataset["temperature_QC"].attrs[
             "quality_test"
-        ] = f"temperature_threshold: less than {MIN_TEMPERATURE} Celsius and greater than {MAX_TEMPERATURE} celsius"
+        ] = f"temperature_threshold: less than {GLOBAL_IMPOSSIBLE_PARAMETERS['temperature']['min']} Celsius and greater than {GLOBAL_IMPOSSIBLE_PARAMETERS['temperature']['max']} celsius"
 
     if "vb_vel" in dataset:
         l.log(
@@ -302,7 +300,7 @@ def adcp_quality_control(
         )
 
     if dataset.attrs['coord_system'] != "beam":
-        vel_flags[flag_implausible_vel(dataset, threshold=IMPLAUSIBLE_VEL_TRESHOLD)] = 4
+        vel_flags[flag_implausible_vel(dataset, threshold=GLOBAL_IMPOSSIBLE_PARAMETERS['horizontal_velocity']['abs'])] = 4
 
     if dataset.attrs['coord_system'] == "beam":
         velocity_variables = ("v1", "v2", "v3", "v4")
@@ -546,14 +544,14 @@ def sidelobe_test(dataset: xr.Dataset, bottom_depth: float = None) -> tp.Union[t
 def temperature_test(dataset: xr.Dataset) -> np.ndarray:
     """"""
     return outlier_values_test(
-        dataset.temperature.data, lower_limit=MIN_TEMPERATURE, upper_limit=MAX_TEMPERATURE
+        dataset.temperature.data, lower_limit=GLOBAL_IMPOSSIBLE_PARAMETERS['temperature']['min'], upper_limit=GLOBAL_IMPOSSIBLE_PARAMETERS['temperature']['min']
     )
 
 
 def pressure_test(dataset: xr.Dataset) -> np.ndarray:
     """FIXME"""
     return outlier_values_test(
-            dataset.pres.data, lower_limit=MIN_PRESSURE, upper_limit=MAX_PRESSURE
+            dataset.pres.data, lower_limit=GLOBAL_IMPOSSIBLE_PARAMETERS['pres']['min'], upper_limit=GLOBAL_IMPOSSIBLE_PARAMETERS['pres']['max']
         )
 
 
