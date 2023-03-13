@@ -16,6 +16,15 @@ from magtogoek import logger as l
 from magtogoek.sci_tools import cartesian2north_polar
 
 
+CLIMATOLOGY_TIME_FORMATS = {
+        'dayofyear': 'time.dayofyear',
+        'weekofyear': 'time.week',
+        'monthofyear': 'time.month',
+        'season': 'time.season'
+    }
+SEASONS_ID = ('DJF', 'JJA', 'MAM', 'SON')
+
+
 def nans(shape: tp.Union[list, tuple, np.ndarray]) -> np.ndarray:
     """return array of nan of shape `shape`"""
     return np.full(shape, np.nan)
@@ -23,6 +32,7 @@ def nans(shape: tp.Union[list, tuple, np.ndarray]) -> np.ndarray:
 
 def flag_data(dataset: xr.Dataset, var: str, flag_thres: int = 2, ancillary_variables: str = None):
     """
+    Set value to nan where the flag value is greater thant the flag_thres,
 
     Parameters
     ----------
@@ -458,3 +468,76 @@ def outlier_values_test(data: NDArray, lower_limit: float, upper_limit: float) -
     Boolean array of the same shape as `data`
     """
     return np.bitwise_or(data < lower_limit, data > upper_limit)
+
+
+def climatology_outlier_test(
+        dataset: xr.Dataset,
+        climatology_dataset: xr.Dataset,
+        variable: str,
+        threshold: float,
+        depth_interpolation_method='linear'
+):
+    """
+    Fixme Test needs to be carried out for:
+     - different resolutions
+     - missing values
+    Interpolation Method:
+        Default: linear.
+        - nearest, cubic, (see xarray documentation)
+
+    ORDINAL DAY CLIMATOLOGY
+
+    IMPORTANT
+    ---------
+    Flag propagation for Density/Oxygen/pH after correction.
+
+    """
+    # Check for the variable in the dataset
+    if variable not in dataset:
+        raise KeyError(f'Variable not found in dataset {variable}')
+
+    # Check for climatology variables `mean` and `std
+    for var in [variable + s for s in ('_mean', '_std')]:
+        if var not in climatology_dataset:
+            raise KeyError(f'variable not in climatology dataset {var}')
+
+    clim_time = _get_climatology_time_coord(climatology_dataset, variable)
+
+    # Group Data into clim_time
+    grouped_data = dataset[variable].groupby(clim_time)
+
+    # Interpolation of the climatology to over the dataset depths.
+    if 'depth' in dataset.variables and 'depth' in climatology_dataset:
+        climatology_dataset = climatology_dataset.interp(depth=dataset.depth, method=depth_interpolation_method)
+
+    # Defining upper and lower limits
+    lower_limits = climatology_dataset[variable + '_mean'] - threshold * climatology_dataset[variable + '_std']
+    upper_limits = climatology_dataset[variable + '_mean'] + threshold * climatology_dataset[variable + '_std']
+
+    # Returns boolean array where outlier return True.
+    return (grouped_data > upper_limits) | (grouped_data < lower_limits)
+
+
+def _get_climatology_time_coord(dataset: xr.Dataset, variable: str) -> str:
+    """TODO"""
+    mean_clim_time = _find_climatology_variable_time_coord(dataset[variable + '_mean'])
+    std_clim_time = _find_climatology_variable_time_coord(dataset[variable + '_std'])
+    if mean_clim_time != std_clim_time:
+        raise ValueError(f'The mean and std climatology for {variable} have different climatological time coords.')
+
+    clim_time = mean_clim_time
+
+    if clim_time == 'time.season':
+        if set(dataset.season.values) != set(SEASONS_ID):
+            raise ValueError("Invalid season ID for climatology. Season IDs: ['DJF', 'JJA', 'MAM', 'SON'].")
+
+    return clim_time
+
+
+def _find_climatology_variable_time_coord(dataarray: xr.DataArray) -> str:
+    """TODO"""
+    intersection = set(dataarray.coords).intersection(set(CLIMATOLOGY_TIME_FORMATS.keys()))
+    if len(intersection) == 1:
+        return intersection[0]
+    else:
+        raise ValueError(f'Climatology time not found in climatology dataset for variable: {dataarray.name}.')

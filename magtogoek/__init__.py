@@ -1,7 +1,9 @@
+from pathlib import Path
 from magtogoek.logger import Logger
 import magtogoek.logger
 from magtogoek.adcp import SENSOR_TYPES as ADCP_SENSOR_TYPES
 from magtogoek.wps import SENSOR_TYPES as WPS_SENSOR_TYPES
+from magtogoek.utils import json2dict
 
 logger.set_level(0)
 
@@ -21,23 +23,21 @@ PLATFORM_TYPES = ["buoy", "mooring", "ship", "lowered"]
 
 # Global impossible parameter values
 
-IMPLAUSIBLE_VEL_TRESHOLD = 15  # meter per second
+GLOBAL_IMPOSSIBLE_PARAMETERS_FILE_PATH = "files/global_impossible_parameter_values.json"
+GLOBAL_IMPOSSIBLE_PARAMETERS_FILE_PATH = (
+    Path(__file__).resolve().parent.joinpath(GLOBAL_IMPOSSIBLE_PARAMETERS_FILE_PATH).resolve()
+)
 
-MIN_TEMPERATURE = -2.5  # Celcius
-MAX_TEMPERATURE = 35  # Celcius
+GLOBAL_IMPOSSIBLE_PARAMETERS = json2dict(GLOBAL_IMPOSSIBLE_PARAMETERS_FILE_PATH)
+# TODO convert to proper units.
+# TODO Make a loader
 
-MIN_SALINITY = 0  # PSU
-MAX_SALINITY = 40  # PSU
+SPIKE_DETECTION_PARAMETERS_FILE_PATH = "files/spike_thresholds.json"
+SPIKE_DETECTION_PARAMETERS_FILE_PATH = (
+    Path(__file__).resolve().parent.joinpath(SPIKE_DETECTION_PARAMETERS_FILE_PATH).resolve()
+)
 
-MIN_PRESSURE = 0  # dbar
-MAX_PRESSURE = 10000  # dbar (mariana trench pressure)
-
-MIN_DISSOLVED_OXYGEN = 0  # umol/L and or 0 mL/L
-MAX_DISSOLVED_OXYGEN = 491.26 # umol/L or 11  # mL/L
-
-MIN_PH = 6
-MAX_PH = 9.3
-
+SPIKE_DETECTION_PARAMETERS = json2dict(SPIKE_DETECTION_PARAMETERS_FILE_PATH)
 
 # Flag attributes
 
