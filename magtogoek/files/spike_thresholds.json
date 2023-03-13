@@ -1,16 +1,8 @@
 {
-  "inner": {
-    "temperature": {"thres": 2, "units": "degree_C"},
-    "salinity": {"thres": 0.3, "units": "PSU"},
-    "pres": {"thres": 5, "units": "dbar"},
-    "dissolved_oxygen": {"thres": 13.4, "units": "umol/L"},
-    "ph": {"thres": 0.03, "units": "NBS_scale"}
-  },
-  "outer": {
-    "temperature": {"thres": 10, "units": "degree_C"},
-    "salinity": {"thres": 5, "units": "PSU"},
-    "pres": {"thres": 25, "units": "dbar"},
-    "dissolved_oxygen": {"thres": 156.31, "units": "umol/L"},
-    "ph": {"thres": 0.05, "units": "NBS_scale"}
-  }
+  "temperature": {"inner": 2, "outer": 10, "units": "degree_C"},
+  "salinity": {"inner": 0.3, "outer": 5, "units": "PSU"},
+  "pres": {"inner": 5, "outer": 25, "units": "dbar"},
+  "dissolved_oxygen": {"inner": 13.4, "outer": 156.31, "units": "umol/L"},
+  "ph": {"inner": 0.03, "outer": 0.05, "units": "NBS_scale"}
 }
+

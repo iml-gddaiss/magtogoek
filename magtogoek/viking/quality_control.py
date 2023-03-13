@@ -34,8 +34,10 @@ from typing import *
 import numpy as np
 from pandas import Timestamp
 import xarray as xr
-from magtogoek import logger as l, FLAG_VALUES, FLAG_MEANINGS, FLAG_REFERENCE, GLOBAL_IMPOSSIBLE_PARAMETERS
+from magtogoek import logger as l, FLAG_VALUES, FLAG_MEANINGS, FLAG_REFERENCE, \
+    GLOBAL_IMPOSSIBLE_PARAMETERS, SPIKE_DETECTION_PARAMETERS
 from magtogoek.tools import outlier_values_test, climatology_outlier_test
+from magtogoek.wps.quality_control import spike_detection
 
 QC_VARIABLES = [
     'atm_pressure',  # Need since atm_pressure is used for correction Dissolved Oxygen or compute Density
@@ -133,6 +135,8 @@ def meteoce_quality_control(
 
     _add_ancillary_variables_to_dataset(dataset)
 
+    _spike_detection_tests(dataset)
+
     if climatology_variables is not None:
         for variables in climatology_variables:
             _climatology_outlier_tests(
@@ -145,16 +149,13 @@ def meteoce_quality_control(
 
     _absolute_outlier_tests(dataset)
 
-    # spike detection
+    _flag_propagation(dataset)
+
+    # log the percent of good data for each variables
+    #percent_good_vel = (np.sum(vel_flags == 1) + np.sum(vel_flags == 2)) / (len(dataset.depth) * len(dataset.time))
+    #l.log(f"{round(percent_good_vel * 100, 2)}% of the velocities have a flag of 1 or 2.")
 
 
-    # absolute limit detection
-
-    # Flag propagation
-
-    # Flag Comments attrs.
-
-    #log the percent of good data for each variables
 
     dataset.attrs["quality_comments"] = l.logbook.split("[Meteoce Quality Control]\n")[1]
     dataset.attrs["flags_reference"] = FLAG_REFERENCE
@@ -177,6 +178,33 @@ def _add_ancillary_variables_to_dataset(dataset: xr.Dataset, default_flag: int =
             )
 
 
+def _climatology_outlier_tests(
+        dataset: xr.Dataset,
+        climatology_dataset: xr.Dataset,
+        variables: str,
+        threshold: float,
+        depth_interpolation_method: str,
+):
+    for variable in variables:
+        try:
+            outliers_flag = climatology_outlier_test(
+                dataset=dataset,
+                climatology_dataset=climatology_dataset,
+                variable=variable,
+                threshold=threshold,
+                depth_interpolation_method=depth_interpolation_method
+            )
+            dataset[variable + "_QC"][outliers_flag] = 3
+
+            test_comment = f"Climatology outlier test.\n"
+            l.log(f"{variable}" + test_comment)
+            dataset[variable + "_QC"].attrs['quality_test'].append(test_comment)
+
+        except ValueError as msg:
+            l.warning(f'Unable to carry out climatology outlier qc on {variable}.\n\t Error: {msg}')
+    pass
+
+
 def _absolute_outlier_tests(dataset: xr.Dataset):
     """
     Iterates over GLOBAL_IMPOSSIBLE_PARAMETERS (in magtogoek/__init__) for min and max absolute values.
@@ -190,41 +218,53 @@ def _absolute_outlier_tests(dataset: xr.Dataset):
         )
         dataset[variable + "_QC"][outliers_flag] = 4
 
-        test_comments = \
+        test_comment = \
             f"Absolute outlier threshold: less than {GLOBAL_IMPOSSIBLE_PARAMETERS[variable]['min']} {GLOBAL_IMPOSSIBLE_PARAMETERS[variable]['units']} " \
             f"and greater than {GLOBAL_IMPOSSIBLE_PARAMETERS[variable]['max']} {GLOBAL_IMPOSSIBLE_PARAMETERS[variable]['units']}\n."
 
-        l.log(f"{variable }" + test_comments)
-        dataset[variable+"_QC"].attrs['quality_test'].append(test_comments)
+        l.log(f"{variable} :" + test_comment)
+        dataset[variable+"_QC"].attrs['quality_test'].append(test_comment)
 
 
-def _climatology_outlier_tests(
-        dataset: xr.Dataset,
-        climatology_dataset: xr.Dataset,
-        variables: str,
-        threshold: float,
-        depth_interpolation_method: str,
-):
-    # TODO set the flag value to the variable and test_comment
-    # FLAG OF 3
-    for variable in variables:
-        try:
-            outliers_flag = climatology_outlier_test(
-                dataset=dataset,
-                climatology_dataset=climatology_dataset,
-                variable=variable,
-                threshold=threshold,
-                depth_interpolation_method=depth_interpolation_method
-            )
-            dataset[variable + "_QC"][outliers_flag] = 3
+def _spike_detection_tests(dataset: xr.Dataset):
+    """
+    Iterates over SPIKE_DETECTION (in magtogoek/__init__) for inner and outer absolute values.
+    """
+    for variable in set(dataset.variables).intersection(set(SPIKE_DETECTION_PARAMETERS.keys())):
+        spikes_flag = spike_detection(
+            dataset[variable].data,
+            inner=SPIKE_DETECTION_PARAMETERS[variable]['inner'],
+            outer=SPIKE_DETECTION_PARAMETERS[variable]['outer']
+        )
+        dataset[variable + "_QC"][spikes_flag] = 3
 
-            test_comments = f"Climatology outlier test.\n"
-            l.log(f"{variable}" + test_comments)
-            dataset[variable + "_QC"].attrs['quality_test'].append(test_comments)
+        test_comment = \
+            f"Spike detection inner threshold {SPIKE_DETECTION_PARAMETERS[variable]['inner']} {SPIKE_DETECTION_PARAMETERS[variable]['units']} " \
+            f"and outer threshold {SPIKE_DETECTION_PARAMETERS[variable]['outer']} {SPIKE_DETECTION_PARAMETERS[variable]['units']}\n."
 
-        except ValueError as msg:
-            l.warning(f'Unable to carry out climatology outlier qc on {variable}.\n\t Error: {msg}')
-    pass
+        l.log(f"{variable} :" + test_comment)
+        dataset[variable+"_QC"].attrs['quality_test'].append(test_comment)
+
+
+def _flag_propagation(dataset: xr.Dataset):
+    """ Maybe move to wps
+    Pressure -> Depth
+    Depth, Temperature, Salinity -> Density
+    Pressure, Temperature, Salinity -> Dissolved Oxygen
+    Temperature, Salinity -> pH
+    """
+    flag_propagation_rules = {
+        'depth': ['pres'],
+        'density': ['pres', 'temperature', 'salinity'],
+        'dissolved_oxygen': ['pres', 'temperature', 'salinity'],
+        'ph': ['temperature', 'salinity'],
+        }
+    for variable in set(dataset.variables).intersection(set(flag_propagation_rules.keys())):
+        _flags = flag_propagation_rules[variable] + [variable]
+        dataset[variable+"_QC"] = np.stack([dataset[v+'_QC'].data for v in _flags], axis=-1).max(axis=-1)
+        propagation_comment = f'Flags propagation {flag_propagation_rules[variable]} -> {variable}.\n'
+        l.log(propagation_comment)
+        dataset[variable].attrs['quality_test'].append(propagation_comment)
 
 
 if __name__ == "__main__":

@@ -4,22 +4,23 @@
 from nptyping import NDArray
 
 import numpy as np
-from magtogoek import SPIKE_DETECTION_PARAMETERS
-
-INNER_THRESHOLDS = { # TO BE REMOVED MAYBE
-    "pres": 5, # db docs says `m`
-    "temperature": 2,
-    "salinity": 0.3,
-    "dissolved_oxygen": 0.3, # mL/L
-    "ph": 0.03,
-}
-OUTER_THRESHOLDS = {
-    "pres": 25, # db docs says `m`
-    "temperature": 10,
-    "salinity": 5,
-    "dissolved_oxygen": 3.5, # mL/L
-    "ph": 0.05,
-}
+# from magtogoek import SPIKE_DETECTION_PARAMETERS
+#
+# INNER_THRESHOLDS = { # TO BE REMOVED MAYBE
+#     "pres": 5, # db docs says `m`
+#     "temperature": 2,
+#     "salinity": 0.3,
+#     "dissolved_oxygen": 0.3, # mL/L
+#     "ph": 0.03,
+# }
+# OUTER_THRESHOLDS = {
+#     "pres": 25, # db docs says `m`
+#     "temperature": 10,
+#     "salinity": 5,
+#     "dissolved_oxygen": 3.5, # mL/L
+#     "ph": 0.05,
+# }
+#
 
 
 def spike_detection(data: NDArray, inner_thres: float, outer_thres: float):
