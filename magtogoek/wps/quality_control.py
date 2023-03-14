@@ -1,29 +1,15 @@
 """
 
 """
+import xarray as xr
 from nptyping import NDArray
 
 import numpy as np
-# from magtogoek import SPIKE_DETECTION_PARAMETERS
-#
-# INNER_THRESHOLDS = { # TO BE REMOVED MAYBE
-#     "pres": 5, # db docs says `m`
-#     "temperature": 2,
-#     "salinity": 0.3,
-#     "dissolved_oxygen": 0.3, # mL/L
-#     "ph": 0.03,
-# }
-# OUTER_THRESHOLDS = {
-#     "pres": 25, # db docs says `m`
-#     "temperature": 10,
-#     "salinity": 5,
-#     "dissolved_oxygen": 3.5, # mL/L
-#     "ph": 0.05,
-# }
-#
+
+from magtogoek import SPIKE_DETECTION_PARAMETERS, logger as l
 
 
-def spike_detection(data: NDArray, inner_thres: float, outer_thres: float):
+def spike_detection_test(data: NDArray, inner_thres: float, outer_thres: float):
     """ Spike detection.
 
     ```Algorithm without first and last values:
@@ -80,3 +66,23 @@ def spike_detection(data: NDArray, inner_thres: float, outer_thres: float):
     spikes[-1] = np.abs(data[-1] - data[-2]) >= outer_thres
 
     return spikes
+
+
+def _spike_detection_tests(dataset: xr.Dataset):
+    """
+    Iterates over SPIKE_DETECTION (in magtogoek/__init__) for inner and outer absolute values.
+    """
+    for variable in set(dataset.variables).intersection(set(SPIKE_DETECTION_PARAMETERS.keys())):
+        spikes_flag = spike_detection_test(
+            dataset[variable].data,
+            inner=SPIKE_DETECTION_PARAMETERS[variable]['inner'],
+            outer=SPIKE_DETECTION_PARAMETERS[variable]['outer']
+        )
+        dataset[variable + "_QC"][spikes_flag] = 3
+
+        test_comment = \
+            f"Spike detection inner threshold {SPIKE_DETECTION_PARAMETERS[variable]['inner']} {SPIKE_DETECTION_PARAMETERS[variable]['units']} " \
+            f"and outer threshold {SPIKE_DETECTION_PARAMETERS[variable]['outer']} {SPIKE_DETECTION_PARAMETERS[variable]['units']} (flag=3)"
+
+        l.log(f"{variable} :" + test_comment)
+        dataset[variable+"_QC"].attrs['quality_test'].append(test_comment + "\n")
