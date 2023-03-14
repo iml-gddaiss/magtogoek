@@ -184,7 +184,7 @@ def adcp_quality_control(
         l.log(f"amplitude threshold {amp_th}")
         amp_flag = amplitude_test(dataset, amp_th)
         vel_flags[amp_flag] = 3
-        vel_qc_test.append(f"amplitude_threshold:{amp_th}")
+        vel_qc_test.append(f"amplitude_threshold:{amp_th} (flag=3).")
         binary_mask[amp_flag] += 2 ** 0
         binary_mask_tests_value[0] = amp_th
 
@@ -192,7 +192,7 @@ def adcp_quality_control(
         l.log(f"correlation threshold {corr_th}")
         corr_flag = correlation_test(dataset, corr_th)
         vel_flags[corr_flag] = 3
-        vel_qc_test.append(f"correlation_threshold:{corr_th}")
+        vel_qc_test.append(f"correlation_threshold:{corr_th} (flag=3).")
         binary_mask[corr_flag] += 2 ** 1
         binary_mask_tests_value[1] = corr_th
 
@@ -200,7 +200,7 @@ def adcp_quality_control(
         l.log(f"percentgood threshold {pg_th}")
         pg_flag = percentgood_test(dataset, pg_th)
         vel_flags[pg_flag] = 3
-        vel_qc_test.append(f"percentgood_threshold:{pg_th}")
+        vel_qc_test.append(f"percentgood_threshold:{pg_th} (flag=3).")
         binary_mask[pg_flag] += 2 ** 2
         binary_mask_tests_value[2] = pg_th
 
@@ -209,7 +209,7 @@ def adcp_quality_control(
             l.log(f"horizontal velocity threshold {horizontal_vel_th} m/s")
             horizontal_vel_flag = horizontal_vel_test(dataset, horizontal_vel_th)
             vel_flags[horizontal_vel_flag] = 3
-            vel_qc_test.append(f"horizontal_velocity_threshold:{horizontal_vel_th} m/s")
+            vel_qc_test.append(f"horizontal_velocity_threshold:{horizontal_vel_th} m/s (flag=3).")
             binary_mask[horizontal_vel_flag] += 2 ** 3
             binary_mask_tests_value[3] = horizontal_vel_th
 
@@ -217,7 +217,7 @@ def adcp_quality_control(
             l.log(f"vertical velocity threshold {vertical_vel_th} m/s")
             vertical_vel_flag = vertical_vel_test(dataset, vertical_vel_th)
             vel_flags[vertical_vel_flag] = 3
-            vel_qc_test.append(f"vertical_velocity_threshold:{vertical_vel_th} m/s")
+            vel_qc_test.append(f"vertical_velocity_threshold:{vertical_vel_th} m/s (flag=3).")
             binary_mask[vertical_vel_flag] += 2 ** 4
             binary_mask_tests_value[4] = vertical_vel_th
 
@@ -226,30 +226,30 @@ def adcp_quality_control(
             l.log(f"error velocity threshold {error_vel_th} m/s")
             error_vel_flag = error_vel_test(dataset, error_vel_th)
             vel_flags[error_vel_flag] = 3
-            vel_qc_test.append(f"velocity_error_threshold:{error_vel_th} m/s")
+            vel_qc_test.append(f"velocity_error_threshold:{error_vel_th} m/s (flag=3).")
             binary_mask[error_vel_flag] += 2 ** 5
             binary_mask_tests_value[5] = error_vel_th
 
     if roll_th is not None:
-        l.log(f"roll threshold {roll_th} degree")
+        l.log(f"Roll threshold {roll_th} degree")
         roll_flag = np.tile(roll_test(dataset, roll_th), dataset.depth.shape + (1,))
         vel_flags[roll_flag] = 3
-        vel_qc_test.append(f"roll_threshold:{roll_th} degree")
+        vel_qc_test.append(f"roll_threshold:{roll_th} degree (flag=4).")
         binary_mask[roll_flag] += 2 ** 6
         binary_mask_tests_value[6] = roll_th
 
     if pitch_th is not None:
-        l.log(f"pitch threshold {pitch_th} degree")
+        l.log(f"Pitch threshold {pitch_th} degree")
         pitch_flag = np.tile(pitch_test(dataset, pitch_th), dataset.depth.shape + (1,))
         vel_flags[pitch_flag] = 3
-        vel_qc_test.append(f"pitch_threshold:{pitch_th} degree")
+        vel_qc_test.append(f"pitch_threshold:{pitch_th} degree (flag=3).")
         binary_mask[pitch_flag] += 2 ** 7
         binary_mask_tests_value[7] = pitch_th
 
     if sidelobes_correction is True:
         sidelobe_flag, msg = sidelobe_test(dataset, bottom_depth)
         if isinstance(sidelobe_flag, np.ndarray):
-            l.log(f"Sidelobe correction carried out. {msg}.")
+            l.log(f"Sidelobe correction carried out. {msg}. (flag=3).")
             vel_flags[sidelobe_flag] = 3
             vel_qc_test.append("sidelobes")
             binary_mask[sidelobe_flag] += 2 ** 8
@@ -263,25 +263,24 @@ def adcp_quality_control(
             dataset["pres_QC"].attrs[
                 "quality_test"] = "Flagged as bad (4) by the user."
         else:
-            l.log(f"Good pressure range {GLOBAL_IMPOSSIBLE_PARAMETERS['pres']['min']} to {GLOBAL_IMPOSSIBLE_PARAMETERS['pres']['max']} dbar")
+            _msg = f"Pressure_threshold: less than {GLOBAL_IMPOSSIBLE_PARAMETERS['pres']['min']} dbar and greater than {GLOBAL_IMPOSSIBLE_PARAMETERS['pres']['max']} dbar (flag=4)."
+
             pressure_flags = pressure_test(dataset)
+            l.log(_msg)
             dataset["pres_QC"].values[pressure_flags] = 4
-            dataset["pres_QC"].attrs["quality_test"] = (
-                f"pressure_threshold: less than {GLOBAL_IMPOSSIBLE_PARAMETERS['pres']['min']} dbar and greater than {GLOBAL_IMPOSSIBLE_PARAMETERS['pres']['max']} dbar"
-            )
+            dataset["pres_QC"].attrs["quality_test"] = _msg
 
             vel_flags[np.tile(pressure_flags, dataset.depth.shape + (1,))] = 3
             vel_qc_test.append(dataset["pres_QC"].attrs["quality_test"])
 
     if "temperature" in dataset:
-        l.log(f"Good temperature range {GLOBAL_IMPOSSIBLE_PARAMETERS['temperature']['min']} to {GLOBAL_IMPOSSIBLE_PARAMETERS['temperature']['max']} celsius")
+        _msg=f"Good temperature range {GLOBAL_IMPOSSIBLE_PARAMETERS['temperature']['min']} to {GLOBAL_IMPOSSIBLE_PARAMETERS['temperature']['max']} celsius (flag=4)"
         temperature_QC = np.ones(dataset.temperature.shape)
         temperature_flags = temperature_test(dataset)
         temperature_QC[temperature_flags] = 4
         dataset["temperature_QC"] = (["time"], temperature_QC)
-        dataset["temperature_QC"].attrs[
-            "quality_test"
-        ] = f"temperature_threshold: less than {GLOBAL_IMPOSSIBLE_PARAMETERS['temperature']['min']} Celsius and greater than {GLOBAL_IMPOSSIBLE_PARAMETERS['temperature']['max']} celsius"
+        dataset["temperature_QC"].attrs["quality_test"] = _msg
+        l.log(_msg)
 
     if "vb_vel" in dataset:
         l.log(
@@ -301,6 +300,7 @@ def adcp_quality_control(
 
     if dataset.attrs['coord_system'] != "beam":
         vel_flags[flag_implausible_vel(dataset, threshold=GLOBAL_IMPOSSIBLE_PARAMETERS['horizontal_velocity']['abs'])] = 4
+        l.log(f"Implausible velocity, greater than {GLOBAL_IMPOSSIBLE_PARAMETERS['horizontal_velocity']['abs']}, were flagged as bad (4).")
 
     if dataset.attrs['coord_system'] == "beam":
         velocity_variables = ("v1", "v2", "v3", "v4")
@@ -329,7 +329,7 @@ def adcp_quality_control(
 
     #l.log(f"Quality Control was carried out with {l.w_count} warnings") # l.log is not reseted anymore.
     percent_good_vel = (np.sum(vel_flags == 1) + np.sum(vel_flags == 2)) / (len(dataset.depth) * len(dataset.time))
-    l.log(f"{round(percent_good_vel * 100, 2)}% of the velocities have a flag of 1 or 2.")
+    l.log(f"{round(percent_good_vel * 100, 2)}% of the velocities have flags of 1 or 2.")
 
     dataset.attrs["flags_reference"] = FLAG_REFERENCE
     dataset.attrs["flags_values"] = FLAG_VALUES
