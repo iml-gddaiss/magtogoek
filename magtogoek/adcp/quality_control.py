@@ -55,6 +55,8 @@ from magtogoek import GLOBAL_IMPOSSIBLE_PARAMETERS, FLAG_REFERENCE, FLAG_VALUES,
 from magtogoek.sci_tools import circular_distance
 from magtogoek.tools import outlier_values_test
 
+ABSOLUTE_IMPOSSIBLE_VELOCITY = 15
+
 
 def no_adcp_quality_control(dataset: xr.Dataset):
     """Adds var_QC ancillary variables to dataset with value 0.
@@ -299,8 +301,8 @@ def adcp_quality_control(
         )
 
     if dataset.attrs['coord_system'] != "beam":
-        vel_flags[flag_implausible_vel(dataset, threshold=GLOBAL_IMPOSSIBLE_PARAMETERS['horizontal_velocity']['abs'])] = 4
-        l.log(f"Implausible velocity, greater than {GLOBAL_IMPOSSIBLE_PARAMETERS['horizontal_velocity']['abs']}, were flagged as bad (4).")
+        vel_flags[flag_implausible_vel(dataset, threshold=ABSOLUTE_IMPOSSIBLE_VELOCITY)] = 4
+        l.log(f"Implausible velocity, greater than {ABSOLUTE_IMPOSSIBLE_VELOCITY}, were flagged as bad (4).")
 
     if dataset.attrs['coord_system'] == "beam":
         velocity_variables = ("v1", "v2", "v3", "v4")
