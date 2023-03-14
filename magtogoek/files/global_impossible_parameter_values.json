@@ -1,8 +1,0 @@
-{
-  "horizontal_velocity": {"abs":15, "units": "m/s"},
-  "temperature": {"min": -2.5 ,"max": 35, "units": "degree_C"},
-  "salinity": {"min": 0, "max": 40, "units": "PSU"},
-  "pres": {"min": 0, "max": 10000, "units": "dbar"},
-  "dissolved_oxygen": {"min": 0,"max": 491.26, "units": "umol/L"},
-  "ph": {"min": 6, "max": 9.3, "units": "NBS_scale"}
-}

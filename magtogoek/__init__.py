@@ -23,12 +23,12 @@ PLATFORM_TYPES = ["buoy", "mooring", "ship", "lowered"]
 
 # Global impossible parameter values
 
-GLOBAL_IMPOSSIBLE_PARAMETERS_FILE_PATH = "files/global_impossible_parameter_values.json"
-GLOBAL_IMPOSSIBLE_PARAMETERS_FILE_PATH = (
-    Path(__file__).resolve().parent.joinpath(GLOBAL_IMPOSSIBLE_PARAMETERS_FILE_PATH).resolve()
+IMPOSSIBLE_PARAMETERS_VALUES_FILE_PATH = "files/impossible_parameter_values.json"
+IMPOSSIBLE_PARAMETERS_VALUES_FILE_PATH = (
+    Path(__file__).resolve().parent.joinpath(IMPOSSIBLE_PARAMETERS_VALUES_FILE_PATH).resolve()
 )
 
-GLOBAL_IMPOSSIBLE_PARAMETERS = json2dict(GLOBAL_IMPOSSIBLE_PARAMETERS_FILE_PATH)
+IMPOSSIBLE_PARAMETERS_VALUES = json2dict(IMPOSSIBLE_PARAMETERS_VALUES_FILE_PATH)
 # TODO convert to proper units.
 # TODO Make a loader
 

@@ -536,8 +536,8 @@ def _get_climatology_time_coord(dataset: xr.Dataset, variable: str) -> str:
 
 def _find_climatology_variable_time_coord(dataarray: xr.DataArray) -> str:
     """TODO"""
-    intersection = set(dataarray.coords).intersection(set(CLIMATOLOGY_TIME_FORMATS.keys()))
+    intersection = list(set(dataarray.coords).intersection(set(CLIMATOLOGY_TIME_FORMATS.keys())))
     if len(intersection) == 1:
-        return intersection[0]
+        return CLIMATOLOGY_TIME_FORMATS[intersection[0]]
     else:
         raise ValueError(f'Climatology time not found in climatology dataset for variable: {dataarray.name}.')

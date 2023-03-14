@@ -1,0 +1,22 @@
+{
+  "global":{
+    "temperature": {"min": -2.5 ,"max": 35, "units": "degree_C"},
+    "salinity": {"min": 0, "max": 40, "units": "PSU"},
+    "pres": {"min": 0, "max": 10000, "units": "dbar"},
+    "dissolved_oxygen": {"min": 0,"max": 491.26, "units": "umol/L"},
+    "ph": {"min": 6, "max": 9.3, "units": "NBS_scale"},
+    "atm_pressure": {"min": 9.5, "max": 10.50, "units": "dbar"},
+    "atm_temperature": {"min": -90, "max": 50, "units": "degree_C"},
+    "atm_humidity": {"min": 0, "max": 100, "units": "percent"}
+  },
+  "eastern-canada": {
+    "temperature": {"min": -2.5 ,"max": 35, "units": "degree_C"},
+    "salinity": {"min": 0, "max": 35, "units": "PSU"},
+    "pres": {"min": 0, "max": 600, "units": "dbar"},
+    "dissolved_oxygen": {"min": 0,"max": 446.6, "units": "umol/L"},
+    "ph": {"min": 6.3, "max": 9.2, "units": "NBS_scale"},
+    "atm_pressure": {"min": 9.5, "max": 10.50, "units": "dbar"},
+    "atm_temperature": {"min": -55, "max": 40, "units": "degree_C"},
+    "atm_humidity": {"min": 0, "max": 100, "units": "percent"}
+  }
+}

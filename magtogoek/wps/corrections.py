@@ -288,7 +288,7 @@ if __name__ == "__main__":
     # drift_time = pd.date_range('2020-04-01', '2020-09-01', 4)
 
     drift = np.array([.6, 2])
-    drift_time = list(pd.date_range('2020-06-01', '2020-08-01', 5))
+    drift_time = list(pd.date_range('2020-06-01', '2020-08-01', 2))
 
     data_raw = time_drift_correction(data, data_time, list(-drift), drift_time)
 
