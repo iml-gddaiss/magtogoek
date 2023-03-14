@@ -151,11 +151,7 @@ def meteoce_quality_control(
 
     _flag_propagation(dataset)
 
-    # log the percent of good data for each variables
-    #percent_good_vel = (np.sum(vel_flags == 1) + np.sum(vel_flags == 2)) / (len(dataset.depth) * len(dataset.time))
-    #l.log(f"{round(percent_good_vel * 100, 2)}% of the velocities have a flag of 1 or 2.")
-
-
+    _print_percent_of_good_values(dataset)
 
     dataset.attrs["quality_comments"] = l.logbook.split("[Meteoce Quality Control]\n")[1]
     dataset.attrs["flags_reference"] = FLAG_REFERENCE
@@ -196,9 +192,9 @@ def _climatology_outlier_tests(
             )
             dataset[variable + "_QC"][outliers_flag] = 3
 
-            test_comment = f"Climatology outlier test.\n"
+            test_comment = f"Climatology outlier test. (flag=3)"
             l.log(f"{variable}" + test_comment)
-            dataset[variable + "_QC"].attrs['quality_test'].append(test_comment)
+            dataset[variable + "_QC"].attrs['quality_test'].append(test_comment + "\n")
 
         except ValueError as msg:
             l.warning(f'Unable to carry out climatology outlier qc on {variable}.\n\t Error: {msg}')
@@ -220,10 +216,10 @@ def _absolute_outlier_tests(dataset: xr.Dataset):
 
         test_comment = \
             f"Absolute outlier threshold: less than {GLOBAL_IMPOSSIBLE_PARAMETERS[variable]['min']} {GLOBAL_IMPOSSIBLE_PARAMETERS[variable]['units']} " \
-            f"and greater than {GLOBAL_IMPOSSIBLE_PARAMETERS[variable]['max']} {GLOBAL_IMPOSSIBLE_PARAMETERS[variable]['units']}\n."
+            f"and greater than {GLOBAL_IMPOSSIBLE_PARAMETERS[variable]['max']} {GLOBAL_IMPOSSIBLE_PARAMETERS[variable]['units']} (flag=4)."
 
         l.log(f"{variable} :" + test_comment)
-        dataset[variable+"_QC"].attrs['quality_test'].append(test_comment)
+        dataset[variable+"_QC"].attrs['quality_test'].append(test_comment + "\n")
 
 
 def _spike_detection_tests(dataset: xr.Dataset):
@@ -240,10 +236,10 @@ def _spike_detection_tests(dataset: xr.Dataset):
 
         test_comment = \
             f"Spike detection inner threshold {SPIKE_DETECTION_PARAMETERS[variable]['inner']} {SPIKE_DETECTION_PARAMETERS[variable]['units']} " \
-            f"and outer threshold {SPIKE_DETECTION_PARAMETERS[variable]['outer']} {SPIKE_DETECTION_PARAMETERS[variable]['units']}\n."
+            f"and outer threshold {SPIKE_DETECTION_PARAMETERS[variable]['outer']} {SPIKE_DETECTION_PARAMETERS[variable]['units']} (flag=3)"
 
         l.log(f"{variable} :" + test_comment)
-        dataset[variable+"_QC"].attrs['quality_test'].append(test_comment)
+        dataset[variable+"_QC"].attrs['quality_test'].append(test_comment + "\n")
 
 
 def _flag_propagation(dataset: xr.Dataset):
@@ -265,6 +261,13 @@ def _flag_propagation(dataset: xr.Dataset):
         propagation_comment = f'Flags propagation {flag_propagation_rules[variable]} -> {variable}.\n'
         l.log(propagation_comment)
         dataset[variable].attrs['quality_test'].append(propagation_comment)
+
+
+def _print_percent_of_good_values(dataset: xr.Dataset):
+    for variable in dataset.variables:
+        if "_QC" in variable:
+            percent_of_good_values = np.sum(dataset.variables <= 2) / len(dataset.time)
+            l.log(f"{round(percent_of_good_values * 100, 2)}% of {variable.strip('_QC')} have flags of 1 or 2.")
 
 
 if __name__ == "__main__":
