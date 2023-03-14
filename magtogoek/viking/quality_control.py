@@ -92,7 +92,6 @@ def meteoce_quality_control(
         climatology_depth_interpolation_method: str = None,
 
         propagate_flags: bool = True,
-
 ):
     """
 
@@ -153,20 +152,19 @@ def meteoce_quality_control(
     _add_ancillary_variables_to_dataset(dataset, variables=QC_VARIABLES, default_flag=1)
     _add_ancillary_variables_to_dataset(dataset, variables=NO_QC_VARIABLES, default_flag=0)
 
-    if climatology_variables is not None:
-        for variables in climatology_variables:
-            _climatology_outlier_tests(
-                dataset=dataset,
-                climatology_dataset=climatology_dataset,
-                variables=variables,
-                threshold=climatology_threshold,
-                depth_interpolation_method=climatology_depth_interpolation_method
-            )
+    if climatology_variables is not None and climatology_dataset is not None:
+        _climatology_outlier_tests(
+            dataset=dataset,
+            climatology_dataset=climatology_dataset,
+            variables=climatology_variables,
+            threshold=climatology_threshold,
+            depth_interpolation_method=climatology_depth_interpolation_method
+        )
 
     if regional_outlier in IMPOSSIBLE_PARAMETERS_VALUES:
-        _impossible_values_tests(dataset, region=regional_outlier, flag=4)
+        _impossible_values_tests(dataset, region=regional_outlier, flag=3)
     else:
-        l.warning('Region not found in the impossible_parameter_values.json')
+        l.warning(f'Region {regional_outlier} not found in the impossible parameters values file {IMPOSSIBLE_PARAMETERS_VALUES}')
 
     if absolute_outlier is True:
         _impossible_values_tests(dataset, region='global', flag=4)
@@ -212,7 +210,7 @@ def _climatology_outlier_tests(
                 threshold=threshold,
                 depth_interpolation_method=depth_interpolation_method
             )
-            dataset[variable + "_QC"][outliers_flag] = 3
+            dataset[variable + "_QC"].where(~outliers_flag, other=3)
 
             test_comment = f"Climatology outlier test. (flag=3)"
             l.log(f"{variable}" + test_comment)
@@ -282,32 +280,4 @@ def _print_percent_of_good_values(dataset: xr.Dataset):
         if "_QC" in variable:
             percent_of_good_values = np.sum(dataset.variables <= 2) / len(dataset.time)
             l.log(f"{round(percent_of_good_values * 100, 2)}% of {variable.strip('_QC')} have flags of 1 or 2.")
-
-
-if __name__ == "__main__":
-    import xarray as xr
-
-    # CLIMATOLOGY COMPARISON TEST #
-    path = '/home/jeromejguay/WorkSpace/Data/Sillex2018/Raw/FreshWater/'
-    # data_path = path + 'discharge1944_2019.nc'
-    # clim_path = path + 'discharge1994_2019_clim.nc'
-
-    data_2d_path = path + 'test_2d_data.nc'
-    clim_2d_path = path + 'test_2d_clim.nc'
-
-    ds = xr.open_dataset(data_2d_path)
-    clim_ds = xr.open_dataset(clim_2d_path)
-
-    _variable = 'discharge'
-    _threshold = 1
-
-    outlier = climatology_outlier_test(
-        dataset=ds,
-        climatology_dataset=clim_ds,
-        variable=_variable,
-        threshold=_threshold,
-        depth_interpolation_method='linear'
-    )
-    outlier.plot()
-
 

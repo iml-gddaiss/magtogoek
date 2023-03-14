@@ -34,6 +34,7 @@ Todos
       measured the direction along the heading and that the heading "always" correspond the the surface
       current direction.
 """
+import sys
 
 import xarray as xr
 from typing import *
@@ -234,11 +235,17 @@ class ProcessConfig(BaseProcessConfig):
 
     # meteoce
     quality_control: bool = None
+
+    regional_outlier: str = None,
+    absolute_outlier: bool = True,
+
     climatology_variables: List[str] = None,
-    climatology_dataset: str = None,  # A PATH to a netcdf
+    climatology_dataset_path: str = None,  # A PATH to a netcdf
     climatology_threshold: float = None,
-    # Set choices in tparser: linear, nearest, "linear", "nearest", "zero", "slinear", "quadratic", "cubic"
+    # Set choices in tparser: "linear", "nearest", "zero", "slinear", "quadratic", "cubic"
     climatology_depth_interpolation_method: str = None,
+
+    propagate_flags: bool = True,
 
     # adcp quality_control
     amplitude_threshold: int = None
@@ -249,6 +256,9 @@ class ProcessConfig(BaseProcessConfig):
     error_velocity_threshold: float = None
     pitch_threshold: float = None
     roll_threshold: float = None
+
+    ## Variables set by the processing##
+    climatology_dataset: xr.Dataset = None
 
     def __init__(self, config_dict: dict = None):
         super().__init__(config_dict)
@@ -279,7 +289,16 @@ def process_viking(config: dict, drop_empty_attrs: bool = False, headless: bool 
     pconfig.drop_empty_attrs = drop_empty_attrs
     pconfig.headless = headless
 
+    _load_climatology(pconfig)  # This is done here to catch an error early and exit.
+
     _process_viking_data(pconfig)
+
+
+def _load_climatology(pconfig: ProcessConfig):
+    try:
+        pconfig.climatology_dataset = xr.open_dataset(pconfig.climatology_dataset_path)
+    except ValueError as msg:
+        l.warning(f'Unable to load the climatology netcdf file.\n\t Error: {msg}')
 
 
 @resolve_output_paths
@@ -517,11 +536,13 @@ def _meteoce_quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
 
     dataset = meteoce_quality_control(
         dataset,
-
+        regional_outlier=pconfig.regional_outlier,
+        absolute_outlier=pconfig.absolute_outlier,
         climatology_variables=pconfig.climatology_variables,
-        climatology_dataset=pconfig.climatology_dataset,
+        climatology_path=pconfig.climatology_dataset,
         climatology_threshold=pconfig.climatology_threshold,
         climatology_depth_interpolation_method=pconfig.climatology_depth_interpolation_method,
+        propagate_flags=pconfig.propagate_flags
     )
     return dataset
 

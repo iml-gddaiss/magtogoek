@@ -476,20 +476,38 @@ def climatology_outlier_test(
         variable: str,
         threshold: float,
         depth_interpolation_method='linear'
-):
-    """
-    Fixme Test needs to be carried out for:
-     - different resolutions
-     - missing values
-    Interpolation Method:
-        Default: linear.
-        - nearest, cubic, (see xarray documentation)
+) -> xr.DataArray:
+    """Flag data that are outside the climatology.
 
-    ORDINAL DAY CLIMATOLOGY
+    Fixme Test needs to be carried out for:  different resolutions, missing values
 
-    IMPORTANT
-    ---------
-    Flag propagation for Density/Oxygen/pH after correction.
+    Return boolean dataarray with values of:
+
+        [True] < (mean - threshold * std) <= [False] <= (mean + threshold * std) < [True]
+
+    Parameters
+    ----------
+    dataset :
+        Dataset containing the data to compare.
+    climatology_dataset :
+        Dataset containing the climatology.
+        For any give `variable_name` to compare with the climatology,
+        the climatology dataset should be structured as follow:
+            Variables:
+                variable_name + '_mean'
+                variable_name + '_std'
+            Time coords:
+                'dayofyear': 1 .. 366
+                'weekofyear': 1 .. 52
+                'monthofyear': 1 .. 12
+                'season': 'DJF', 'JJA', 'MAM', 'SON'
+    variable :
+        Variable to carry climatology test on.
+    threshold :
+        factor that is multiplier to the standard deviation.
+    depth_interpolation_method :
+        Only use when the data has a depth component.
+        "linear", "nearest", "zero", "slinear", "quadratic", "cubic" (See xarray documentation)
 
     """
     # Check for the variable in the dataset
@@ -541,3 +559,30 @@ def _find_climatology_variable_time_coord(dataarray: xr.DataArray) -> str:
         return CLIMATOLOGY_TIME_FORMATS[intersection[0]]
     else:
         raise ValueError(f'Climatology time not found in climatology dataset for variable: {dataarray.name}.')
+
+
+if __name__ == "__main__":
+    import xarray as xr
+
+    # CLIMATOLOGY COMPARISON TEST #
+    path = '/home/jeromejguay/WorkSpace/Data/Sillex2018/Raw/FreshWater/'
+    # data_path = path + 'discharge1944_2019.nc'
+    # clim_path = path + 'discharge1994_2019_clim.nc'
+
+    data_2d_path = path + 'test_2d_data.nc'
+    clim_2d_path = path + 'test_2d_clim.nc'
+
+    ds = xr.open_dataset(data_2d_path)
+    clim_ds = xr.open_dataset(clim_2d_path)
+
+    _variable = 'discharge'
+    _threshold = 1
+
+    outlier = climatology_outlier_test(
+        dataset=ds,
+        climatology_dataset=clim_ds,
+        variable=_variable,
+        threshold=_threshold,
+        depth_interpolation_method='linear'
+    )
+    outlier.plot()
