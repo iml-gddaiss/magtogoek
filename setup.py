@@ -42,7 +42,7 @@ setup(
         "pycurrents @ hg+https://currents.soest.hawaii.edu/hgstage/pycurrents",
     ],
     packages=find_packages(),
-    package_data={"": ["*.json"], "magtogoek/test": ["files/*.*"]},
+    package_data={"": ["*.json"], "magtogoek/tests": ["files/*.*"]},
     include_package_data=True,
     classifiers=["Programming Language :: Python :: 3"],
     python_requires="~=3.8",
