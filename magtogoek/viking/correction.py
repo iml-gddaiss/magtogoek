@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from magtogoek import logger as l
 from magtogoek.utils import ensure_list_format
-from magtogoek.wps.corrections import pH_correction_for_salinity, dissolved_oxygen_correction_winkler, \
+from magtogoek.wps.correction import pH_correction_for_salinity, dissolved_oxygen_correction_winkler, \
     dissolved_oxygen_correction_for_salinity_SCOR_WG_142, dissolved_oxygen_correction_for_pressure_JAC, \
     time_drift_correction, in_situ_sample_correction
 

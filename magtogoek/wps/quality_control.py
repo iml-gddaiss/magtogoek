@@ -7,7 +7,7 @@ from nptyping import NDArray
 import numpy as np
 
 from magtogoek import logger as l
-from magtogoek.quality_control import SPIKE_DETECTION_PARAMETERS
+from magtogoek.quality_control_common import SPIKE_DETECTION_PARAMETERS
 
 
 def spike_detection_test(data: NDArray, inner_thres: float, outer_thres: float):

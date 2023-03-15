@@ -51,8 +51,8 @@ from pandas import Timestamp
 from scipy.stats import circmean
 
 from magtogoek import logger as l
-from magtogoek.quality_control import IMPOSSIBLE_PARAMETERS_VALUES, FLAG_REFERENCE, FLAG_VALUES, FLAG_MEANINGS, \
-    outlier_values_test
+from magtogoek.quality_control_common import IMPOSSIBLE_PARAMETERS_VALUES, outlier_values_test
+from magtogoek.process_common import FLAG_ATTRIBUTES
 from magtogoek.sci_tools import circular_distance
 
 ABSOLUTE_IMPOSSIBLE_VELOCITY = 15
@@ -88,15 +88,11 @@ def no_adcp_quality_control(dataset: xr.Dataset):
             dataset[var + "_QC"] = dataset[var].copy().astype("int8") * 0
             dataset[var + "_QC"].attrs.update({
                 'quality_test': "",
-                "quality_date": Timestamp.now().strftime("%Y-%m-%d"),
-                "flag_meanings": FLAG_MEANINGS,
-                "flag_values": FLAG_VALUES,
-                "flag_reference": FLAG_REFERENCE
+                "quality_date": Timestamp.now().strftime("%Y-%m-%d")
             })
+            dataset[var + "_QC"].attrs.update(FLAG_ATTRIBUTES)
 
-    dataset.attrs["flags_reference"] = FLAG_REFERENCE
-    dataset.attrs["flags_values"] = FLAG_VALUES
-    dataset.attrs["flags_meanings"] = FLAG_MEANINGS
+    dataset.attrs.update(FLAG_ATTRIBUTES)
     dataset.attrs["quality_comments"] = "No quality control."
 
 
@@ -325,9 +321,8 @@ def adcp_quality_control(
     for var in list(dataset.variables):
         if "_QC" in var:
             dataset[var].attrs["quality_date"] = Timestamp.now().strftime("%Y-%m-%d")
-            dataset[var].attrs["flag_meanings"] = FLAG_MEANINGS
-            dataset[var].attrs["flag_values"] = FLAG_VALUES
-            dataset[var].attrs["flag_reference"] = FLAG_REFERENCE
+            dataset[var].attrs.update(FLAG_ATTRIBUTES)
+
 
     dataset.attrs["quality_comments"] = l.logbook.split("[Adcp Quality Control]\n")[1]
 
@@ -335,9 +330,7 @@ def adcp_quality_control(
     percent_good_vel = (np.sum(vel_flags == 1) + np.sum(vel_flags == 2)) / (len(dataset.depth) * len(dataset.time))
     l.log(f"{round(percent_good_vel * 100, 2)}% of the velocities have flags of 1 or 2.")
 
-    dataset.attrs["flags_reference"] = FLAG_REFERENCE
-    dataset.attrs["flags_values"] = FLAG_VALUES
-    dataset.attrs["flags_meanings"] = FLAG_MEANINGS
+    dataset.attrs.update(FLAG_ATTRIBUTES)
 
     dataset["binary_mask"] = (["depth", "time"], binary_mask)
 

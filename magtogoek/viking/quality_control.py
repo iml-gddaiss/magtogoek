@@ -35,8 +35,8 @@ import numpy as np
 from pandas import Timestamp
 import xarray as xr
 from magtogoek import logger as l
-from magtogoek.quality_control import IMPOSSIBLE_PARAMETERS_VALUES, FLAG_REFERENCE, FLAG_VALUES, FLAG_MEANINGS, \
-    outlier_values_test, climatology_outlier_test
+from magtogoek.quality_control_common import IMPOSSIBLE_PARAMETERS_VALUES, outlier_values_test, climatology_outlier_test
+from magtogoek.process_common import FLAG_ATTRIBUTES
 
 QC_VARIABLES = [
     'atm_pressure',  # Need since atm_pressure is used for correction Dissolved Oxygen or compute Density
@@ -74,9 +74,7 @@ def no_meteoce_quality_control(dataset: xr.Dataset):
 
     _add_ancillary_variables_to_dataset(dataset, variables=dataset.variables, default_flag=0)
 
-    dataset.attrs["flags_reference"] = FLAG_REFERENCE
-    dataset.attrs["flags_values"] = FLAG_VALUES
-    dataset.attrs["flags_meanings"] = FLAG_MEANINGS
+    dataset.attrs.update(FLAG_ATTRIBUTES)
     dataset.attrs["quality_comments"] = "No quality control."
 
 
@@ -175,23 +173,16 @@ def meteoce_quality_control(
     _print_percent_of_good_values(dataset)
 
     dataset.attrs["quality_comments"] = l.logbook.split("[Meteoce Quality Control]\n")[1]
-    dataset.attrs["flags_reference"] = FLAG_REFERENCE
-    dataset.attrs["flags_values"] = FLAG_VALUES
-    dataset.attrs["flags_meanings"] = FLAG_MEANINGS
+    dataset.attrs.update(FLAG_ATTRIBUTES)
 
 
 def _add_ancillary_variables_to_dataset(dataset: xr.Dataset, variables: str, default_flag: int = 1):
     for variable in set(dataset.variables).intersection(set(variables)):
         dataset[variable + "_QC"] = (
             ['time'], np.ones(dataset.time.shape).astype(int) * default_flag,
-            {
-                'quality_test': "",
-                "quality_date": Timestamp.now().strftime("%Y-%m-%d"),
-                "flag_meanings": FLAG_MEANINGS,
-                "flag_values": FLAG_VALUES,
-                "flag_reference": FLAG_REFERENCE
-            }
+            {'quality_test': "", "quality_date": Timestamp.now().strftime("%Y-%m-%d")}
         )
+        dataset[variable + "_QC"].attrs.update(FLAG_ATTRIBUTES)
 
 
 def _climatology_outlier_tests(

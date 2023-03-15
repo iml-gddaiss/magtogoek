@@ -7,10 +7,10 @@ import xarray as xr
 from pathlib import Path
 
 from magtogoek import TERMINAL_WIDTH
-from magtogoek import logger as l, PLATFORM_TYPES
+from magtogoek import logger as l
 from magtogoek.attributes_formatter import compute_global_attrs
 from magtogoek.navigation import load_navigation
-from magtogoek.platforms import PlatformMetadata, load_platform_metadata, default_platform_metadata
+from magtogoek.platforms import PlatformMetadata, load_platform_metadata
 from magtogoek.utils import ensure_list_format
 
 DEFAULT_PLATFORM_TYPE = "buoy"
@@ -45,6 +45,23 @@ QC_FILL_VALUE = 127
 QC_ENCODING = {"dtype": "int8", "_FillValue": QC_FILL_VALUE}
 DATA_FILL_VALUE = -9999.0
 DATA_ENCODING = {"dtype": "float32", "_FillValue": DATA_FILL_VALUE}
+
+FLAG_ATTRIBUTES = {
+    "flag_meanings": "BODC SeaDataNet",
+    "flag_values": (0, 1, 2, 3, 4, 5, 6, 7, 8, 9),
+    "flag_reference": (
+        "no_quality_control",
+        "good_value",
+        "probably_good_value",
+        "probably_bad_value",
+        "bad_value",
+        "changed_value",
+        "value_below_detection",
+        "value_in_excess",
+        "interpolated_value",
+        "missing_value"
+    )
+}
 
 
 class BaseProcessConfig:

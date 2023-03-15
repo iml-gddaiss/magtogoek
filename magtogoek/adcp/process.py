@@ -47,13 +47,10 @@ Note DATA_TYPES: Missing for ship adcp. Set to adcp for now
 FIXME SOURCE : moored adcp ?
 """
 
-# import getpass
 
 import numpy as np
-# import pandas as pd
 import typing as tp
 import xarray as xr
-from pathlib import Path
 
 import magtogoek.logger as l
 from magtogoek.platforms import default_platform_metadata
@@ -272,6 +269,7 @@ class ProcessConfig(BaseProcessConfig):
         self.variables_to_drop = VARIABLES_TO_DROP
         self.global_attributes_to_drop = GLOBAL_ATTRS_TO_DROP
         self.p01_codes_map = P01_CODES_MAP
+
 
 def process_adcp(config: dict, drop_empty_attrs: bool = False, headless: bool = False):
     """Process adcp data with parameters from a config file.

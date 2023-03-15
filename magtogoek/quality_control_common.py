@@ -10,20 +10,6 @@ IMPOSSIBLE_PARAMETERS_VALUES = json2dict(IMPOSSIBLE_PARAMETERS_VALUES_FILE_PATH)
 SPIKE_DETECTION_PARAMETERS_FILE_PATH = resolve_relative_path("files/spike_thresholds.json", __file__)
 SPIKE_DETECTION_PARAMETERS = json2dict(SPIKE_DETECTION_PARAMETERS_FILE_PATH)
 
-FLAG_REFERENCE = "BODC SeaDataNet"
-FLAG_VALUES = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9)
-FLAG_MEANINGS = (
-    "no_quality_control",
-    "good_value",
-    "probably_good_value",
-    "probably_bad_value",
-    "bad_value",
-    "changed_value",
-    "value_below_detection",
-    "value_in_excess",
-    "interpolated_value",
-    "missing_value",
-)
 CLIMATOLOGY_TIME_FORMATS = {
         'dayofyear': 'time.dayofyear',
         'weekofyear': 'time.week',
