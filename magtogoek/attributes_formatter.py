@@ -286,15 +286,19 @@ def _add_ancillary_variables_to_var_attrs(dataset: xr.Dataset):
     to the corresponding variables.
     """
     for var in list(dataset.variables):
-        if "_QC" == var[-3:]:
-            dataset[var[:-3]].attrs["ancillary_variables"] = var
+        if "_QC" == var:
+            param = var.split("_QC")[0]
+            if "ancillary_variables" in dataset[param].attrs:
+                dataset[param].attrs["ancillary_variables"] += " " + var
+            else:
+                dataset[param].attrs["ancillary_variables"] = var
 
 
 def _add_names_to_qc_var_attrs(dataset: xr.Dataset) -> None:
     """add long_name and standard_name to QualityControl `_QC` variables."""
     for var in list(map(str, dataset.variables)):
         if "_QC" in var:
-            value = f"Quality flag for {var.split('_')[0]}"
+            value = f"Quality flag for {var.split('_QC')[0]}"
             dataset[var].attrs["long_name"] = value
             dataset[var].attrs["standard_name"] = value
 

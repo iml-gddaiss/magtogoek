@@ -43,6 +43,7 @@ DEPTH_ENCODING = {
 }
 QC_FILL_VALUE = 127
 QC_ENCODING = {"dtype": "int8", "_FillValue": QC_FILL_VALUE}
+
 DATA_FILL_VALUE = -9999.0
 DATA_ENCODING = {"dtype": "float32", "_FillValue": DATA_FILL_VALUE}
 
