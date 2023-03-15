@@ -50,9 +50,10 @@ import xarray as xr
 from pandas import Timestamp
 from scipy.stats import circmean
 
-from magtogoek import logger as l, IMPOSSIBLE_PARAMETERS_VALUES, FLAG_REFERENCE, FLAG_VALUES, FLAG_MEANINGS
+from magtogoek import logger as l
+from magtogoek.quality_control import IMPOSSIBLE_PARAMETERS_VALUES, FLAG_REFERENCE, FLAG_VALUES, FLAG_MEANINGS, \
+    outlier_values_test
 from magtogoek.sci_tools import circular_distance
-from magtogoek.tools import outlier_values_test
 
 ABSOLUTE_IMPOSSIBLE_VELOCITY = 15
 

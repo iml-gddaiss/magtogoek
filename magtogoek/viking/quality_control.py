@@ -34,9 +34,9 @@ from typing import *
 import numpy as np
 from pandas import Timestamp
 import xarray as xr
-from magtogoek import logger as l, FLAG_VALUES, FLAG_MEANINGS, FLAG_REFERENCE, IMPOSSIBLE_PARAMETERS_VALUES
-from magtogoek.tools import outlier_values_test, climatology_outlier_test
-
+from magtogoek import logger as l
+from magtogoek.quality_control import IMPOSSIBLE_PARAMETERS_VALUES, FLAG_REFERENCE, FLAG_VALUES, FLAG_MEANINGS, \
+    outlier_values_test, climatology_outlier_test
 
 QC_VARIABLES = [
     'atm_pressure',  # Need since atm_pressure is used for correction Dissolved Oxygen or compute Density
@@ -228,6 +228,11 @@ def _impossible_values_tests(dataset: xr.Dataset, region: str, flag: int):
     outliers_values = IMPOSSIBLE_PARAMETERS_VALUES[region]
 
     for variable in set(dataset.variables).intersection(set(outliers_values.keys())):
+        if 'units' in dataset[variable].attrs:
+            if dataset[variable].attrs['units'] != outliers_values[variable]['units']:
+                l.warning(f"Could not carry out impossible values test (region: {region}) for {variable} due units mismatch.\n"
+                          f"Expected {dataset[variable].attrs['units']}")
+
         outliers_flag = outlier_values_test(
             dataset[variable].data,
             lower_limit=outliers_values[variable]['min'],

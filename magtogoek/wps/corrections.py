@@ -252,9 +252,6 @@ def time_drift_correction(
     elif len(drift_time) != len(drift):
         raise ValueError(f'Mismatch length for `drift_time` and `drift`. {len(drift_time), len(drift)}')
 
-    print(drift)
-    print(drift_time)
-
     _data = xr.DataArray(data, coords={'time': data_time})
     _drift = xr.DataArray(drift, coords={'time': drift_time})
 

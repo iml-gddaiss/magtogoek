@@ -118,10 +118,10 @@ def _dissolved_oxygen_winkler_correction(dataset: xr.Dataset, pconfig: "ProcessC
                 dataset['dissolved_oxygen'].attrs["corrections"].append('Winkler correction carried out.')
             else:
                 l.warning(
-                    f'Winkler dissolved oxygen correction aborted. Wrong number of winkler coefficient. Expected 2.')
+                    f'Winkler dissolved oxygen correction aborted. Wrong number of Winkler coefficient. Expected 2.')
         else:
             l.warning(
-                f'Winkler dissolved oxygen correction aborted. Wrong number of rinko coefficient. Expected 6.')
+                f'Winkler dissolved oxygen correction aborted. Wrong number of Rinko coefficient. Expected 6.')
     else:
         l.warning(
             f'Winkler dissolved oxygen correction aborted. Temperature data missing.')

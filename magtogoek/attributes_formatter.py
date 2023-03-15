@@ -32,19 +32,16 @@ Sea Also
 Read the functions and the docs below. They are pretty explicit.
 """
 import typing as tp
-from pathlib import Path
 
 import numpy as np
 import xarray as xr
 
 import magtogoek.logger as l
-from magtogoek.utils import json2dict
+from magtogoek.utils import json2dict, resolve_relative_path
 
 
 STATIC_ATTRIBUTES_RELATIVE_FILE_PATH = "files/CF_P01_GF3_formats.json"
-STATIC_ATTRIBUTES_ABSOLUTE_FILE_PATH = (
-    Path(__file__).resolve().parent.joinpath(STATIC_ATTRIBUTES_RELATIVE_FILE_PATH).resolve()
-)
+STATIC_ATTRIBUTES_ABSOLUTE_FILE_PATH = resolve_relative_path(STATIC_ATTRIBUTES_RELATIVE_FILE_PATH, __file__)
 
 
 CF_P01_GF3_ATTRS_KEY_TO_ADD = [
