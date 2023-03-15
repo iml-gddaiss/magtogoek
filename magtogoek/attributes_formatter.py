@@ -286,9 +286,9 @@ def _add_ancillary_variables_to_var_attrs(dataset: xr.Dataset):
     to the corresponding variables.
     """
     for var in list(dataset.variables):
-        if "_QC" == var:
+        if "_QC" in var:
             param = var.split("_QC")[0]
-            if "ancillary_variables" in dataset[param].attrs:
+            if "ancillary_variables" in dataset[param].attrs
                 dataset[param].attrs["ancillary_variables"] += " " + var
             else:
                 dataset[param].attrs["ancillary_variables"] = var

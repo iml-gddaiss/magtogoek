@@ -34,6 +34,8 @@ from typing import *
 import numpy as np
 from pandas import Timestamp
 import xarray as xr
+from typing import List
+
 from magtogoek import logger as l
 from magtogoek.quality_control_common import IMPOSSIBLE_PARAMETERS_VALUES, outlier_values_test, climatology_outlier_test
 from magtogoek.process_common import FLAG_ATTRIBUTES
@@ -179,37 +181,10 @@ def meteoce_quality_control(
 def _add_ancillary_variables_to_dataset(dataset: xr.Dataset, variables: str, default_flag: int = 1):
     for variable in set(dataset.variables).intersection(set(variables)):
         dataset[variable + "_QC"] = (
-            ['time'], np.ones(dataset.time.shape).astype(int) * default_flag,
+            dataset[variable].dims, np.ones(dataset[variable].shape).astype(int) * default_flag,
             {'quality_test': "", "quality_date": Timestamp.now().strftime("%Y-%m-%d")}
         )
         dataset[variable + "_QC"].attrs.update(FLAG_ATTRIBUTES)
-
-
-def _climatology_outlier_tests(
-        dataset: xr.Dataset,
-        climatology_dataset: xr.Dataset,
-        variables: str,
-        threshold: float,
-        depth_interpolation_method: str,
-):
-    for variable in variables:
-        try:
-            outliers_flag = climatology_outlier_test(
-                dataset=dataset,
-                climatology_dataset=climatology_dataset,
-                variable=variable,
-                threshold=threshold,
-                depth_interpolation_method=depth_interpolation_method
-            )
-            dataset[variable + "_QC"].where(~outliers_flag, other=3)
-
-            test_comment = f"Climatology outlier test. (flag=3)"
-            l.log(f"{variable}" + test_comment)
-            dataset[variable + "_QC"].attrs['quality_test'].append(test_comment + "\n")
-
-        except ValueError as msg:
-            l.warning(f'Unable to carry out climatology outlier qc on {variable}.\n\t Error: {msg}')
-    pass
 
 
 def _impossible_values_tests(dataset: xr.Dataset, region: str, flag: int):
@@ -236,7 +211,7 @@ def _impossible_values_tests(dataset: xr.Dataset, region: str, flag: int):
             f"and greater than {outliers_values[variable]['max']} {outliers_values[variable]['units']} (flag={flag})."
 
         l.log(f"{variable} :" + test_comment)
-        dataset[variable+"_QC"].attrs['quality_test'].append(test_comment + "\n")
+        dataset[variable+"_QC"].attrs['quality_test'] += test_comment + "\n"
 
 
 def _flag_propagation(dataset: xr.Dataset, use_atm_pressure: bool = False):
@@ -265,9 +240,9 @@ def _flag_propagation(dataset: xr.Dataset, use_atm_pressure: bool = False):
     for variable in set(dataset.variables).intersection(set(flag_propagation_rules.keys())):
         _flags = flag_propagation_rules[variable] + [variable]
         dataset[variable+"_QC"] = np.stack([dataset[v+'_QC'].data for v in _flags], axis=-1).max(axis=-1)
-        propagation_comment = f'Flags propagation {flag_propagation_rules[variable]} -> {variable}.\n'
+        propagation_comment = f'Flags propagation {flag_propagation_rules[variable]} -> {variable}.'
         l.log(propagation_comment)
-        dataset[variable].attrs['quality_test'].append(propagation_comment)
+        dataset[variable].attrs['quality_test'] += propagation_comment + "\n"
 
 
 def _print_percent_of_good_values(dataset: xr.Dataset):
@@ -277,3 +252,48 @@ def _print_percent_of_good_values(dataset: xr.Dataset):
             percent_of_good_values = np.sum(dataset.variables <= 2) / len(dataset.time)
             l.log(f"{round(percent_of_good_values * 100, 2)}% of {variable.strip('_QC')} have flags of 1 or 2.")
 
+
+def _climatology_outlier_tests(
+        dataset: xr.Dataset,
+        climatology_dataset: xr.Dataset,
+        variables: List[str],
+        threshold: float,
+        depth_interpolation_method: str,
+):
+    """Carry climatology_outlier_test over parameters present in both dataset and climatology_dataset
+
+        Parameters
+        ----------
+        dataset :
+            Dataset containing the data to compare.
+        climatology_dataset :
+            Dataset containing the climatology.
+            For any give `variable_name` to compare with the climatology,
+            the climatology dataset should be structured as follow:
+                Variables:
+                    variable_name + '_mean'
+                    variable_name + '_std'
+                Time coords:
+                    'dayofyear': 1 .. 366
+                    'weekofyear': 1 .. 52
+                    'monthofyear': 1 .. 12
+                    'season': 'DJF', 'JJA', 'MAM', 'SON'
+        variable :
+            Variable to carry climatology test on.
+        threshold :
+            factor that is multiplier to the standard deviation.
+        depth_interpolation_method :
+            Only use when the data has a depth component.
+            "linear", "nearest", "zero", "slinear", "quadratic", "cubic" (See xarray documentation)
+        """
+    for variable in variables:
+        try:
+            climatology_outlier_test(
+                dataset=dataset,
+                climatology_dataset=climatology_dataset,
+                variable=variable,
+                threshold=threshold,
+                depth_interpolation_method=depth_interpolation_method
+            )
+        except ValueError as msg:
+            l.warning(f'Unable to carry out climatology outlier qc on {variable}.\n\t Error: {msg}')

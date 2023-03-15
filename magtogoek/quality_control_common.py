@@ -1,7 +1,10 @@
 import numpy as np
 import xarray as xr
 from nptyping import NDArray
+from pandas import Timestamp
 
+from magtogoek import logger as l
+from magtogoek.process_common import FLAG_ATTRIBUTES
 from magtogoek.utils import resolve_relative_path, json2dict
 
 IMPOSSIBLE_PARAMETERS_VALUES_FILE_PATH = resolve_relative_path("files/impossible_parameter_values.json", __file__)
@@ -38,7 +41,7 @@ def outlier_values_test(data: NDArray, lower_limit: float, upper_limit: float) -
     return np.bitwise_or(data < lower_limit, data > upper_limit)
 
 
-def climatology_outlier_test(
+def find_climatology_outlier(
         dataset: xr.Dataset,
         climatology_dataset: xr.Dataset,
         variable: str,
@@ -48,10 +51,6 @@ def climatology_outlier_test(
     """Flag data that are outside the climatology.
 
     Fixme Test needs to be carried out for:  different resolutions, missing values
-
-    Return boolean dataarray with values of:
-
-        [True] < (mean - threshold * std) <= [False] <= (mean + threshold * std) < [True]
 
     Parameters
     ----------
@@ -77,6 +76,11 @@ def climatology_outlier_test(
         Only use when the data has a depth component.
         "linear", "nearest", "zero", "slinear", "quadratic", "cubic" (See xarray documentation)
 
+    Returns
+    -------
+    Return boolean dataarray with values of:
+
+        [True] < (mean - threshold * std) <= [False] <= (mean + threshold * std) < [True]
     """
     # Check for the variable in the dataset
     if variable not in dataset:
@@ -129,6 +133,65 @@ def _find_climatology_variable_time_coord(dataarray: xr.DataArray) -> str:
         raise ValueError(f'Climatology time not found in climatology dataset for variable: {dataarray.name}.')
 
 
+def climatology_outlier_test(
+        dataset: xr.Dataset,
+        climatology_dataset: xr.Dataset,
+        variable: str,
+        threshold: float,
+        depth_interpolation_method: str,
+):
+    """Find climatology outlier and add an ancillary variable to the dataset.
+
+    Parameters
+    ----------
+    dataset :
+        Dataset containing the data to compare.
+    climatology_dataset :
+        Dataset containing the climatology.
+        For any give `variable_name` to compare with the climatology,
+        the climatology dataset should be structured as follow:
+            Variables:
+                variable_name + '_mean'
+                variable_name + '_std'
+            Time coords:
+                'dayofyear': 1 .. 366
+                'weekofyear': 1 .. 52
+                'monthofyear': 1 .. 12
+                'season': 'DJF', 'JJA', 'MAM', 'SON'
+    variable :
+        Variable to carry climatology test on.
+    threshold :
+        factor that is multiplier to the standard deviation.
+    depth_interpolation_method :
+        Only use when the data has a depth component.
+        "linear", "nearest", "zero", "slinear", "quadratic", "cubic" (See xarray documentation)
+    """
+    outliers_flag = find_climatology_outlier(
+        dataset=dataset,
+        climatology_dataset=climatology_dataset,
+        variable=variable,
+        threshold=threshold,
+        depth_interpolation_method=depth_interpolation_method
+    )
+
+    _add_climatology_qc_variable(dataset, variable)
+
+    dataset[variable + "_QC_climatology_outlier"] = dataset[variable + "_QC_climatology_outlier"].where(~outliers_flag, other=3)
+
+    test_comment = f"Climatology outlier test. Range: {threshold} times the standard deviation around the mean. (flag=3)"
+    l.log(f"{variable}: " + test_comment)
+    dataset[variable + "_QC_climatology_outlier"].attrs['quality_test'] += test_comment + "\n"
+
+
+def _add_climatology_qc_variable(dataset: xr.Dataset, variable: str):
+    """"""
+    dataset[variable + "_QC_climatology_outlier"] = (
+        dataset[variable].dims, np.ones(dataset[variable].shape).astype(int),
+        {'quality_test': "", "quality_date": Timestamp.now().strftime("%Y-%m-%d")}
+    )
+    dataset[variable + "_QC_climatology_outlier"].attrs.update(FLAG_ATTRIBUTES)
+
+
 if __name__ == "__main__":
     import xarray as xr
 
@@ -146,7 +209,15 @@ if __name__ == "__main__":
     _variable = 'discharge'
     _threshold = 1
 
-    outlier = climatology_outlier_test(
+    climatology_outlier_test(
+        dataset=ds,
+        climatology_dataset=clim_ds,
+        variable=_variable,
+        threshold=_threshold,
+        depth_interpolation_method='linear'
+    )
+
+    outlier = find_climatology_outlier(
         dataset=ds,
         climatology_dataset=clim_ds,
         variable=_variable,
