@@ -21,18 +21,21 @@ Notes:
     navigation in the app quicker.
 """
 
+import os
 import logging
 import sys
+import shutil
 import typing as tp
 from pathlib import Path
 from subprocess import run as subp_run
 
 import click
 
-from magtogoek.app_options import general_options, adcp_options, adcp_shared_options, viking_options, add_options
+from magtogoek import LOCAL_CONFIGURATION_PATH, DEFAULT_CONFIGURATION_PATH, LOCAL_CONFIG_EXISTS, VERSION, TERMINAL_WIDTH
+from magtogoek.app_options import general_options, adcp_options, adcp_shared_options, meteoce_options, add_options
 # from magtogoek.configfile import _get_taskparser
 from magtogoek.utils import is_valid_filename, json2dict, resolve_relative_path
-from magtogoek import VERSION, TERMINAL_WIDTH
+
 
 # ---------- Module or functions imported by commands ----------- #
 # NOTE: PROBABLY NOT UP TO DATE
@@ -68,8 +71,11 @@ def _print_info(ctx, callback, info_called):
         else:
             click.secho("\nArguments:", fg="red")
         _print_arguments(ctx.info_name, ctx.parent)
-        click.secho("\nOptions", fg="red")
+        click.secho("\nOptions:", fg="red")
         click.echo("  Use  -h/--help to show the options")
+        if LOCAL_CONFIG_EXISTS:
+            click.secho("\nConfigurations:", fg="red")
+            click.echo(f"  {LOCAL_CONFIGURATION_PATH}")
         click.echo("\n")
         sys.exit()
 
@@ -96,6 +102,15 @@ def magtogoek(info, verbosis):
 # --------------------------- #
 #        mtgk command         #
 # --------------------------- #
+
+@magtogoek.command("init")
+@add_options(common_options)
+@click.option('-r', '--repair', is_flag=True, default=False)
+def init(info, repair):
+    """Command to create a local magtogoek configuration"""
+    _init_magtogoek(repair)
+
+
 @magtogoek.command("process")
 @add_options(common_options)
 @click.argument("config_file", metavar="[config_file]", type=click.Path(exists=True))
@@ -120,17 +135,17 @@ def process(info, config_file: str, **options):
         cli_options['mk_fig'] = options['mk_fig']
 
     try:
-        configuration, process = load_configfile(config_file, cli_options=cli_options)
+        configuration = load_configfile(config_file, cli_options=cli_options)
     except (ParsingError, UnicodeDecodeError):
         print("Failed to open the given configfile.\n mtgk process aborted.")
         sys.exit()
 
-    if process == "adcp":
+    if configuration['HEADER']['process'] == "adcp":
         from magtogoek.adcp.process import process_adcp
         process_adcp(configuration, headless=options['headless'])
-    elif process == "viking":
-        from magtogoek.viking.process import process_viking
-        process_viking(configuration, headless=options['headless'])
+    elif configuration['HEADER']['process'] == "meteoce":
+        from magtogoek.meteoce.process import process_meteoce
+        process_meteoce(configuration, headless=options['headless'])
 
 
 # --------------------------- #
@@ -200,38 +215,38 @@ def config_adcp(
 
     _print_passed_options(options)
     config_name = is_valid_filename(config_name, ext=".ini")
-    options['sensor_type'] = 'adcp'
+    options['process'] = 'adcp'
     options.update({k: v for k, v in zip(("platform_file", "platform_id", "sensor_id"), options.pop('platform'))})
 
     write_configfile(filename=config_name, process="adcp", cli_options=options)
     click.secho(f"Config file created for adcp processing -> {config_name}", bold=True)
 
 
-@config.command("viking")
+@config.command("meteoce")
 @add_options(common_options)
 @click.argument("config_name", metavar="[config_name]", type=str)
 # SHOULD BE ONLY A PLATFORM ID OPTION
 # @click.option("-T", "--platform", type=(click.Path(exists=True), str, str),
 #               help="platform_file, platform_id, sensor_id", default=(None, None, None), nargs=3)
 @add_options(general_options())
-@add_options(viking_options())
+@add_options(meteoce_options())
 @add_options(adcp_shared_options())
 @click.pass_context
-def config_viking(
+def config_meteoce(
         ctx, info, config_name, **options,
 ):
-    """Command to make a viking config files. The [OPTIONS] can be added
+    """Command to make a meteoce config files. The [OPTIONS] can be added
     before or after the [config_name]."""
 
     from magtogoek.config_handler import write_configfile
 
     _print_passed_options(options)
     config_name = is_valid_filename(config_name, ext=".ini")
-    options['sensor_type'] = 'viking_buoy' # mhmmm k
+    options['process'] = 'meteoce'
     # options.update({k: v for k, v in zip(("platform_file", "platform_id", "sensor_id"), options.pop('platform'))})
 
-    write_configfile(filename=config_name, process="viking_buoy", cli_options=options)
-    click.secho(f"Config file created for viking buoy processing -> {config_name}", bold=True)
+    write_configfile(filename=config_name, process="meteoce", cli_options=options)
+    click.secho(f"Config file created for meteoce buoy processing -> {config_name}", bold=True)
 
 
 # ---------------------------- #
@@ -259,7 +274,7 @@ def quick_adcp(ctx, info, input_files: tuple, sonar: str, yearbase: int, **optio
     before or after the [inputs_files]."""
     from magtogoek.config_handler import cli_options_to_config
     from magtogoek.adcp.process import process_adcp
-    options.update({"input_files": input_files, "sensor_type": "adcp", "yearbase": yearbase, "sonar": sonar})
+    options.update({"input_files": input_files, "process": "adcp", "yearbase": yearbase, "sonar": sonar})
     _print_passed_options(options)
     configuration = cli_options_to_config('adcp', options, cwd=str(Path().cwd()))
 
@@ -268,7 +283,7 @@ def quick_adcp(ctx, info, input_files: tuple, sonar: str, yearbase: int, **optio
                  headless=options['headless'])
 
 
-# @quick.command("viking")
+# @quick.command("meteoce")
 # @add_options(common_options)
 # @click.argument("input_files", metavar="[input_files]", nargs=-1, type=click.Path(exists=True), required=True)
 # @add_options(general_options(input_files=False))
@@ -278,12 +293,12 @@ def quick_adcp(ctx, info, input_files: tuple, sonar: str, yearbase: int, **optio
 #               is_flag=True,
 #               help="""Using remotely with no display capability""")
 # @click.pass_context
-# def quick_viking(ctx, info, input_files: tuple, sonar: str, yearbase: int, **options: dict):
-#     """Command to quickly process viking files. The [OPTIONS] can be added
+# def quick_meteoce(ctx, info, input_files: tuple, sonar: str, yearbase: int, **options: dict):
+#     """Command to quickly process meteoce files. The [OPTIONS] can be added
 #     before or after the [inputs_files]."""
 #     from magtogoek.config_handler import cli_options_to_config
-#     from magtogoek.viking.process import process_viking
-#     options.update({"input_files": input_files, "sensor_type": "viking_buoy"})
+#     from magtogoek.meteoce.process import process_viking
+#     options.update({"input_files": input_files, "process": "viking_buoy"})
 #     _print_passed_options(options)
 #
 #     configuration = cli_options_to_config('viking_buoy', options, cwd=str(Path().cwd()))
@@ -391,6 +406,23 @@ def plot_adcp(ctx, info, input_file, **options):
 #        Functions         #
 # ------------------------ #
 
+def _init_magtogoek(repair: bool):
+    if repair is True and LOCAL_CONFIG_EXISTS:
+        missing_files = set(os.listdir(DEFAULT_CONFIGURATION_PATH)).difference(
+            set(os.listdir(LOCAL_CONFIGURATION_PATH)))
+        if missing_files:
+            for file in missing_files:
+                shutil.copyfile(DEFAULT_CONFIGURATION_PATH.joinpath(file), LOCAL_CONFIGURATION_PATH.joinpath(file))
+            click.echo(f'Magtogoek is missing files were written.')
+        else:
+            click.echo(f'Nothing to do. Local config has no missing files.')
+    else:
+        try:
+            shutil.copytree(DEFAULT_CONFIGURATION_PATH, LOCAL_CONFIGURATION_PATH)
+            click.echo(f'Magtogoek configuration written to {LOCAL_CONFIGURATION_PATH}.')
+        except FileExistsError:
+            click.echo(f'Magtogoek is already initialized.')
+
 
 def _print_passed_options(ctx_params: tp.Dict):
     """print pass and default options/params"""
@@ -437,35 +469,42 @@ def _print_logo(logo_path: str = "files/logo.json", group: str = ""):
 def _print_arguments(group, parent):
     """print group(command) command(arguments)"""
     _parent = parent.info_name if parent else ""
-    messages = {"mtgk": '\n'.join(["  config".ljust(20, " ") + "Command to make configuration files",
-                                   "  process".ljust(20, " ") + "Command to process data with configuration files",
-                                   "  quick".ljust(20, " ") + "Command to quickly process data files",
-                                   "  check".ljust(20, " ") + "Command to check the information on some file type",
-                                   "  compute".ljust(20, " ") + "Command to compute certain quantities"]),
-                "config":
-                    '\n'.join(["  adcp".ljust(20, " ") + "Config file for adcp data. ",
-                               "  platform".ljust(20, " ") + "Creates a platform.json file"]),
-                "quick":
-                    "  adcp".ljust(20, " ") + "Process adcp data.",
+    messages = {
+        "mtgk": '\n'.join([
+            "  init".ljust(20, " ") + "Command to create a local magtogoek configuration",
+            "  config".ljust(20, " ") + "Command to make configuration files",
+            "  quick".ljust(20, " ") + "Command to quickly process data files",
+            "  process".ljust(20, " ") + "Command to process data with configuration files",
+            "  check".ljust(20, " ") + "Command to check the information on some file type",
+            "  compute".ljust(20, " ") + "Command to compute certain quantities",
+            "  odf2nc".ljust(20, " ") + "Command to convert odf to netcdf"
+        ]),
+        "init":
+            "[takes no arguments]",
+        "config":
+            '\n'.join(["  adcp".ljust(20, " ") + "Config file for adcp data. ",
+                       "  platform".ljust(20, " ") + "Creates a platform.json file"]),
+        "quick":
+            "  adcp".ljust(20, " ") + "Process adcp data.",
 
-                "process": ("  [config_name]".ljust(20, " ")
-                            + "Filename (path/to/file) of the configuration file."),
-                "compute":
-                    "  nav".ljust(20, " ")
-                    + "Command to compute u_ship, v_ship, bearing from gsp data.",
+        "process": ("  [config_name]".ljust(20, " ")
+                    + "Filename (path/to/file) of the configuration file."),
+        "compute":
+            "  nav".ljust(20, " ")
+            + "Command to compute u_ship, v_ship, bearing from gsp data.",
 
-                "nav": (
-                        "  [file_name]".ljust(20, " ")
-                        + "Filename (path/to/file, or expression) of the GPS files."
+        "nav": (
+                "  [file_name]".ljust(20, " ")
+                + "Filename (path/to/file, or expression) of the GPS files."
 
-                ),
-                "check": "  rti".ljust(20, " ") + "Print information on the rti .ens files. ",
+        ),
+        "check": "  rti".ljust(20, " ") + "Print information on the rti .ens files. ",
 
-                "adcp": "  [config_name]".ljust(20, " ")
-                        + "Filename (path/to/file) for the new configuration file.",
-                "platform": "  [filename]".ljust(20, " ")
-                            + "Filename (path/to/file) for the new platform file.",
-                }
+        "adcp": "  [config_name]".ljust(20, " ")
+                + "Filename (path/to/file) for the new configuration file.",
+        "platform": "  [filename]".ljust(20, " ")
+                    + "Filename (path/to/file) for the new platform file.",
+        }
     if group in messages:
         click.secho(messages[group], fg="white")
 
@@ -478,6 +517,11 @@ def _print_description(group):
         " data can be processed. This package is developed by the Scientific"
         " Advice, Information and Support Branch at the Fisheries and Ocean Canada"
         " Maurice-Lamontagne Institute."),
+        "init": (
+            "Creates a local magtogoek configurations: "
+            "   - ODF and Netcdf variables meta data files."
+            "   - Quality control test thresholds."
+        ),
         "config": (
             "The config command is used to create `.ini` configuration files or `.json`"
             " platform files. Configuration `.ini` files are used to write the desired"
@@ -540,6 +584,8 @@ def _print_usage(group, parent):
 
     if group == "mtgk":
         click.echo("  mtgk [config, process, quick, check]")
+    if group == "init":
+        click.echo("  mtgk init")
     if group == "config":
         click.echo("  mtgk config [adcp, platform,] [CONFIG_NAME] [OPTIONS]")
     if group == "platform":

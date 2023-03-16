@@ -2,7 +2,7 @@
 
     These functions are called by the app command `process` (magtogoek.app)
 
-    Use the function: magtogoek.config_handler.get_config_taskparser(sensor_type = 'adcp').as_dict() to get a config to
+    Use the function: magtogoek.config_handler.get_config_taskparser(process = 'adcp').as_dict() to get a config to
     input to magtogoek.adcp.process.process_adcp_data(config). Replace the following value in the `config` the
     appropriate value:
         -config['INPUT']['input_files']: str or list(str) = 'path/to/file'
@@ -71,7 +71,6 @@ from magtogoek.tools import (
 l.get_logger('adcp_processing')
 
 STANDARD_GLOBAL_ATTRIBUTES = {
-    "sensor_type": "adcp",
     "featureType": "timeSeriesProfile",
 }
 
@@ -79,7 +78,6 @@ VARIABLES_TO_DROP = [
     "binary_mask"
 ]
 GLOBAL_ATTRS_TO_DROP = [
-    "sensor_type",
     "platform_type",
     "xducer_depth",
     "sonar",

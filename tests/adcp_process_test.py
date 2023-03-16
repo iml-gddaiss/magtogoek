@@ -11,7 +11,7 @@ QUICK_OUTPUT_FILES = ["data/raw_adcp_data/iml6_2017_wh.nc"]
 
 
 def test_process_adcp():
-    configuration, sensor_type = load_configfile(CONFIG_FILENAME)
+    configuration = load_configfile(CONFIG_FILENAME)
 
     process_adcp(configuration, drop_empty_attrs=False, headless=False)
 
@@ -22,7 +22,7 @@ def test_process_adcp():
 def test_quick_adcp():
 
     options = {"input_files": RAW_ADCP_FILE,
-               "sensor_type": "adcp",
+               "process": "adcp",
                "sonar": "wh", "no_fig": True,
                "bodc_name": True}
     configuration = cli_options_to_config('adcp', options, cwd=str(Path().cwd()))

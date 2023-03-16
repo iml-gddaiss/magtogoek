@@ -1,5 +1,5 @@
 """
-Module that contains function for viking data quality control.
+Module that contains function for meteoce data quality control.
 
 
 Tests Flags

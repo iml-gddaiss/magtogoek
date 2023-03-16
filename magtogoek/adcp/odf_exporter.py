@@ -8,9 +8,10 @@ from datetime import datetime
 import pandas as pd
 import xarray as xr
 from typing import List, Union, Tuple, Dict, Optional
+from magtogoek import CONFIGURATION_PATH
 from magtogoek.odf_format import Odf, odf_time_format
 from magtogoek.platforms import PlatformMetadata
-from magtogoek.utils import json2dict, resolve_relative_path
+from magtogoek.utils import json2dict
 
 REPOSITORY_ADDRESS = "https://github.com/JeromeJGuay/magtogoek"
 
@@ -38,7 +39,7 @@ VEL_PARAMTERS = ("time", "depth", "u", "v", "w", "e")
 ANC_PARAMTERS = ('time', 'pitch', 'roll_', 'heading', 'pres', 'temperature', 'lon', 'lat')
 QC_PARAMETERS = ('u', 'v', 'w', 'pres', 'temperature')
 
-PARAMETERS_METADATA_PATH = resolve_relative_path("../files/odf_parameters_metadata.json", __file__)
+PARAMETERS_METADATA_PATH = CONFIGURATION_PATH.joinpath("odf_parameters_metadata.json")
 
 PARAMETERS_METADATA = json2dict(PARAMETERS_METADATA_PATH)
 
@@ -371,7 +372,7 @@ def _make_other_buoy_instrument_header(odf: Odf, platform_metadata: PlatformMeta
         if sensor_id in ['platform', 'buoy_specs']:
             continue
         odf.add_buoy_instrument(sensor_id)
-        odf.buoy_instrument[sensor_id]['type'] = sensor.process
+        odf.buoy_instrument[sensor_id]['type'] = sensor.sensor_type
         odf.buoy_instrument[sensor_id]['model'] = sensor.model
         odf.buoy_instrument[sensor_id]['serial_number'] = sensor.serial_number
         odf.buoy_instrument[sensor_id]['description'] = sensor.description
@@ -410,7 +411,7 @@ def _make_history_header(odf, dataset):
         dataset.attrs['history'] and add the log messages that follow.
     3 - New history_header are made for each TimeStamp found with the log section.
     """
-    process = ["Data processed by Magtogoek Processing Software. More at " + REPOSITORY_ADDRESS]
+    processing = ["Data processed by Magtogoek Processing Software. More at " + REPOSITORY_ADDRESS]
     creation_date = odf_time_format(datetime.now())
 
     iter_logbook = iter(re.split(r"(\[.*])", dataset.attrs["history"]))
@@ -420,11 +421,11 @@ def _make_history_header(odf, dataset):
             time_stamp = _find_section_timestamp(logs[0])
             if time_stamp is not None:
                 del logs[0]
-                odf.add_history({"creation_date": creation_date, "process": process})
+                odf.add_history({"creation_date": creation_date, "process": processing})
                 creation_date = odf_time_format(pd.Timestamp(time_stamp))
-                process = []
-            process += logs
-    odf.add_history({"creation_date": creation_date, "process": process})
+                processing = []
+            processing += logs
+    odf.add_history({"creation_date": creation_date, "process": processing})
 
 
 def _make_parameter_headers(odf, dataset, variables: List[str], bodc_name=False):

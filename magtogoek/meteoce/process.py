@@ -1,6 +1,6 @@
 """
-This script has to functions to process and quick process viking buoy data.
-These functions are called by the app command `process` and `quick viking`.
+This script has to functions to process and quick process meteoce buoy data.
+These functions are called by the app command `process` and `quick meteoce`.
 
 Date: July 25 2022
 Made by: jeromejguay
@@ -46,26 +46,24 @@ from magtogoek.process_common import BaseProcessConfig, resolve_output_paths, ad
     add_processing_timestamp, clean_dataset_for_nc_output, format_data_encoding, add_navigation, \
     save_variables_name_for_odf_output
 from magtogoek.attributes_formatter import format_variables_names_and_attributes
-from magtogoek.viking.correction import meteoce_correction
+from magtogoek.meteoce.correction import meteoce_correction
 from magtogoek.wps.sci_tools import compute_density, dissolved_oxygen_ml_per_L_to_umol_per_L, \
     dissolved_oxygen_umol_per_L_to_umol_per_kg
 from magtogoek.sci_tools import north_polar2cartesian
-from magtogoek.viking.loader import load_meteoce_data
-from magtogoek.viking.quality_control import meteoce_quality_control, no_meteoce_quality_control
+from magtogoek.meteoce.loader import load_meteoce_data
+from magtogoek.meteoce.quality_control import meteoce_quality_control, no_meteoce_quality_control
 from magtogoek.adcp.correction import apply_motion_correction
 from magtogoek.adcp.quality_control import adcp_quality_control, no_adcp_quality_control
 
 # import click
 
-l.get_logger("viking_processing")
+l.get_logger("meteoce_processing")
 
-STANDARD_GLOBAL_ATTRIBUTES = {"process": "viking_buoy", "featureType": "timeSeriesProfile"}
+STANDARD_GLOBAL_ATTRIBUTES = {"featureType": "timeSeriesProfile"}
 
 VARIABLES_TO_DROP = ['ph_temperature', 'speed', 'course', 'magnetic_declination']
 
 GLOBAL_ATTRS_TO_DROP = [
-    # "sensor_type",
-    "process",
     "platform_type",
     "VAR_TO_ADD_SENSOR_TYPE",
     "P01_CODES_MAP",
@@ -76,7 +74,7 @@ GLOBAL_ATTRS_TO_DROP = [
     "bodc_name"
 ]
 
-# This mapping can be updating by the viking.corrections modules.
+# This mapping can be updating by the meteoce.corrections modules.
 P01_CODES_MAP = {
     'time': "ELTMEP01",
     'wind_mean': "EWSBZZ01",
@@ -268,7 +266,7 @@ class ProcessConfig(BaseProcessConfig):
         self.p01_codes_map = P01_CODES_MAP
 
 
-def process_viking(config: dict, drop_empty_attrs: bool = False, headless: bool = False):
+def process_meteoce(config: dict, drop_empty_attrs: bool = False, headless: bool = False):
     """Process Viking data with parameters from a config file.
 
     call process_common.process
@@ -291,7 +289,7 @@ def process_viking(config: dict, drop_empty_attrs: bool = False, headless: bool 
 
     _load_climatology(pconfig)  # This is done here to catch an error early and exit.
 
-    _process_viking_data(pconfig)
+    _process_meteoce_data(pconfig)
 
 
 def _load_climatology(pconfig: ProcessConfig):
@@ -302,7 +300,7 @@ def _load_climatology(pconfig: ProcessConfig):
 
 
 @resolve_output_paths
-def _process_viking_data(pconfig: ProcessConfig):
+def _process_meteoce_data(pconfig: ProcessConfig):
     """
     Notes
     -----

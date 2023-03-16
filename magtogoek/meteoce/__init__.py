@@ -1,5 +1,5 @@
 """
-Sub-Package for Viking Buoy data processing.
+Sub-Package for meteoce data processing.
 """
 SENSOR_TYPES = [
     'co2a',  # co2 atm

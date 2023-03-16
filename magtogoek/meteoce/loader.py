@@ -25,7 +25,7 @@ Notes
 Load more data ? wind min ?
 """
 
-from magtogoek.viking.dat_reader import RawDatReader, VikingData
+from magtogoek.meteoce.dat_reader import RawDatReader, VikingData
 import matplotlib
 import numpy as np
 import xarray as xr
@@ -59,7 +59,7 @@ def load_meteoce_data(
     -------
 
     """
-    l.section('Loading viking data', t=True)
+    l.section('Loading meteoce data', t=True)
     if data_format == "raw_dat":
         l.log(format_filenames_for_print('raw_data', filenames))
         buoys_data = RawDatReader().read(filenames)

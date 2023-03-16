@@ -85,7 +85,7 @@ def no_adcp_quality_control(dataset: xr.Dataset):
 
     for var in variables:
         if var in dataset:
-            dataset[var + "_QC"] = dataset[var].copy().astype("int8") * 0
+            dataset[var + "_QC"] = (dataset[var].dims, np.zeros(dataset[var].shape).astype(int))
             dataset[var + "_QC"].attrs.update({
                 'quality_test': "",
                 "quality_date": Timestamp.now().strftime("%Y-%m-%d")

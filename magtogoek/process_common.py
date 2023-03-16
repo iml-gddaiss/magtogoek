@@ -22,7 +22,7 @@ ADCP_DATA_TYPES = {
     "ship": "adcp",
     "lowered": "adcp"
 }
-VIKING_BUOY_DATA_TYPE = "meteoce"
+METEOCE_DATA_TYPE = "meteoce"
 
 DATA_SUBTYPES = {
     "buoy": "BUOY",
@@ -98,7 +98,6 @@ class BaseProcessConfig:
 
     # Variables set internally for processing.
     generic_variables_name: tp.List[str] = None
-    #variables_to_add_sensor_type: tp.List[str] = None
     variables_to_drop: tp.List[str] = None
     global_attributes_to_drop: tp.List[str] = None
     drop_empty_attrs: bool = False
@@ -153,7 +152,7 @@ class BaseProcessConfig:
 
 
 def resolve_output_paths(process_function: tp.Callable[[BaseProcessConfig], None]):
-    """Decorator that wraps around a process_function e.g. viking.process.process_viking.
+    """Decorator that wraps around a process_function e.g. meteoce.process.process_viking.
 
     If `pconfig.merge_output_files` is False, each input file is process individually and output
     names suffixes are made for each file if needed, before calling the process_function.
@@ -405,16 +404,16 @@ def add_global_attributes(dataset: xr.Dataset, pconfig: BaseProcessConfig, stand
     dataset.attrs.update(pconfig.metadata)
 
 
-def _get_data_type(sensor_type: str, platform_type: str = None):
-    """Return data_type for the given sensor_type and platform_type.
+def _get_data_type(process: str, platform_type: str = None):
+    """Return data_type for the given process and platform_type.
     """
-    if sensor_type == 'viking_buoy':
-        return VIKING_BUOY_DATA_TYPE
-    elif sensor_type == "adcp":
+    if process == 'meteoce':
+        return METEOCE_DATA_TYPE
+    elif process == "adcp":
         if platform_type is None:
             platform_type = DEFAULT_PLATFORM_TYPE
         return ADCP_DATA_TYPES[platform_type]
-    raise ValueError(f"Invalid sensor type. {sensor_type}")
+    raise ValueError(f"Invalid sensor type. {process}")
 
 
 def write_netcdf(dataset: xr.Dataset, pconfig: BaseProcessConfig):

@@ -3,14 +3,14 @@ import xarray as xr
 from nptyping import NDArray
 from pandas import Timestamp
 
-from magtogoek import logger as l
+from magtogoek import logger as l, CONFIGURATION_PATH
 from magtogoek.process_common import FLAG_ATTRIBUTES
-from magtogoek.utils import resolve_relative_path, json2dict
+from magtogoek.utils import json2dict
 
-IMPOSSIBLE_PARAMETERS_VALUES_FILE_PATH = resolve_relative_path("files/impossible_parameter_values.json", __file__)
+IMPOSSIBLE_PARAMETERS_VALUES_FILE_PATH = CONFIGURATION_PATH.joinpath("impossible_parameter_values.json")
 IMPOSSIBLE_PARAMETERS_VALUES = json2dict(IMPOSSIBLE_PARAMETERS_VALUES_FILE_PATH)
 
-SPIKE_DETECTION_PARAMETERS_FILE_PATH = resolve_relative_path("files/spike_thresholds.json", __file__)
+SPIKE_DETECTION_PARAMETERS_FILE_PATH = CONFIGURATION_PATH.joinpath("spike_thresholds.json")
 SPIKE_DETECTION_PARAMETERS = json2dict(SPIKE_DETECTION_PARAMETERS_FILE_PATH)
 
 CLIMATOLOGY_TIME_FORMATS = {

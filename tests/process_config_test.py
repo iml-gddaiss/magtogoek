@@ -68,7 +68,7 @@ CONFIG_FILE = Path().cwd().joinpath("config_filename")
 def test_process_no_merge_decorator(config_dict, netcdf_path, odf_path, log_path, event_qualifier):
     """With a configfile"""
     config_dict = {
-        'header': {'sensor_type': 'adcp', 'config_file': str(CONFIG_FILE)},
+        'header': {'process': 'adcp', 'config_file': str(CONFIG_FILE)},
         'input': {**{'input_files': [INPUT_FILE + f'_{i}' for i in range(2)]}, **config_dict},
         'CRUISE': {"event_qualifier1": "meteoce"},
         'output': {"merge_output_files": False}
@@ -114,7 +114,7 @@ def _assert_process_wrapper(pconfig: BaseProcessConfig, netcdf_path: list, odf_p
 )
 def test_resolve_outputs(config_file, config_dict, netcdf_output, odf_output, netcdf_path, odf_path, log_path):
     """With a configfile"""
-    config_dict = {'header': {'sensor_type': 'adcp', 'config_file': config_file},
+    config_dict = {'header': {'process': 'adcp', 'config_file': config_file},
                    'input': {**{'input_files': INPUT_FILE}, **config_dict}}
     pconfig = BaseProcessConfig(config_dict=config_dict)
     _resolve_outputs(pconfig)
@@ -128,7 +128,7 @@ def test_resolve_outputs(config_file, config_dict, netcdf_output, odf_output, ne
 
 def test_outputs_error():
     config_dict = {
-        'header': {'sensor_type': 'adcp'},
+        'header': {'process': 'adcp'},
         'input': {
             **{'input_files': INPUT_FILE},
             **{'netcdf_output': '../notafolder/filename', 'odf_output': False}
@@ -153,7 +153,7 @@ def test_outputs_error():
     ]
 )
 def test_figures_outputs(config_dict, figure_output, figure_path):
-    config_dict = {'header': {'sensor_type': 'adcp'},
+    config_dict = {'header': {'process': 'adcp'},
                    'input': {**{'input_files': INPUT_FILE}, **config_dict}}
     pconfig = BaseProcessConfig(config_dict=config_dict)
     _resolve_outputs(pconfig)

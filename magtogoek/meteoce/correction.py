@@ -1,5 +1,5 @@
 """
-Module containing the correction functions for viking data processing.
+Module containing the correction functions for meteoce data processing.
 """
 import xarray as xr
 from typing import TYPE_CHECKING
@@ -12,7 +12,7 @@ from magtogoek.wps.correction import pH_correction_for_salinity, dissolved_oxyge
 
 
 if TYPE_CHECKING:
-    from magtogoek.viking.process import ProcessConfig
+    from magtogoek.meteoce.process import ProcessConfig
 
 
 WPS_VARIABLES_TO_CORRECT = [

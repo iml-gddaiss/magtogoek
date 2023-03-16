@@ -48,7 +48,7 @@ CONFIG_TO_CLI_MAPS = {
         'drop_amplitude': "drop_amp",
         'coord_transform': "ct"
     },
-    'viking': {
+    'meteoce': {
         # TODO
     }
 }
@@ -105,7 +105,7 @@ def write_configfile(filename: str, process: str, cli_options: Optional[dict] = 
     cli_options :
         command line options.
     """
-    tparser = get_config_taskparser(process)
+    tparser = get_config_taskparser(process=process)
 
     cli_config = {}
     if cli_options is not None:
@@ -128,17 +128,23 @@ def load_configfile(filename: str, cli_options: Optional[dict] = None) -> Parser
     if not Path(filename).exists():
         raise FileNotFoundError(f"{filename} not found")
 
-    process = _get_config_process(filename)
-    tparser = get_config_taskparser(process)
+    raw_config = _load_raw_config(filename)
+    version = _get_config_version(raw_config)
+    process = _get_config_process(raw_config, version)
+
+    tparser = get_config_taskparser(process=process, version=version)
 
     cli_config = None
     if cli_options is not None:
         cli_config = _format_cli_options_to_config_dict(process, tparser, cli_options)
 
     config = tparser.load(filename, add_missing=True, new_values_dict=cli_config, format_options=True)
+
+    version_control(config_dict=config, version=version)
+
     config['HEADER']['config_file'] = filename
 
-    return config, process
+    return config
 
 
 def cli_options_to_config(process, cli_options: dict, cwd: Optional[str] = None) -> ParserDict:
@@ -152,7 +158,7 @@ def cli_options_to_config(process, cli_options: dict, cwd: Optional[str] = None)
     cwd :
        current working directory.
     """
-    tparser = get_config_taskparser(process)
+    tparser = get_config_taskparser(process=process)
     
     cli_config = _format_cli_options_to_config_dict(process, tparser, cli_options)
 
@@ -161,18 +167,47 @@ def cli_options_to_config(process, cli_options: dict, cwd: Optional[str] = None)
     return cli_config
 
 
-def _get_config_process(filename):
+def _load_raw_config(filename: Union[str, Path]):
     tparser = get_config_taskparser()
-    return tparser.load(filename)["HEADER"]["process"]
+    return tparser.load(filename, add_missing=False)
 
 
-def get_config_taskparser(process: Optional[str] = None):
+def _get_config_version(raw_config: dict):
+    if "version" not in raw_config["HEADER"]:
+        return 0
+    else:
+        return raw_config["HEADER"]["version"]
+
+
+def _get_config_process(raw_config: dict, version: int):
+    if version == 0:
+        process = raw_config["HEADER"]["sensor_type"]
+    else:
+        process = raw_config["HEADER"]["process"]
+    return process
+
+
+def version_control(config_dict: Dict, version: int):
+    """Updates the config_dict to the current version."""
+    if version == 0:
+        config_dict['HEADER']['process'] = config_dict['HEADER']['sensor_type']
+
+
+def get_config_taskparser(process: Optional[str] = None, version: Optional[int] = 1):
     tparser = TaskParser()
 
     section = "HEADER"
+    tparser.add_option(section, "version", dtypes=["int"], default=1)
     tparser.add_option(section, "made_by", dtypes=["str"], default=getpass.getuser())
     tparser.add_option(section, "last_updated", dtypes=["str"], default=datetime.now().strftime("%Y-%m-%d"))
-    tparser.add_option(section, "process", dtypes=["str"], default=process, is_required=True, choice=PROCESSES, comments=f'One of {PROCESSES}.')
+
+    if version == 0:
+        tparser.add_option(section, "sensor_type", dtypes=["str"], default=process, is_required=True, choice=PROCESSES,
+                           comments=f'One of {PROCESSES}.')
+    else:
+        tparser.add_option(section, "process", dtypes=["str"], default=process, is_required=True, choice=PROCESSES,
+                           comments=f'One of {PROCESSES}.')
+
     tparser.add_option(section, "platform_type", dtypes=["str"], choice=["buoy", "mooring", "ship", "lowered"], comments='One of [buoy, mooring, ship, lowered].')
 
     section = "INPUT"
@@ -276,8 +311,8 @@ def get_config_taskparser(process: Optional[str] = None):
         tparser.add_option(section, "drop_correlation", dtypes=["bool"], default=True, null_value=False)
         tparser.add_option(section, "drop_amplitude", dtypes=["bool"], default=True, null_value=False)
 
-    elif process == "viking_buoy":
-        section = "VIKING_PROCESSING"
+    elif process == "meteoce_buoy":
+        section = "METEOCE_PROCESSING"
         tparser.add_option(section, "buoy_name", dtypes=["str"],  comments='Name of the buoy in the raw file.', is_required=True)
         tparser.add_option(section, "sensor_id", dtypes=["str"], default=None)
 

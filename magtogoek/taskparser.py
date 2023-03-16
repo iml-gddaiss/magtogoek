@@ -727,7 +727,7 @@ def _check_option_min_max(value: StrIntFloatBool, option_info: OptionInfos) -> S
 #     section = "HEADER"
 #     parser.add_option(section, "made_by", dtypes=["str"], default=getpass.getuser())
 #     parser.add_option(section, "last_updated", dtypes=["str"], default=datetime.now().strftime("%Y-%m-%d"))
-#     parser.add_option(section, "sensor_type", dtypes=["str"], default="", is_required=True, choice=["adcp"])
+#     parser.add_option(section, "process", dtypes=["str"], default="", is_required=True, choice=["adcp"])
 #     parser.add_option(section, "platform_type", dtypes=["str"], default="", choice=["buoy", "mooring", "ship"])
 #
 #     section = "INPUT"

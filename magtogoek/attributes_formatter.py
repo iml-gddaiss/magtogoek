@@ -36,13 +36,11 @@ import typing as tp
 import numpy as np
 import xarray as xr
 
-import magtogoek.logger as l
-from magtogoek.utils import json2dict, resolve_relative_path
+from magtogoek import logger as l, CONFIGURATION_PATH
+from magtogoek.utils import json2dict
 
 
-STATIC_ATTRIBUTES_RELATIVE_FILE_PATH = "files/CF_P01_GF3_formats.json"
-STATIC_ATTRIBUTES_ABSOLUTE_FILE_PATH = resolve_relative_path(STATIC_ATTRIBUTES_RELATIVE_FILE_PATH, __file__)
-
+STATIC_ATTRIBUTES_PATH = CONFIGURATION_PATH.joinpath("CF_P01_GF3_formats.json")
 
 CF_P01_GF3_ATTRS_KEY_TO_ADD = [
     "standard_name",
@@ -119,7 +117,7 @@ def format_variables_names_and_attributes(
     # if dataset.attrs["serial_number"]:
     #     _add_sensor_serial_to_var_attrs(dataset)
 
-    _add_sdn_and_cf_var_attrs(dataset, json2dict(STATIC_ATTRIBUTES_ABSOLUTE_FILE_PATH))
+    _add_sdn_and_cf_var_attrs(dataset, json2dict(STATIC_ATTRIBUTES_PATH))
 
     if use_bodc_name is not True:
         dataset = _convert_variables_names(dataset, p01_codes_map, convert_back_to_generic=True)

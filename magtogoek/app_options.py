@@ -103,8 +103,8 @@ def general_options(input_files=True):
     return options
 
 
-def viking_options():
-    """Return shared viking options. They can be passed to Click using @add_options()"""
+def meteoce_options():
+    """Return shared meteoce options. They can be passed to Click using @add_options()"""
     options = []
     options += [
         click.option(
