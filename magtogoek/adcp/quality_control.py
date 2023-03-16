@@ -323,7 +323,6 @@ def adcp_quality_control(
             dataset[var].attrs["quality_date"] = Timestamp.now().strftime("%Y-%m-%d")
             dataset[var].attrs.update(FLAG_ATTRIBUTES)
 
-
     dataset.attrs["quality_comments"] = l.logbook.split("[Adcp Quality Control]\n")[1]
 
     #l.log(f"Quality Control was carried out with {l.w_count} warnings") # l.log is not reseted anymore.
@@ -541,14 +540,18 @@ def sidelobe_test(dataset: xr.Dataset, bottom_depth: float = None) -> tp.Union[t
 def temperature_test(dataset: xr.Dataset) -> np.ndarray:
     """"""
     return outlier_values_test(
-        dataset.temperature.data, lower_limit=GLOBAL_IMPOSSIBLE_PARAMETERS['temperature']['min'], upper_limit=GLOBAL_IMPOSSIBLE_PARAMETERS['temperature']['min']
+        dataset.temperature.data,
+        lower_limit=GLOBAL_IMPOSSIBLE_PARAMETERS['temperature']['min'],
+        upper_limit=GLOBAL_IMPOSSIBLE_PARAMETERS['temperature']['max']
     )
 
 
 def pressure_test(dataset: xr.Dataset) -> np.ndarray:
     """FIXME"""
     return outlier_values_test(
-            dataset.pres.data, lower_limit=GLOBAL_IMPOSSIBLE_PARAMETERS['pres']['min'], upper_limit=GLOBAL_IMPOSSIBLE_PARAMETERS['pres']['max']
+        dataset.pres.data,
+        lower_limit=GLOBAL_IMPOSSIBLE_PARAMETERS['pres']['min'],
+        upper_limit=GLOBAL_IMPOSSIBLE_PARAMETERS['pres']['max']
         )
 
 
