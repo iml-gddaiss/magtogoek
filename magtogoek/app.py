@@ -44,7 +44,7 @@ from magtogoek import VERSION, TERMINAL_WIDTH
 # --------------------------------------------------------------- #
 
 
-LOGO_PATH = resolve_relative_path("files/logo.json", __file__)
+LOGO_PATH = resolve_relative_path("static/logo.json", __file__)
 
 CONTEXT_SETTINGS = dict(
     ignore_unknown_options=True,
