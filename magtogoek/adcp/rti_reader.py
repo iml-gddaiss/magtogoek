@@ -481,7 +481,7 @@ class RtiReader:
             ppd.temperature = ens.AncillaryData.WaterTemp
             ppd.salinity = np.array(ens.AncillaryData.Salinity)
             pressure = np.array(ens.AncillaryData.Pressure) / 10  # pascal to decapascal
-            ppd.VL = np.array(pressure, {"names": ["Pressure"], "formats": [np.float]})
+            ppd.VL = np.array(pressure, {"names": ["Pressure"], "formats": [np.float32]})
             ppd.XducerDepth = np.array(ens.AncillaryData.TransducerDepth)
             ppd.heading = np.array(ens.AncillaryData.Heading)
             ppd.pitch = np.array(ens.AncillaryData.Pitch)
