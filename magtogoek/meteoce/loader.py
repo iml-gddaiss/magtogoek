@@ -299,10 +299,8 @@ if __name__ == "__main__":
     #vr = RawVikingDatReader()
     #_buoys_data = vr.read(['/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat'])
 
-    v_data = _buoys_data['pmza_riki']
+    #v_data = _buoys_data['pmza_riki']
 
-    #ds = load_meteoce_data(['/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat'])
-
-    ds = get_viking_meteoce_data(v_data)
+    ds = load_meteoce_data(['/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat'])
 
     #ds.to_netcdf('/home/jeromejguay/Desktop/viking_test.nc')
