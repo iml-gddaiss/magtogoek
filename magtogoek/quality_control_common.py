@@ -1,5 +1,6 @@
 import numpy as np
 import xarray as xr
+from typing import List
 from nptyping import NDArray
 from pandas import Timestamp
 
@@ -22,7 +23,7 @@ CLIMATOLOGY_TIME_FORMATS = {
 SEASONS_ID = ('DJF', 'JJA', 'MAM', 'SON')
 
 
-def outlier_values_test(data: NDArray, lower_limit: float, upper_limit: float) -> NDArray:
+def values_outliers_detection(data: NDArray, lower_limit: float, upper_limit: float) -> NDArray:
     """Check for data outlier
 
     Parameters
@@ -140,7 +141,8 @@ def climatology_outlier_test(
         threshold: float,
         depth_interpolation_method: str,
 ):
-    """Find climatology outlier and add an ancillary variable to the dataset.
+    """Find climatology outlier and add an ancillary variable to the dataset
+    named : <variable>_QC_climatology_outlier
 
     Parameters
     ----------
@@ -192,6 +194,113 @@ def _add_climatology_qc_variable(dataset: xr.Dataset, variable: str):
     dataset[variable + "_QC_climatology_outlier"].attrs.update(FLAG_ATTRIBUTES)
 
 
+def data_spike_detection(data: NDArray, inner_thres: float, outer_thres: float):
+    """ Spike detection.
+
+    ```Algorithm without first and last values:
+
+        |V2 - (V3+V1)/2| - |(V1-V3)/2|  >= Threshold_1
+    ```
+
+    ```Algorithm for first and last values:
+
+        |V2 - v1|  >= Threshold_2
+    ```
+
+    Parameters
+    ----------
+    data :
+        Time series to check for spikes.
+    inner_thres :
+        Threshold for data without first and last values.
+    outer_thres :
+        Threshold for the first and last values.
+
+    Returns
+    -------
+    Boolean array of the same shape as data where True values are data spikes.
+
+    """
+    spikes = np.zeros(data.shape).astype(bool)
+    v1 = data[0:-2]
+    v2 = data[1:-1]
+    v3 = data[2:]
+
+    spikes[0] = np.abs(data[1] - data[0]) >= outer_thres
+    spikes[1:-1] = np.abs(v2 - (v3 + v1)/2) - np.abs(v1 - v3) / 2 >= inner_thres
+    spikes[-1] = np.abs(data[-1] - data[-2]) >= outer_thres
+
+    return spikes
+
+
+def data_spike_detection_tests(dataset: xr.Dataset, variable: str):
+    """
+    Carry spike detection for inner and other threshold.
+
+    Variable spikes thresholds are define in files/spike_thresholds.json.
+
+    Adds add an ancillary variable named <variable>_QC to dataset if one does not exist.
+        Set ancillary Set new_flag of 3 for spikes.
+
+    Parameters
+    ----------
+    dataset :
+
+    variable :
+
+    See Also
+    --------
+    magtogoek/quality_control_common/data_spike_detection()
+    """
+    spikes_flag = data_spike_detection(
+        dataset[variable].data,
+        inner=SPIKE_DETECTION_PARAMETERS[variable]['inner'],
+        outer=SPIKE_DETECTION_PARAMETERS[variable]['outer']
+    )
+    if variable + "_QC" not in dataset.variables:
+        add_ancillary_QC_variable_to_dataset(dataset=dataset, variable=variable, default_flag=1)
+
+    add_flags_values(variable + "_QC", spikes_flag * 3)
+
+    test_comment = \
+        f"Spike detection inner threshold {SPIKE_DETECTION_PARAMETERS[variable]['inner']} {SPIKE_DETECTION_PARAMETERS[variable]['units']} " \
+        f"and outer threshold {SPIKE_DETECTION_PARAMETERS[variable]['outer']} {SPIKE_DETECTION_PARAMETERS[variable]['units']} (new_flag=3)"
+
+    l.log(f"{variable} :" + test_comment)
+    dataset[variable+"_QC"].attrs['quality_test'].append(test_comment + "\n")
+
+
+def add_ancillary_QC_variable_to_dataset(dataset: xr.Dataset, variable: str, default_flag=1):
+    """Add an ancillary variable named <variable>_QC to dataset."""
+    dataset[variable + "_QC"] = (
+        dataset[variable].dims, np.ones(dataset[variable].dims).astype(int) * default_flag,
+        {'quality_test': "", "quality_date": Timestamp.now().strftime("%Y-%m-%d")}
+    )
+    dataset[variable + "_QC"].attrs.update(FLAG_ATTRIBUTES)
+
+
+def add_flags_values(ancillary_variable: NDArray, new_flags: NDArray):
+    """Add `new_flags` values if it's greater than the current `ancillary_variable` values.
+
+    Parameters
+    ----------
+    ancillary_variable :
+        Variable to add `flag` value to.
+    new_flags :
+        Flag value to add.
+
+    Returns
+    -------
+
+    """
+    np.maximum(ancillary_variable, new_flags, out=ancillary_variable)
+
+
+def merge_flags(flags_arrays: List[NDArray]) -> NDArray:
+    """Merge flags_arrays keeping the greatest values"""
+    return np.stack([flags_arrays], axis=-1).max(axis=-1)
+
+
 if __name__ == "__main__":
     import xarray as xr
 
@@ -225,3 +334,4 @@ if __name__ == "__main__":
         depth_interpolation_method='linear'
     )
     outlier.plot()
+

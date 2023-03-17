@@ -37,7 +37,8 @@ import xarray as xr
 from typing import List
 
 from magtogoek import logger as l
-from magtogoek.quality_control_common import IMPOSSIBLE_PARAMETERS_VALUES, outlier_values_test, climatology_outlier_test
+from magtogoek.quality_control_common import IMPOSSIBLE_PARAMETERS_VALUES, values_outliers_detection, \
+    climatology_outlier_test, add_ancillary_QC_variable_to_dataset, add_flags_values, merge_flags
 from magtogoek.process_common import FLAG_ATTRIBUTES
 
 QC_VARIABLES = [
@@ -180,11 +181,7 @@ def meteoce_quality_control(
 
 def _add_ancillary_variables_to_dataset(dataset: xr.Dataset, variables: str, default_flag: int = 1):
     for variable in set(dataset.variables).intersection(set(variables)):
-        dataset[variable + "_QC"] = (
-            dataset[variable].dims, np.ones(dataset[variable].shape).astype(int) * default_flag,
-            {'quality_test': "", "quality_date": Timestamp.now().strftime("%Y-%m-%d")}
-        )
-        dataset[variable + "_QC"].attrs.update(FLAG_ATTRIBUTES)
+        add_ancillary_QC_variable_to_dataset(dataset=dataset, variable=variable, default_flag=default_flag)
 
 
 def _impossible_values_tests(dataset: xr.Dataset, region: str, flag: int):
@@ -199,12 +196,12 @@ def _impossible_values_tests(dataset: xr.Dataset, region: str, flag: int):
                 l.warning(f"Could not carry out impossible values test (region: {region}) for {variable} due units mismatch.\n"
                           f"Expected {dataset[variable].attrs['units']}")
 
-        outliers_flag = outlier_values_test(
+        outliers_flag = values_outliers_detection(
             dataset[variable].data,
             lower_limit=outliers_values[variable]['min'],
             upper_limit=outliers_values[variable]['max']
         )
-        dataset[variable + "_QC"][outliers_flag] = flag
+        add_flags_values(dataset[variable + "_QC"].data, outliers_flag * flag)
 
         test_comment = \
             f"{region} outlier threshold: less than {outliers_values[variable]['min']} {outliers_values[variable]['units']} " \
@@ -231,15 +228,19 @@ def _flag_propagation(dataset: xr.Dataset, use_atm_pressure: bool = False):
     """
     pressure = 'atm_pressure' if use_atm_pressure is True else 'pres'
     flag_propagation_rules = {
-        'depth': [pressure],
-        'density': ['pres', 'temperature', 'salinity'],
-        'dissolved_oxygen': [pressure, 'temperature', 'salinity'],
-        'ph': ['temperature', 'salinity'],
+        'depth': [pressure, 'depth'],
+        'density': ['pres', 'temperature', 'salinity', 'density'],
+        'dissolved_oxygen': [pressure, 'temperature', 'salinity', 'dissolved_oxygen'],
+        'ph': ['temperature', 'salinity', 'ph'],
         }
 
     for variable in set(dataset.variables).intersection(set(flag_propagation_rules.keys())):
-        _flags = flag_propagation_rules[variable] + [variable]
-        dataset[variable+"_QC"] = np.stack([dataset[v+'_QC'].data for v in _flags], axis=-1).max(axis=-1)
+        flags_parameters = [
+            dataset[_var + '_QC'].data for _var in flag_propagation_rules[variable]
+        ]
+
+        dataset[variable + "_QC"] = merge_flags(flags_arrays=flags_parameters)
+
         propagation_comment = f'Flags propagation {flag_propagation_rules[variable]} -> {variable}.'
         l.log(propagation_comment)
         dataset[variable].attrs['quality_test'] += propagation_comment + "\n"
@@ -278,7 +279,7 @@ def _climatology_outlier_tests(
                     'weekofyear': 1 .. 52
                     'monthofyear': 1 .. 12
                     'season': 'DJF', 'JJA', 'MAM', 'SON'
-        variable :
+        variables :
             Variable to carry climatology test on.
         threshold :
             factor that is multiplier to the standard deviation.

@@ -51,7 +51,8 @@ from pandas import Timestamp
 from scipy.stats import circmean
 
 from magtogoek import logger as l
-from magtogoek.quality_control_common import IMPOSSIBLE_PARAMETERS_VALUES, outlier_values_test
+from magtogoek.quality_control_common import IMPOSSIBLE_PARAMETERS_VALUES, values_outliers_detection, \
+    add_flags_values, add_ancillary_QC_variable_to_dataset
 from magtogoek.process_common import FLAG_ATTRIBUTES
 from magtogoek.sci_tools import circular_distance
 
@@ -85,12 +86,11 @@ def no_adcp_quality_control(dataset: xr.Dataset):
 
     for var in variables:
         if var in dataset:
-            dataset[var + "_QC"] = (dataset[var].dims, np.zeros(dataset[var].shape).astype(int))
-            dataset[var + "_QC"].attrs.update({
-                'quality_test': "",
-                "quality_date": Timestamp.now().strftime("%Y-%m-%d")
-            })
-            dataset[var + "_QC"].attrs.update(FLAG_ATTRIBUTES)
+            add_ancillary_QC_variable_to_dataset(
+                dataset=dataset,
+                variable=variables,
+                default_flag=0
+            )
 
     dataset.attrs.update(FLAG_ATTRIBUTES)
     dataset.attrs["quality_comments"] = "No quality control."
@@ -183,7 +183,8 @@ def adcp_quality_control(
     if amp_th is not None:
         l.log(f"amplitude threshold {amp_th}")
         amp_flag = amplitude_test(dataset, amp_th)
-        vel_flags[amp_flag] = 3
+        add_flags_values(vel_flags, amp_flag * 3)
+        #vel_flags[amp_flag] = 3
         vel_qc_test.append(f"amplitude_threshold:{amp_th} (flag=3).")
         binary_mask[amp_flag] += 2 ** 0
         binary_mask_tests_value[0] = amp_th
@@ -191,7 +192,8 @@ def adcp_quality_control(
     if corr_th is not None:
         l.log(f"correlation threshold {corr_th}")
         corr_flag = correlation_test(dataset, corr_th)
-        vel_flags[corr_flag] = 3
+        add_flags_values(vel_flags, corr_flag * 3)
+        #vel_flags[corr_flag] = 3
         vel_qc_test.append(f"correlation_threshold:{corr_th} (flag=3).")
         binary_mask[corr_flag] += 2 ** 1
         binary_mask_tests_value[1] = corr_th
@@ -199,7 +201,8 @@ def adcp_quality_control(
     if pg_th is not None:
         l.log(f"percentgood threshold {pg_th}")
         pg_flag = percentgood_test(dataset, pg_th)
-        vel_flags[pg_flag] = 3
+        add_flags_values(vel_flags, pg_flag * 3)
+        #vel_flags[pg_flag] = 3
         vel_qc_test.append(f"percentgood_threshold:{pg_th} (flag=3).")
         binary_mask[pg_flag] += 2 ** 2
         binary_mask_tests_value[2] = pg_th
@@ -208,7 +211,8 @@ def adcp_quality_control(
         if horizontal_vel_th is not None:
             l.log(f"horizontal velocity threshold {horizontal_vel_th} m/s")
             horizontal_vel_flag = horizontal_vel_test(dataset, horizontal_vel_th)
-            vel_flags[horizontal_vel_flag] = 3
+            add_flags_values(vel_flags, horizontal_vel_flag * 3)
+            #vel_flags[horizontal_vel_flag] = 3
             vel_qc_test.append(f"horizontal_velocity_threshold:{horizontal_vel_th} m/s (flag=3).")
             binary_mask[horizontal_vel_flag] += 2 ** 3
             binary_mask_tests_value[3] = horizontal_vel_th
@@ -216,7 +220,8 @@ def adcp_quality_control(
         if vertical_vel_th is not None:
             l.log(f"vertical velocity threshold {vertical_vel_th} m/s")
             vertical_vel_flag = vertical_vel_test(dataset, vertical_vel_th)
-            vel_flags[vertical_vel_flag] = 3
+            add_flags_values(vel_flags, vertical_vel_flag * 3)
+            #vel_flags[vertical_vel_flag] = 3
             vel_qc_test.append(f"vertical_velocity_threshold:{vertical_vel_th} m/s (flag=3).")
             binary_mask[vertical_vel_flag] += 2 ** 4
             binary_mask_tests_value[4] = vertical_vel_th
@@ -225,7 +230,8 @@ def adcp_quality_control(
         if error_vel_th is not None:
             l.log(f"error velocity threshold {error_vel_th} m/s")
             error_vel_flag = error_vel_test(dataset, error_vel_th)
-            vel_flags[error_vel_flag] = 3
+            add_flags_values(vel_flags, error_vel_flag * 3)
+            #vel_flags[error_vel_flag] = 3
             vel_qc_test.append(f"velocity_error_threshold:{error_vel_th} m/s (flag=3).")
             binary_mask[error_vel_flag] += 2 ** 5
             binary_mask_tests_value[5] = error_vel_th
@@ -233,7 +239,8 @@ def adcp_quality_control(
     if roll_th is not None:
         l.log(f"Roll threshold {roll_th} degree")
         roll_flag = np.tile(roll_test(dataset, roll_th), dataset.depth.shape + (1,))
-        vel_flags[roll_flag] = 3
+        add_flags_values(vel_flags, roll_flag * 3)
+        #vel_flags[roll_flag] = 3
         vel_qc_test.append(f"roll_threshold:{roll_th} degree (flag=4).")
         binary_mask[roll_flag] += 2 ** 6
         binary_mask_tests_value[6] = roll_th
@@ -241,7 +248,8 @@ def adcp_quality_control(
     if pitch_th is not None:
         l.log(f"Pitch threshold {pitch_th} degree")
         pitch_flag = np.tile(pitch_test(dataset, pitch_th), dataset.depth.shape + (1,))
-        vel_flags[pitch_flag] = 3
+        add_flags_values(vel_flags, pitch_flag * 3)
+        #vel_flags[pitch_flag] = 3
         vel_qc_test.append(f"pitch_threshold:{pitch_th} degree (flag=3).")
         binary_mask[pitch_flag] += 2 ** 7
         binary_mask_tests_value[7] = pitch_th
@@ -250,13 +258,15 @@ def adcp_quality_control(
         sidelobe_flag, msg = sidelobe_test(dataset, bottom_depth)
         if isinstance(sidelobe_flag, np.ndarray):
             l.log(f"Sidelobe correction carried out. {msg}. (flag=3).")
-            vel_flags[sidelobe_flag] = 3
+            add_flags_values(vel_flags, sidelobe_flag * 3)
+            #vel_flags[sidelobe_flag] = 3
             vel_qc_test.append("sidelobes")
             binary_mask[sidelobe_flag] += 2 ** 8
             binary_mask_tests_value[8] = sidelobes_correction
 
     if "pres" in dataset:
-        dataset["pres_QC"] = (["time"], np.ones(dataset.pres.shape))
+        add_ancillary_QC_variable_to_dataset(dataset=dataset, variable='pres', default_flag=1)
+        #dataset["pres_QC"] = (["time"], np.ones(dataset.pres.shape))
         if bad_pressure is True:
             l.log("Pressure were flagged as bad (4) by the user.")
             dataset["pres_QC"].values *= 4
@@ -265,21 +275,26 @@ def adcp_quality_control(
         else:
             _msg = f"Pressure_threshold: less than {GLOBAL_IMPOSSIBLE_PARAMETERS['pres']['min']} dbar and greater than {GLOBAL_IMPOSSIBLE_PARAMETERS['pres']['max']} dbar (flag=4)."
 
-            pressure_flags = pressure_test(dataset)
+            pressure_flag = pressure_test(dataset)
             l.log(_msg)
-            dataset["pres_QC"].values[pressure_flags] = 4
-            dataset["pres_QC"].attrs["quality_test"] = _msg
+            add_flags_values(dataset["pres_QC"].data, pressure_flag * 4)
+            #dataset["pres_QC"].values[pressure_flag] = 4
+            dataset["pres_QC"].attrs["quality_test"] += _msg + '\n'
 
-            vel_flags[np.tile(pressure_flags, dataset.depth.shape + (1,))] = 3
-            vel_qc_test.append(dataset["pres_QC"].attrs["quality_test"])
+            tiled_pressure_flag = np.tile(pressure_flag, dataset.depth.shape + (1,))
+            add_flags_values(vel_flags, tiled_pressure_flag * 3)
+            #vel_flags[tiled_pressure_flag] = 3
+            vel_qc_test.append(_msg)
 
     if "temperature" in dataset:
-        _msg=f"Good temperature range {GLOBAL_IMPOSSIBLE_PARAMETERS['temperature']['min']} to {GLOBAL_IMPOSSIBLE_PARAMETERS['temperature']['max']} celsius (flag=4)"
-        temperature_QC = np.ones(dataset.temperature.shape)
+        add_ancillary_QC_variable_to_dataset(dataset=dataset, variable='temperature', default_flag=1)
+
+        _msg = f"Good temperature range {GLOBAL_IMPOSSIBLE_PARAMETERS['temperature']['min']} to {GLOBAL_IMPOSSIBLE_PARAMETERS['temperature']['max']} celsius (flag=4)"
+
         temperature_flags = temperature_test(dataset)
-        temperature_QC[temperature_flags] = 4
-        dataset["temperature_QC"] = (["time"], temperature_QC)
-        dataset["temperature_QC"].attrs["quality_test"] = _msg
+        add_flags_values(dataset['temperature_QC'].data, temperature_flags*4)
+        #dataset['temperature_QC'].data[temperature_flags] = 4
+        dataset["temperature_QC"].attrs["quality_test"] += _msg + '\n'
         l.log(_msg)
 
     if "vb_vel" in dataset:
@@ -291,7 +306,11 @@ def adcp_quality_control(
             + "."
         )
         vb_flag = vertical_beam_test(dataset, amp_th, corr_th, pg_th)
-        dataset["vb_vel_QC"] = (["depth", "time"], vb_flag * 3)
+
+        add_ancillary_QC_variable_to_dataset(dataset=dataset, variable='vb_vel', default_flag=1)
+        #### FIXME
+        add_flags_values(dataset["vb_vel_QC"].data, vel_flags * 3)
+        #dataset["vb_vel_QC"] = (["depth", "time"], vb_flag * 3)
         dataset["vb_vel_QC"].attrs["quality_test"] = (
             f"amplitude_threshold: {amp_th}\n" * ("vb_amp" in dataset)
             + f"correlation_threshold: {corr_th}\n" * ("vb_corr" in dataset)
@@ -299,7 +318,9 @@ def adcp_quality_control(
         )
 
     if dataset.attrs['coord_system'] != "beam":
-        vel_flags[flag_implausible_vel(dataset, threshold=ABSOLUTE_IMPOSSIBLE_VELOCITY)] = 4
+        impossible_vel_flag = flag_implausible_vel(dataset, threshold=ABSOLUTE_IMPOSSIBLE_VELOCITY)
+        add_flags_values(vel_flags, impossible_vel_flag * 4)
+        #vel_flags[impossible_vel_flag] = 4
         l.log(f"Implausible velocity, greater than {ABSOLUTE_IMPOSSIBLE_VELOCITY}, were flagged as bad (4).")
 
     if dataset.attrs['coord_system'] == "beam":
@@ -312,16 +333,20 @@ def adcp_quality_control(
             [~np.isfinite(dataset[v].values) for v in velocity_variables]
         ), axis=0, dtype=bool)
 
-    vel_flags[missing_vel] = 9
+    add_flags_values(vel_flags, missing_vel*9)
+    #vel_flags[missing_vel] = 9
 
     for v in velocity_variables:
-        dataset[v + "_QC"] = (["depth", "time"], vel_flags)
+        add_ancillary_QC_variable_to_dataset(dataset=dataset, variable=v, default_flag=1)
+        dataset[v + "_QC"].data = vel_flags
+        # dataset[v + "_QC"] = (["depth", "time"], vel_flags)
         dataset[v + "_QC"].attrs["quality_test"] = "\n".join(vel_qc_test)
 
-    for var in list(dataset.variables):
-        if "_QC" in var:
-            dataset[var].attrs["quality_date"] = Timestamp.now().strftime("%Y-%m-%d")
-            dataset[var].attrs.update(FLAG_ATTRIBUTES)
+    # DONE with add_ancillary_QC_variable_dataset
+    # for var in list(dataset.variables):
+    #     if "_QC" in var:
+    #         dataset[var].attrs["quality_date"] = Timestamp.now().strftime("%Y-%m-%d")
+    #         dataset[var].attrs.update(FLAG_ATTRIBUTES)
 
     dataset.attrs["quality_comments"] = l.logbook.split("[Adcp Quality Control]\n")[1]
 
@@ -539,7 +564,7 @@ def sidelobe_test(dataset: xr.Dataset, bottom_depth: float = None) -> tp.Union[t
 
 def temperature_test(dataset: xr.Dataset) -> np.ndarray:
     """"""
-    return outlier_values_test(
+    return values_outliers_detection(
         dataset.temperature.data,
         lower_limit=GLOBAL_IMPOSSIBLE_PARAMETERS['temperature']['min'],
         upper_limit=GLOBAL_IMPOSSIBLE_PARAMETERS['temperature']['max']
@@ -548,7 +573,7 @@ def temperature_test(dataset: xr.Dataset) -> np.ndarray:
 
 def pressure_test(dataset: xr.Dataset) -> np.ndarray:
     """FIXME"""
-    return outlier_values_test(
+    return values_outliers_detection(
         dataset.pres.data,
         lower_limit=GLOBAL_IMPOSSIBLE_PARAMETERS['pres']['min'],
         upper_limit=GLOBAL_IMPOSSIBLE_PARAMETERS['pres']['max']
