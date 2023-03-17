@@ -171,7 +171,7 @@ FILL_VALUE = np.nan # CHECK IF THIS IS OK FIXME
 
 TAGS = ["NOM", "COMP", "Triplet", "Par_digi", "SUNA", "GPS",
         "CTD", "CTDO", "RTI", "RDI", "WAVE_M", "WAVE_S", "WXT520",
-        "WMT700", "WpH", "CO2_W", "CO2_A", "Debit", "VEMCO"]  # "OCR", "MO", "FIN"]
+        "WMT700", "WpH", "CO2_W", "CO2_A", "Debit", "VEMCO", "MO"]  # "OCR", "MO", "FIN"]
 
 DATA_BLOCK_REGEX = re.compile(r"(\[NOM].+?)\[FIN]", re.DOTALL)
 DATA_TAG_REGEX = re.compile(rf"\[({'|'.join(TAGS)})],?((?:(?!\[).)*)", re.DOTALL)
@@ -210,6 +210,11 @@ TAG_VARS = dict(
                 'humidity_sensor_temperature', "cell_gas_pressure_mbar"],
     DEBIT_KEYS=['flow'],
     VEMCO_KEYS=['time', 'protocol', 'serial_number'],
+    MO_KEYS=['adcp_model', 'wind_speed', 'wind_direction', 'air_temperature', 'air_humidity',
+            'atm_pressure','temperature', 'salinity', 'triplet_700', 'triplet_695', 'triplet_460',
+            'par', 'co2_w', 'co2_a', 'ph', 'wave_period', 'wave_average_height', 'wave_maximal_height',
+            'power_voltage', 'solar_charging', 'wind_charging', 'power_consumption', 'pitch', 'roll',
+            'water_flow', 'heading', 'speed', 'course', 'rain', 'u', 'v', 'w', 'e']
 )
 
 
@@ -243,6 +248,7 @@ class VikingData():
         self.co2_a: dict = {key: [] for key in TAG_VARS['CO2_A_KEYS']}
         self.debit: dict = {key: [] for key in TAG_VARS['DEBIT_KEYS']}
         self.vemco: dict = {key: [] for key in TAG_VARS['VEMCO_KEYS']}
+        self.mo: dict = {key: [] for key in TAG_VARS['MO_KEYS']}
 
     def __repr__(self):
         repr = f"""{self.__class__} 
@@ -264,7 +270,7 @@ data: (length: {len(self)})
     @property
     def tags(self):
         return ['comp', 'triplet', 'par_digi', 'suna', 'gps', 'ctd', 'ctdo', 'rti', 'rdi',
-                'wave_m', 'wave_s', 'wxt520', 'wmt700', 'wph', 'co2_w', 'co2_a', 'debit', 'vemco']
+                'wave_m', 'wave_s', 'wxt520', 'wmt700', 'wph', 'co2_w', 'co2_a', 'debit', 'vemco', 'mo']
 
     def reformat(self):
         self._squeeze_empty_tag()
@@ -291,6 +297,7 @@ data: (length: {len(self)})
             [uniques_values.update(value) for value in self.__dict__[tag].values()]
             if len(uniques_values) == 1 and list(uniques_values)[0] == FILL_VALUE:
                 self.__dict__[tag] = None
+
 
 def _to_numpy_masked_array(data: list):
     """
@@ -401,7 +408,7 @@ buoys:\n"""
             self.__setattr__(key, self._buoys_data[key])
 
         tags = ['comp', 'triplet', 'par_digi', 'suna', 'gps', 'ctd', 'ctdo', 'rti', 'rdi',
-                'wave_m', 'wave_s', 'wxt520', 'wmt700', 'wph', 'co2_w', 'co2_a', 'debit', 'vemco']
+                'wave_m', 'wave_s', 'wxt520', 'wmt700', 'wph', 'co2_w', 'co2_a', 'debit', 'vemco', 'mo']
 
         for data_block in decoded_data:
             buoy_data = self._buoys_data[data_block['buoy_name']]
@@ -459,7 +466,7 @@ def _decode_transmitted_data(data_received: str, century: int = 21) -> list:
     """
     decoded_data = []
     tag_key = ['comp', 'triplet', 'par_digi', 'suna', 'gps', 'ctd', 'ctdo', 'rti', 'rdi',
-               'wave_m', 'wave_s', 'wxt520', 'wmt700', 'wph', 'co2_w', 'co2_a', 'debit', 'vemco']
+               'wave_m', 'wave_s', 'wxt520', 'wmt700', 'wph', 'co2_w', 'co2_a', 'debit', 'vemco', 'mo']
     for data_block in DATA_BLOCK_REGEX.finditer(data_received):
         wxt520 = dict().fromkeys(TAG_VARS['WXT520_KEYS'], float(FILL_VALUE))
         decoded_block = dict().fromkeys(tag_key)
@@ -502,6 +509,8 @@ def _decode_transmitted_data(data_received: str, century: int = 21) -> list:
                 decoded_block["co2_a"] = _decode_CO2_A(data)
             elif tag == "Debit":
                 decoded_block["debit"] = _decode_Debit(data)
+            elif tag == 'MO':
+                decoded_block["mo"] = _decode_MO(data)
 
         if bool(wxt520.keys()) is True:
             decoded_block["wxt520"] = wxt520
@@ -785,8 +794,65 @@ def _decode_VEMCO(data: str) -> dict:
             'serial_number': data[2]}
 
 
+def _decode_MO(data: str) -> dict:
+    adcp_model = {'D': 'RDI', 'T': "RTI"}[data[0]]
+
+    if adcp_model == 'RDI':
+        _d = data[97: 113]
+        if '#' in _d:
+            enu_mms = [float(np.nan)] * 4
+        else:
+            enu_mms = list(struct.unpack('hhhh', bytes.fromhex(_d)))
+    else:
+        _d = data[97: 109]
+        if '#' in _d:
+            enu_mms = [float(np.nan)] * 4
+        else:
+            enu_mms = list(struct.unpack('<hhh', bytes.fromhex(data[97: 109]))) + [float(np.nan)]
+
+    return {
+        'adcp_model': adcp_model,
+        'wind_speed': _safe_float(data[1:3]),
+        'wind_gust': _safe_float(data[3:6]),
+        'wind_direction': _safe_float(data[6:9]),
+        'air_temperature': _safe_float(data[9:12])/10,
+        'air_humidity': _safe_float(data[12:14]),
+        'atm_pressure': _safe_float(data[14:18]) + 1000,
+        'temperature': _safe_float(data[18:22])/100,
+        'salinity': _safe_float(data[22:26])/100,
+        'triplet_700': _safe_float(data[26:30])*10**(_safe_float(data[30:32])-3),#_safe_float()(data[26:30]) * 10 ** (-_safe_float()(data[30:32]) - 3),
+        'triplet_695': _safe_float(data[32:36])*10**(_safe_float(data[36:38])-3),#_safe_float()(data[32:36]) * 10 ** (-_safe_float()(data[36:38]) - 3),
+        'triplet_460': _safe_float(data[38:42])*10**(_safe_float(data[42:44])-3),#_safe_float()(data[38:42]) * 10 ** (-_safe_float()(data[42:44]) - 3),
+        'par': _safe_float(data[44:48]),
+        'co2_w': _safe_float(data[48:53]) / 10,
+        'co2_a': _safe_float(data[53:58]) / 10,
+        'ph': _safe_float(data[58:63]) / 10000,
+        'wave_period': _safe_float(data[63:66]) / 10,
+        'wave_average_height': _safe_float(data[66:68]) / 10,
+        'wave_maximal_height': _safe_float(data[68:71]) / 10,
+        'power_voltage': _safe_float(data[71:74])/10,
+        'solar_charging': _safe_float(data[74:76]) / 10,
+        'wind_charging': _safe_float(data[76:78]) / 10,
+        'power_consumption': _safe_float(data[78:80]) / 10,
+        'pitch' : _safe_float(data[80:82]),
+        'roll': _safe_float(data[82:84]),
+        'water_flow': _safe_float(data[84:86]) / 10,
+        'heading': _safe_float(data[86:89]),
+        'speed': _safe_float(data[89:91]),
+        'course': _safe_float(data[91:94]),
+        'rain': _safe_float(data[94:97]),
+        'u': enu_mms[0] / 1000,
+        'v': enu_mms[1] / 1000,
+        'w': enu_mms[2] / 1000,
+        'e': enu_mms[3] / 1000,
+    }
+
+
 def _safe_float(value: str) -> Union[float]:
-    return float(FILL_VALUE) if '#' in value else float(value)
+    try:
+        return float(FILL_VALUE) if '#' in value else float(value)
+    except ValueError:
+        return float(FILL_VALUE)
 
 
 # def _safe_int(value: str) -> Union[int]: everything is loaded in float
@@ -838,3 +904,16 @@ if __name__ == "__main__":
     buoys_data = RawDatReader().read('/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat')
 
     v_data = buoys_data['pmza_riki']
+
+    plt.figure()
+    plt.plot(v_data.ctd['salinity'], label='tag')
+    plt.plot(v_data.mo['salinity'], '--', label='mo')
+    plt.legend()
+    plt.show()
+
+    plt.figure()
+    plt.plot(v_data.triplet['calculated_value_1'], label='tag')
+    plt.plot(v_data.mo['triplet_700'], '--', label='mo')
+    plt.legend()
+    plt.show()
+
