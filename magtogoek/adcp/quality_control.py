@@ -84,13 +84,12 @@ def no_adcp_quality_control(dataset: xr.Dataset):
     else:
         variables += ["u", "v", "w"]
 
-    for var in variables:
-        if var in dataset:
-            add_ancillary_QC_variable_to_dataset(
-                dataset=dataset,
-                variable=variables,
-                default_flag=0
-            )
+    for var in set(variables).intersection(set(dataset.variables)):
+        add_ancillary_QC_variable_to_dataset(
+            dataset=dataset,
+            variable=var,
+            default_flag=0
+        )
 
     dataset.attrs.update(FLAG_ATTRIBUTES)
     dataset.attrs["quality_comments"] = "No quality control."

@@ -273,7 +273,7 @@ def data_spike_detection_tests(dataset: xr.Dataset, variable: str):
 def add_ancillary_QC_variable_to_dataset(dataset: xr.Dataset, variable: str, default_flag=1):
     """Add an ancillary variable named <variable>_QC to dataset."""
     dataset[variable + "_QC"] = (
-        dataset[variable].dims, np.ones(dataset[variable].dims).astype(int) * default_flag,
+        dataset[variable].dims, np.ones(dataset[variable].shape).astype(int) * default_flag,
         {'quality_test': "", "quality_date": Timestamp.now().strftime("%Y-%m-%d")}
     )
     dataset[variable + "_QC"].attrs.update(FLAG_ATTRIBUTES)
