@@ -24,8 +24,9 @@ Notes
 -----
 Load more data ? wind min ?
 """
+import sys
 
-from magtogoek.meteoce.dat_reader import RawDatReader, VikingData
+from magtogoek.meteoce.viking_dat_reader import RawVikingDatReader, VikingData
 import matplotlib
 import numpy as np
 import xarray as xr
@@ -44,7 +45,7 @@ CENTIMETER_TO_METER = 1 / 100
 def load_meteoce_data(
         filenames: Tuple[str, List[str]],
         buoy_name: str = None,
-        data_format: str = 'raw_dat',
+        data_format: str = 'viking_dat',
 ) -> xr.Dataset:
     """
 
@@ -59,14 +60,27 @@ def load_meteoce_data(
     -------
 
     """
-    l.section('Loading meteoce data', t=True)
-    if data_format == "raw_dat":
-        l.log(format_filenames_for_print('raw_data', filenames))
-        buoys_data = RawDatReader().read(filenames)
+    l.section('Loading meteoce data')
 
+    if data_format == "viking_dat":
+        dataset = load_viking_data(filenames=filenames, buoy_name=buoy_name)
     else:
         l.warning('Invalid data_format.')
         raise ValueError
+
+    l.log('Data Loaded.')
+
+    return dataset
+
+
+def load_viking_data(
+        filenames: Tuple[str, List[str]],
+        buoy_name: str = None,
+        ) -> xr.Dataset:
+
+    l.log(format_filenames_for_print('raw_data', filenames))
+
+    buoys_data = RawVikingDatReader().read(filenames)
 
     if buoy_name is None:
         if len(buoys_data.keys()) == 1:
@@ -83,7 +97,7 @@ def load_meteoce_data(
 
     viking_data = buoys_data[buoy_name]
 
-    meteoce_data = get_meteoce_data(viking_data)
+    meteoce_data = get_viking_meteoce_data(viking_data)
 
     coords = {'time': np.asarray(viking_data.time)}
 
@@ -101,12 +115,10 @@ def load_meteoce_data(
 
     dataset.attrs['logbook'] = l.logbook
 
-    l.log('Data Loaded.')
-
     return dataset
 
 
-def get_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.MaskedArray, dict]]:
+def get_viking_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.MaskedArray, dict]]:
     _data = {'lon': (viking_data.longitude, {}),
              'lat': (viking_data.latitude, {}),
              }
@@ -131,7 +143,7 @@ def get_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.MaskedArr
         _data.update(
             {'wind_mean': (viking_data.wmt700['Sm'] * KNOTS_TO_METER_PER_SECONDS, {'units': 'm/s'}),
              'wind_direction_mean': (viking_data.wmt700['Dm'], {}),
-             'wind_max': (viking_data.wmt700['Sx'] * KNOTS_TO_METER_PER_SECONDS , {'units': 'm/s'}),
+             'wind_max': (viking_data.wmt700['Sx'] * KNOTS_TO_METER_PER_SECONDS, {'units': 'm/s'}),
              'wind_direction_max': (viking_data.wmt700['Dx'], {})}
         )
         l.log('wmt700 data loaded.')
@@ -250,6 +262,10 @@ def get_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.MaskedArr
             _data["bt_"+_name] = (viking_data.rti["bt_"+_name], _attrs)
         l.log('Rti data loaded.')
 
+    if viking_data.mo is not None:
+        _data['correction_heading'] = (viking_data.mo['heading'], {})
+        l.log('Mo heading loaded.')
+
     return _data
 
 
@@ -280,11 +296,13 @@ def _average_duplicates(dataset: xr.Dataset, coord: str) -> xr.Dataset:
 
 
 if __name__ == "__main__":
-    vr = RawDatReader()
-    _buoys_data = vr.read(['/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat'])
+    #vr = RawVikingDatReader()
+    #_buoys_data = vr.read(['/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat'])
 
     v_data = _buoys_data['pmza_riki']
 
-    ds = load_meteoce_data(['/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat'])
+    #ds = load_meteoce_data(['/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat'])
 
-    ds.to_netcdf('/home/jeromejguay/Desktop/viking_test.nc')
+    ds = get_viking_meteoce_data(v_data)
+
+    #ds.to_netcdf('/home/jeromejguay/Desktop/viking_test.nc')
