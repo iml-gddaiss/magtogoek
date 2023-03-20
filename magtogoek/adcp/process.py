@@ -343,10 +343,6 @@ def _process_adcp_data(pconfig: ProcessConfig):
     # ---------- #
     l.section("Data Correction")
 
-    # motion correction #
-    if pconfig.motion_correction_mode in ["bt", "nav"]:
-        apply_motion_correction(dataset, pconfig.motion_correction_mode)
-
     # magnetic declination #
     if dataset.attrs['magnetic_declination'] is not None:
         l.log(f"Magnetic declination found in the raw file: {dataset.attrs['magnetic_declination']} degree east.")
@@ -359,6 +355,10 @@ def _process_adcp_data(pconfig: ProcessConfig):
         else:
             l.warning('Correction for magnetic declination was not carried out since '
                       'the velocity data are not in earth coordinates.')
+
+    # motion correction #
+    if pconfig.motion_correction_mode in ["bt", "nav"]:
+        apply_motion_correction(dataset, pconfig.motion_correction_mode)
 
     # --------------- #
     # QUALITY CONTROL #
