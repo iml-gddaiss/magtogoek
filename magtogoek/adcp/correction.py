@@ -2,6 +2,7 @@ import numpy as np
 import xarray as xr
 
 from magtogoek import logger as l
+from magtogoek.process_common import add_correction_attributes_to_dataarray
 from magtogoek.sci_tools import rotate_2d_vector, rotate_heading
 
 
@@ -17,6 +18,9 @@ def apply_motion_correction(dataset: xr.Dataset, mode: str):
             for field in ["u", "v", "w"]:
                 dataset[field].values -= dataset[f"bt_{field}"].values
             l.log("Motion correction carried out with bottom track")
+            for v in ["u", "v", "w"]:
+                add_correction_attributes_to_dataarray(dataset[v])
+                dataset[v].attrs['corrections'] += "Motion correction carried out with bottom track\n"
         else:
             l.warning("Motion correction aborted. Bottom velocity (bt_u, bt_v, bt_w) missing")
     elif mode == "nav":
@@ -28,6 +32,9 @@ def apply_motion_correction(dataset: xr.Dataset, mode: str):
                     velocity_correction = dataset[field + "_ship"]
                 dataset[field] += np.tile(velocity_correction, (dataset.depth.size, 1))
             l.log("Motion correction carried out with navigation")
+            for v in ["u", "v", "w"]:
+                add_correction_attributes_to_dataarray(dataset[v])
+                dataset[v].attrs['corrections'] += "Motion correction carried out with navigation\n"
         else:
             l.warning("Motion correction aborted. Navigation velocity (u_ship, v_ship) missing")
     else:
@@ -64,16 +71,25 @@ def apply_magnetic_correction(dataset: xr.Dataset, magnetic_declination: float):
 
     dataset.u.values, dataset.v.values = rotate_2d_vector(dataset.u, dataset.v, -magnetic_correction)
     l.log(f"Velocities transformed to true north and true east.")
+    for v in ["u", "v"]:
+        add_correction_attributes_to_dataarray(dataset[v])
+        dataset[v].attrs['corrections'] += "Velocities transformed to true north and true east.\n"
+
     if all(v in dataset for v in ["bt_u", "bt_v"]):
         dataset.bt_u.values, dataset.bt_v.values = rotate_2d_vector(
             dataset.bt_u, dataset.bt_v, -magnetic_correction
         )
         l.log(f"Bottom velocities transformed to true north and true east.")
+        for v in ["bt_u", "bt_v"]:
+            add_correction_attributes_to_dataarray(dataset[v])
+            dataset[v].attrs['corrections'] += "Bottom velocities transformed to true north and true east.\n"
 
     # heading goes from -180 to 180
     if "heading" in dataset:
         dataset.heading.values = rotate_heading(dataset.heading.data, magnetic_correction)
         l.log(f"Heading transformed to true north.")
+        add_correction_attributes_to_dataarray(dataset['heading'])
+        dataset['heading'].attrs['corrections'] += "Heading transformed to true north.\n"
 
     dataset.attrs["magnetic_declination"] = magnetic_declination
 

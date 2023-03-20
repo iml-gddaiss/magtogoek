@@ -555,3 +555,11 @@ def add_navigation(dataset: xr.Dataset, navigation_files: str):
         l.warning('Could not load navigation data file.')
 
     return dataset
+
+
+def add_correction_attributes_to_dataarray(dataarray: xr.DataArray):
+    """Add corrections (str) attributes to dataarray if it does not exist.
+    """
+    attr_name = "corrections"
+    if attr_name not in dataarray.attrs:
+        dataarray.attrs[attr_name] = ""
