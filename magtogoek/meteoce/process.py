@@ -40,13 +40,13 @@ import xarray as xr
 from typing import *
 
 from magtogoek import logger as l
-from magtogoek.sci_tools import _rotate_heading
+from magtogoek.sci_tools import rotate_2d_vector
 from magtogoek.process_common import BaseProcessConfig, resolve_output_paths, add_global_attributes, write_log, \
     write_netcdf, \
     add_processing_timestamp, clean_dataset_for_nc_output, format_data_encoding, add_navigation, \
     save_variables_name_for_odf_output
 from magtogoek.attributes_formatter import format_variables_names_and_attributes
-from magtogoek.meteoce.correction import meteoce_correction
+from magtogoek.meteoce.correction import wps_data_correction, meteoce_data_magnetic_declination_correction
 from magtogoek.wps.sci_tools import compute_density, dissolved_oxygen_ml_per_L_to_umol_per_L, \
     dissolved_oxygen_umol_per_L_to_umol_per_kg
 from magtogoek.sci_tools import north_polar2cartesian
@@ -61,7 +61,7 @@ l.get_logger("meteoce_processing")
 
 STANDARD_GLOBAL_ATTRIBUTES = {"featureType": "timeSeriesProfile"}
 
-VARIABLES_TO_DROP = ['ph_temperature', 'speed', 'course', 'magnetic_declination']
+VARIABLES_TO_DROP = ['ph_temperature', 'speed', 'course', 'gps_magnetic_declination']
 
 GLOBAL_ATTRS_TO_DROP = [
     "platform_type",
@@ -181,7 +181,7 @@ class ProcessConfig(BaseProcessConfig):
 
     ### CORRECTION
     # Compass
-    magnetic_declination_correction: bool
+    magnetic_declination: Union[bool, float] = None
 
     # PH
     ph_salinity_correction: bool = None
@@ -229,6 +229,7 @@ class ProcessConfig(BaseProcessConfig):
 
     # ADCP
     motion_correction_mode: str = None  # maybe adcp/process/adcp_processing...c
+    magnetic_declination_preset: float = None
 
     # QUALITY_CONTROL
 
@@ -323,35 +324,39 @@ def _process_meteoce_data(pconfig: ProcessConfig):
         l.section("Navigation data")
         dataset = add_navigation(dataset, pconfig.navigation_file)
 
-    l.section("Data Computation (pre-correction).")
+    # ------------ #
+    # CORRECTION 1 #
+    # ------------ #
 
-    # --------- #
-    # COMPUTE 1 #
-    # --------- #
+    l.section("Data Correction")
+
+    _set_magnetic_declination(dataset, pconfig)
+
+    meteoce_data_magnetic_declination_correction(dataset, pconfig)
+
+    wps_data_correction(dataset, pconfig)
+
+    # ------- #
+    # COMPUTE #
+    # ------- #
+
+    l.section("Data Computation.")
+
+    # COMPUTE flow_speed_and_direction. Correct with speed assuming direction is course.
 
     if all(x in dataset for x in ('speed', 'course')):
         _compute_uv_ship(dataset)
 
-    # ----------- #
-    # CORRECTION  #
-    # ----------- #
-
-    l.section("Data Correction")
-
-    _magnetic_declination_correction(dataset, pconfig)  # <--+
-
-    _meteoce_correction(dataset, pconfig)
-
-    _adcp_correction(dataset, pconfig)  # ADD MAGNETIC DECLINATION --+
-
-    # --------- #
-    # COMPUTE 2 #
-    # --------- #
-
-    l.section("Data Computation (post-correction).")
-
     if 'density' not in dataset or pconfig.recompute_density is True:
         _compute_ctdo_potential_density(dataset)
+
+    # ---------------- #
+    # ADCP CORRECTION  #
+    # ---------------- #
+
+    l.section("Adcp data correction")
+
+    _adcp_correction(dataset, pconfig)  # ADD MAGNETIC DECLINATION --+
 
     # --------------- #
     # QUALITY CONTROL #
@@ -473,11 +478,54 @@ def _compute_ctdo_potential_density(dataset: xr.Dataset):
         l.warning(f'Potential density computation aborted. One of more variables in {required_variables} was missing.')
 
 
-def _meteoce_correction(dataset: xr.Dataset, pconfig: ProcessConfig):
-    meteoce_correction(dataset, pconfig)
+def _set_magnetic_declination(dataset: xr.Dataset, pconfig: ProcessConfig):
+    """Set the magnetic_declination value or values in the process config.
+
+    Either from the GPS (dataset variable) or the ProcessConfig.magnetic_declination .
+
+    If the magnetic declination is taken from the GSP data, any nan values will be interpolated.
+    """
+    if pconfig.magnetic_declination is True:
+        if 'gps_magnetic_declination' in dataset.variables:
+            pconfig.magnetic_declination = dataset['gps_magnetic_declination'].interpolate_na('time').data
+        else:
+            l.warning('Unable to carry magnetic declination correction. No magnetic declination value found.')
+            pconfig.magnetic_declination = None
+
+    if isinstance(pconfig.magnetic_declination, (float, int)):
+        pconfig.magnetic_declination = pconfig.magnetic_declination
+
+    pconfig.magnetic_declination = None
+
+#
+# def _meteoce_data_magnetic_declination_correction(dataset: xr.Dataset, pconfig: ProcessConfig):
+#     meteoce_data_magnetic_declination_correction(dataset=dataset, pconfig=pconfig)
+#
+#
+# def _wps_data_correction(dataset: xr.Dataset, pconfig: ProcessConfig):
+#     wps_data_correction(dataset, pconfig)
 
 
 def _adcp_correction(dataset: xr.Dataset, pconfig: ProcessConfig):
+    """
+    Carry magnetic declination correction and motion correction.
+    """
+    if pconfig.magnetic_declination is not None:
+        if pconfig.magnetic_declination_preset is not None:
+            angle = round((pconfig.magnetic_declination - pconfig.magnetic_declination_preset), 4)
+            l.log(f"An additional correction of {angle} degree east was applied to the ADCP velocities.")
+        else:
+            angle = pconfig.magnetic_declination
+            l.log(f"A correction of {angle} degree east was applied to the ADCP velocities.")
+
+        if all(v in dataset for v in ["bt_u", "bt_v"]):
+            dataset.u.values, dataset.v.values = rotate_2d_vector(dataset.u, dataset.v, -angle)
+            l.log(f"Velocities transformed to true north and true east.")
+
+        if all(v in dataset for v in ["bt_u", "bt_v"]):
+            dataset.bt_u.values, dataset.bt_v.values = rotate_2d_vector(dataset.bt_u, dataset.bt_v, -angle)
+            l.log(f"Bottom velocities transformed to true north and true east.")
+
     if pconfig.motion_correction_mode in ["bt", "nav"]:
         apply_motion_correction(dataset, pconfig.motion_correction_mode)
 
@@ -569,15 +617,6 @@ def _adcp_quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
 
     dataset = dataset.squeeze(['depth'])
     return dataset
-
-
-def _magnetic_declination_correction(dataset: xr.Dataset, pconfig: ProcessConfig):
-    if pconfig.magnetic_declination_correction is True:
-        if all(var in dataset.variables for var in ['heading', 'magnetic_declination']):
-            dataset.heading.values = _rotate_heading(dataset.heading.data, dataset.magnetic_declination.data)
-            l.log(f"Heading transformed to true north.")
-        else:
-            l.warning("Unable to transform heading to true north. Variables missing.")
 
 
 def _dissolved_oxygen_ml_per_L_to_umol_per_L(dataset: xr.Dataset):

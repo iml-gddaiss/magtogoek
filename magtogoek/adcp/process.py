@@ -252,7 +252,6 @@ class ProcessConfig(BaseProcessConfig):
     sidelobes_correction: bool = None
     bottom_depth: float = None
 
-
     drop_percent_good: bool = None
     drop_correlation: bool = None
     drop_amplitude: bool = None
