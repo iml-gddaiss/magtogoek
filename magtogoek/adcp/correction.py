@@ -77,7 +77,7 @@ def apply_magnetic_correction(dataset: xr.Dataset, magnetic_declination: float):
 
     dataset.attrs["magnetic_declination"] = magnetic_declination
 
-    l.log(f"Absolute magnetic declination: {dataset.attrs['magnetic_declination']} degree east.")
+    l.log(f"Absolute magnetic declination: {dataset.attrs['magnetic_declination']} degree north.")
 
 
 def _compute_relative_magnetic_declination(dataset: xr.Dataset, magnetic_declination: float):
@@ -97,7 +97,7 @@ def _compute_relative_magnetic_declination(dataset: xr.Dataset, magnetic_declina
     """
     if dataset.attrs["magnetic_declination"]:
         angle = round((magnetic_declination - dataset.attrs["magnetic_declination"]), 4)
-        l.log(f"An additional correction of {angle} degree east was applied.")
+        l.log(f"An additional correction of {angle} degree north was applied.")
         return angle
     return magnetic_declination
 
