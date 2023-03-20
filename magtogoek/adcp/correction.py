@@ -2,7 +2,7 @@ import numpy as np
 import xarray as xr
 
 from magtogoek import logger as l
-from magtogoek.sci_tools import rotate_2d_vector, _rotate_heading
+from magtogoek.sci_tools import rotate_2d_vector, rotate_heading
 
 
 def apply_motion_correction(dataset: xr.Dataset, mode: str):
@@ -72,7 +72,7 @@ def apply_magnetic_correction(dataset: xr.Dataset, magnetic_declination: float):
 
     # heading goes from -180 to 180
     if "heading" in dataset:
-        dataset.heading.values = _rotate_heading(dataset.heading.data, magnetic_correction)
+        dataset.heading.values = rotate_heading(dataset.heading.data, magnetic_correction)
         l.log(f"Heading transformed to true north.")
 
     dataset.attrs["magnetic_declination"] = magnetic_declination

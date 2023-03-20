@@ -242,7 +242,8 @@ def get_viking_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.Ma
         _data.update(
             {'wave_mean_height': (viking_data.wave_s['average_height'], {}),
              'wave_maximal_height': (viking_data.wave_s['Hmax'], {}),
-             'wave_period': (viking_data.wave_s['dominant_period'], {})}
+             'wave_period': (viking_data.wave_s['dominant_period'], {}),
+             'wave_direction': (viking_data.wave_s['direction'], {})}
         )
         l.log('Wave_s data loaded.')
 

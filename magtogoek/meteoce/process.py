@@ -87,6 +87,7 @@ P01_CODES_MAP = {
     'wave_mean_height': "GAVHZZ01",
     'wave_maximal_height': "GCMXZZ01",
     'wave_period': "GTAMZZ01",
+    'wave_direction': "GWDRWW01",
     'temperature': "TEMPPR01",
     'conductivity': "CNDCZZ01",
     'salinity': "PSLTZZ01",

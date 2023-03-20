@@ -881,5 +881,13 @@
         "sdn_uom_urn": "SDN:P06:UTBB",
         "sdn_uom_name": "Seconds",
         "legacy_GF3_code": "VTCA"
+    },
+    "GWDRWW01": {
+        "units": "degree",
+        "long_name": "wave_mean_direction",
+        "sdn_parameter_urn": "SDN:P01::GWDRWW01",
+        "sdn_parameter_name": "Direction (from) of waves (wind sea) on the water body",
+        "sdn_uom_urn": "SDN:P06:UABB",
+        "sdn_uom_name": "Degrees True"
     }
 }
