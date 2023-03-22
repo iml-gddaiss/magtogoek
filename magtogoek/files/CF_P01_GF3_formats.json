@@ -518,16 +518,6 @@
         "sdn_uom_name": "Degrees east",
         "legacy_GF3_code": "SDN:GF3::lon"
     },
-    "PTCHGP01": {
-        "standard_name": "platform_pitch",
-        "units": "degree_true",
-        "long_name": "pitch",
-        "sdn_parameter_urn": "SDN:P01::PTCHGP01",
-        "sdn_parameter_name": "Orientation (pitch) of measurement platform by inclinometer",
-        "sdn_uom_urn": "SDN:P06::UAAA",
-        "sdn_uom_name": "Degrees",
-        "legacy_GF3_code": "SDN:GF3::PTCH"
-    },
     "HEADCM01": {
         "standard_name": "platform_orientation",
         "units": "degree",
@@ -538,6 +528,16 @@
         "sdn_uom_name": "Degrees True",
         "legacy_GF3_code": "SDN:GF3::HEAD"
     },
+    "PTCHGP01": {
+        "standard_name": "platform_pitch",
+        "units": "degree_true",
+        "long_name": "pitch",
+        "sdn_parameter_urn": "SDN:P01::PTCHGP01",
+        "sdn_parameter_name": "Orientation (pitch) of measurement platform by inclinometer",
+        "sdn_uom_urn": "SDN:P06::UAAA",
+        "sdn_uom_name": "Degrees",
+        "legacy_GF3_code": "SDN:GF3::PTCH"
+    },
     "ROLLGP01": {
         "standard_name": "platform_roll",
         "units": "degree",
@@ -547,6 +547,22 @@
         "sdn_uom_urn": "SDN:P06::UAAA",
         "sdn_uom_name": "Degrees",
         "legacy_GF3_code": "SDN:GF3::ROLL"
+    },
+    "PTCHSD01": {
+        "units": "degree_true",
+        "long_name": "pitch standard deviation",
+        "sdn_parameter_urn": "SDN:P01::PTCHSD01",
+        "sdn_parameter_name": "Orientation standard deviation (pitch) of measurement platform by inclinometer",
+        "sdn_uom_urn": "SDN:P06::UAAA",
+        "sdn_uom_name": "Degrees"
+    },
+    "ROLLSD01": {
+        "units": "degree",
+        "long_name": "roll standard deviation",
+        "sdn_parameter_urn": "SDN:P01::ROLLSD01",
+        "sdn_parameter_name": "Orientation standard deviation (roll angle) of measurement platform by inclinometer",
+        "sdn_uom_urn": "SDN:P06::UAAA",
+        "sdn_uom_name": "Degrees"
     },
     "SVELCV01": {
         "standard_name": "speed of sound in sea water",

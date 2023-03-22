@@ -116,6 +116,8 @@ P01_CODES_MAP = {
     'heading': "HEADCM01",
     'roll_': "ROLLGP01",
     'pitch': "PTCHGP01",
+    'roll_std': "ROLLSD01",
+    'pitch_std': "PTCHSD01",
     'u_ship': "APEWGP01",
     'v_ship': "APNSGP01"
 }
