@@ -2,7 +2,7 @@
 Date: February 15 2022
 Made by: jeromejguay
 
-This script is used to decode the data send by Viking as of February 2022 format version.
+This module contains the functions to read the data send by Viking as of February 2022 format version.
 
 The Buoy Data `.dat` files
 --------------------------
@@ -129,8 +129,8 @@ The Buoy Data `.dat` files
     [W]Voltage is too low
 
 
-Generated winch files.
---------------
+Generated winch files
+---------------------
 <buoy name>_WCH_<date>.dat
 #1 Date GPS
 #2 Hour GPS
@@ -139,6 +139,7 @@ received by the CTD when it was at it lowest; or the temperature (°C), Conducti
 
 Notes
 -----
+[1] .. [January 2023] JeromeJGuay
     - OCR are not current installed on the buoy. A function was made but is not in used. Furthermore, the documentation
     was not clear on how to decode the hexadecimal values. Here is an exAmple of the OCR string.
     [OCR],29,220916

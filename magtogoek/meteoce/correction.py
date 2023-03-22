@@ -1,4 +1,7 @@
 """
+Date: February 2023
+Made by jeromejguay
+
 Module containing the correction functions for meteoce data processing.
 """
 import xarray as xr
@@ -11,10 +14,8 @@ from magtogoek.wps.correction import pH_correction_for_salinity, dissolved_oxyge
     dissolved_oxygen_correction_for_salinity_SCOR_WG_142, dissolved_oxygen_correction_for_pressure_JAC, \
     time_drift_correction, in_situ_sample_correction
 
-
 if TYPE_CHECKING:
     from magtogoek.meteoce.process import ProcessConfig
-
 
 WPS_VARIABLES_TO_CORRECT_FOR_DRIFT_AND_IN_SITU = [
     'salinity',
@@ -31,6 +32,8 @@ METEOCE_VARIABLES_TO_CORRECT_FOR_MAGNETIC_DECLINATION = [
 
 ]
 
+
+# Correct wind for roll and pitch
 
 def meteoce_data_magnetic_declination_correction(dataset: xr.Dataset, pconfig: ProcessConfig):
     """Carry magnetic declination correction on meteoce variables."""
@@ -50,7 +53,7 @@ def meteoce_data_magnetic_declination_correction(dataset: xr.Dataset, pconfig: P
                 dataset['course'].values = (dataset['course'].values + angle) % 360
                 dataset['course'].attrs += 'Corrected for magnetic declination.\n'
 
-        for variable in set(['wind_direction', 'wind_direction_max','wave_direction']).intersection(set(dataset.variables)):
+        for variable in {'mean_wind_direction', 'max_wind_direction', 'wave_direction'}.intersection(set(dataset.variables)):
             add_correction_attributes_to_dataarray(dataset[variable])
             dataset[variable].values = (dataset[variable].values + pconfig.magnetic_declination) % 360
             dataset[variable].attrs['corrections'] += 'Corrected for magnetic declination.\n'
@@ -181,9 +184,9 @@ def _dissolved_oxygen_pressure_correction(dataset: xr.Dataset):
     """
     if all(var in dataset.variables for var in ['atm_pressure']):
         dataset.dissolved_oxygen.values = dissolved_oxygen_correction_for_pressure_JAC(
-                dissolved_oxygen=dataset.dissolved_oxygen.data,
-                pressure=dataset.atm_pressure.pint.quantify().to('dbar').data
-            )
+            dissolved_oxygen=dataset.dissolved_oxygen.data,
+            pressure=dataset.atm_pressure.pint.quantify().to('dbar').data
+        )
         l.log(f'Dissolved oxygen correction for pressure was carried out')
         dataset['dissolved_oxygen'].attrs["corrections"] += 'Pressure correction carried out.\n'
     else:

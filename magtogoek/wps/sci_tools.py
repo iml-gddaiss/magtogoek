@@ -1,5 +1,16 @@
 """
+Date: January 2023
+Made by jeromejguay
+
+
 This module contains Water Property Sensor (WPS) related mathematical and scientific functions.
+
+Notes:
+    This repository has better documentation on functions and additionnal function.
+    Could be a good reference for improvements.
+
+    https://github.com/ooici/ion-functions/blob/master/ion_functions/data/do2_functions.py
+
 """
 import numpy as np
 from nptyping import NDArray

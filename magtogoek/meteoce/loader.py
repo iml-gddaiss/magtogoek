@@ -1,30 +1,25 @@
 """
-Date April 6 2022
+Date: April 2022
 Made by jeromejguay
 
 Module that contains function to load meteoc variable into a dataset.
 
-Data That Need Processing
--------------------------
-    co2_a and co2_w: ppm values are divided by 1e6 and multiplied byt the cell_gas_pressure.
-
-    - BODC NAMES: https://vocab.nerc.ac.uk/search_nvs/P01/
-
-    - VARIABLES NOT IN METEOCE odf.
-      PAR
-      chlorophyle
-      fdom
-      do
-
-    - DO computation:
-        https://github.com/TEOS-10/python-gsw/blob/master/gsw/gibbs/conversions.py
-        https://github.com/ooici/ion-functions/blob/master/ion_functions/data/do2_functions.py
 
 Notes
 -----
-Load more data ? wind min ?
+[1] .. [March 2023] JeromeJGuay
+    The function `_wind_and_wave_direction_correction' made to correct for a possible error in
+    the Viking Buoy internal processing. That is, using a single heading measurements instead
+    of a time average to set the wind and wave directions. The MO tag has this single heading
+    measurements and thus needs to be loaded to make this correction.
+    However, I'm not sure if this is actually the case at this point.
+
+[2] .. [March 2023] JeromeJGuay
+    The WXT wind measurements are less accurate than the wmt700. Furthermore, the WXT520
+    is more likely to malfunction and not send data while the WMT700 always work.
+
+
 """
-import sys
 
 from magtogoek.meteoce.viking_dat_reader import RawVikingDatReader, VikingData
 import matplotlib
@@ -113,6 +108,10 @@ def load_viking_data(
 
     dataset = _average_duplicates(dataset, 'time')
 
+    # See note 1 in module docstring
+    #
+    #_wind_and_wave_direction_correction(dataset=meteoce_data) # Seem to be already using the average heading afterall
+
     dataset.attrs['logbook'] = l.logbook
 
     return dataset
@@ -141,10 +140,10 @@ def get_viking_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.Ma
 
     if viking_data.wmt700 is not None:
         _data.update(
-            {'wind_mean': (viking_data.wmt700['Sm'] * KNOTS_TO_METER_PER_SECONDS, {'units': 'm/s'}),
-             'wind_direction_mean': (viking_data.wmt700['Dm'], {}),
-             'wind_max': (viking_data.wmt700['Sx'] * KNOTS_TO_METER_PER_SECONDS, {'units': 'm/s'}),
-             'wind_direction_max': (viking_data.wmt700['Dx'], {})}
+            {'mean_wind': (viking_data.wmt700['Sm'] * KNOTS_TO_METER_PER_SECONDS, {'units': 'm/s'}),
+             'mean_wind_direction': (viking_data.wmt700['Dm'], {}),
+             'max_wind': (viking_data.wmt700['Sx'] * KNOTS_TO_METER_PER_SECONDS, {'units': 'm/s'}),
+             'max_wind_direction': (viking_data.wmt700['Dx'], {})}
         )
         l.log('wmt700 data loaded.')
 
@@ -154,8 +153,9 @@ def get_viking_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.Ma
              'atm_humidity': (viking_data.wxt520['Ua'], {}),
              'atm_pressure': (viking_data.wxt520['Pa'], {"units": "mbar"})}
         )
-        ###### Wind data are on loaded from wmt7000 #####
 
+        # See note 2 in the module docstring.
+        #
         # A parameter could be added to choose where to load wind data from.
         # wind data from wxt520 are not loaded at the moment.
         # for nc_name, viking_name, scale, unit in zip(
@@ -263,9 +263,17 @@ def get_viking_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.Ma
             _data["bt_"+_name] = (viking_data.rti["bt_"+_name], _attrs)
         l.log('Rti data loaded.')
 
-    if viking_data.mo is not None:
-        _data['correction_heading'] = (viking_data.mo['heading'], {})
-        l.log('Mo heading loaded.')
+    if viking_data.debit is not None:
+        _data.update(
+            {'surface_current': (viking_data.debit['flow'], {})}
+        )
+
+    # See note [1] in module docstring.
+    #
+    # if viking_data.mo is not None:
+    #     _data['last_heading'] = (viking_data.mo['heading'], {})
+    #     #_data['mo_mean_wind_direction'] = (viking_data.mo['wind_direction'], {})
+    #     l.log('Mo heading loaded.')
 
     return _data
 
@@ -296,6 +304,27 @@ def _average_duplicates(dataset: xr.Dataset, coord: str) -> xr.Dataset:
     return _dataset
 
 
+# See note [1] in module docstring.
+#
+# def _wind_and_wave_direction_correction(dataset: xr.Dataset):
+#     """Fix direction for Wind and Wave.
+#
+#     The Viking Buoy V1 uses the last measured heading value to compute the
+#     wind and wave direction instead of the average value of the measurement period.
+#
+#     The last measured heading value is sent in the `MO` tag and are used to get the
+#     raw directions values from the Wind and Wave.
+#
+#     The correct Wave and Wind directions are then computed using the average heading value.
+#     """
+#     direction_to_correct = ['wave_direction', 'mean_wind_direction', 'max_wind_direction']
+#     if all(var in dataset.variables for var in ['last_heading', 'heading']):
+#         heading = (dataset['heading'] + 360) % 360 # [-180, 180[ -> [0, 360[
+#         for variable in set(dataset.variables).intersection(set(direction_to_correct)):
+#             dataset[variable].values = (dataset[variable] - dataset['last_heading'] + heading).values % 360
+#             l.log(f'{variable} data corrected using the average heading.')
+
+
 if __name__ == "__main__":
     #vr = RawVikingDatReader()
     #_buoys_data = vr.read(['/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat'])
@@ -303,5 +332,6 @@ if __name__ == "__main__":
     #v_data = _buoys_data['pmza_riki']
 
     ds = load_meteoce_data(['/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat'])
+    ds.to_netcdf('/home/jeromejguay/ImlSpace/Data/iml4_2021/meteoce_riki_2021.nc')
 
     #ds.to_netcdf('/home/jeromejguay/Desktop/viking_test.nc')

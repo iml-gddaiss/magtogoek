@@ -1,11 +1,8 @@
 """
-Correction algorithm for Water Property Sensor (WPS) data.
+Date: February 2023
+Made by jeromejguay
 
-cal coeff      : c0, c1, c2, d0
-pressure coeff : cp
-salinity coeff : b0, b1, b2, b3, b4
-winkler coeff  : d1, d2
-
+This script contains correction algorithm for Water Property Sensor (WPS) data.
 
 """
 from typing import Union, List

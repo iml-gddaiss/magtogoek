@@ -1,3 +1,9 @@
+"""
+Date: February 2023
+Made by jeromejguay
+
+Common function used for processing data.
+"""
 import sys
 import click
 

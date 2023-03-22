@@ -1,40 +1,31 @@
 """
+Date: July 2022
+Made by: jeromejguay
+
 This script has to functions to process and quick process meteoce buoy data.
 These functions are called by the app command `process` and `quick meteoce`.
 
-Date: July 25 2022
-Made by: jeromejguay
 
 Notes
 -----
 
-[February 2023]
-    Missing BODC: oxy
+[1] .. [February 2023] JeromeJGuay
+    When variables requires other variables for corrections, Nan values will propagate.
+    At the moment, variables full of Nan will still be use for correction.
+    This could possibly a problem.
 
-    At the moment for some data correction. If the variable used has nans, the corrected value will (should) be a nan as well.
-    Therefore, if a variable is present but all the values are nan, the corrected data will also be all nan.
-
-    Maybe quality control should be done before and the transformation should check the flag values.
-
-[March 2023]
-    + Data from the wave_s wave heights are truncated to the first decimal.
-    + Wind and Compass sample for 1 minute.
-    + Direction are from 0 to 360 except for compass which is computed.
-
+[2] .. [March 2023] JeromeJGuay
+    Data from the wave_s wave heights are truncated to the first decimal.
 
 Todos
 -----
-[March 2023]
-    For Wind and Wave directions:
-    + The last heading value need to be subtracted (located in the short string)
-    + Then the compass heading value needs to be added.
-
     For Flow Meter:
-    + Add a correction option to correct for buoy uship,vship assuming that the flow meter
-      measured the direction along the heading and that the heading "always" correspond the the surface
+    + Add a correction option to correct for buoy uship, vship assuming that the flow meter
+      measured the direction along the heading and that the heading "always" correspond the surface
       current direction.
 """
-import sys
+# import sys
+# import click
 
 import xarray as xr
 from typing import *
@@ -55,13 +46,12 @@ from magtogoek.meteoce.quality_control import meteoce_quality_control, no_meteoc
 from magtogoek.adcp.correction import apply_motion_correction
 from magtogoek.adcp.quality_control import adcp_quality_control, no_adcp_quality_control
 
-# import click
 
 l.get_logger("meteoce_processing")
 
 STANDARD_GLOBAL_ATTRIBUTES = {"featureType": "timeSeriesProfile"}
 
-VARIABLES_TO_DROP = ['ph_temperature', 'speed', 'course', 'gps_magnetic_declination']
+VARIABLES_TO_DROP = ['ph_temperature', 'speed', 'course', 'gps_magnetic_declination']#, 'last_heading'] Not currently loaded
 
 GLOBAL_ATTRS_TO_DROP = [
     "platform_type",
@@ -77,10 +67,10 @@ GLOBAL_ATTRS_TO_DROP = [
 # This mapping can be updating by the meteoce.corrections modules.
 P01_CODES_MAP = {
     'time': "ELTMEP01",
-    'wind_mean': "EWSBZZ01",
-    'wind_max': "EGTSZZ01",
-    'wind_direction_mean': "EWDAZZ01",
-    'wind_direction_max': "EGTDSS01",
+    'mean_wind': "EWSBZZ01",
+    'max_wind': "EGTSZZ01",
+    'mean_wind_direction': "EWDAZZ01",
+    'max_wind_direction': "EGTDSS01",
     'atm_temperature': "CTMPZZ01",
     'atm_humidity': "CRELZZ01",
     'atm_pressure': "CAPHZZ01",
@@ -147,7 +137,7 @@ SENSOR_TYPE_TO_SENSORS_ID_MAP = {
     'co2w': ['co2_w'],
     'co2a': ['co2_a'],
     'wave': ['wave_mean_height', 'wave_maximal_height', 'wave_period'],
-    'wind': ['wind_mean', 'wind_max', 'wind_direction_mean', 'wind_direction_max'],
+    'wind': ['mean_wind', 'max_wind', 'mean_wind_direction', 'max_wind_direction'],
     'meteo': ['atm_temperature', 'atm_humidity', 'atm_pressure']
 }
 
@@ -534,6 +524,19 @@ def _compute_uv_ship(dataset: xr.Dataset):
     """Compute uship and vship from speed and course."""
     dataset["u_ship"], dataset["v_ship"] = north_polar2cartesian(dataset.speed, dataset.course)
     l.log('Platform velocities (u_ship, v_ship) computed from speed and course.')
+
+
+def _compute_surface_flow(dataset: xr.Dataset):
+    """
+    Parameters
+    ----------
+    dataset
+
+    Returns
+    -------
+
+    """
+    pass
 
 
 def _quality_control(dataset: xr.Dataset, pconfig: ProcessConfig) -> xr.Dataset:
