@@ -84,6 +84,9 @@ Pycurrents can be cloned from their [mercurial repository](https://currents.soes
 ```
 -->
 ## Quick start
+
+# New init feature for local setup and metadata files. TODO
+
 From the terminal, within the same python environment it was installed in, type `mtgk` to run the CLI application. 
 Using the command -h/--help and --info will give you information on the different commands.
 
