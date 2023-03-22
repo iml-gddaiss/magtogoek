@@ -134,7 +134,9 @@ def get_viking_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.Ma
         _data.update(
             {'heading': (viking_data.comp['heading'], {}),
              'pitch': (viking_data.comp['pitch'], {}),
-             'roll_': (viking_data.comp['roll'], {})}
+             'roll_': (viking_data.comp['roll'], {}),
+             'pitch_std': (viking_data.comp['pitch_std'], {}),
+             'roll_std': (viking_data.comp['roll_std'], {})}
         )
         l.log('Comp data loaded.')
 
@@ -272,7 +274,6 @@ def get_viking_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.Ma
     #
     # if viking_data.mo is not None:
     #     _data['last_heading'] = (viking_data.mo['heading'], {})
-    #     #_data['mo_mean_wind_direction'] = (viking_data.mo['wind_direction'], {})
     #     l.log('Mo heading loaded.')
 
     return _data
