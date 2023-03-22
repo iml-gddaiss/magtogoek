@@ -1,4 +1,7 @@
 """
+Date: February 2023
+Made by jeromejguay
+
 This module contains general mathematical and scientific functions.
 """
 import numpy as np
@@ -66,8 +69,10 @@ def circular_distance(a1, a2, units="rad"):
     Taken from jeanlucshaw adcp2nc: https://github.com/jeanlucshaw/adcp2nc/
     """
     if units == "deg":
-        a1 = np.pi * a1 / 180
-        a2 = np.pi * a2 / 180
+        a1 = np.deg2rad(a1)
+        a2 = np.deg2rad(a2)
+        #a1 = np.pi * a1 / 180
+        #a2 = np.pi * a2 / 180
 
     if np.isscalar(a1) and np.isscalar(a2):
         v1 = np.array([np.cos(a1), np.sin(a1)])
@@ -86,7 +91,8 @@ def circular_distance(a1, a2, units="rad"):
     res = np.arccos(np.clip(dot, -1.0, 1.0))
 
     if units == "deg":
-        res = 180 * res / np.pi
+        res = np.rad2deg(res)
+        #res = 180 * res / np.pi
 
     return res
 
