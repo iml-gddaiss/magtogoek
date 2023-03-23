@@ -28,13 +28,13 @@ def cartesian2north_polar(x: NDArray, y: NDArray):
 
 
 def north_polar2cartesian(radius: NDArray, azimut: NDArray) -> tp.Tuple[NDArray, NDArray]:
-    """ Compute x and y from radius and azimut (north clockwise)
+    """ Compute x and y from radius and azimut (degree) (north clockwise)
 
     Parameters
     ----------
     radius:
         Vector norm
-    azimut:
+    azimut (degree):
         Vector direction (north clockwise)
 
     Returns
