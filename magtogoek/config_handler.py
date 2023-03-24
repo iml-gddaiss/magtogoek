@@ -202,11 +202,9 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
     tparser.add_option(section, "last_updated", dtypes=["str"], default=datetime.now().strftime("%Y-%m-%d"))
 
     if version == 0:
-        tparser.add_option(section, "sensor_type", dtypes=["str"], default=process, is_required=True, choice=PROCESSES,
-                           comments=f'One of {PROCESSES}.')
+        tparser.add_option(section, "sensor_type", dtypes=["str"], default=process, is_required=True, choice=PROCESSES, comments=f'One of {PROCESSES}.')
     else:
-        tparser.add_option(section, "process", dtypes=["str"], default=process, is_required=True, choice=PROCESSES,
-                           comments=f'One of {PROCESSES}.')
+        tparser.add_option(section, "process", dtypes=["str"], default=process, is_required=True, choice=PROCESSES, comments=f'One of {PROCESSES}.')
 
     tparser.add_option(section, "platform_type", dtypes=["str"], choice=["buoy", "mooring", "ship", "lowered"], comments='One of [buoy, mooring, ship, lowered].')
 
@@ -266,10 +264,11 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
     tparser.add_option(section, "standard_name_vocabulary", dtypes=["str"], default="CF v.52")
     tparser.add_option(section, "acknowledgment", dtypes=["str"], default="")
 
-    section = "PROCESSING"
-    tparser.add_option(section, "navigation_file", dtypes=["str"], default="", is_file=True)
-    tparser.add_option(section, "leading_trim", dtypes=["int", "str"], default="", is_time_stamp=True)
-    tparser.add_option(section, "trailing_trim", dtypes=["int", "str"], default="", is_time_stamp=True)
+    if version > 0:
+        section = "PROCESSING"
+        tparser.add_option(section, "navigation_file", dtypes=["str"], default="", is_file=True)
+        tparser.add_option(section, "leading_trim", dtypes=["int", "str"], default="", is_time_stamp=True)
+        tparser.add_option(section, "trailing_trim", dtypes=["int", "str"], default="", is_time_stamp=True)
 
     if process == 'adcp':
         section = "ADCP_PROCESSING"
@@ -277,9 +276,10 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
         tparser.add_option(section, "yearbase", dtypes=["int"], default="", is_required=False)
         tparser.add_option(section, "adcp_orientation", dtypes=["str"], default="down", choice=["up", "down"], comments='up or down')
         tparser.add_option(section, "sonar", dtypes=["str"], choice=["wh", "sv", "os", "sw", "sw_pd0"], comments='[wh, sv, os, sw, sw_pd0, ]', is_required=True)
-    #    tparser.add_option(section, "navigation_file", dtypes=["str"], default="", is_file=True)
-    #    tparser.add_option(section, "leading_trim", dtypes=["int", "str"], default="", is_time_stamp=True)
-    #    tparser.add_option(section, "trailing_trim", dtypes=["int", "str"], default="", is_time_stamp=True)
+        if version == 0:
+            tparser.add_option(section, "navigation_file", dtypes=["str"], default="", is_file=True)
+            tparser.add_option(section, "leading_trim", dtypes=["int", "str"], default="", is_time_stamp=True)
+            tparser.add_option(section, "trailing_trim", dtypes=["int", "str"], default="", is_time_stamp=True)
         tparser.add_option(section, "sensor_depth", dtypes=["float"], default="")
         tparser.add_option(section, "depth_range", dtypes=["float"], nargs_min=0, nargs_max=2)
         tparser.add_option(section, "bad_pressure", dtypes=["bool"], default=False, null_value=False)
@@ -310,6 +310,14 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
         tparser.add_option(section, "drop_percent_good", dtypes=["bool"], default=True, null_value=False)
         tparser.add_option(section, "drop_correlation", dtypes=["bool"], default=True, null_value=False)
         tparser.add_option(section, "drop_amplitude", dtypes=["bool"], default=True, null_value=False)
+        if version == 0:
+            tparser.add_option(section, "force_platform_metadata", dtypes=["bool"], default=False, null_value=False)
+            tparser.add_option(section, "merge_output_files", dtypes=["bool"], default=True, null_value=False)
+            tparser.add_option(section, "bodc_name", dtypes=["bool"], default=True, null_value=False)
+            tparser.add_option(section, "odf_data", dtypes=["str"], default="both", choice=["vel", "anc", "both"],
+                               comments='One of [vel, anc, both,].')
+            tparser.add_option(section, "make_figures", dtypes=["bool", "str"], default=True, null_value=False)
+            tparser.add_option(section, "make_log", dtypes=["bool"], default=True, null_value=False)
 
     elif process == "meteoce_buoy":
         section = "METEOCE_PROCESSING"
@@ -355,6 +363,7 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
         tparser.add_option(section, "drop_percent_good", dtypes=["bool"], default=True, null_value=False)
         tparser.add_option(section, "drop_correlation", dtypes=["bool"], default=True, null_value=False)
         tparser.add_option(section, "drop_amplitude", dtypes=["bool"], default=True, null_value=False)
+
 
     return tparser
 
