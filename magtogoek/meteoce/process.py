@@ -17,12 +17,12 @@ Notes
 [2] .. [March 2023] JeromeJGuay
     Data from the wave_s wave heights are truncated to the first decimal.
 
-Todos
------
-    For Flow Meter:
-    + Add a correction option to correct for buoy uship, vship assuming that the flow meter
-      measured the direction along the heading and that the heading "always" correspond the surface
-      current direction.
+[3] .. [March 2023] JeromeJGuay
+    GPS bearing and course data seem to be bad. We believe that the bearing and course data are instant measurements.
+    Thus wave induced rapid horizontal oscillation and the rocking of the buoy, the GPS being located about ~2-3 meters
+    above the floating line, result in higher oscillation and amplitude in the speed values. Since speed dependent values
+    are average over ~ 1 minutes, we need at least ~1 minutes average values from the gps.who C<e
+
 """
 # import sys
 # import click

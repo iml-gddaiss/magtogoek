@@ -18,6 +18,12 @@ Notes
     The WXT wind measurements are less accurate than the wmt700. Furthermore, the WXT520
     is more likely to malfunction and not send data while the WMT700 always work.
 
+[3] .. [March 2023] JeromeJGuay
+    GPS bearing and course data seem to be bad. We believe that the bearing and course data are instant measurements.
+    Thus wave induced rapid horizontal oscillation and the rocking of the buoy, the GPS being located about ~2-3 meters
+    above the floating line, result in higher oscillation and amplitude in the speed values. Since speed dependent values
+    are average over ~ 1 minutes, we need at least ~1 minutes average values from the gps.
+
 
 """
 
@@ -153,7 +159,10 @@ def get_viking_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.Ma
         _data.update(
             {'atm_temperature': (viking_data.wxt520['Ta'], {}),
              'atm_humidity': (viking_data.wxt520['Ua'], {}),
-             'atm_pressure': (viking_data.wxt520['Pa'], {"units": "mbar"})}
+             'atm_pressure': (viking_data.wxt520['Pa'], {"units": "mbar"}),
+             #'wxt_mean_wind': (viking_data.wxt520['Sm'] * KNOTS_TO_METER_PER_SECONDS, {'units': 'm/s'}), # For test
+             #'wxt_mean_wind_direction': (viking_data.wxt520['Dm'], {}),
+             }
         )
 
         # See note 2 in the module docstring.
@@ -265,10 +274,12 @@ def get_viking_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.Ma
             _data["bt_"+_name] = (viking_data.rti["bt_"+_name], _attrs)
         l.log('Rti data loaded.')
 
-    if viking_data.debit is not None:
-        _data.update(
-            {'surface_current': (viking_data.debit['flow'], {})}
-        )
+    # Useless since it returns only the amplitude of the current along the heading axis.
+    #
+    # if viking_data.debit is not None:
+    #     _data.update(
+    #         {'surface_current': (viking_data.debit['flow'], {})}
+    #     )
 
     # See note [1] in module docstring.
     #
