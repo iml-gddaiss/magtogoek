@@ -343,7 +343,7 @@ if __name__ == "__main__":
 
     #v_data = _buoys_data['pmza_riki']
 
-    ds = load_meteoce_data(['/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat'])
-    ds.to_netcdf('/home/jeromejguay/ImlSpace/Data/iml4_2021/meteoce_riki_2021.nc')
+    #ds = load_meteoce_data(['/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat'])
+    #ds.to_netcdf('/home/jeromejguay/ImlSpace/Data/iml4_2021/meteoce_riki_2021.nc')
 
-    #ds.to_netcdf('/home/jeromejguay/Desktop/viking_test.nc')
+    ds = xr.open_dataset('/home/jeromejguay/ImlSpace/Data/iml4_2021/meteoce_riki_2021.nc')

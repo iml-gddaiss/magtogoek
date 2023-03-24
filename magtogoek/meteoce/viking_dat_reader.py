@@ -171,13 +171,9 @@ import numpy as np
 
 from magtogoek.utils import get_files_from_expression
 
-# from pint import UnitRegistry
-#
-# Quantity = UnitRegistry().Quantity
+FILL_VALUE = np.nan
 
-#FILL_VALUE = -32768  # Reusing the same fill value as teledyne (RDI) -(2**15)
-
-FILL_VALUE = np.nan # CHECK IF THIS IS OK FIXME
+TRIPLET_FILL_VALUE = 1e20
 
 TAGS = ["NOM", "COMP", "Triplet", "Par_digi", "SUNA", "GPS",
         "CTD", "CTDO", "RTI", "RDI", "WAVE_M", "WAVE_S", "WXT520",
@@ -355,6 +351,13 @@ def _convert_triplet_wavelength(triplet_data: dict):
         index460 = triplet_data['wavelength_' + i] == 460
         fdom_raw[index460] = triplet_data['raw_value_' + i][index460]
         fdom_calc[index460] = triplet_data['calculated_value_' + i][index460]
+
+    fluo_raw.set_fill_value(FILL_VALUE)
+    fluo_calc.set_fill_value(FILL_VALUE)
+    chloro_raw.set_fill_value(FILL_VALUE)
+    chloro_calc.set_fill_value(FILL_VALUE)
+    fdom_raw.set_fill_value(FILL_VALUE)
+    fdom_calc.set_fill_value(FILL_VALUE)
 
     triplet_data.update({
         'fluo_raw': fluo_raw,
@@ -858,7 +861,7 @@ def _decode_MO(data: str) -> dict:
     }
 
 
-def _safe_float(value: str) -> Union[float]:
+def _safe_float(value: str, ) -> Union[float]:
     try:
         return float(FILL_VALUE) if '#' in value else float(value)
     except ValueError:
@@ -915,15 +918,15 @@ if __name__ == "__main__":
 
     v_data = buoys_data['pmza_riki']
 
-    plt.figure()
-    plt.plot(v_data.ctd['salinity'], label='tag')
-    plt.plot(v_data.mo['salinity'], '--', label='mo')
-    plt.legend()
-    plt.show()
+    # plt.figure()
+    # plt.plot(v_data.ctd['salinity'], label='tag')
+    # plt.plot(v_data.mo['salinity'], '--', label='mo')
+    # plt.legend()
+    # plt.show()
 
     plt.figure()
     plt.plot(v_data.triplet['calculated_value_1'], label='tag')
-    plt.plot(v_data.mo['triplet_700'], '--', label='mo')
+    #plt.plot(v_data.mo['triplet_700'], '--', label='mo')
     plt.legend()
     plt.show()
 
