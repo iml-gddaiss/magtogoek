@@ -130,7 +130,7 @@ def get_viking_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.Ma
 
     if viking_data.gps is not None:
         _data.update(
-            {'speed': (viking_data.gps['speed'] * KNOTS_TO_METER_PER_SECONDS, {"units": "m/s"}),
+            {'speed': (np.round(viking_data.gps['speed'] * KNOTS_TO_METER_PER_SECONDS, 3), {"units": "m/s"}),
              'course': (viking_data.gps['course'], {}),
              'gps_magnetic_declination': (viking_data.gps['variation_E'], {})}
         )
@@ -148,9 +148,9 @@ def get_viking_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.Ma
 
     if viking_data.wmt700 is not None:
         _data.update(
-            {'mean_wind': (viking_data.wmt700['Sm'] * KNOTS_TO_METER_PER_SECONDS, {'units': 'm/s'}),
+            {'mean_wind': (np.round(viking_data.wmt700['Sm'] * KNOTS_TO_METER_PER_SECONDS, 3), {'units': 'm/s'}),
              'mean_wind_direction': (viking_data.wmt700['Dm'], {}),
-             'max_wind': (viking_data.wmt700['Sx'] * KNOTS_TO_METER_PER_SECONDS, {'units': 'm/s'}),
+             'max_wind': (np.round(viking_data.wmt700['Sx'] * KNOTS_TO_METER_PER_SECONDS, 3), {'units': 'm/s'}),
              'max_wind_direction': (viking_data.wmt700['Dx'], {})}
         )
         l.log('wmt700 data loaded.')
@@ -160,7 +160,7 @@ def get_viking_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.Ma
             {'atm_temperature': (viking_data.wxt520['Ta'], {}),
              'atm_humidity': (viking_data.wxt520['Ua'], {}),
              'atm_pressure': (viking_data.wxt520['Pa'], {"units": "mbar"}),
-             #'wxt_mean_wind': (viking_data.wxt520['Sm'] * KNOTS_TO_METER_PER_SECONDS, {'units': 'm/s'}), # For test
+             #'wxt_mean_wind': (np.round(viking_data.wxt520['Sm'] * KNOTS_TO_METER_PER_SECONDS, 3), {'units': 'm/s'}), # For test
              #'wxt_mean_wind_direction': (viking_data.wxt520['Dm'], {}),
              }
         )
@@ -250,9 +250,10 @@ def get_viking_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.Ma
         l.log('Wave_m data loaded.')
 
     elif viking_data.wave_s is not None:
+        _attrs = {'comments': 'Height values were truncated at the first decimal.\n'}
         _data.update(
-            {'wave_mean_height': (viking_data.wave_s['average_height'], {}),
-             'wave_maximal_height': (viking_data.wave_s['Hmax'], {}),
+            {'wave_mean_height': (viking_data.wave_s['average_height'], _attrs),
+             'wave_maximal_height': (viking_data.wave_s['Hmax'], _attrs),
              'wave_period': (viking_data.wave_s['dominant_period'], {}),
              'wave_direction': (viking_data.wave_s['direction'], {})}
         )
