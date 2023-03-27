@@ -534,7 +534,7 @@ def add_navigation(dataset: xr.Dataset, navigation_files: str):
         nav_ds = load_navigation(navigation_files)
     except ValueError as msg:
         l.warning(f'Unable to load the navigation file.\n\t Error: {msg}')
-        return dataset
+        #return dataset
 
     if nav_ds is not None:
         if 'time' in nav_ds.coords:
@@ -542,25 +542,23 @@ def add_navigation(dataset: xr.Dataset, navigation_files: str):
             if all([var in nav_ds for var in ('lon', 'lat')]):
                 dataset['lon'] = nav_ds['lon']
                 dataset['lat'] = nav_ds['lat']
-                l.log("Platform GPS data loaded.")
+                l.log("Platform GPS data (longitude, latitude) loaded.")
 
             if all([var in nav_ds for var in ('u_ship', 'v_ship')]):
                 dataset['u_ship'] = nav_ds['u_ship']
                 dataset['v_ship'] = nav_ds['v_ship']
-                l.log("Platform velocity data loaded.")
+                l.log("Platform velocity data (u_ship, v_ship) loaded.")
 
             if all([var in nav_ds for var in ('heading', 'pitch', 'roll_')]):
                 dataset['heading'] = nav_ds['heading']
                 dataset['pitch'] = nav_ds['pitch']
                 dataset['roll_'] = nav_ds['roll_']
-                l.log("Platform inertial data loaded.")
+                l.log("Platform inertial data (heading, pitch, roll) loaded.")
             nav_ds.close()
         else:
             l.warning('Could not load navigation data file. `time` coordinate was massing.')
     else:
         l.warning('Could not load navigation data file.')
-
-    return dataset
 
 
 def add_correction_attributes_to_dataarray(dataarray: xr.DataArray):

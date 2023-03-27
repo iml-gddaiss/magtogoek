@@ -314,7 +314,9 @@ def _process_meteoce_data(pconfig: ProcessConfig):
     # NOTE: PROBABLY NOT NEED SINCE VIKING DATA have GPS.
     if pconfig.navigation_file:
         l.section("Navigation data")
-        dataset = add_navigation(dataset, pconfig.navigation_file)
+        l.log(f"Loading the following navigation data from {pconfig.navigation_file}")
+        add_navigation(dataset, pconfig.navigation_file)
+
 
     # ------------ #
     # CORRECTION 1 #

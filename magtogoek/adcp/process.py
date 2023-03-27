@@ -327,7 +327,7 @@ def _process_adcp_data(pconfig: ProcessConfig):
     # ----------------------------------------- #
     if pconfig.navigation_file:
         l.section("Navigation data")
-        dataset = add_navigation(dataset, pconfig.navigation_file)
+        add_navigation(dataset, pconfig.navigation_file)
 
     # -------------- #
     # TRANSFORMATION #
