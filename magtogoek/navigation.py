@@ -207,7 +207,7 @@ def compute_navigation(
 
 
 def _compute_navigation(
-    dataset: xr.Dataset, window: tp.Union[int, None] = None,
+    dataset: xr.Dataset, window: int = None,
 ) -> xr.Dataset:
     """compute bearing, speed, u_ship and v_ship
 
