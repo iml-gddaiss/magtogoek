@@ -327,7 +327,10 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
         tparser.add_option(section, "leading_trim", dtypes=["int", "str"], default="", is_time_stamp=True)
         tparser.add_option(section, "trailing_trim", dtypes=["int", "str"], default="", is_time_stamp=True)
         tparser.add_option(section, "magnetic_declination", dtypes=["float"], default="")
-        tparser.add_option(section, "magnetic_declination_preset", dtypes=["float"], default=None, comments="Found in the ADCP configuration file.")
+        tparser.add_option(section, "motion_correction_mode", dtypes=["str"], default="bt", choice=["bt", "nav", "off"], comments='[bt, nav, off].')
+        tparser.add_option(section, "compute_uv_ship", dtypes=["str"], default="drop", choice=["sc", "ll", "off"], comments='[sc, ll, off] sc: speed & course, ll: longitude & latitude', null_value="keep")
+
+        tparser.add_option(section, "quality_control", dtypes=["bool"], default=True, null_value=False)
 
         section = "WPS_PROCESSING"
         tparser.add_option(section, "recompute_density", dtypes=["bool"], default=True, null_value=False)
@@ -335,15 +338,16 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
         tparser.add_option(section, 'ph_coeffs', dtypes=["float"], nargs=3, default="", comments="Calibration coefficient: psal, k0, k2.")
         tparser.add_option(section, "oxy_correction", dtypes=["bool"], default=True, null_value=False)
         tparser.add_option(section, 'oxy_coeffs', dtypes=["float"], nargs=12, default="", comments="Calibration coefficient: c0, c1, c2, d0, cp, b0, b1, b2, b3, b4, d1, d2.")
-        tparser.add_option(section, "quality_control", dtypes=["bool"], default=True, null_value=False)
+        #tparser.add_option(section, "quality_control", dtypes=["bool"], default=True, null_value=False)
 
         section = "ADCP_PROCESSING"
+        tparser.add_option(section, "magnetic_declination_preset", dtypes=["float"], default=None, comments="Found in the ADCP configuration file.")
         tparser.add_option(section, "keep_bt", dtypes=["bool"], default=True, null_value=False)
-        tparser.add_option(section, "motion_correction_mode", dtypes=["str"], default="bt", choice=["bt", "nav", "off"], comments='[bt, nav, off].')
-        tparser.add_option(section, "quality_control", dtypes=["bool"], default=True, null_value=False)
+
+        #tparser.add_option(section, "quality_control", dtypes=["bool"], default=True, null_value=False)
 
         section = "WPS_QUALITY_CONTROL"
-        # nothing yes
+        # nothing TODO
 
         section = "ADCP_QUALITY_CONTROL"
         tparser.add_option(section, "amplitude_threshold", dtypes=["int"], default=0, value_min=0, value_max=255, comments='Value between 0 and 255.')

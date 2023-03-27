@@ -31,20 +31,22 @@ import xarray as xr
 from typing import *
 
 from magtogoek import logger as l
-from magtogoek.sci_tools import rotate_2d_vector
+from magtogoek.sci_tools import rotate_2d_vector, north_polar2cartesian
 from magtogoek.process_common import BaseProcessConfig, resolve_output_paths, add_global_attributes, write_log, \
-    write_netcdf, \
-    add_processing_timestamp, clean_dataset_for_nc_output, format_data_encoding, add_navigation, \
+    write_netcdf, add_processing_timestamp, clean_dataset_for_nc_output, format_data_encoding, add_navigation, \
     save_variables_name_for_odf_output
 from magtogoek.attributes_formatter import format_variables_names_and_attributes
-from magtogoek.meteoce.correction import wps_data_correction, meteoce_data_magnetic_declination_correction
-from magtogoek.wps.sci_tools import compute_density, dissolved_oxygen_ml_per_L_to_umol_per_L, \
-    dissolved_oxygen_umol_per_L_to_umol_per_kg
-from magtogoek.sci_tools import north_polar2cartesian
+
+from magtogoek.wps.sci_tools import compute_density, dissolved_oxygen_ml_per_L_to_umol_per_L, dissolved_oxygen_umol_per_L_to_umol_per_kg
+
 from magtogoek.meteoce.loader import load_meteoce_data
+from magtogoek.meteoce.correction import wps_data_correction, meteoce_data_magnetic_declination_correction, wind_motion_correction
 from magtogoek.meteoce.quality_control import meteoce_quality_control, no_meteoce_quality_control
-from magtogoek.adcp.correction import apply_motion_correction
+
+from magtogoek.adcp.correction import apply_motion_correction as adcp_motion_correction
 from magtogoek.adcp.quality_control import adcp_quality_control, no_adcp_quality_control
+
+from magtogoek.navigation import _compute_navigation
 
 
 l.get_logger("meteoce_processing")
@@ -160,20 +162,24 @@ class ProcessConfig(BaseProcessConfig):
     sensor_depth: float = None
     # wind_sensor: str = None # only the wmt700 is used for wind.
 
-    ### ID
+    ##### ID #####
     adcp_id: str = None
     ctd_id: str = None
     ctdo_id: str = None
     nitrate_id: str = None
     # ADD MORE
 
-    ### COMPUTE
+    ##### COMPUTE #####
+    # GPS
+    #navigation: str = "drop" # ["drop", "keep", "recompute"]
+    compute_uv_ship: str = None
+
     # CTD
     recompute_density: bool = None
 
-    ### CORRECTION
-    # Compass
+    ##### CORRECTION #####
     magnetic_declination: Union[bool, float] = None
+    motion_correction_mode: str = "nav" # ["bt", "nav", "off"]
 
     # PH
     ph_salinity_correction: bool = None
@@ -220,10 +226,9 @@ class ProcessConfig(BaseProcessConfig):
     fdom_sample_correction: List[float] = None
 
     # ADCP
-    motion_correction_mode: str = None  # maybe adcp/process/adcp_processing...c
     magnetic_declination_preset: float = None
 
-    # QUALITY_CONTROL
+    ##### QUALITY_CONTROL #####
 
     # meteoce
     quality_control: bool = None
@@ -249,7 +254,7 @@ class ProcessConfig(BaseProcessConfig):
     pitch_threshold: float = None
     roll_threshold: float = None
 
-    ## Variables set by the processing##
+    ##### Variables set by the processing #######
     climatology_dataset: xr.Dataset = None
 
     def __init__(self, config_dict: dict = None):
@@ -311,18 +316,25 @@ def _process_meteoce_data(pconfig: ProcessConfig):
     # ----------------------------------------- #
     # ADDING THE NAVIGATION DATA TO THE DATASET #
     # ----------------------------------------- #
-    # NOTE: PROBABLY NOT NEED SINCE VIKING DATA have GPS.
+    l.section("Navigation data")
+
     if pconfig.navigation_file:
         l.section("Navigation data")
         l.log(f"Loading the following navigation data from {pconfig.navigation_file}")
         add_navigation(dataset, pconfig.navigation_file)
 
+    l.section('Navigation data computation')
 
-    # ------------ #
-    # CORRECTION 1 #
-    # ------------ #
+    #if pconfig.navigation == "recompute":
 
-    l.section("Data Correction")
+    if pconfig.compute_uv_ship != "off":
+        _compute_uv_ship(dataset=dataset, pconfig=pconfig)
+
+    # ------------------- #
+    # METEOCE CORRECTION  #
+    # ------------------- #
+
+    l.section("Meteoce data correction")
 
     _set_magnetic_declination(dataset, pconfig)
 
@@ -330,16 +342,13 @@ def _process_meteoce_data(pconfig: ProcessConfig):
 
     wps_data_correction(dataset, pconfig)
 
-    # ------- #
-    # COMPUTE #
-    # ------- #
+    wind_motion_correction(dataset)
 
-    l.section("Data Computation.")
+    # --------------- #
+    # METEOCE COMPUTE #
+    # --------------- #
 
-    # COMPUTE flow_speed_and_direction. Correct with speed assuming direction is course.
-
-    if all(x in dataset for x in ('speed', 'course')):
-        _compute_uv_ship(dataset)
+    l.section("Meteoce data computation.")
 
     if 'density' not in dataset or pconfig.recompute_density is True:
         _compute_ctdo_potential_density(dataset)
@@ -350,7 +359,7 @@ def _process_meteoce_data(pconfig: ProcessConfig):
 
     l.section("Adcp data correction")
 
-    _adcp_correction(dataset, pconfig)  # ADD MAGNETIC DECLINATION --+
+    _adcp_correction(dataset, pconfig)
 
     # --------------- #
     # QUALITY CONTROL #
@@ -521,26 +530,26 @@ def _adcp_correction(dataset: xr.Dataset, pconfig: ProcessConfig):
             l.log(f"Bottom velocities transformed to true north and true east.")
 
     if pconfig.motion_correction_mode in ["bt", "nav"]:
-        apply_motion_correction(dataset, pconfig.motion_correction_mode)
+        adcp_motion_correction(dataset, pconfig.motion_correction_mode)
 
 
-def _compute_uv_ship(dataset: xr.Dataset):
-    """Compute uship and vship from speed and course."""
-    dataset["u_ship"], dataset["v_ship"] = north_polar2cartesian(dataset.speed, dataset.course)
-    l.log('Platform velocities (u_ship, v_ship) computed from speed and course.')
+def _compute_uv_ship(dataset: xr.Dataset, pconfig: ProcessConfig):
+    """Compute u_ship and v_ship and add them to dataset.
 
-
-def _compute_surface_flow(dataset: xr.Dataset):
+    Either from speed and course or longitude and latitude depending on
+    `pconfig.compute_uv_ship` value.
+        ll: longitude and latitude
+        sc: speed and course
     """
-    Parameters
-    ----------
-    dataset
+    if pconfig.compute_uv_ship == "ll":
+        if all(v in dataset for v in ['lon', 'lat']):
+            l.log('Platform velocities (u_ship, v_ship) computed from longitude and latitude data.')
+            _compute_navigation(dataset)
 
-    Returns
-    -------
-
-    """
-    pass
+    elif pconfig.compute_uv_ship == "sp":
+        if all(x in dataset for x in ('speed', 'course')):
+            l.log('Platform velocities (u_ship, v_ship) computed from speed and course data.')
+            dataset["u_ship"], dataset["v_ship"] = north_polar2cartesian(dataset.speed, dataset.course)
 
 
 def _quality_control(dataset: xr.Dataset, pconfig: ProcessConfig) -> xr.Dataset:

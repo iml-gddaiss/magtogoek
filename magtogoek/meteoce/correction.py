@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from magtogoek import logger as l
 from magtogoek.process_common import add_correction_attributes_to_dataarray
-from magtogoek.sci_tools import rotate_heading
+from magtogoek.sci_tools import rotate_heading, cartesian2north_polar, north_polar2cartesian
 from magtogoek.wps.correction import pH_correction_for_salinity, dissolved_oxygen_correction_winkler, \
     dissolved_oxygen_correction_for_salinity_SCOR_WG_142, dissolved_oxygen_correction_for_pressure_JAC, \
     time_drift_correction, in_situ_sample_correction
@@ -88,6 +88,34 @@ def wps_data_correction(
 
         if pconfig.__dict__[variable + " _sample_correction"] is not None:
             _in_situ_sample_correction(dataset, variable, pconfig)
+
+
+def wind_motion_correction(dataset: xr.dataset):
+    u_ship, v_ship = dataset['u_ship'], dataset['v_ship']
+    _msg = 'Motion correction correction carried out with u_ship and v_ship.'
+
+    if all(v in dataset for v in ['mean_wind', 'mean_wind_direction']):
+        dataset['mean_wind'].values, dataset['mean_wind_direction'].values = _wind_motion_correction(
+            dataset['mean_wind'], dataset['mean_wind_direction'], u_ship, v_ship
+        )
+        for variable in ['mean_wind', 'mean_wind_direction']:
+            add_correction_attributes_to_dataarray(dataset[variable])
+            dataset[variable].attrs['comments'] += _msg
+            l.log(f'{str(variable)} ' + _msg)
+
+
+    if all(v in dataset for v in ['max_wind', 'max_wind_direction']):
+        dataset['max_wind'].values, dataset['max_wind_direction'].values = _wind_motion_correction(
+            dataset['max_wind'], dataset['max_wind_direction'], u_ship, v_ship
+        )
+        for variable in ['max_wind', 'max_wind_direction']:
+            add_correction_attributes_to_dataarray(dataset[variable])
+            dataset[variable].attrs['comments'] += _msg
+            l.log(f'{str(variable)} ' + _msg)
+
+def _wind_motion_correction(speed, direction, u_ship, v_ship):
+    wind_u, wind_v = north_polar2cartesian(speed,direction)
+    return cartesian2north_polar(wind_u - u_ship, wind_v - v_ship)
 
 
 def _dissolved_oxygen_corrections(dataset: xr.Dataset, pconfig: "ProcessConfig"):
