@@ -13,6 +13,11 @@ from pygeodesy.ellipsoidalVincenty import LatLon
 def cartesian2north_polar(x: NDArray, y: NDArray):
     """Compute the azimut (north clockwise)  and the radius from x, y vector.
 
+    ```
+    azimut = (arctan2(x, y) + 360) % 360
+    radius = sqrt(x**2 + y**2)
+    ```
+
     Parameters
     ----------
     x:
@@ -24,7 +29,7 @@ def cartesian2north_polar(x: NDArray, y: NDArray):
     -------
     azimut (north clockwise), radius
     """
-    return (np.arctan2(x, y) + 2 * np.pi) % (2 * np.pi), np.hypot(x, y)
+    return (np.rad2deg(np.arctan2(x, y)) + 360) % 360, np.hypot(x, y)
 
 
 def north_polar2cartesian(radius: NDArray, azimut: NDArray) -> tp.Tuple[NDArray, NDArray]:
@@ -34,7 +39,7 @@ def north_polar2cartesian(radius: NDArray, azimut: NDArray) -> tp.Tuple[NDArray,
     ----------
     radius:
         Vector norm
-    azimut (degree):
+    azimut: (degree)
         Vector direction (north clockwise)
 
     Returns

@@ -52,6 +52,8 @@ def polar_histo(dataset: xr.Dataset, x_vel: str, y_vel: str, r_max: float):
 
     azimut, radius = cartesian2north_polar(u[ii], v[ii])
 
+    azimut = np.deg2rad(azimut)
+
     rN, aN = 30, 180
     rbins, abins = np.linspace(0, r_max, rN), np.linspace(0, 2 * np.pi, aN)
 
