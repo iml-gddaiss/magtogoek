@@ -103,11 +103,12 @@ class BaseProcessConfig:
     figures_output: bool = None
 
     # Variables set internally for processing.
+    headless: bool = False
+
     generic_variables_name: tp.List[str] = None
     variables_to_drop: tp.List[str] = None
     global_attributes_to_drop: tp.List[str] = None
     drop_empty_attrs: bool = False
-    headless: bool = False
     sensors_id: tp.Dict[str, tp.List[str]] = None
     p01_codes_map: tp.Dict[str, str] = None
 
