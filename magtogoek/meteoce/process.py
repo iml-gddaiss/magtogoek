@@ -5,6 +5,8 @@ Made by: jeromejguay
 This script has to functions to process and quick process meteoce buoy data.
 These functions are called by the app command `process` and `quick meteoce`.
 
+TODO:
+-Specify the depth of the adcp first bin ? config file ?
 
 Notes
 -----
@@ -69,8 +71,8 @@ GLOBAL_ATTRS_TO_DROP = [
 # This mapping can be updating by the meteoce.corrections modules.
 P01_CODES_MAP = {
     'time': "ELTMEP01",
-    'mean_wind': "EWSBZZ01",
-    'max_wind': "EGTSZZ01",
+    'mean_wind_speed': "EWSBZZ01",
+    'max_wind_speed': "EGTSZZ01",
     'mean_wind_direction': "EWDAZZ01",
     'max_wind_direction': "EGTDSS01",
     'atm_temperature': "CTMPZZ01",
@@ -141,7 +143,7 @@ SENSOR_TYPE_TO_SENSORS_ID_MAP = {
     'co2w': ['co2_w'],
     'co2a': ['co2_a'],
     'wave': ['wave_mean_height', 'wave_maximal_height', 'wave_period'],
-    'wind': ['mean_wind', 'max_wind', 'mean_wind_direction', 'max_wind_direction'],
+    'wind': ['mean_wind_speed', 'max_wind_speed', 'mean_wind_direction', 'max_wind_direction'],
     'meteo': ['atm_temperature', 'atm_humidity', 'atm_pressure']
 }
 
@@ -158,7 +160,7 @@ ADCP_VARIABLES_FOR_QC = [
 class ProcessConfig(BaseProcessConfig):
     # PROCESSING
     buoy_name: str = None
-    data_format: str = None
+    data_format: str = None # [viking_dat, ]
     sensor_depth: float = None
     # wind_sensor: str = None # only the wmt700 is used for wind.
 
@@ -325,8 +327,6 @@ def _process_meteoce_data(pconfig: ProcessConfig):
 
     l.section('Navigation data computation')
 
-    #if pconfig.navigation == "recompute":
-
     if pconfig.compute_uv_ship != "off":
         _compute_uv_ship(dataset=dataset, pconfig=pconfig)
 
@@ -367,13 +367,14 @@ def _process_meteoce_data(pconfig: ProcessConfig):
 
     _quality_control(dataset, pconfig)
 
-    # ----------------------------- #
-    # ADDING SOME GLOBAL ATTRIBUTES #
-    # ----------------------------- #
+    # ------------------------ #
+    # ADDING GLOBAL ATTRIBUTES #
+    # ------------------------ #
 
     l.section("Adding Global Attributes")
 
     add_global_attributes(dataset, pconfig, STANDARD_GLOBAL_ATTRIBUTES)
+    dataset['sensor_depth'] = pconfig.sensor_depth
 
     # ------------- #
     # DATA ENCODING #

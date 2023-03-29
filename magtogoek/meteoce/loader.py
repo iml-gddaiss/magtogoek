@@ -148,9 +148,9 @@ def get_viking_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.Ma
 
     if viking_data.wmt700 is not None:
         _data.update(
-            {'mean_wind': (np.round(viking_data.wmt700['Sm'] * KNOTS_TO_METER_PER_SECONDS, 3), {'units': 'm/s'}),
+            {'mean_wind_speed': (np.round(viking_data.wmt700['Sm'] * KNOTS_TO_METER_PER_SECONDS, 3), {'units': 'm/s'}),
              'mean_wind_direction': (viking_data.wmt700['Dm'], {}),
-             'max_wind': (np.round(viking_data.wmt700['Sx'] * KNOTS_TO_METER_PER_SECONDS, 3), {'units': 'm/s'}),
+             'max_wind_speed': (np.round(viking_data.wmt700['Sx'] * KNOTS_TO_METER_PER_SECONDS, 3), {'units': 'm/s'}),
              'max_wind_direction': (viking_data.wmt700['Dx'], {})}
         )
         l.log('wmt700 data loaded.')

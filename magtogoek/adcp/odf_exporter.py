@@ -73,7 +73,7 @@ def make_odf(
     output_path:
         If a path(str) is provided, there is two possibilities: if the path is only a directory, the file name
         will be made from the odf['file_specification']. If a file name is also provided, the 'event_qualifier2'
-        will be appended to it if its not present in the `output_path`.
+        will be appended to it if it's not present in the `output_path`.
 
     """
     odf = Odf()

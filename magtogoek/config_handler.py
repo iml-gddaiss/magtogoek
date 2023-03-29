@@ -321,8 +321,16 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
 
     elif process == "meteoce_buoy":
         section = "METEOCE_PROCESSING"
+        tparser.add_option(section, "data_format", dtypes=["float"], default="viking_dat")
         tparser.add_option(section, "buoy_name", dtypes=["str"],  comments='Name of the buoy in the raw file.', is_required=True)
-        tparser.add_option(section, "sensor_id", dtypes=["str"], default=None)
+        tparser.add_option(section, "sensor_depth", dtypes=["float"], default="")
+        tparser.add_option(section, "adcp_id", dtypes=["str"], default=None)
+        tparser.add_option(section, "ctd_id", dtypes=["str"], default=None)
+        tparser.add_option(section, "ctdo_id", dtypes=["str"], default=None)
+        tparser.add_option(section, "nitrate_id", dtypes=["str"], default=None)
+        # ...
+        # ...
+        # ...
 
         tparser.add_option(section, "leading_trim", dtypes=["int", "str"], default="", is_time_stamp=True)
         tparser.add_option(section, "trailing_trim", dtypes=["int", "str"], default="", is_time_stamp=True)
