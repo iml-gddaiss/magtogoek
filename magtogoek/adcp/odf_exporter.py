@@ -403,6 +403,17 @@ def _make_other_buoy_instrument_header(odf: Odf, platform_metadata: PlatformMeta
 
 def _make_buoy_instrument_header(odf: Odf, sensor_id: str, dataset:xr. Dataset, platform_metadata: PlatformMetadata):
     """
+        BUOY_INSTRUMENT_HEADER
+      .
+      .
+      BUOY_INSTRUMENT_COMMENTS= '',
+      SENSORS= '',
+               '<SENSOR_NAME>.CODE: <code>',
+               .
+               .
+               '<SENSOR_NAME>.CALIBRATION_01.Date: <date>',
+               .
+               .
 
     Parameters
     ----------
@@ -440,7 +451,9 @@ def _make_buoy_instrument_header(odf: Odf, sensor_id: str, dataset:xr. Dataset, 
     # SENSORS
 
     # Use genvar name for -> platform.sensor[sensor_id].parameter[parameter_id].name.
-    # then make the maps to find the code,
+
+    # then make the maps to find the code and SENSOR_NAME e.i SPEED_SENSOR (anemometer) TODO
+
     # Use the rest of the buoy_instrument header to find the remaining values.
 
 

@@ -11,7 +11,7 @@ import sys
 
 from typing import *
 from dataclasses import dataclass, fields
-from magtogoek import SENSOR_TYPES, PLATFORM_TYPES
+from magtogoek import SENSOR_TYPES, PLATFORM_TYPES, GENERIC_PARAMETERS
 import magtogoek.logger as l
 from magtogoek.utils import dict2json, json2dict
 
@@ -106,6 +106,9 @@ class Sensor:
     def __post_init__(self):
         if self.sensor_type not in SENSOR_TYPES:
             l.warning(f"Invalid sensor_type: `{self.sensor_type}`.")
+        for param in self.parameters.keys():
+            if param not in GENERIC_PARAMETERS:
+                l.warning(f"Invalid parameter: `{self.sensor_type}/{param}`.")
 
 
 

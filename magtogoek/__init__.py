@@ -1,11 +1,13 @@
 import os
 import platform
 from pathlib import Path
-import magtogoek.logger
 
+import magtogoek.logger
 from magtogoek.utils import resolve_relative_path
-from magtogoek.adcp import SENSOR_TYPES as ADCP_SENSOR_TYPES
+
+from magtogoek.adcp import SENSOR_TYPES as ADCP_SENSOR_TYPES, GENERIC_PARAMETERS as ADCP_GENERIC_PARAMETERS
 from magtogoek.wps import SENSOR_TYPES as WPS_SENSOR_TYPES
+from magtogoek.meteoce import SENSOR_TYPES as METEOCE_SENSOR_TYPES, GENERIC_PARAMETERS as METEOCE_GENERIC_PARAMTERS
 
 logger.set_level(0)
 
@@ -16,6 +18,11 @@ TERMINAL_WIDTH = 80
 PROCESSES = ['adcp', 'meteoce']
 
 SENSOR_TYPES = ADCP_SENSOR_TYPES + WPS_SENSOR_TYPES
+
+GENERIC_PARAMETERS = list(
+    dict.fromkeys(ADCP_GENERIC_PARAMETERS + METEOCE_GENERIC_PARAMTERS)
+)
+
 
 PLATFORM_TYPES = ["buoy", "mooring", "ship", "lowered"]
 
