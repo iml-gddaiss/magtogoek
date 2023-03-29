@@ -67,9 +67,32 @@ class BuoySpecifications:
     description: str = None
 
 
+
+@dataclass
+class Calibration:
+    date: str = None
+    number_of_coefficents: str = None
+    coefficients: str = None
+    calibration_equation: str = None
+    calibration_units: str = None
+    archiving_units: str = None
+    conversion_factor: str = None
+    comments: str = None
+
+
+@dataclass
+
+class Parameter:
+    description: str = None
+    comments: str = None
+    calibration: Calibration = None
+
+
+
 @dataclass
 class Sensor:
     sensor_type: str = None
+    sensor_height: str = None # ????
     sensor_depth: str = None
     serial_number: str = None
     manufacturer: str = None
@@ -78,19 +101,37 @@ class Sensor:
     chief_scientist: str = None
     description: str = None
     comments: str = None
+    parameters: Dict[str, Parameter] = None
 
     def __post_init__(self):
         if self.sensor_type not in SENSOR_TYPES:
             l.warning(f"Invalid sensor_type: `{self.sensor_type}`.")
 
 
+
 @dataclass
 class PlatformMetadata:
     platform: Platform
     buoy_specs: BuoySpecifications
+    sensors: Dict[str, Sensor] = None
 
-    def add_sensor(self, sensor_id: str, kwargs: dict):
-        self.__setattr__(sensor_id, _filter_for_dataclass(Sensor, kwargs))
+    def __post_init__(self):
+        self.sensors = {}
+
+    def add_sensor(self, sensor_id: str, sensor_meta: dict):
+        self.sensors[sensor_id] = _filter_for_dataclass(Sensor, sensor_meta)
+
+        if 'parameters' in sensor_meta:
+            parameters = {}
+            for param, param_meta in sensor_meta['parameters'].items():
+                parameters[param] = _filter_for_dataclass(Parameter, param_meta)
+                if 'calibration' in param_meta:
+                    parameters[param].calibration = _filter_for_dataclass(Calibration, param_meta['calibration'])
+            self.sensors[sensor_id].parameters = parameters
+
+
+
+
 
     def add_to_dataset(self, dataset: xr.Dataset, sensors_id: List[str], force: bool = False):
         """Add values stored in Platform for sensor id in `sensors_id` to dataset attributes.
@@ -118,8 +159,8 @@ class PlatformMetadata:
                 dataset.attrs[key] = value
 
         for s_id in sensors_id:
-            if s_id in self.__dict__:
-                for key, value in self.__dict__[s_id].__dict__.items():
+            if s_id in self.sensors:
+                for key, value in self.sensors[s_id].__dict__.items():
                     attr_key = "_".join([s_id, key])
                     if attr_key in dataset.attrs and not force:
                         if not dataset.attrs[attr_key]:
@@ -194,7 +235,7 @@ def default_platform_metadata(platform_type: str, sensor_id: str, sensor_type: s
 
 
 if __name__ == "__main__":
-    filename = "/home/jeromejguay/ImlSpace/Projects/magtogoek/test/files/iml_platforms.json"
+    filename = "/home/jeromejguay/ImlSpace/Projects/magtogoek/tests/files/iml_platforms.json"
     _platform_id = "IML6_2017"
     _sensor_id = "ADCP_01"
 

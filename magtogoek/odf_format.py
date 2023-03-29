@@ -36,7 +36,7 @@ ODF object structure:
 Writing ODF files.
     Using .save(filename), the ODF file will be written.
     - Headers keys are always printed in upper case.
-    Headers values can be one of: int, float, str, list, tuple, or list(tuple).
+    Header values can be one of: int, float, str, list, tuple, or list(tuple).
       - floats are printed with the number of significant digit specified by the global variable PRECISION.
       - list elements are printed with the same headers key.
       - coefficients, directions and corrections items need to be stored as tuple for the correct formatting
@@ -67,10 +67,23 @@ REPEATED_HEADERS = [
     "history",
     "parameter",
 ]
+
 NC_TIME_ENCODING = {
     "units": "seconds since 1970-1-1 00:00:00Z",
     "calendar": "gregorian",
     "_FillValue": None,
+}
+
+ODF_PARAMETERS_TYPES = {
+    "int8": "INT",  # "BYTE",  # -128, 127
+    "int16": "INT",  # SHORT  # -32768, 32767
+    "int32": "INT",
+    "int64": "LONG",
+    "float16": "HALF",
+    "float32": "SING",
+    "float64": "DOUB",
+    "|S1": "SYTM",
+    "datetime64[ns]": "SYTM",
 }
 
 
