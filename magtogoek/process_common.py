@@ -355,6 +355,7 @@ def _make_figure_output_path(pconfig: BaseProcessConfig, default_path: Path, def
         if pconfig.headless is True:
             pconfig.figures_path = str(default_path.joinpath(default_filename))
     else:
+        pconfig.figures_output = True
         if is_only_filename(pconfig.make_figures):
             figures_path = default_path.joinpath(Path(pconfig.make_figures)).resolve()
         elif is_directory(pconfig.make_figures):
@@ -362,7 +363,7 @@ def _make_figure_output_path(pconfig: BaseProcessConfig, default_path: Path, def
         elif parent_is_dir(pconfig.make_figures):
             figures_path = Path(pconfig.make_figures)
         else:
-            raise ValueError(f'Path to {pconfig.figures_output} does not exists.')
+            raise ValueError(f'Path to `{pconfig.make_figures}` does not exists.')
 
         pconfig.figures_path = str(figures_path)
         pconfig.figures_output = True

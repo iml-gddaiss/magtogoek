@@ -284,7 +284,7 @@ def plot_vel_series(dataset: xr.Dataset, depths: Union[float, List[float]],
         da = flag_data(dataset=dataset, var=var, flag_thres=flag_thres)
         clines = cycle(["solid", "dotted", "dashed", "dashdotted"])
         for depth, c in zip(depths, colors):
-            ax.plot(dataset.time, da.sel(depth=depth), linestyle=next(clines), c=c, label=str(depth) + " m")
+            ax.plot(dataset.time, da.sel(depth=depth), linestyle=next(clines), c=c, label=f"{depth:.02f} m")
         ax.set_ylabel(f"{var}\n[{dataset[var].units}]", fontdict=FONT)
     axes[-1].set_xlabel("time", fontdict=FONT)
     axes[2].legend(title="depth")

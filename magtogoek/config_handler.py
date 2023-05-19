@@ -193,7 +193,10 @@ def version_control(config_dict: Dict, version: int):
         config_dict['HEADER']['process'] = config_dict['HEADER']['sensor_type']
 
 
-def get_config_taskparser(process: Optional[str] = None, version: Optional[int] = 1):
+def get_config_taskparser(process: Optional[str] = None, version: Optional[int] = None):
+    if version is None:
+        version = 1
+
     tparser = TaskParser()
 
     section = "HEADER"
