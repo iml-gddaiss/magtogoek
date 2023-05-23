@@ -71,7 +71,7 @@ class BuoySpecifications:
 @dataclass
 class Calibration:
     date: str = None
-    number_of_coefficents: str = None
+    number_of_coefficients: str = None
     coefficients: str = None
     calibration_equation: str = None
     calibration_units: str = None
@@ -81,18 +81,16 @@ class Calibration:
 
 
 @dataclass
-
 class Parameter:
     description: str = None
     comments: str = None
     calibration: Calibration = None
 
 
-
 @dataclass
 class Sensor:
     sensor_type: str = None
-    sensor_height: str = None # ????
+    sensor_height: str = None  # ???? FIXME height vs depth for metadata ? ODF ?
     sensor_depth: str = None
     serial_number: str = None
     manufacturer: str = None
@@ -106,10 +104,12 @@ class Sensor:
     def __post_init__(self):
         if self.sensor_type not in SENSOR_TYPES:
             l.warning(f"Invalid sensor_type: `{self.sensor_type}`.")
+        # FIXME Not sure if it is the way to do it.
+        if self.parameters is None:
+            self.parameters = {}
         for param in self.parameters.keys():
             if param not in GENERIC_PARAMETERS:
                 l.warning(f"Invalid parameter: `{self.sensor_type}/{param}`.")
-
 
 
 @dataclass
@@ -132,10 +132,6 @@ class PlatformMetadata:
                     parameters[param].calibration = _filter_for_dataclass(Calibration, param_meta['calibration'])
             self.sensors[sensor_id].parameters = parameters
 
-
-
-
-
     def add_to_dataset(self, dataset: xr.Dataset, sensors_id: List[str], force: bool = False):
         """Add values stored in Platform for sensor id in `sensors_id` to dataset attributes.
 
@@ -151,7 +147,7 @@ class PlatformMetadata:
         sensors_id :
             List of sensors id metadata to add to the dataset.
         force :
-            If True, will overwrite existing value of the same key.
+            If True, it will overwrite the existing value of the same key.
         """
 
         for key, value in self.platform.__dict__.items():

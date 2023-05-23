@@ -313,13 +313,12 @@ def _make_adcp_buoy_instrument_comments(odf: Odf, sensor_id: str, dataset: xr.Da
                     + dataset.attrs["magnetic_declination_units"]
             )
     comments["Bin_Count"] = len(dataset.depth)
-    comments['Comments'] = platform_metadata.sensors.__dict__[sensor_id].comments
+    comments['Comments'] = platform_metadata.sensors[sensor_id].comments
 
     for key, value in comments.items():
         odf.buoy_instrument[sensor_id]["buoy_instrument_comments"].append(
             _build_buoy_instrument_comments([configuration, key], value)
         )
-
 
 
 def _make_adcp_buoy_instrument_sensor_comments(odf: Odf, sensor_id: str, dataset: xr.Dataset, generic_variables_name: List[str]):
@@ -369,6 +368,7 @@ def _make_adcp_buoy_instrument_sensor_comments(odf: Odf, sensor_id: str, dataset
             _build_buoy_instrument_comments(comments[0], comments[1])
             )
 
+
 def _make_other_buoy_instrument_header(odf: Odf, platform_metadata: PlatformMetadata):
     """
 
@@ -381,7 +381,7 @@ def _make_other_buoy_instrument_header(odf: Odf, platform_metadata: PlatformMeta
     -------
     """
     configuration = "CONFIGURATION_01"
-    for sensor_id, sensor in platform_metadata.sensors.__dict__.items():
+    for sensor_id, sensor in platform_metadata.sensors.items():
         if sensor_id in ['platform', 'buoy_specs']:
             continue
         odf.add_buoy_instrument(sensor_id)
@@ -457,10 +457,8 @@ def _make_buoy_instrument_header(odf: Odf, sensor_id: str, dataset:xr. Dataset, 
     # Use the rest of the buoy_instrument header to find the remaining values.
 
 
-
 def _build_buoy_instrument_comments(keys: List, value: Union[int,float,str]):
     return '.'.join(keys) + ": " + str(value)
-
 
 
 def _make_quality_header(odf: Odf, dataset):
