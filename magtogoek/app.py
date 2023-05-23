@@ -189,6 +189,7 @@ def plot(info):
 @click.argument("filename", metavar="[filename]", type=str)
 @click.pass_context
 def config_platform(ctx, info, filename):
+    """Command to make platform files."""
     from magtogoek.platforms import make_platform_template
 
     filename = is_valid_filename(filename, ext=".json")
@@ -248,6 +249,28 @@ def config_meteoce(
     write_configfile(filename=config_name, process="meteoce", cli_options=options)
     click.secho(f"Config file created for meteoce buoy processing -> {config_name}", bold=True)
 
+
+@config.command("list_gen_vars")
+@add_options(common_options)
+@click.option("--adcp/-", help="""List generic variable for adcp""", default=False, show_default=True)
+@click.option("--meteoce/-", help="""List generic variable for adcp""", default=False, show_default=True)
+@click.pass_context
+def config_list_generic_variables(ctx, info, **options):
+    """list the name of the generic variables."""
+    generic_parameters = []
+    if options['adcp'] is True:
+        from magtogoek.adcp import GENERIC_PARAMETERS
+        generic_parameters += GENERIC_PARAMETERS
+    if options['meteoce'] is True:
+        from magtogoek.meteoce import GENERIC_PARAMETERS
+        generic_parameters += GENERIC_PARAMETERS
+
+    if not generic_parameters:
+        from magtogoek import GENERIC_PARAMETERS
+        generic_parameters += GENERIC_PARAMETERS
+
+    for i in generic_parameters:
+        print(f"`{i}`")
 
 # ---------------------------- #
 #       quick commands         #

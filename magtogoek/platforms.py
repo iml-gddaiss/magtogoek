@@ -30,7 +30,7 @@ def _add_platform() -> dict:
     return {**Platform().__dict__,
             **{
                 'buoy_specs': _add_buoy_specs(),
-                'sensors': dict(__enter_a_sensor_ID_here=_add_sensors()),
+                'sensors': dict(__enter_a_sensor_ID_here__=_add_sensors()),
             }}
 
 
@@ -39,7 +39,19 @@ def _add_buoy_specs() -> dict:
 
 
 def _add_sensors() -> dict:
-    return Sensor().__dict__
+    sensor = Sensor()
+    sensor.parameters = dict(__generic_variable_name__=_add_parameters())
+    return sensor.__dict__
+
+
+def _add_parameters() -> dict:
+    parameter = Parameter()
+    parameter.calibration = _add_calibration()
+    return parameter.__dict__
+
+
+def _add_calibration() -> dict:
+    return Calibration().__dict__
 
 
 @dataclass
@@ -65,7 +77,6 @@ class BuoySpecifications:
     diameter: str = None
     weight: str = None
     description: str = None
-
 
 
 @dataclass
