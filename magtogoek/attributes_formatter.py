@@ -60,7 +60,7 @@ def format_variables_names_and_attributes(
         dataset: xr.Dataset,
         use_bodc_name: bool,
         p01_codes_map: dict,
-        sensors_id: dict, # to replace variables_add_to_add_sensor_type
+        sensors_to_parameters_map: dict, # to replace variables_add_to_add_sensor_type
         #variable_to_add_sensor_type: list,
         cf_profile_id: str = 'time',
 ) -> xr.Dataset:
@@ -85,6 +85,8 @@ def format_variables_names_and_attributes(
         True if the bodc_name are to be used.
     p01_codes_map :
         generic name to bodc p01_code mapping.
+    sensors_to_parameters_map:
+        list of parameters (variables) for each sensor(_type)
     cf_profile_id :
         Name of the coordinate to add the attributes {'cf_role': 'profile_id'}
 
@@ -95,16 +97,16 @@ def format_variables_names_and_attributes(
     ------
     `ValueError` if units in dataarray attributes don't match those in the CF_P01_GF3_formats.json file.
     """
-    for var in dataset.variables:
-        dataset[var].attrs["generic_name"] = var
+
+    _add_generic_name_to_variables(dataset)
 
     original_coords_name = dataset.coords
 
-    _add_sensors_attributes_to_variables(dataset, sensors_id)
+    _add_sensors_attributes_to_variables(dataset, sensors_to_parameters_map)
 
     dataset = _convert_variables_names(dataset, p01_codes_map)
 
-    # for sensor_id, variables in sensors_id.items():
+    # for sensor_id, variables in sensors_to_parameters_map.items():
     #     for attr in ["sensor_type", "sensor_depth", "serial_number"]:
     #         global_attr = "_".join([sensor_id, attr])
     #         if global_attr in dataset.attrs:
@@ -137,6 +139,12 @@ def format_variables_names_and_attributes(
     l.log("Variables attributes added.")
 
     return dataset
+
+
+def _add_generic_name_to_variables(dataset: xr.Dataset):
+    for var in dataset.variables:
+        dataset[var].attrs["generic_name"] = var
+
 
 
 def _convert_variables_names(
@@ -224,7 +232,7 @@ def _add_data_min_max_to_var_attrs(dataset):
                 dataset[var].attrs["data_min"] = dataset[var].min().values
 
 
-def _add_sensors_attributes_to_variables(dataset: xr.Dataset, sensors_id: tp.Dict[str,tp.List[str]]):
+def _add_sensors_attributes_to_variables(dataset: xr.Dataset, sensors_to_parameters_map: tp.Dict[str,tp.List[str]]):
     """
         Adds attributes `sensor_type`, `sensor_depth` and `serial_number` to each variable
     in the `dataset` if the dataset has the attributes
@@ -234,13 +242,13 @@ def _add_sensors_attributes_to_variables(dataset: xr.Dataset, sensors_id: tp.Dic
     Parameters
     ----------
     dataset
-    sensors_id
+    sensors_to_parameters_map
 
     """
-    for s_id, variables in sensors_id.items():
+    for sensor, variables in sensors_to_parameters_map.items():
         for var in variables:
             if var in dataset:
-                _add_sensor_attributes(s_id, var, dataset)
+                _add_sensor_attributes(sensor, var, dataset)
 
 
 def _add_sensor_attributes(sensor_id: str, variable: str, dataset: xr.Dataset):

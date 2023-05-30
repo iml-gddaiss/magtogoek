@@ -126,7 +126,7 @@ P01_CODES_MAP = {
     'v_ship': "APNSGP01"
 }
 
-SENSOR_TYPE_TO_SENSORS_ID_MAP = {
+SENSORS_TO_PARAMETERS_MAP = {
     'adcp': [
         "u", "v", "w", "e", "bt_u", "bt_v", "bt_w", "bt_e",
         'pg', 'pg1', 'pg2', 'pg3', 'pg4',
@@ -261,7 +261,7 @@ class ProcessConfig(BaseProcessConfig):
 
     def __init__(self, config_dict: dict = None):
         super().__init__(config_dict)
-        self.sensors_id = SENSOR_TYPE_TO_SENSORS_ID_MAP
+        self.sensors_to_parameters_map = SENSORS_TO_PARAMETERS_MAP
         self.variables_to_drop = VARIABLES_TO_DROP
         self.global_attributes_to_drop = GLOBAL_ATTRS_TO_DROP
         self.p01_codes_map = P01_CODES_MAP
@@ -393,7 +393,7 @@ def _process_meteoce_data(pconfig: ProcessConfig):
         dataset=dataset,
         use_bodc_name=pconfig.bodc_name,
         p01_codes_map=pconfig.p01_codes_map,
-        sensors_id=pconfig.sensors_id,
+        sensors_to_parameters_map=pconfig.sensors_to_parameters_map,
         # variable_to_add_sensor_type=pconfig.variables_to_add_sensor_type,
         cf_profile_id='time'
     )

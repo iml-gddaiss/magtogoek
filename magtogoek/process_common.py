@@ -109,7 +109,7 @@ class BaseProcessConfig:
     variables_to_drop: tp.List[str] = None
     global_attributes_to_drop: tp.List[str] = None
     drop_empty_attrs: bool = False
-    sensors_id: tp.Dict[str, tp.List[str]] = None
+    sensors_to_parameters_map: tp.Dict[str, tp.List[str]] = None
     p01_codes_map: tp.Dict[str, str] = None
 
     def __init__(self, config_dict: dict = None):
@@ -402,8 +402,8 @@ def add_global_attributes(dataset: xr.Dataset, pconfig: BaseProcessConfig, stand
     dataset.attrs["data_type"] = _get_data_type(pconfig.process, pconfig.platform_type)
     dataset.attrs["data_subtype"] = DATA_SUBTYPES[pconfig.platform_type]
 
-    if isinstance(pconfig.platform_metadata,PlatformMetadata): # PATCH FIXME
-        pconfig.platform_metadata.add_to_dataset(dataset, list(pconfig.sensors_id.keys()), pconfig.force_platform_metadata)
+    if isinstance(pconfig.platform_metadata, PlatformMetadata): # PATCH FIXME
+        pconfig.platform_metadata.add_to_dataset(dataset, list(pconfig.sensors_to_parameters_map.keys()), pconfig.force_platform_metadata)
 
     compute_global_attrs(dataset)  # already common
 

@@ -186,7 +186,7 @@ P01_CODES_MAP = {
 
 #VAR_TO_ADD_SENSOR_TYPE = ["TEMPPR01", "PRESPR01", "ADEPZZ01", "BATHDPTH"]
 
-SENSOR_TYPE_TO_SENSORS_ID_MAP = {
+SENSOR_TYPE_TO_PARAMETER_MAP = {
     'adcp': [
         'u',
         'v',
@@ -262,7 +262,7 @@ class ProcessConfig(BaseProcessConfig):
     def __init__(self, config_dict: dict = None):
         super().__init__(config_dict)
  #       self.variables_to_add_sensor_type = VAR_TO_ADD_SENSOR_TYPE
-        self.sensors_id = SENSOR_TYPE_TO_SENSORS_ID_MAP # FIXME TEST
+        self.sensors_to_parameters_map = SENSOR_TYPE_TO_PARAMETER_MAP # FIXME Test
         self.variables_to_drop = VARIABLES_TO_DROP
         self.global_attributes_to_drop = GLOBAL_ATTRS_TO_DROP
         self.p01_codes_map = P01_CODES_MAP
@@ -320,7 +320,6 @@ def _process_adcp_data(pconfig: ProcessConfig):
     # ----------------- #
 
     dataset = _load_adcp_data(pconfig)
-    # TODO  set values of pconfig.sensors_id Dict of variables and sensors_id
 
     # ----------------------------------------- #
     # ADDING THE NAVIGATION DATA TO THE DATASET #
@@ -378,8 +377,8 @@ def _process_adcp_data(pconfig: ProcessConfig):
     l.section("Adding Global Attributes")
 
     add_global_attributes(dataset, pconfig, STANDARD_GLOBAL_ATTRIBUTES)
-    if pconfig.platform_type in ["mooring", "buoy"]:
-    #if pconfig.platform_metadata.platform.platform_type in ["mooring", "buoy"]:  # ADCP SPECIFIC
+    if pconfig.platform_type in ["mooring", "buoy"]: # ADCP SPECIFIC
+    #if pconfig.platform_metadata.platform.platform_type in ["mooring", "buoy"]:
         if "bt_depth" in dataset:
             dataset.attrs["sounding"] = np.round(np.median(dataset.bt_depth.data), 2)
 
@@ -405,7 +404,7 @@ def _process_adcp_data(pconfig: ProcessConfig):
         dataset=dataset,
         use_bodc_name=pconfig.bodc_name,
         p01_codes_map=pconfig.p01_codes_map,
-        sensors_id=pconfig.sensors_id,
+        sensors_to_parameters_map=pconfig.sensors_to_parameters_map,
         #variable_to_add_sensor_type=pconfig.variables_to_add_sensor_type,
         cf_profile_id='time'
     )
@@ -650,9 +649,11 @@ def _write_odf(dataset: xr.Dataset, pconfig: ProcessConfig):
         _ = make_odf(
             dataset=dataset,
             platform_metadata=platform_metadata,
-            sensor_id=pconfig.sensor_id,
+            sensor_id=pconfig.sensor_id, # could be change to sensors_id {'adcp': `sensor_id`}
+            #sensors_to_parameters_map=pconfig.sensors_to_parameters_map,
             config_attrs=pconfig.metadata,
-            generic_variables_name=pconfig.generic_variables_name,
+            #generic_variables_name=pconfig.generic_variables_name,
+            p01_codes_map=pconfig.p01_codes_map,
             bodc_name=pconfig.bodc_name,
             event_qualifier2=qualifier,
             output_path=pconfig.odf_path,
