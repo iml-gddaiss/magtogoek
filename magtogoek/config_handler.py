@@ -209,7 +209,7 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
     else:
         tparser.add_option(section, "process", dtypes=["str"], default=process, is_required=True, choice=PROCESSES, comments=f'One of {PROCESSES}.')
 
-    tparser.add_option(section, "platform_type", dtypes=["str"], choice=["buoy", "mooring", "ship", "lowered"], comments='One of [buoy, mooring, ship, lowered].')
+    tparser.add_option(section, "platform_type", dtypes=["str"], choice=["buoy", "mooring", "ship", "lowered"], comments='One of [buoy, mooring, ship, lowered]. Superseded by `platform_type` in the platform file.')
 
     section = "INPUT"
     tparser.add_option(section, "input_files", dtypes=["str"], default="", nargs_min=1, is_file=True, is_required=True)
@@ -275,7 +275,7 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
 
     if process == 'adcp':
         section = "ADCP_PROCESSING"
-        tparser.add_option(section, "sensor_id", dtypes=["str"], default=None)
+        tparser.add_option(section, "adcp_sensor_id", dtypes=["str"], default=None)
         tparser.add_option(section, "yearbase", dtypes=["int"], default="", is_required=False)
         tparser.add_option(section, "adcp_orientation", dtypes=["str"], default="down", choice=["up", "down"], comments='up or down')
         tparser.add_option(section, "sonar", dtypes=["str"], choice=["wh", "sv", "os", "sw", "sw_pd0"], comments='[wh, sv, os, sw, sw_pd0, ]', is_required=True)
