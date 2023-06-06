@@ -86,13 +86,20 @@ common_options = [
 ]
 
 
+def magtogoek(*args):
+    _magtogoek(*args)
+    #try:
+    #    _magtogoek(*args)
+    #except Exception as e:
+    #    click.secho(f'{e}', color='red', err=True)
+
 # --------------------------- #
 #      mtgk entry point       #
 # --------------------------- #
 @click.group(context_settings=CONTEXT_SETTINGS)
 @add_options(common_options)
 @click.option('-v', '--verbosis', is_flag=True, default=False)
-def magtogoek(info, verbosis):
+def _magtogoek(info, verbosis):
     if verbosis is True:
         logging.basicConfig(format='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
                             level=logging.INFO)
@@ -103,7 +110,7 @@ def magtogoek(info, verbosis):
 #        mtgk command         #
 # --------------------------- #
 
-@magtogoek.command("init")
+@_magtogoek.command("init")
 @add_options(common_options)
 @click.option('-r', '--repair', is_flag=True, default=False)
 def init(info, repair):
@@ -111,7 +118,7 @@ def init(info, repair):
     _init_magtogoek(repair)
 
 
-@magtogoek.command("process")
+@_magtogoek.command("process")
 @add_options(common_options)
 @click.argument("config_file", metavar="[config_file]", type=click.Path(exists=True))
 @click.option("--mk-fig/--no-fig",
@@ -151,31 +158,31 @@ def process(info, config_file: str, **options):
 # --------------------------- #
 #        mtgk groups          #
 # --------------------------- #
-@magtogoek.group("config", context_settings=CONTEXT_SETTINGS)
+@_magtogoek.group("config", context_settings=CONTEXT_SETTINGS)
 @add_options(common_options)
 def config(info):
     """Make configuration files or platform files"""
 
 
-@magtogoek.group("quick", context_settings=CONTEXT_SETTINGS)
+@_magtogoek.group("quick", context_settings=CONTEXT_SETTINGS)
 @add_options(common_options)
 def quick(info):
     """Quick data process without configfile"""
 
 
-@magtogoek.group("check", context_settings=CONTEXT_SETTINGS)
+@_magtogoek.group("check", context_settings=CONTEXT_SETTINGS)
 @add_options(common_options)
 def check(info):
     """Get info on raw data files"""
 
 
-@magtogoek.group("compute", context_settings=CONTEXT_SETTINGS)
+@_magtogoek.group("compute", context_settings=CONTEXT_SETTINGS)
 @add_options(common_options)
 def compute(info):
     """Command to compute certain quantities."""
 
 
-@magtogoek.group("plot", context_settings=CONTEXT_SETTINGS)
+@_magtogoek.group("plot", context_settings=CONTEXT_SETTINGS)
 @add_options(common_options)
 def plot(info):
     """Command to make plot from nc data."""
@@ -365,7 +372,7 @@ def navigation(ctx, info, input_files, **options):
     )
 
 
-@magtogoek.command('odf2nc', context_settings=CONTEXT_SETTINGS)
+@_magtogoek.command('odf2nc', context_settings=CONTEXT_SETTINGS)
 @click.argument('input_files',
                 metavar="[input_files]",
                 nargs=-1,
