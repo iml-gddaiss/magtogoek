@@ -208,7 +208,7 @@ def config_platform(ctx, info, filename):
 @add_options(common_options)
 @click.argument("config_name", metavar="[config_name]", type=str)
 @click.option("-T", "--platform", type=(click.Path(exists=True), str, str),
-              help="platform_file, platform_id, sensor_id", default=(None, None, None), nargs=3)
+              help="platform_file, platform_id, adcp_sensor_id", default=(None, None, None), nargs=3)
 @add_options(general_options())
 @add_options(adcp_options())
 @add_options(adcp_shared_options())
@@ -224,7 +224,7 @@ def config_adcp(
     _print_passed_options(options)
     config_name = is_valid_filename(config_name, ext=".ini")
     options['process'] = 'adcp'
-    options.update({k: v for k, v in zip(("platform_file", "platform_id", "sensor_id"), options.pop('platform'))})
+    options.update({k: v for k, v in zip(("platform_file", "platform_id", "adcp_sensor_id"), options.pop('platform'))})
 
     write_configfile(filename=config_name, process="adcp", cli_options=options)
     click.secho(f"Config file created for adcp processing -> {config_name}", bold=True)
@@ -235,7 +235,7 @@ def config_adcp(
 @click.argument("config_name", metavar="[config_name]", type=str)
 # SHOULD BE ONLY A PLATFORM ID OPTION
 # @click.option("-T", "--platform", type=(click.Path(exists=True), str, str),
-#               help="platform_file, platform_id, sensor_id", default=(None, None, None), nargs=3)
+#               help="platform_file, platform_id, adcp_sensor_id", default=(None, None, None), nargs=3)
 @add_options(general_options())
 @add_options(meteoce_options())
 @add_options(adcp_shared_options())
@@ -251,7 +251,7 @@ def config_meteoce(
     _print_passed_options(options)
     config_name = is_valid_filename(config_name, ext=".ini")
     options['process'] = 'meteoce'
-    # options.update({k: v for k, v in zip(("platform_file", "platform_id", "sensor_id"), options.pop('platform'))})
+    # options.update({k: v for k, v in zip(("platform_file", "platform_id", "adcp_sensor_id"), options.pop('platform'))})
 
     write_configfile(filename=config_name, process="meteoce", cli_options=options)
     click.secho(f"Config file created for meteoce buoy processing -> {config_name}", bold=True)
