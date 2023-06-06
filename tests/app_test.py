@@ -1,6 +1,6 @@
 import pytest
 from click.testing import CliRunner
-from magtogoek.app import magtogoek
+from magtogoek.app import _magtogoek
 import os
 
 
@@ -10,18 +10,18 @@ def call_command(command, args):
 
 
 def test_mtgk_info():
-    result = call_command(magtogoek, args=['--info'])
+    result = call_command(_magtogoek, args=['--info'])
     assert result.exit_code == 0
 
 
 def test_config_adcp(filename='test_config.ini'):
-    result = call_command(magtogoek, args=['config', 'adcp', filename, '--gen-name'])
+    result = call_command(_magtogoek, args=['config', 'adcp', filename, '--gen-name'])
     assert result.exit_code == 0
     os.remove(filename)
 
 
 def test_config_platform(filename='test_plaform.json'):
-    result = call_command(magtogoek, args=['config', 'platform', filename])
+    result = call_command(_magtogoek, args=['config', 'platform', filename])
     assert result.exit_code == 0
     os.remove(filename)
 

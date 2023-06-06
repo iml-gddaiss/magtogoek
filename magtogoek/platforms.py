@@ -30,7 +30,7 @@ def _add_platform() -> dict:
     return {**Platform().__dict__,
             **{
                 'buoy_specs': _add_buoy_specs(),
-                'sensors': dict(__enter_a_sensor_ID_here__=_add_sensors()),
+                'instruments': dict(__enter_an_instrument_ID_here__=_add_instrument()),
             }}
 
 
@@ -38,16 +38,16 @@ def _add_buoy_specs() -> dict:
     return BuoySpecifications().__dict__
 
 
-def _add_sensors() -> dict:
-    sensor = Sensor()
-    sensor.parameters = dict(__generic_variable_name__=_add_parameters())
+def _add_instrument() -> dict:
+    instrument = InstrumentMetadata()
+    instrument.sensors = dict(__generic_sensor_id__=_add_sensor())
+    return instrument.__dict__
+
+
+def _add_sensor() -> dict:
+    sensor = SensorMetadata()
+    sensor.calibration = _add_calibration()
     return sensor.__dict__
-
-
-def _add_parameters() -> dict:
-    parameter = Parameter()
-    parameter.calibration = _add_calibration()
-    return parameter.__dict__
 
 
 def _add_calibration() -> dict:
@@ -92,16 +92,18 @@ class Calibration:
 
 
 @dataclass
-class Parameter:
+class SensorMetadata:
+    name: str = None
+    code: str = None
     description: str = None
     comments: str = None
     calibration: Calibration = None
 
 
 @dataclass
-class Sensor:
+class InstrumentMetadata:
     sensor_type: str = None
-    sensor_height: str = None  # ???? FIXME height vs depth for metadata ? ODF ?
+    sensor_height: str = None
     sensor_depth: str = None
     serial_number: str = None
     manufacturer: str = None
@@ -110,43 +112,39 @@ class Sensor:
     chief_scientist: str = None
     description: str = None
     comments: str = None
-    parameters: Dict[str, Parameter] = None
+    sensors: Dict[str, SensorMetadata] = None
 
     def __post_init__(self):
         if self.sensor_type not in SENSOR_TYPES:
             l.warning(f"Invalid sensor_type: `{self.sensor_type}`.")
-        # FIXME Not sure if it is the way to do it.
-        if self.parameters is None:
-            self.parameters = {}
-        for param in self.parameters.keys():
-            if param not in GENERIC_PARAMETERS:
-                l.warning(f"Invalid parameter: `{self.sensor_type}/{param}`.")
+        if self.sensors is None:
+            self.sensors = {}
 
 
 @dataclass
 class PlatformMetadata:
     platform: Platform
     buoy_specs: BuoySpecifications
-    sensors: Dict[str, Sensor] = None
+    instruments: Dict[str, InstrumentMetadata] = None
 
     def __post_init__(self):
-        self.sensors = {}
+        self.instruments = {}
 
-    def add_sensor(self, sensor_id: str, sensor_meta: dict):
-        self.sensors[sensor_id] = _filter_for_dataclass(Sensor, sensor_meta)
+    def add_instrument(self, instrument_id: str, instrument_meta: dict):
+        self.instruments[instrument_id] = _filter_for_dataclass(InstrumentMetadata, instrument_meta)
 
-        if 'parameters' in sensor_meta:
-            parameters = {}
-            for param, param_meta in sensor_meta['parameters'].items():
-                parameters[param] = _filter_for_dataclass(Parameter, param_meta)
-                if 'calibration' in param_meta:
-                    parameters[param].calibration = _filter_for_dataclass(Calibration, param_meta['calibration'])
-            self.sensors[sensor_id].parameters = parameters
+        if 'sensors' in instrument_meta:
+            sensors_metadata = {}
+            for sensor, sensor_metadata in instrument_meta['sensors'].items():
+                sensors_metadata[sensor] = _filter_for_dataclass(SensorMetadata, sensor_metadata)
+                if 'calibration' in sensor_metadata:
+                    sensors_metadata[sensor].calibration = _filter_for_dataclass(Calibration, sensor_metadata['calibration'])
+            self.instruments[instrument_id].sensors = sensors_metadata
 
-    def add_to_dataset(self, dataset: xr.Dataset, sensors_id: List[str], force: bool = False):
+    def add_to_dataset(self, dataset: xr.Dataset, instruments_id: List[str], force: bool = False):
         """Add values stored in Platform for sensor id in `sensors_to_parameters_map` to dataset attributes.
 
-        The `sensor_id` is added as a prefix to each value's key in the sensor dataclass.
+        The `instrument_id` is added as a prefix to each value's key in the sensor dataclass.
 
         Rename attributes:
             `platform_name`  -> `platform`
@@ -155,8 +153,8 @@ class PlatformMetadata:
         ----------
         dataset :
             dataset to add attributes to.
-        sensors_id :
-            List of sensors id metadata to add to the dataset.
+        instruments_id :
+            List of instruments id metadata to add to the dataset.
         force :
             If True, it will overwrite the existing value of the same key.
         """
@@ -168,9 +166,9 @@ class PlatformMetadata:
             else:
                 dataset.attrs[key] = value
 
-        for s_id in sensors_id:
-            if s_id in self.sensors:
-                for key, value in self.sensors[s_id].__dict__.items():
+        for s_id in instruments_id:
+            if s_id in self.instruments:
+                for key, value in self.instruments[s_id].__dict__.items():
                     attr_key = "_".join([s_id, key])
                     if attr_key in dataset.attrs and not force:
                         if not dataset.attrs[attr_key]:
@@ -215,8 +213,8 @@ def load_platform_metadata(platform_file: str, platform_id: str) -> PlatformMeta
 
         platform_metadata = PlatformMetadata(platform_metadata_dict, buoy_specs)
 
-        for sensor_id in json_dict[platform_id]['sensors']:
-            platform_metadata.add_sensor(sensor_id, json_dict[platform_id]["sensors"][sensor_id])
+        for sensor_id in json_dict[platform_id]['instruments']:
+            platform_metadata.add_instrument(sensor_id, json_dict[platform_id]["instruments"][sensor_id])
 
         return platform_metadata
 
@@ -240,7 +238,7 @@ def default_platform_metadata(platform_type: str, sensor_id: str, sensor_type: s
         Platform(platform_type=platform_type),
         BuoySpecifications()
     )
-    platform_metadata.add_sensor(sensor_id, {'sensor_id': sensor_id, 'sensor_type': sensor_type})
+    platform_metadata.add_instrument(sensor_id, {'instrument_id': sensor_id, 'sensor_type': sensor_type})
     return platform_metadata
 
 

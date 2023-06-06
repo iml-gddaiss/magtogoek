@@ -1,5 +1,19 @@
 """
 module to map xarray dataset to Odf
+
+Notes TODO
+-----
+
+-> make this more general and apply it to meteoce
+-> in order to make odf buoy instrument header, the platform file need to be used.
+--> `parameters` need to be changed to something like sub-sensor.
+--> the sub-sensor ID<s are user define.
+--> Add a `name` field and `code` to the sub_sensor
+--> if calibrations is empty: do not write it.
+
+
+
+
 """
 import re
 from pathlib import Path
@@ -10,17 +24,25 @@ import xarray as xr
 from typing import List, Union, Tuple, Dict, Optional
 from magtogoek import CONFIGURATION_PATH
 from magtogoek.odf_format import Odf, odf_time_format, ODF_PARAMETERS_TYPES
-from magtogoek.platforms import PlatformMetadata, Sensor
+from magtogoek.platforms import PlatformMetadata, InstrumentMetadata, SensorMetadata
 from magtogoek.utils import json2dict
 
 REPOSITORY_ADDRESS = "https://github.com/JeromeJGuay/magtogoek"
 
-ADCP_SENSORS_COMMENTS = {
-    'pres': {'sensor': 'PRESSURE_SENSOR_01', 'comments': {'CODE': 'DEPH_01', 'Name': 'pressure'}},
-    'heading': {'sensor': 'COMPAS_SENSOR_01', 'comments': {'CODE': 'HEAD_01', 'Name': 'compas'}},
-    'roll_': {'sensor': 'INCLINOMETER_SENSOR_01', 'comments': {'CODE': 'ROLL_01', 'Name': 'tilt'}},
-    'temperature': {'sensor': 'TEMPERATURE_SENSOR_01', 'comments': {'CODE': 'TE90_01', 'Name': 'temperature'}}
-}
+# ADCP_SENSORS_COMMENTS = {
+#     'pres': {
+#         'sensor': 'PRESSURE_SENSOR_01', 'comments': {'CODE': 'DEPH_01', 'Name': 'pressure'}
+#     },
+#     'heading': {
+#         'sensor': 'COMPAS_SENSOR_01', 'comments': {'CODE': 'HEAD_01', 'Name': 'compas'}
+#     },
+#     'roll_': {
+#         'sensor': 'INCLINOMETER_SENSOR_01', 'comments': {'CODE': 'ROLL_01', 'Name': 'tilt'}
+#     },
+#     'temperature': {
+#         'sensor': 'TEMPERATURE_SENSOR_01', 'comments': {'CODE': 'TE90_01', 'Name': 'temperature'}
+#     }
+# }
 
 
 BEAM_PARAMETERS = ("time", "depth", "v1", "v2", "v3", "v4")
@@ -35,22 +57,13 @@ PARAMETERS_METADATA = json2dict(PARAMETERS_METADATA_PATH)
 def make_odf(
         dataset: xr.Dataset,
         platform_metadata: PlatformMetadata,
-        sensor_id: str,
-        #sensors_id: Dict[str, str],
-        #sensors_to_parameters_map: Dict[str, List[str]],  # could be changed to sensors_id {'adcp': `sensor_id`}
+        adcp_sensor_id: str,
         config_attrs: dict,
         p01_codes_map: dict,
-        #generic_variables_name: List[str],
         bodc_name: bool = True,
         event_qualifier2: str = 'VEL',
         output_path: Optional[str] = None, ):
     """
-
-    FIXME:
-    - generic variable names could be change for `sensor_to_parameters_map`
-    - then change sensor_id for a dict of sensor_id_to_sensor_type map
-    - then have a more general make_odf function
-
 
     Parameters
     ----------
@@ -58,12 +71,12 @@ def make_odf(
         Dataset to which add the navigation data.
     platform_metadata :
         Metadata from the platform file.
-    sensor_id :
+    adcp_sensor_id :
 
     config_attrs :
         Global attributes parameter from the configFile.
-    generic_variables_name :
-        List of the generic name fo the variables. Python variables used in the code.
+    p01_codes_map :
+
     bodc_name:
         If True, map from the generic to the BODC p01 variables names.
     event_qualifier2:
@@ -81,11 +94,10 @@ def make_odf(
     _make_odf_header(odf)
 
     if platform_metadata.platform.platform_type == "buoy":
-        _add_buoy_instrument_headers(odf, platform_metadata)
-        _make_adcp_buoy_instrument_comments(odf, sensor_id, dataset, platform_metadata)
-        #_make_buoy_header(odf, platform_metadata)
-        #_make_adcp_buoy_instrument_header(odf, dataset, platform_metadata, sensor_id, generic_variables_name)
-        #_make_other_buoy_instrument_header(odf, platform_metadata)
+        _make_buoy_header(odf, platform_metadata)
+        _make_buoy_instrument_headers(odf, platform_metadata)
+        _make_adcp_buoy_instrument_header(odf=odf, dataset=dataset, platform_metadata=platform_metadata, adcp_sensor_id=adcp_sensor_id)
+        #_make_adcp_buoy_instrument_comments(odf, adcp_sensor_id, dataset, platform_metadata)
     else:
         _make_instrument_header(odf, dataset)
 
@@ -100,7 +112,7 @@ def make_odf(
     else:
         parameters = ANC_PARAMTERS
 
-    _make_parameter_headers(odf, dataset, parameters, bodc_name)
+    _make_parameter_headers(odf, dataset, parameters, p01_codes_map, bodc_name)
 
     if output_path is not None:
         output_path = Path(output_path)
@@ -253,27 +265,12 @@ def _make_buoy_header(odf: Odf, platform_metadata: PlatformMetadata):
 def _make_adcp_buoy_instrument_header(
         odf: Odf, dataset: xr.Dataset,
         platform_metadata: PlatformMetadata,
-        sensor_id: str,
-        generic_variables_name: List[str]
+        adcp_sensor_id: str,
 ):
-    """
+    """TODO TEST"""
 
-    Parameters
-    ----------
-    odf
-    dataset
-    platform_metadata
-    sensor_id
-    generic_variables_name :
-        List of the generic name fo the variables. Python variables used in the code.
-
-    Returns
-    -------
-
-    """
-
-    if sensor_id not in odf.buoy_instrument:
-        odf.add_buoy_instrument(sensor_id)
+    if adcp_sensor_id not in odf.buoy_instrument:
+        odf.add_buoy_instrument(adcp_sensor_id)
 
     key_map = [
         ('type', 'manufacturer'),
@@ -284,18 +281,14 @@ def _make_adcp_buoy_instrument_header(
 
     for (odf_key, netcdf_key) in key_map:
         if netcdf_key in dataset.attrs:
-            odf.buoy_instrument[sensor_id][odf_key] = dataset.attrs[netcdf_key]
+            odf.buoy_instrument[adcp_sensor_id][odf_key] = dataset.attrs[netcdf_key]
 
-    #odf.buoy_instrument[sensor_id]["inst_start_date_time"] = odf_time_format(dataset.time.values.min())
-    #odf.buoy_instrument[sensor_id]["inst_end_date_time"] = odf_time_format(dataset.time.values.max())
-
-    _make_adcp_buoy_instrument_comments(odf, sensor_id, dataset, platform_metadata)
-    #_make_adcp_buoy_instrument_sensor_comments(odf, sensor_id, dataset, generic_variables_name) # TEST
+    _make_adcp_buoy_instrument_comments(odf, adcp_sensor_id, dataset, platform_metadata)
 
 
 def _make_adcp_buoy_instrument_comments(
         odf: Odf,
-        sensor_id: str,
+        adcp_sensor_id: str,
         dataset: xr.Dataset,
         platform_metadata: PlatformMetadata
 ):
@@ -334,7 +327,7 @@ def _make_adcp_buoy_instrument_comments(
 
     if "ping_per_ensemble" in dataset.attrs and "delta_t_sec" in dataset.attrs:
         if dataset.attrs["ping_per_ensemble"] and dataset.attrs["delta_t_sec"]:
-            ping_interval_s = dataset.attrs["ping_per_ensemble"] /  dataset.attrs["delta_t_sec"]
+            ping_interval_s = dataset.attrs["ping_per_ensemble"] / dataset.attrs["delta_t_sec"]
             buoy_instrument_comments.append(("Ping_Interval_s", round(ping_interval_s, 2)))
 
     if "magnetic_declination" in dataset.attrs and "magnetic_declination_units" in dataset.attrs:
@@ -344,213 +337,114 @@ def _make_adcp_buoy_instrument_comments(
 
     buoy_instrument_comments += [
         ("Bin_Count", len(dataset.depth)),
-        ("Comments", platform_metadata.sensors[sensor_id].comments or "")
+        ("Comments", platform_metadata.instruments[adcp_sensor_id].comments)
     ]
 
-    odf.buoy_instrument[sensor_id]["buoy_instrument_comments"] = []
+    odf.buoy_instrument[adcp_sensor_id]["buoy_instrument_comments"] = []
     for (key, value) in buoy_instrument_comments:
-        odf.buoy_instrument[sensor_id]["buoy_instrument_comments"].append(
+        odf.buoy_instrument[adcp_sensor_id]["buoy_instrument_comments"].append(
             _build_comments_string([configuration, key], value)
         )
 
 
-def _make_adcp_buoy_instrument_sensor_comments(odf: Odf, sensor_id: str, dataset: xr.Dataset, generic_variables_name: List[str]):
-    """
-    Parameters
-    ----------
-    odf
-
-    sensor_id
-
-    dataset
-
-    generic_variables_name :
-      List of the generic name fo the variables. Python variables used in the code.
-
-    Returns
-    -------
-    """
-    dataset_attrs_map = {
-        'Manufacturer': 'manufacturer',
-        'Depth': 'sensor_depth',
-        'Serial_Number': 'serial_number'}
-
-    adcp_sensors_comments = []
-
-    for var, sensor_comment in ADCP_SENSORS_COMMENTS.items():
-        if var in generic_variables_name:
-            sensor_name = sensor_comment['sensor']
-
-            for comment_key, comment_value in sensor_comment['comments'].items():
-                adcp_sensors_comments.append(([sensor_name, comment_key], comment_value))
-
-            for odf_key, nc_key in dataset_attrs_map.items():
-                if nc_key in dataset.attrs:
-                    if dataset.attrs[nc_key] is not None:
-                        adcp_sensors_comments.append(([sensor_name, odf_key], str(dataset.attrs[nc_key])))
-
-    for comments in adcp_sensors_comments:
-        odf.buoy_instrument[sensor_id]["sensors"].append(
-            _build_comments_string(comments[0], comments[1])
-            )
-
-
-def _make_other_buoy_instrument_header(odf: Odf, platform_metadata: PlatformMetadata):
-    """
-
-    Parameters
-    ----------
-    odf
-    platform_metadata
-
-    Returns
-    -------
-    """
-    configuration = "CONFIGURATION_01"
-
-    for sensor_id, sensor in platform_metadata.sensors.items():
-        if sensor_id in ['platform', 'buoy_specs']:
-            continue
-        odf.add_buoy_instrument(sensor_id)
-        odf.buoy_instrument[sensor_id]['type'] = sensor.manufacturer
-        odf.buoy_instrument[sensor_id]['model'] = sensor.model
-        odf.buoy_instrument[sensor_id]['serial_number'] = sensor.serial_number
-        odf.buoy_instrument[sensor_id]['description'] = sensor.description
-        comments = {
-            "Firmware_Version": sensor.firmware_version,
-            "depth_m": sensor.sensor_depth,
-            "Comments": sensor.comments
-        }
-
-        for key, value in comments.items():
-            odf.buoy_instrument[sensor_id]["buoy_instrument_comments"].append(
-                configuration + "." + key + ": " + str(value)
-            )
-
-
-def _add_buoy_instrument_headers(
+def _make_buoy_instrument_headers(
         odf: Odf,
         platform_metadata: PlatformMetadata
 ):
     """
-    FIXME test
+    TODO TEST
     Uses the data from the platform metadata
     """
-    for sensor_id, sensor_metadata in platform_metadata.sensors.items():
-        _make_buoy_instrument_header(
+    for instrument_id, instrument_metadata in platform_metadata.instruments.items():
+        _add_buoy_instrument_header(
             odf=odf,
-            sensor_id=sensor_id,
-            sensor_metadata=sensor_metadata
+            instrument_id=instrument_id,
+            instrument_metadata=instrument_metadata
         )
 
-    # Do only those in the sensors_id list:
-    # for sensor_id, sensor_type in sensors_id.items():
-    #     if sensor_type in sensors_to_parameters_map:
-    #         parameters = sensors_to_parameters_map[sensor_type]
-    #
-    #         _make_buoy_instrument_header(
-    #             odf=odf,
-    #             sensor_id=sensor_id,
-    #             parameters=parameters,
-    #             platform_metadata=platform_metadata
-    #         )
 
-
-def _make_buoy_instrument_header(
+def _add_buoy_instrument_header(
         odf: Odf,
-        sensor_id: str,
-        # parameters: List[str],
-        # platform_metadata: PlatformMetadata
-        sensor_metadata: Sensor
+        instrument_id: str,
+        instrument_metadata: InstrumentMetadata
 ):
     """
     FIXME test
     Uses the data from the platform metadata
     """
 
-    odf.add_buoy_instrument(sensor_id)
+    odf.add_buoy_instrument(instrument_id)
 
-    odf.buoy_instrument[sensor_id]['inst_start_date_time'] = odf.event['start_date_time']
-    odf.buoy_instrument[sensor_id]['inst_end_date_time'] = odf.event['end_date_time']
+    odf.buoy_instrument[instrument_id]['inst_start_date_time'] = odf.event['start_date_time']
+    odf.buoy_instrument[instrument_id]['inst_end_date_time'] = odf.event['end_date_time']
 
-    #if sensor_id in platform_metadata.sensors:
-    #sensor_metadata = platform_metadata.sensors[sensor_id]
+    odf.buoy_instrument[instrument_id]['type'] = instrument_metadata.manufacturer
+    odf.buoy_instrument[instrument_id]['model'] = instrument_metadata.model
+    odf.buoy_instrument[instrument_id]['serial_number'] = instrument_metadata.serial_number
+    odf.buoy_instrument[instrument_id]['description'] = instrument_metadata.description
 
-    odf.buoy_instrument[sensor_id]['type'] = sensor_metadata.manufacturer
-    odf.buoy_instrument[sensor_id]['model'] = sensor_metadata.model
-    odf.buoy_instrument[sensor_id]['serial_number'] = sensor_metadata.serial_number
-    odf.buoy_instrument[sensor_id]['description'] = sensor_metadata.description
+    _add_buoy_instrument_comments(odf, instrument_id, instrument_metadata)
 
-    _make_buoy_instrument_comments(odf, sensor_id, sensor_metadata)
-
-    for parameter, parameter_metadata in sensor_metadata.parameters.items():
-        #if parameter in parameters:
-        _make_parameter_sensor_comments(parameter, odf, sensor_id, sensor_metadata)
+    for sensor, sensor_metadata in instrument_metadata.sensors.items():
+        _add_buoy_instrument_sensors(sensor, odf, instrument_id, sensor_metadata)
 
 
-def _make_buoy_instrument_comments(odf: Odf, sensor_id: str, sensor_metadata: Sensor):
+def _add_buoy_instrument_comments(odf: Odf, instrument_id: str, instrument_metadata: InstrumentMetadata):
     """
-    TODO TEST but this should work
+    TODO TEST
     """
     buoy_instruments_comments = [
-        (["Firmware_Version"], sensor_metadata.firmware_version or ""),
-        (["Comments"], sensor_metadata.comments or "")
+        (["Firmware_Version"], instrument_metadata.firmware_version),
+        (["Comments"], instrument_metadata.comments)
     ]
 
-    if sensor_metadata.sensor_depth is not None:
-        buoy_instruments_comments.append((["Depth_m"], sensor_metadata.sensor_depth))
+    if instrument_metadata.sensor_depth is not None:
+        buoy_instruments_comments.append((["Depth_m"], instrument_metadata.sensor_depth))
 
-    if sensor_metadata.sensor_height is not None:
-        buoy_instruments_comments.append((["Height_m"], sensor_metadata.sensor_depth))
+    if instrument_metadata.sensor_height is not None:
+        buoy_instruments_comments.append((["Height_m"], instrument_metadata.sensor_depth))
 
     for (key, value) in buoy_instruments_comments:
-        odf.buoy_instrument[sensor_id]["buoy_instrument_comments"].append(
+        odf.buoy_instrument[instrument_id]["buoy_instrument_comments"].append(
             _build_comments_string(["CONFIGURATION_01"] + key, value)
         )
 
 
-def _make_parameter_sensor_comments(parameter: str, odf: Odf, sensor_id: str, sensor_metadata: Sensor):
-    """
-    TODO TEST but this should work
-    """
-    parameter_name = PARAMETERS_METADATA[parameter]['name']
-
-    prefixes = ['SENSOR_' + parameter_name.upper() + "_01"]
-
+def _add_buoy_instrument_sensors(sensor: str, odf: Odf, instrument_id: str, sensor_metadata: SensorMetadata):
     sensor_comments = [
-        ("CODE", PARAMETERS_METADATA[parameter]['code']),
-        ("Name", parameter_name),
-        ("Manufacturer", odf.buoy_instrument[sensor_id]['type']),
-        ("Model", odf.buoy_instrument[sensor_id]['model']),
-        ("Serial_number", odf.buoy_instrument[sensor_id]['serial_number']),
-        ("Description", sensor_metadata[[parameter_name]]['descriptions']),
-        ("Start_date", odf.buoy_instrument[sensor_id]['inst_start_date_time']),
-        ("End_date", odf.buoy_instrument[sensor_id]['inst_end_date_time']),
-        ("Comments", sensor_metadata[parameter_name]['comments'])
+        ("CODE", sensor_metadata.code),
+        ("Name", sensor_metadata.name),
+        ("Manufacturer", odf.buoy_instrument[instrument_id]['type']),
+        ("Model", odf.buoy_instrument[instrument_id]['model']),
+        ("Serial_number", odf.buoy_instrument[instrument_id]['serial_number']),
+        ("Description", sensor_metadata.description),
+        ("Start_date", odf.buoy_instrument[instrument_id]['inst_start_date_time']),
+        ("End_date", odf.buoy_instrument[instrument_id]['inst_end_date_time']),
+        ("Comments", sensor_metadata.comments)
     ]
 
     for (key, value) in sensor_comments:
-        odf.buoy_instrument[sensor_id]["sensors"].append(
-            _build_comments_string(prefixes + [key], value)
+        odf.buoy_instrument[instrument_id]["sensors"].append(
+            _build_comments_string([sensor.upper(), key], value)
         )
 
-    calibration = sensor_metadata.parameters[parameter].calibration
+    calibration = sensor_metadata.calibration
+    if calibration:
+        calibration_comments = {
+            'date': odf_time_format(calibration.date) if calibration.date else None,
+            'number_of_coefficients': calibration.number_of_coefficients,
+            'coefficients': calibration.coefficients,
+            'calibration_equation': calibration.calibration_equation,
+            'calibration_units': calibration.calibration_units,
+            'archiving_units': calibration.archiving_units,
+            'conversion_factor': calibration.conversion_factor,
+            'comments': calibration.comments,
+        }
 
-    calibration_comments = {
-        'date': odf_time_format(calibration.date) if calibration.date else "",
-        'number_of_coefficients': calibration.number_of_coefficients or "",
-        'coefficients': calibration.coefficients or "",
-        'calibration_equation': calibration.calibration_equation or "",
-        'calibration_units': calibration.calibration_units or "",
-        'archiving_units': calibration.archiving_units or "",
-        'conversion_factor': calibration.conversion_factor or "",
-        'comments': calibration.comments or "",
-    }
-
-    for key, value in calibration_comments.items():
-        odf.buoy_instrument[sensor_id]["sensors"].append(
-            _build_comments_string(prefixes + ["CALIBRATION_01", key], value)
-        )
+        for key, value in calibration_comments.items():
+            odf.buoy_instrument[instrument_id]["sensors"].append(
+                _build_comments_string([sensor.upper(), "CALIBRATION_01", key], value)
+            )
 
 
 def _build_comments_string(keys: List, value: Union[int, float, str]):
@@ -558,7 +452,7 @@ def _build_comments_string(keys: List, value: Union[int, float, str]):
 
     >>> ".".join(keys) + f": {value}"
     """
-    return ".".join(keys) + f": {value}"
+    return ".".join(keys) + f": {value or ''}"
 
 
 def _make_quality_header(odf: Odf, dataset):
@@ -601,7 +495,7 @@ def _make_history_header(odf, dataset):
     odf.add_history({"creation_date": creation_date, "process": processing})
 
 
-def _make_parameter_headers(odf, dataset, variables: List[str], bodc_name=False):
+def _make_parameter_headers(odf, dataset, variables: List[str], p01_codes_map: dict, bodc_name=False):
     """
     Parameters
     ----------
@@ -623,7 +517,7 @@ def _make_parameter_headers(odf, dataset, variables: List[str], bodc_name=False)
 
     for var in variables:
         if bodc_name is True and not var in ('time', 'depth'):
-            dataset_variable_name = dataset.attrs["P01_CODES_MAP"][var]
+            dataset_variable_name = p01_codes_map[var]
         else:
             dataset_variable_name = var
 

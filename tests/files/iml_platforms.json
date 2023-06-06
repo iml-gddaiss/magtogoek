@@ -11,7 +11,7 @@
                        "height": "4.5 m",
                        "diameter": "2.1 m",
                        "description": "bouée noire (partie immergée) avec jaune."},
-        "sensors": {
+        "instruments": {
             "ADCP_01": {
                 "sensor_type": "adcp",
                 "sensor_depth": 1,
@@ -37,7 +37,7 @@
                        "diameter": "2.1 m",
                        "weight": "1000 kg",
                        "description": "bouée noire (partie immergée) avec jaune."},
-        "sensors": {
+        "instruments": {
             "ADCP_01": {
                 "sensor_type": "adcp",
                 "sensor_depth": 5,
@@ -47,7 +47,7 @@
                 "firmware_version": "sensor_firmware_test",
                 "chief_scientist": "Peter Galbraith",
                 "comments": "The model and serial number are the same for the temperature and pressure sensors as the ADCP.",
-				"parameters": {
+				"sensors": {
 					"temperature": {
 						"description": "",
 						"comments": "",

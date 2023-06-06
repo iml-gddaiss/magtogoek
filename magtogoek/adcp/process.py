@@ -641,6 +641,9 @@ def _write_odf(dataset: xr.Dataset, pconfig: ProcessConfig):
     dataset.attrs['history'] = l.logbook
 
     if pconfig.platform_metadata is None:
+        if not pconfig.sensor_id:
+            pconfig.sensor_id = "ADCP_01"
+        #platform_metadata = default_platform_metadata(pconfig.platform_type, pconfig.sensor_id, 'adcp')
         platform_metadata = default_platform_metadata(pconfig.platform_type, pconfig.sensor_id, 'adcp')
     else:
         platform_metadata = pconfig.platform_metadata
@@ -649,10 +652,8 @@ def _write_odf(dataset: xr.Dataset, pconfig: ProcessConfig):
         _ = make_odf(
             dataset=dataset,
             platform_metadata=platform_metadata,
-            sensor_id=pconfig.sensor_id, # could be change to sensors_id {'adcp': `sensor_id`}
-            #sensors_to_parameters_map=pconfig.sensors_to_parameters_map,
+            adcp_sensor_id=pconfig.sensor_id,
             config_attrs=pconfig.metadata,
-            #generic_variables_name=pconfig.generic_variables_name,
             p01_codes_map=pconfig.p01_codes_map,
             bodc_name=pconfig.bodc_name,
             event_qualifier2=qualifier,

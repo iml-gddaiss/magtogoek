@@ -322,7 +322,7 @@ def _make_netcdf_output_path(pconfig: BaseProcessConfig, default_path: Path, def
         elif parent_is_dir(pconfig.netcdf_output):
             netcdf_path = Path(pconfig.netcdf_output)
         else:
-            raise ValueError(f'Path path to {pconfig.netcdf_output} does not exists.')
+            raise ValueError(f'Netcdf output path to, {pconfig.netcdf_output}, does not exists.')
 
         pconfig.netcdf_path = str(netcdf_path)
         pconfig.netcdf_output = True
@@ -341,7 +341,7 @@ def _make_odf_output_path(pconfig: BaseProcessConfig, default_path: Path):
         elif parent_is_dir(pconfig.odf_output):
             odf_path = Path(pconfig.odf_output)
         else:
-            raise ValueError(f'Path to {pconfig.odf_output} does not exists.')
+            raise ValueError(f'Odf output path, {pconfig.odf_output}, does not exists.')
 
         pconfig.odf_path = str(odf_path)
         pconfig.odf_output = True
@@ -363,7 +363,7 @@ def _make_figure_output_path(pconfig: BaseProcessConfig, default_path: Path, def
         elif parent_is_dir(pconfig.make_figures):
             figures_path = Path(pconfig.make_figures)
         else:
-            raise ValueError(f'Path to `{pconfig.make_figures}` does not exists.')
+            raise ValueError(f'Figure output path, `{pconfig.make_figures}`, does not exists.')
 
         pconfig.figures_path = str(figures_path)
         pconfig.figures_output = True
@@ -403,7 +403,11 @@ def add_global_attributes(dataset: xr.Dataset, pconfig: BaseProcessConfig, stand
     dataset.attrs["data_subtype"] = DATA_SUBTYPES[pconfig.platform_type]
 
     if isinstance(pconfig.platform_metadata, PlatformMetadata): # PATCH FIXME
-        pconfig.platform_metadata.add_to_dataset(dataset, list(pconfig.sensors_to_parameters_map.keys()), pconfig.force_platform_metadata)
+        pconfig.platform_metadata.add_to_dataset(
+            dataset=dataset,
+            instruments_id=list(pconfig.sensors_to_parameters_map.keys()),
+            force=pconfig.force_platform_metadata
+        )
 
     compute_global_attrs(dataset)  # already common
 

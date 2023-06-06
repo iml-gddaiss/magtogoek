@@ -275,7 +275,7 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
 
     if process == 'adcp':
         section = "ADCP_PROCESSING"
-        tparser.add_option(section, "sensor_id", dtypes=["str"], default=None)
+        tparser.add_option(section, "sensor_id", dtypes=["str"], default=None) # convert to adcp_id ?
         tparser.add_option(section, "yearbase", dtypes=["int"], default="", is_required=False)
         tparser.add_option(section, "adcp_orientation", dtypes=["str"], default="down", choice=["up", "down"], comments='up or down')
         tparser.add_option(section, "sonar", dtypes=["str"], choice=["wh", "sv", "os", "sw", "sw_pd0"], comments='[wh, sv, os, sw, sw_pd0, ]', is_required=True)
