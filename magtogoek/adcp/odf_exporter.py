@@ -42,7 +42,7 @@ def make_odf(
         dataset: xr.Dataset,
         platform_metadata: PlatformMetadata,
         adcp_sensor_id: str,
-        config_attrs: dict,
+        global_attributes: dict,
         p01_codes_map: dict,
         use_bodc_name: bool = True,
         event_qualifier2: str = 'VEL',
@@ -57,7 +57,7 @@ def make_odf(
         Metadata from the platform file.
     adcp_sensor_id :
 
-    config_attrs :
+    global_attributes :
         Global attributes parameter from the configFile.
     p01_codes_map :
 
@@ -73,8 +73,8 @@ def make_odf(
     """
     odf = Odf()
 
-    _make_cruise_header(odf, platform_metadata, config_attrs)
-    _make_event_header(odf, dataset, config_attrs, event_qualifier2, p01_codes_map)
+    _make_cruise_header(odf, platform_metadata, global_attributes)
+    _make_event_header(odf, dataset, global_attributes, event_qualifier2, p01_codes_map)
     _make_odf_header(odf)
 
     if platform_metadata.platform.platform_type == "buoy":

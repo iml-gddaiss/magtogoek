@@ -40,7 +40,7 @@ def test_make():
         dataset=DATASET,
         platform_metadata=PLATFORM_METADATA,
         adcp_sensor_id='ADCP_01',
-        config_attrs=GLOBAL_ATTRS,
+        global_attributes=GLOBAL_ATTRS,
         p01_codes_map=P01_TO_GENERIC_NAME
     )
     assert odf.data.shape == (40, 9)
@@ -59,7 +59,7 @@ def test_platform_type(platform_type, headers, cruise_platform):
     odf = make_odf(dataset=DATASET,
                    platform_metadata=PLATFORM_METADATA,
                    adcp_sensor_id='ADCP_01',
-                   config_attrs=GLOBAL_ATTRS,
+                   global_attributes=GLOBAL_ATTRS,
                    p01_codes_map=P01_TO_GENERIC_NAME,
                    #generic_variables_name=GENERIC_VARIABLES_NAME,
                    use_bodc_name=True,

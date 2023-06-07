@@ -80,15 +80,10 @@ def test_process_no_merge_decorator(config_dict, netcdf_path, odf_path, log_path
 
 @resolve_output_paths
 def _assert_process_wrapper(pconfig: BaseProcessConfig, netcdf_path: list, odf_path: list, log_path: list, event_qualifier: list):
-    # print(pconfig.netcdf_path, netcdf_path.pop(0))
-    # print(pconfig.odf_path, odf_path.pop(0))
-    # print(pconfig.log_path, log_path.pop(0))
-    # print(pconfig.metadata['event_qualifier1'], event_qualifier.pop(0))
-
     assert pconfig.netcdf_path == netcdf_path.pop(0)
     assert pconfig.odf_path == odf_path.pop(0)
     assert pconfig.log_path == log_path.pop(0)
-    assert pconfig.metadata['event_qualifier1'] == event_qualifier.pop(0)
+    assert pconfig.global_attributes['event_qualifier1'] == event_qualifier.pop(0)
 
 
 

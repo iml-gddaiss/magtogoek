@@ -93,7 +93,7 @@ class BaseProcessConfig:
     make_figures: tp.Union[str, bool] = None
     make_log: bool = None
     odf_data: str = None
-    metadata: dict = None
+    global_attributes: dict = None
     platform_metadata: PlatformMetadata = None
 
     netcdf_path: str = None
@@ -113,7 +113,7 @@ class BaseProcessConfig:
     p01_codes_map: tp.Dict[str, str] = None
 
     def __init__(self, config_dict: dict = None):
-        self.metadata: dict = {}
+        self.global_attributes: dict = {}
 
         if config_dict is not None:
             self._load_config_dict(config_dict)
@@ -134,13 +134,13 @@ class BaseProcessConfig:
         for section, options in config.items():
             if section in CONFIG_GLOBAL_ATTRS_SECTIONS:
                 for option in options:
-                    self.metadata[option] = config[section][option]
+                    self.global_attributes[option] = config[section][option]
             else:
                 for option in options:
                     if hasattr(self, option):
                         self.__dict__[option] = config[section][option]
                     else:
-                        self.metadata[option] = config[section][option]
+                        self.global_attributes[option] = config[section][option]
 
     def _load_platform_metadata(self):
         if self.platform_file is not None:
@@ -182,10 +182,10 @@ def resolve_output_paths(process_function: tp.Callable[[BaseProcessConfig], None
             odf_output = pconfig.odf_output
             netcdf_output = pconfig.netcdf_output
 
-            if 'event_qualifier1' not in pconfig.metadata: # Maybe that is not the best way to do it. Only used for ODF
-                pconfig.metadata['event_qualifier1'] = ""
+            if 'event_qualifier1' not in pconfig.global_attributes:
+                pconfig.global_attributes['event_qualifier1'] = "" # Maybe that is not the best way to do it. Required for ODF
 
-            event_qualifier1 = pconfig.metadata['event_qualifier1']
+            event_qualifier1 = pconfig.global_attributes['event_qualifier1']
 
             for count, filename in enumerate(input_files):
                 pconfig.input_files = [filename]
@@ -214,12 +214,12 @@ def resolve_output_paths(process_function: tp.Callable[[BaseProcessConfig], None
                     else:
                         # A suffix (input filename) is added to the event_qualifier that builds the filename
                         # PREVENTS FROM OVERWRITING THE SAME FILE
-                        pconfig.metadata['event_qualifier1'] = event_qualifier1 + f"_{count}"
+                        pconfig.global_attributes['event_qualifier1'] = event_qualifier1 + f"_{count}"
                         pconfig.config_file = str(Path(config_file).with_suffix("")) + f"_{count}"
                 elif odf_output is True:
                     # A suffix (input filename) is added to the event_qualifier that builds the filename
                     # PREVENTS FROM OVERWRITING THE SAME FILE
-                    pconfig.metadata['event_qualifier1'] = event_qualifier1 + f"_{count}"
+                    pconfig.global_attributes['event_qualifier1'] = event_qualifier1 + f"_{count}"
                     pconfig.config_file = str(Path(config_file).with_suffix("")) + f"_{count}"
 
                 _resolve_outputs(pconfig)
@@ -383,14 +383,15 @@ def parent_is_dir(path: str):
 
 def add_global_attributes(dataset: xr.Dataset, pconfig: BaseProcessConfig, standard_global_attributes: dict):
     """
-    pconfig.metadata values will overwrite any values in the dataset global attributes previously set.
+    pconfig.global_attributes values will overwrite any values in the dataset global attributes previously set.
     That is values in the configfile headers ["NETCDF_CF", "PROJECT", "CRUISE", "GLOBAL_ATTRIBUTES"].
 
     Parameters
     ----------
     dataset
     pconfig
-    standard_global_attributes
+    standard_global_attributes :
+        Used to update the dataset attributes
 
     Returns
     -------
@@ -413,7 +414,7 @@ def add_global_attributes(dataset: xr.Dataset, pconfig: BaseProcessConfig, stand
 
     dataset.attrs["source"] = pconfig.platform_type
 
-    dataset.attrs.update(pconfig.metadata)
+    dataset.attrs.update(pconfig.global_attributes)
 
 
 def _get_data_type(process: str, platform_type: str = None):

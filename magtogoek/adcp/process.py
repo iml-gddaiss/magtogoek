@@ -261,7 +261,6 @@ class ProcessConfig(BaseProcessConfig):
 
     def __init__(self, config_dict: dict = None):
         super().__init__(config_dict)
- #       self.variables_to_add_sensor_type = VAR_TO_ADD_SENSOR_TYPE
         self.sensors_to_parameters_map = SENSOR_TYPE_TO_PARAMETER_MAP # FIXME Test
         self.variables_to_drop = VARIABLES_TO_DROP
         self.global_attributes_to_drop = GLOBAL_ATTRS_TO_DROP
@@ -405,7 +404,6 @@ def _process_adcp_data(pconfig: ProcessConfig):
         use_bodc_name=pconfig.use_bodc_name,
         p01_codes_map=pconfig.p01_codes_map,
         sensors_to_parameters_map=pconfig.sensors_to_parameters_map,
-        #variable_to_add_sensor_type=pconfig.variables_to_add_sensor_type,
         cf_profile_id='time'
     )
 
@@ -652,7 +650,7 @@ def _write_odf(dataset: xr.Dataset, pconfig: ProcessConfig):
             dataset=dataset,
             platform_metadata=platform_metadata,
             adcp_sensor_id=pconfig.sensor_id,
-            config_attrs=pconfig.metadata,
+            global_attributes=pconfig.global_attributes,
             p01_codes_map=pconfig.p01_codes_map,
             use_bodc_name=pconfig.use_bodc_name,
             event_qualifier2=qualifier,
