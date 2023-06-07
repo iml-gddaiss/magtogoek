@@ -142,7 +142,7 @@ class PlatformMetadata:
             self.instruments[instrument_id].sensors = sensors_metadata
 
     def add_to_dataset(self, dataset: xr.Dataset, instruments_id: List[str], force: bool = False):
-        """Add values stored in Platform for sensor id in `sensors_to_parameters_map` to dataset attributes.
+        """Add values stored in Platform for instrument_id in `instrument_id_to_parameters_map` to dataset attributes.
 
         The `instrument_id` is added as a prefix to each value's key in the sensor dataclass.
 
