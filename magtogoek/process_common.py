@@ -22,13 +22,13 @@ from magtogoek.utils import ensure_list_format
 DEFAULT_PLATFORM_TYPE = "buoy"
 CONFIG_GLOBAL_ATTRS_SECTIONS = ["NETCDF_CF", "PROJECT", "CRUISE", "GLOBAL_ATTRIBUTES"]
 
-ADCP_DATA_TYPES = {
+ADCP_DATA_TYPES = { # SHOULDN'T THIS BE IN THE adcp/__init__.py FIXME
     "buoy": "madcp",
     "mooring": "madcp",
     "ship": "adcp",
     "lowered": "adcp"
 }
-METEOCE_DATA_TYPE = "meteoce"
+METEOCE_DATA_TYPE = "meteoce" # SHOULDN'T THIS BE IN THE adcp/__init__.py FIXE
 
 DATA_SUBTYPES = {
     "buoy": "BUOY",
@@ -540,7 +540,7 @@ def add_navigation(dataset: xr.Dataset, navigation_files: str):
         nav_ds = load_navigation(navigation_files)
     except ValueError as msg:
         l.warning(f'Unable to load the navigation file.\n\t Error: {msg}')
-        #return dataset
+        nav_ds = None # FIXME test ADDED on JUNE 7 2023. Seemed necessary.
 
     if nav_ds is not None:
         if 'time' in nav_ds.coords:

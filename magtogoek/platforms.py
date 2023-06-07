@@ -11,7 +11,7 @@ import sys
 
 from typing import *
 from dataclasses import dataclass, fields
-from magtogoek import SENSOR_TYPES, PLATFORM_TYPES, GENERIC_PARAMETERS
+from magtogoek import SENSOR_TYPES, PLATFORM_TYPES
 import magtogoek.logger as l
 from magtogoek.utils import dict2json, json2dict
 
