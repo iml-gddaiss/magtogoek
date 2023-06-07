@@ -402,7 +402,7 @@ def _process_adcp_data(pconfig: ProcessConfig):
 
     dataset = format_variables_names_and_attributes(
         dataset=dataset,
-        use_bodc_name=pconfig.bodc_name,
+        use_bodc_name=pconfig.use_bodc_name,
         p01_codes_map=pconfig.p01_codes_map,
         sensors_to_parameters_map=pconfig.sensors_to_parameters_map,
         #variable_to_add_sensor_type=pconfig.variables_to_add_sensor_type,
@@ -643,7 +643,6 @@ def _write_odf(dataset: xr.Dataset, pconfig: ProcessConfig):
     if pconfig.platform_metadata is None:
         if not pconfig.sensor_id:
             pconfig.sensor_id = "ADCP_01"
-        #platform_metadata = default_platform_metadata(pconfig.platform_type, pconfig.sensor_id, 'adcp')
         platform_metadata = default_platform_metadata(pconfig.platform_type, pconfig.sensor_id, 'adcp')
     else:
         platform_metadata = pconfig.platform_metadata
@@ -655,7 +654,7 @@ def _write_odf(dataset: xr.Dataset, pconfig: ProcessConfig):
             adcp_sensor_id=pconfig.sensor_id,
             config_attrs=pconfig.metadata,
             p01_codes_map=pconfig.p01_codes_map,
-            bodc_name=pconfig.bodc_name,
+            use_bodc_name=pconfig.use_bodc_name,
             event_qualifier2=qualifier,
             output_path=pconfig.odf_path,
         )

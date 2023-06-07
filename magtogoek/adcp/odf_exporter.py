@@ -29,22 +29,6 @@ from magtogoek.utils import json2dict
 
 REPOSITORY_ADDRESS = "https://github.com/JeromeJGuay/magtogoek"
 
-# ADCP_SENSORS_COMMENTS = {
-#     'pres': {
-#         'sensor': 'PRESSURE_SENSOR_01', 'comments': {'CODE': 'DEPH_01', 'Name': 'pressure'}
-#     },
-#     'heading': {
-#         'sensor': 'COMPAS_SENSOR_01', 'comments': {'CODE': 'HEAD_01', 'Name': 'compas'}
-#     },
-#     'roll_': {
-#         'sensor': 'INCLINOMETER_SENSOR_01', 'comments': {'CODE': 'ROLL_01', 'Name': 'tilt'}
-#     },
-#     'temperature': {
-#         'sensor': 'TEMPERATURE_SENSOR_01', 'comments': {'CODE': 'TE90_01', 'Name': 'temperature'}
-#     }
-# }
-
-
 BEAM_PARAMETERS = ("time", "depth", "v1", "v2", "v3", "v4")
 VEL_PARAMTERS = ("time", "depth", "u", "v", "w", "e")
 ANC_PARAMTERS = ('time', 'pitch', 'roll_', 'heading', 'pres', 'temperature', 'lon', 'lat')
@@ -60,7 +44,7 @@ def make_odf(
         adcp_sensor_id: str,
         config_attrs: dict,
         p01_codes_map: dict,
-        bodc_name: bool = True,
+        use_bodc_name: bool = True,
         event_qualifier2: str = 'VEL',
         output_path: Optional[str] = None, ):
     """
@@ -77,7 +61,7 @@ def make_odf(
         Global attributes parameter from the configFile.
     p01_codes_map :
 
-    bodc_name:
+    use_bodc_name:
         If True, map from the generic to the BODC p01 variables names.
     event_qualifier2:
         Either `'VEL'` or `'ANC'`.
@@ -112,7 +96,7 @@ def make_odf(
     else:
         parameters = ANC_PARAMTERS
 
-    _make_parameter_headers(odf, dataset, parameters, p01_codes_map, bodc_name)
+    _make_parameter_headers(odf, dataset, parameters, p01_codes_map, use_bodc_name)
 
     if output_path is not None:
         output_path = Path(output_path)
@@ -301,9 +285,6 @@ def _make_adcp_buoy_instrument_comments(
       .
       .
 
-    Note
-    ----
-    LagLength was removed from the original ODF adcp format.
     """
     configuration = "CONFIGURATION_01"
     buoy_instrument_comments = []
@@ -577,29 +558,3 @@ def _find_section_timestamp(s: str) -> str:
     if match:
         return match[0]
     return None
-
-
-if __name__ == "__main__":
-    #    from magtogoek.adcp.process import _get_config, _load_platform
-    #    from magtogoek.configfile import load_configfile
-
-    _nc_file = "../../test/files/iml6_2017_wh.nc"
-    _platform_files = "../../test/files/iml_platforms.json"
-    _config_file = "../../test/files/adcp_iml6_2017.ini"
-
-    #    _dataset = xr.open_dataset(_nc_file)
-    #    _params, _global_attrs = _get_config(load_configfile(_config_file))
-    #    _params["platform_file"] = _platform_files
-    #    _sensor_metadata = _load_platform(_params)
-
-    _p01_to_generic_name = {
-        "u": "LCEWAP01",
-        "u_QC": "LCEWAP01_QC",
-        "v": "LCNSAP01",
-        "v_QC": "LCNSAP01_QC",
-        "w": "LRZAAP01",
-        "w_QC": "LRZAAP01_QC",
-        "e": "LERRAP01",
-    }
-
-#    _odf = make_odf(_dataset, _sensor_metadata, _global_attrs, _p01_to_generic_name)

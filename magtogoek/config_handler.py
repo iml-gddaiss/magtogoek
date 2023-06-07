@@ -40,6 +40,7 @@ CONFIG_TO_CLI_MAPS = {
         'make_figures': "mk_fig",
         'make_log': "mk_log",
         'odf_data': "odf_dtype",
+        'use_bodc_name': "bodc_name"
     },
     'adcp': {
         'sidelobes_correction': "sidelobes",

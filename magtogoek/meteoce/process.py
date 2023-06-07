@@ -391,7 +391,7 @@ def _process_meteoce_data(pconfig: ProcessConfig):
     save_variables_name_for_odf_output(dataset, pconfig)
     dataset = format_variables_names_and_attributes(
         dataset=dataset,
-        use_bodc_name=pconfig.bodc_name,
+        use_bodc_name=pconfig.use_bodc_name,
         p01_codes_map=pconfig.p01_codes_map,
         sensors_to_parameters_map=pconfig.sensors_to_parameters_map,
         # variable_to_add_sensor_type=pconfig.variables_to_add_sensor_type,

@@ -87,7 +87,7 @@ class BaseProcessConfig:
     leading_trim: tp.Union[int, str] = None
     trailing_trim: tp.Union[int, str] = None
     merge_output_files: bool = None
-    bodc_name: bool = None
+    use_bodc_name: bool = None
     force_platform_metadata: bool = None
 
     make_figures: tp.Union[str, bool] = None

@@ -62,7 +62,7 @@ def test_platform_type(platform_type, headers, cruise_platform):
                    config_attrs=GLOBAL_ATTRS,
                    p01_codes_map=P01_TO_GENERIC_NAME,
                    #generic_variables_name=GENERIC_VARIABLES_NAME,
-                   bodc_name=True,
+                   use_bodc_name=True,
                    event_qualifier2='VEL',
                    output_path=None,
                    )
