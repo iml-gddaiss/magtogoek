@@ -109,7 +109,9 @@ class BaseProcessConfig:
     variables_to_drop: tp.List[str] = None
     global_attributes_to_drop: tp.List[str] = None
     drop_empty_attrs: bool = False
-    instrument_id_to_parameters_map: tp.Dict[str, tp.List[str]] = None
+    sensors_to_variables_map: tp.Dict[str, tp.List[str]] = None
+    instruments_id: tp.List[str] = None
+    #instrument_id_to_parameters_map: tp.Dict[str, tp.List[str]] = None
     p01_codes_map: tp.Dict[str, str] = None
 
     def __init__(self, config_dict: dict = None):
@@ -499,17 +501,6 @@ def format_data_encoding(dataset: xr.Dataset):
 
     l.log(f"Data _FillValue: {DATA_FILL_VALUE}")
     l.log(f"Ancillary Data _FillValue: {QC_FILL_VALUE}")
-
-
-def save_variables_name_for_odf_output(dataset: xr.Dataset, pconfig: BaseProcessConfig):
-    """Put generic variables name into pconfing.generic_variables_name.
-
-    Parameters
-    ----------
-    dataset
-    pconfig
-    """
-    pconfig.generic_variables_name = [var for var in dataset.variables]
 
 
 def add_navigation(dataset: xr.Dataset, navigation_files: str):

@@ -60,7 +60,7 @@ def format_variables_names_and_attributes(
         dataset: xr.Dataset,
         use_bodc_name: bool,
         p01_codes_map: dict,
-        sensors_to_parameters_map: dict,
+        sensors_to_variables_map: dict, # FIXME INSTRUMENT_ID
         cf_profile_id: str = 'time',
 ) -> xr.Dataset:
     """Format variables names and attributes
@@ -84,7 +84,7 @@ def format_variables_names_and_attributes(
         True if the bodc_name are to be used.
     p01_codes_map :
         generic name to bodc p01_code mapping.
-    sensors_to_parameters_map:
+    sensors_to_variables_map:
         list of parameters (variables) for each sensor(_type)
     cf_profile_id :
         Name of the coordinate to add the attributes {'cf_role': 'profile_id'}
@@ -101,7 +101,7 @@ def format_variables_names_and_attributes(
 
     original_coords_name = dataset.coords
 
-    _add_sensors_attributes_to_variables(dataset, sensors_to_parameters_map)
+    _add_sensors_attributes_to_variables(dataset, sensors_to_variables_map)
 
     dataset = _convert_variables_names(dataset, p01_codes_map)
 
@@ -257,7 +257,7 @@ def _add_sensor_attributes(sensor_id: str, variable: str, dataset: xr.Dataset):
 def _add_ancillary_variables_to_var_attrs(dataset: xr.Dataset):
     """add ancillary_variables to variables attributes
 
-    Looks for `_QC` variable names and adds 'ancillary_variables` attributes
+    Looks for `_QC` variable names and adds `ancillary_variables` attributes
     to the corresponding variables.
     """
     for var in list(dataset.variables):

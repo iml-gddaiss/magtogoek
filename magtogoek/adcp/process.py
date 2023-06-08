@@ -63,7 +63,7 @@ from magtogoek.adcp.quality_control import (adcp_quality_control,
 from magtogoek.adcp.transform import coordsystem2earth
 from magtogoek.attributes_formatter import format_variables_names_and_attributes, _add_data_min_max_to_var_attrs
 from magtogoek.process_common import BaseProcessConfig, resolve_output_paths, add_global_attributes, write_log, write_netcdf, \
-    add_processing_timestamp, clean_dataset_for_nc_output, format_data_encoding, add_navigation, save_variables_name_for_odf_output
+    add_processing_timestamp, clean_dataset_for_nc_output, format_data_encoding, add_navigation
 from magtogoek.tools import (
     regrid_dataset, _prepare_flags_for_regrid, _new_flags_bin_regrid,
     _new_flags_interp_regrid, get_datetime_and_count, cut_bin_depths, cut_times)
@@ -395,15 +395,13 @@ def _process_adcp_data(pconfig: ProcessConfig):
     # -------------------- #
     l.section("Variables attributes")
 
-    save_variables_name_for_odf_output(dataset, pconfig)
-
     _update_p01_codes_map(dataset, pconfig)
 
     dataset = format_variables_names_and_attributes(
         dataset=dataset,
         use_bodc_name=pconfig.use_bodc_name,
         p01_codes_map=pconfig.p01_codes_map,
-        sensors_to_parameters_map=pconfig.sensors_to_parameters_map,
+        sensors_to_variables_map=pconfig.sensors_to_variables_map,
         cf_profile_id='time'
     )
 

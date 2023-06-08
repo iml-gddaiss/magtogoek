@@ -497,7 +497,7 @@ def _make_parameter_headers(odf, dataset, variables: List[str], p01_codes_map: d
     qc_parameters = []
 
     for var in variables:
-        if bodc_name is True and not var in ('time', 'depth'):
+        if bodc_name is True and var not in ('time', 'depth'):
             dataset_variable_name = p01_codes_map[var]
         else:
             dataset_variable_name = var

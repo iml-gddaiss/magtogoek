@@ -35,8 +35,7 @@ from typing import *
 from magtogoek import logger as l
 from magtogoek.sci_tools import rotate_2d_vector, north_polar2cartesian
 from magtogoek.process_common import BaseProcessConfig, resolve_output_paths, add_global_attributes, write_log, \
-    write_netcdf, add_processing_timestamp, clean_dataset_for_nc_output, format_data_encoding, add_navigation, \
-    save_variables_name_for_odf_output
+    write_netcdf, add_processing_timestamp, clean_dataset_for_nc_output, format_data_encoding, add_navigation
 from magtogoek.attributes_formatter import format_variables_names_and_attributes
 
 from magtogoek.wps.sci_tools import compute_density, dissolved_oxygen_ml_per_L_to_umol_per_L, dissolved_oxygen_umol_per_L_to_umol_per_kg
@@ -261,7 +260,7 @@ class ProcessConfig(BaseProcessConfig):
 
     def __init__(self, config_dict: dict = None):
         super().__init__(config_dict)
-        self.sensors_to_parameters_map = SENSORS_TO_PARAMETERS_MAP
+        self.sensors_to_variables_map = SENSORS_TO_VARIABLES_MAP
         self.variables_to_drop = VARIABLES_TO_DROP
         self.global_attributes_to_drop = GLOBAL_ATTRS_TO_DROP
         self.p01_codes_map = P01_CODES_MAP
@@ -388,13 +387,11 @@ def _process_meteoce_data(pconfig: ProcessConfig):
     # -------------------- #
     l.section("Variables attributes")
 
-    save_variables_name_for_odf_output(dataset, pconfig)
     dataset = format_variables_names_and_attributes(
         dataset=dataset,
         use_bodc_name=pconfig.use_bodc_name,
         p01_codes_map=pconfig.p01_codes_map,
-        sensors_to_parameters_map=pconfig.sensors_to_parameters_map,
-        # variable_to_add_sensor_type=pconfig.variables_to_add_sensor_type,
+        sensors_to_variables_map=pconfig.sensors_to_variables_map,
         cf_profile_id='time'
     )
     # ------------ #
