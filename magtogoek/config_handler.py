@@ -191,7 +191,13 @@ def _get_config_process(raw_config: dict, version: int):
 def version_control(config_dict: Dict, version: int):
     """Updates the config_dict to the current version."""
     if version == 0:
-        config_dict['HEADER']['process'] = config_dict['HEADER']['sensor_type']
+        config_dict['HEADER']['process'] = config_dict['HEADER'].pop('sensor_type')
+
+    process = config_dict['HEADER']['process']
+    if process == "adcp":
+        if version == 0:
+            config_dict['ADCP_PROCESSING']['adcp_id'] = config_dict['ADCP_PROCESSING'].pop('sensor_id')
+            config_dict["ADCP_OUTPUT"]['use_bodc_name'] = config_dict["ADCP_OUTPUT"].pop('bodc_name')
 
 
 def get_config_taskparser(process: Optional[str] = None, version: Optional[int] = None):
@@ -223,7 +229,7 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
     tparser.add_option(section, "make_figures", dtypes=["bool", "str"], default=True, null_value=False)
     tparser.add_option(section, "make_log", dtypes=["bool"], default=True, null_value=False)
     tparser.add_option(section, "force_platform_metadata", dtypes=["bool"], default=False, null_value=False)
-    tparser.add_option(section, "bodc_name", dtypes=["bool"], default=True, null_value=False)
+    tparser.add_option(section, "use_bodc_name", dtypes=["bool"], default=True, null_value=False)
     tparser.add_option(section, "merge_output_files", dtypes=["bool"], default=True, null_value=False)
     tparser.add_option(section, "odf_data", dtypes=["str"], default="both", choice=["vel", "anc", "both"],
                        comments='One of [vel, anc, both,].')
@@ -276,7 +282,10 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
 
     if process == 'adcp':
         section = "ADCP_PROCESSING"
-        tparser.add_option(section, "sensor_id", dtypes=["str"], default=None) # convert to adcp_id ?
+        if version == 0:
+            tparser.add_option(section, "sensor_id", dtypes=["str"], default=None) # convert to adcp_id ?
+        else:
+            tparser.add_option(section, "adcp_id", dtypes=["str"], default=None)  # convert to adcp_id ?
         tparser.add_option(section, "yearbase", dtypes=["int"], default="", is_required=False)
         tparser.add_option(section, "adcp_orientation", dtypes=["str"], default="down", choice=["up", "down"], comments='up or down')
         tparser.add_option(section, "sonar", dtypes=["str"], choice=["wh", "sv", "os", "sw", "sw_pd0"], comments='[wh, sv, os, sw, sw_pd0, ]', is_required=True)
@@ -327,7 +336,7 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
         section = "METEOCE_PROCESSING"
         tparser.add_option(section, "data_format", dtypes=["float"], default="viking_dat")
         tparser.add_option(section, "buoy_name", dtypes=["str"],  comments='Name of the buoy in the raw file.', is_required=True)
-        tparser.add_option(section, "sensor_depth", dtypes=["float"], default="")
+        # tparser.add_option(section, "sensor_depth", dtypes=["float"], default="") Not needed ? depth and height ?
         tparser.add_option(section, "adcp_id", dtypes=["str"], default=None)
         tparser.add_option(section, "ctd_id", dtypes=["str"], default=None)
         tparser.add_option(section, "ctdo_id", dtypes=["str"], default=None)

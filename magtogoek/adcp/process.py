@@ -222,7 +222,7 @@ SENSOR_TYPE_TO_PARAMETER_MAP = {
 
 
 class ProcessConfig(BaseProcessConfig):
-    sensor_id: str = None
+    adcp_id: str = None
     yearbase: int = None
     adcp_orientation: str = None
     sonar: str = None
@@ -261,7 +261,8 @@ class ProcessConfig(BaseProcessConfig):
 
     def __init__(self, config_dict: dict = None):
         super().__init__(config_dict)
-        self.sensors_to_parameters_map = SENSOR_TYPE_TO_PARAMETER_MAP # FIXME Test
+        self.sensors_to_variables_map = SENSOR_TYPE_TO_VARIABLES_MAP
+        self.instruments_id = [self.adcp_id] # this should be a dict : {'adcp': self.sensor_id}
         self.variables_to_drop = VARIABLES_TO_DROP
         self.global_attributes_to_drop = GLOBAL_ATTRS_TO_DROP
         self.p01_codes_map = P01_CODES_MAP
