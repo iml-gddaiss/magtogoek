@@ -123,6 +123,7 @@ class InstrumentMetadata:
 
 @dataclass
 class PlatformMetadata:
+    """Object used to store platform metadata"""
     platform: Platform
     buoy_specs: BuoySpecifications
     instruments: Dict[str, InstrumentMetadata] = None
@@ -213,8 +214,8 @@ def load_platform_metadata(platform_file: str, platform_id: str) -> PlatformMeta
 
         platform_metadata = PlatformMetadata(platform_metadata_dict, buoy_specs)
 
-        for sensor_id in json_dict[platform_id]['instruments']:
-            platform_metadata.add_instrument(sensor_id, json_dict[platform_id]["instruments"][sensor_id])
+        for instrument_id in json_dict[platform_id]['instruments']:
+            platform_metadata.add_instrument(instrument_id, json_dict[platform_id]["instruments"][instrument_id])
 
         return platform_metadata
 
@@ -233,12 +234,12 @@ def _filter_for_dataclass(data_class: dataclass, raw_json_dict: dict):
     return data_class(**{k: v for k, v in raw_json_dict.items() if k in field_names})
 
 
-def default_platform_metadata(platform_type: str, sensor_id: str, sensor_type: str):
+def default_platform_metadata(platform_type: str, instrument_id: str, sensor_type: str):
     platform_metadata = PlatformMetadata(
         Platform(platform_type=platform_type),
         BuoySpecifications()
     )
-    platform_metadata.add_instrument(sensor_id, {'instrument_id': sensor_id, 'sensor_type': sensor_type})
+    platform_metadata.add_instrument(instrument_id, {'instrument_id': instrument_id, 'sensor_type': sensor_type})
     return platform_metadata
 
 
