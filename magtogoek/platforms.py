@@ -93,6 +93,7 @@ class Calibration:
 
 @dataclass
 class SensorMetadata:
+    #paramter: str = None # to map to a generic_variable ??? FIXME
     name: str = None
     code: str = None
     description: str = None
@@ -109,14 +110,14 @@ class InstrumentMetadata:
     manufacturer: str = None
     model: str = None
     firmware_version: str = None
-    chief_scientist: str = None
+    chief_scientist: str = None # FIXME why is this not in the platform section ???
     description: str = None
     comments: str = None
     sensors: Dict[str, SensorMetadata] = None
 
     def __post_init__(self):
         if self.sensor_type not in SENSOR_TYPES:
-            l.warning(f"Invalid sensor_type: `{self.sensor_type}`.")
+            l.warning(f"Invalid sensor_type in platform file instrument: `{self.sensor_type}`.")
         if self.sensors is None:
             self.sensors = {}
 
@@ -142,42 +143,45 @@ class PlatformMetadata:
                     sensors_metadata[sensor].calibration = _filter_for_dataclass(Calibration, sensor_metadata['calibration'])
             self.instruments[instrument_id].sensors = sensors_metadata
 
-    def add_to_dataset(self, dataset: xr.Dataset, instruments_id: List[str], force: bool = False):
-        """Add values stored in Platform for instrument_id in `instrument_id_to_parameters_map` to dataset attributes.
-
-        The `instrument_id` is added as a prefix to each value's key in the sensor dataclass.
-
-        Rename attributes:
-            `platform_name`  -> `platform`
-
-        Parameters
-        ----------
-        dataset :
-            dataset to add attributes to.
-        instruments_id :
-            List of instruments id metadata to add to the dataset.
-        force :
-            If True, it will overwrite the existing value of the same key.
-        """
-
-        for key, value in self.platform.__dict__.items():
-            if key in dataset.attrs and not force:
-                if not dataset.attrs[key]:
-                    dataset.attrs[key] = value
-            else:
-                dataset.attrs[key] = value
-
-        for s_id in instruments_id:
-            if s_id in self.instruments:
-                for key, value in self.instruments[s_id].__dict__.items():
-                    attr_key = "_".join([s_id, key])
-                    if attr_key in dataset.attrs and not force:
-                        if not dataset.attrs[attr_key]:
-                            dataset.attrs[attr_key] = value
-                    else:
-                        dataset.attrs[attr_key] = value
-
-        dataset.attrs["platform"] = dataset.attrs.pop("platform_name")
+    # FIXME THIS IS ONLY USE FOR VIKING BUOY (METEOCE) no need to be here
+    # EACH PROCESS SHOULD HAVE A SPECIFIC WAY TO DO IT (I guess)
+    # except for the platform metadata.
+    # def add_to_dataset(self, dataset: xr.Dataset, instruments_id: List[str], force: bool = False):
+    #     """Add values stored in Platform for instrument_id in `sensors_to_instruments_id_map` to dataset attributes.
+    #
+    #     The <instrument_id> is added as a prefix to each values key in the sensor dataclass.
+    #
+    #     Rename attributes:
+    #         `platform_name`  -> `platform`
+    #
+    #     Parameters
+    #     ----------
+    #     dataset :
+    #         dataset to add attributes to.
+    #     instruments_id :
+    #         List of instruments id metadata to add to the dataset.
+    #     force :
+    #         If True, it will overwrite the existing value of the same key.
+    #     """
+    #     for key, value in self.platform.__dict__.items():
+    #         if key in dataset.attrs and not force:
+    #             if not dataset.attrs[key]:
+    #                 dataset.attrs[key] = value
+    #         else:
+    #             dataset.attrs[key] = value
+    #
+    #     for s_id in instruments_id:
+    #         if s_id in self.instruments:
+    #             for key, value in self.instruments[s_id].__dict__.items():
+    #                 if not isinstance(value, dict):
+    #                     attr_key = "_".join([s_id, key])
+    #                     if attr_key in dataset.attrs and not force:
+    #                         if not dataset.attrs[attr_key]:
+    #                             dataset.attrs[attr_key] = value
+    #                     else:
+    #                         dataset.attrs[attr_key] = value
+    #
+    #     dataset.attrs["platform"] = dataset.attrs.pop("platform_name")
 
 
 def load_platform_metadata(platform_file: str, platform_id: str) -> PlatformMetadata:

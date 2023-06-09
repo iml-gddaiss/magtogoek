@@ -3,13 +3,12 @@
 author : jerome.guay@protonamil.com
 date : Feb. 16, 2021
 
-This script contains `format_variables_namnes_and_attributes()` function that, as the name may
+This script contains `format_variables_names_and_attributes()` function that, as the name may
 suggest, formats a xarray dataset variables attributes have SeaDataNet, CF Conventions and other
 attributes. This script requires json files containing the `static` metadata to add to variables.
 The json files can be made by executing static_attributes.py script which can be edited to change
 where the json is saved.
 
-   $ python static_attributes.py
 
 static variables attributes :
  -'standard_name'
@@ -46,7 +45,7 @@ CF_P01_GF3_ATTRS_KEY_TO_ADD = [
     "standard_name",
     "positive",
     "units",
-    "sensor_type",
+    # "sensor_type",
     "long_name",
     "sdn_parameter_urn",
     "sdn_parameter_name",
@@ -60,7 +59,7 @@ def format_variables_names_and_attributes(
         dataset: xr.Dataset,
         use_bodc_name: bool,
         p01_codes_map: dict,
-        sensors_to_variables_map: dict, # FIXME INSTRUMENT_ID
+#        sensors_to_variables_map: dict, # FIXME
         cf_profile_id: str = 'time',
 ) -> xr.Dataset:
     """Format variables names and attributes
@@ -71,10 +70,6 @@ def format_variables_names_and_attributes(
     original names (generic_name). Variable names can also be keep their
     original names (generic_name) setting `use_bodc_codes` as `False`.
 
-    None essential global attributes :
-        `sensor_type` :
-        `sensor_depth` :
-        `sensor_serial` :
 
     Parameters
     ----------
@@ -84,8 +79,6 @@ def format_variables_names_and_attributes(
         True if the bodc_name are to be used.
     p01_codes_map :
         generic name to bodc p01_code mapping.
-    sensors_to_variables_map:
-        list of parameters (variables) for each sensor(_type)
     cf_profile_id :
         Name of the coordinate to add the attributes {'cf_role': 'profile_id'}
 
@@ -101,7 +94,7 @@ def format_variables_names_and_attributes(
 
     original_coords_name = dataset.coords
 
-    _add_sensors_attributes_to_variables(dataset, sensors_to_variables_map)
+    #_add_sensors_attributes_to_variables(dataset, sensors_to_variables_map)
 
     dataset = _convert_variables_names(dataset, p01_codes_map)
 
@@ -217,42 +210,48 @@ def _add_data_min_max_to_var_attrs(dataset):
                 dataset[var].attrs["data_min"] = dataset[var].min().values
 
 
-def _add_sensors_attributes_to_variables(dataset: xr.Dataset, sensors_to_parameters_map: tp.Dict[str, tp.List[str]]):
-    """
-        Adds attributes `sensor_type`, `sensor_depth` and `serial_number` to each variable
-    in the `dataset` if the dataset has the attributes
-    (`<adcp_sensor_id>_sensor_type`, `<adcp_sensor_id>_sensor_depth`, `<adcp_sensor_id>_serial_number`)
-    of the corresponding {`adcp_sensor_id`:'var'}.
-
-    Parameters
-    ----------
-    dataset
-    sensors_to_parameters_map
-
-    """
-    for sensor, variables in sensors_to_parameters_map.items():
-        for var in variables:
-            if var in dataset:
-                _add_sensor_attributes(sensor, var, dataset)
-
-
-def _add_sensor_attributes(sensor_id: str, variable: str, dataset: xr.Dataset):
-    """
-    Adds attributes `sensor_type`, `sensor_depth` and `serial_number` to the `variable` attribute
-    using the `dataset` attribute `<adcp_sensor_id>_sensor_type`, `<adcp_sensor_id>_sensor_depth`
-    and `<adcp_sensor_id>_serial_number`.
-
-    Parameters
-    ----------
-    sensor_id
-    variable
-    dataset
-    """
-    for attr in ["sensor_type", "sensor_depth", "serial_number"]:
-        global_attr = "_".join([sensor_id, attr])
-        if global_attr in dataset.attrs:
-            dataset[variable].attrs[attr] = dataset.attrs[global_attr]
-
+# def _add_sensors_attributes_to_variables(dataset: xr.Dataset, sensors_to_variables_map: tp.Dict[str, tp.List[str]]):
+#     """
+#         Adds attributes `sensor_type`, `sensor_depth` and `serial_number` to each variable
+#     in the `dataset` if the dataset has the attributes
+#     (`<sensor_type>_sensor_type`, `<sensor_type>_sensor_depth`, `<sensor_type>_serial_number`)
+#     of the corresponding {<sensor_type>:'var'}.
+#
+#     Parameters
+#     ----------
+#     dataset
+#     sensors_to_variables_map
+#
+#     """
+#     for sensor, variables in sensors_to_variables_map.items():
+#         for var in set(variables).intersection(set(dataset.variables)):
+#
+#             dataset[var].attrs['sensor_type'] = sensor
+#
+#             for attr in ["depth", "height", "serial_number"]:
+#                 global_attr = "_".join([sensor, attr])
+#                 if global_attr in dataset.attrs:
+#                     dataset[var].attrs[attr] = dataset.attrs[global_attr]
+#
+# #
+#
+# def _add_sensor_attributes(sensor_type: str, variable: str, dataset: xr.Dataset):
+#     """
+#     Adds attributes `sensor_type`, `sensor_depth` (or `sensor_height`) and `serial_number`
+#     to the `variable` attribute using the `dataset` attribute
+#     `<sensor_type>_depth` (or `<sensor_type>_height`) and `<sensor_type>_serial_number`.
+#
+#     Parameters
+#     ----------
+#     sensor_type
+#     variable
+#     dataset
+#     """
+#     for attr in["depth", "height", "serial_number"]:
+#         global_attr = "_".join([sensor_type, attr])
+#         if global_attr in dataset.attrs:
+#             dataset[variable].attrs[attr] = dataset.attrs[global_attr]
+#
 
 def _add_ancillary_variables_to_var_attrs(dataset: xr.Dataset):
     """add ancillary_variables to variables attributes

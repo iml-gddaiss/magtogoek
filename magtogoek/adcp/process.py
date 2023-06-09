@@ -63,7 +63,7 @@ from magtogoek.adcp.quality_control import (adcp_quality_control,
 from magtogoek.adcp.transform import coordsystem2earth
 from magtogoek.attributes_formatter import format_variables_names_and_attributes, _add_data_min_max_to_var_attrs
 from magtogoek.process_common import BaseProcessConfig, resolve_output_paths, add_global_attributes, write_log, write_netcdf, \
-    add_processing_timestamp, clean_dataset_for_nc_output, format_data_encoding, add_navigation
+    add_processing_timestamp, clean_dataset_for_nc_output, format_data_encoding, add_navigation, add_platform_metadata_to_dataset
 from magtogoek.tools import (
     regrid_dataset, _prepare_flags_for_regrid, _new_flags_bin_regrid,
     _new_flags_interp_regrid, get_datetime_and_count, cut_bin_depths, cut_times)
@@ -184,10 +184,7 @@ P01_CODES_MAP = {
     'bt_depth': "BATHDPTH"
 }
 
-#VAR_TO_ADD_SENSOR_TYPE = ["TEMPPR01", "PRESPR01", "ADEPZZ01", "BATHDPTH"]
-
-SENSOR_TYPE_TO_PARAMETER_MAP = {
-    'adcp': [
+VARIABLES_TO_ADD_SENSOR_METADATA = [
         'u',
         'v',
         'w',
@@ -218,7 +215,6 @@ SENSOR_TYPE_TO_PARAMETER_MAP = {
         'xducer_depth',
         'bt_depth'
     ]
-}
 
 
 class ProcessConfig(BaseProcessConfig):
@@ -261,11 +257,10 @@ class ProcessConfig(BaseProcessConfig):
 
     def __init__(self, config_dict: dict = None):
         super().__init__(config_dict)
-        self.sensors_to_variables_map = SENSOR_TYPE_TO_VARIABLES_MAP
-        self.instruments_id = [self.adcp_id] # this should be a dict : {'adcp': self.sensor_id}
+        self.p01_codes_map = P01_CODES_MAP
+
         self.variables_to_drop = VARIABLES_TO_DROP
         self.global_attributes_to_drop = GLOBAL_ATTRS_TO_DROP
-        self.p01_codes_map = P01_CODES_MAP
 
 
 def process_adcp(config: dict, drop_empty_attrs: bool = False, headless: bool = False):
@@ -367,8 +362,9 @@ def _process_adcp_data(pconfig: ProcessConfig):
     else:
         no_adcp_quality_control(dataset)
 
-    # needs to be done before renaming the variables.
-    dataset = _drop_beam_metadata(dataset, pconfig)  # ADCP SPECIFIC
+    # >>>> ADCP SPECIFIC
+    dataset = _drop_beam_metadata(dataset, pconfig)  # needs to be done before renaming the variables.
+    # <<<<
 
     # ------------------------ #
     # ADDING GLOBAL ATTRIBUTES #
@@ -377,12 +373,17 @@ def _process_adcp_data(pconfig: ProcessConfig):
     l.section("Adding Global Attributes")
 
     add_global_attributes(dataset, pconfig, STANDARD_GLOBAL_ATTRIBUTES)
-    if pconfig.platform_type in ["mooring", "buoy"]: # ADCP SPECIFIC
-    #if pconfig.platform_metadata.platform.platform_type in ["mooring", "buoy"]:
+
+    # >>>> ADCP SPECIFIC
+    if pconfig.platform_type in ["mooring", "buoy"]:
         if "bt_depth" in dataset:
             dataset.attrs["sounding"] = np.round(np.median(dataset.bt_depth.data), 2)
 
-    _set_xducer_depth_as_sensor_depth(dataset)  # ADCP SPECIFIC
+    dataset.attrs['sensor_type'] = 'adcp'
+
+    _set_xducer_depth_as_sensor_depth(dataset)
+    # <<<<
+
 
     # ------------- #
     # DATA ENCODING #
@@ -396,15 +397,21 @@ def _process_adcp_data(pconfig: ProcessConfig):
     # -------------------- #
     l.section("Variables attributes")
 
-    _update_p01_codes_map(dataset, pconfig)
-
     dataset = format_variables_names_and_attributes(
         dataset=dataset,
         use_bodc_name=pconfig.use_bodc_name,
         p01_codes_map=pconfig.p01_codes_map,
-        sensors_to_variables_map=pconfig.sensors_to_variables_map,
         cf_profile_id='time'
     )
+
+    # >>>> ADCP SPECIFIC
+    _add_platform_instrument_metadata_to_variable(dataset, pconfig)
+    # <<<<
+
+    _add_sensor_metadata_to_variable(dataset, pconfig)
+
+    _update_p01_codes_map(dataset, pconfig)
+    # <<<<
 
     # ------------ #
     # MAKE FIGURES #
@@ -533,7 +540,10 @@ def _quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
 
 
 def _set_xducer_depth_as_sensor_depth(dataset: xr.Dataset):
-    """Set xducer_depth value to dataset attributes sensor_depth"""
+    """
+    FIXME: sensor_depth will not be added to the variable since it looks for <instrument_id>_sensor_depth
+    Set xducer_depth value to dataset attributes sensor_depth
+    """
     if "xducer_depth" in dataset.attrs:  # OCEAN SURVEYOR
         dataset.attrs["sensor_depth"] = dataset.attrs["xducer_depth"]
 
@@ -541,6 +551,49 @@ def _set_xducer_depth_as_sensor_depth(dataset: xr.Dataset):
         dataset.attrs["sensor_depth"] = np.round(
             np.median(dataset["xducer_depth"].data), 2
         )
+
+    dataset.attrs["sensor_depth_units"] = "meter"
+
+
+def _add_platform_instrument_metadata_to_variable(dataset: xr.Dataset, pconfig: ProcessConfig):
+    # FIXME FORCED ? before or after _add_sensor_metadata_to_variable TODO
+    # These should be put in the global attributes first.
+    # 'sensor_type',         'sensor_height', 'sensor_depth','serial_number'
+
+    if pconfig.adcp_id in pconfig.platform_metadata.instruments:
+        instrument_metadata = {
+            'sensor_type': pconfig.platform_metadata.instruments[pconfig.adcp_id].sensor_type, # Put in global attrs (if force) TODO
+            'sensor_height': pconfig.platform_metadata.instruments[pconfig.adcp_id].sensor_height,  # Put in global attrs (if force) TODO
+            'sensor_depth': pconfig.platform_metadata.instruments[pconfig.adcp_id].sensor_depth,  # Put in global attrs (if force) TODO
+            'serial_number': pconfig.platform_metadata.instruments[pconfig.adcp_id].serial_number,  # Put in global attrs (if force) TODO
+            'manufacturer': pconfig.platform_metadata.instruments[pconfig.adcp_id].manufacturer,
+            'model': pconfig.platform_metadata.instruments[pconfig.adcp_id].model,
+            'firmware_version': pconfig.platform_metadata.instruments[pconfig.adcp_id].firmware_version,
+            'chief_scientist': pconfig.platform_metadata.instruments[pconfig.adcp_id].chief_scientist,
+            'description': pconfig.platform_metadata.instruments[pconfig.adcp_id].description,
+            'comments': pconfig.platform_metadata.instruments[pconfig.adcp_id].comments,
+        }
+
+        for key, value in instrument_metadata.items():
+            if value is None:
+                instrument_metadata[key].pop()
+
+        for var in set(VARIABLES_TO_ADD_SENSOR_METADATA).intersection(set(dataset.variables)):
+            for key, value in instrument_metadata.items():
+                if key in dataset[var].attrs and not pconfig.force_platform_metadata:
+                    if not dataset.attrs[key]:
+                        dataset[var].attrs[key] = value
+                else:
+                    dataset[var].attrs[key] = value
+
+def _add_sensor_metadata_to_variable(dataset: xr.Dataset):
+    sensor_attrs = {'sensor_type': '', 'sensor_depth': '', 'serial_number': '', 'sensor_depth_units': ''}
+    for attr in set(sensor_attrs.keys()).intersection(set(dataset.attrs.keys())):
+        if dataset.attrs[attr] is not None:
+            sensor_attrs[attr] = dataset.attrs[attr]
+
+    for var in set(VARIABLES_TO_ADD_SENSOR_METADATA).intersection(set(dataset.variables)):
+        dataset[var].attrs.update(sensor_attrs)
 
 
 def _drop_beam_metadata(dataset: xr.Dataset, pconfig: ProcessConfig):
@@ -638,17 +691,20 @@ def _write_odf(dataset: xr.Dataset, pconfig: ProcessConfig):
     dataset.attrs['history'] = l.logbook
 
     if pconfig.platform_metadata is None:
-        if not pconfig.sensor_id:
-            pconfig.sensor_id = "ADCP_01"
-        platform_metadata = default_platform_metadata(pconfig.platform_type, pconfig.sensor_id, 'adcp')
+        if not pconfig.adcp_id:
+            pconfig.adcp_id = "ADCP_01"
+        platform_metadata = default_platform_metadata(pconfig.platform_type, pconfig.adcp_id, 'adcp')
     else:
+        if pconfig.adcp_id is None:
+            pconfig.adcp_id = "ADCP_01"
+            pconfig.platform_metadata.add_instrument(instrument_id=pconfig.adcp_id, instrument_meta={"sensor_type": 'adcp'})
         platform_metadata = pconfig.platform_metadata
 
     for qualifier in odf_data:
         _ = make_odf(
             dataset=dataset,
             platform_metadata=platform_metadata,
-            adcp_sensor_id=pconfig.sensor_id,
+            adcp_id=pconfig.adcp_id,
             global_attributes=pconfig.global_attributes,
             p01_codes_map=pconfig.p01_codes_map,
             use_bodc_name=pconfig.use_bodc_name,

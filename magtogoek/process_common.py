@@ -93,8 +93,7 @@ class BaseProcessConfig:
     make_figures: tp.Union[str, bool] = None
     make_log: bool = None
     odf_data: str = None
-    global_attributes: dict = None
-    platform_metadata: PlatformMetadata = None
+
 
     netcdf_path: str = None
     odf_path: str = None
@@ -105,14 +104,14 @@ class BaseProcessConfig:
     # Variables set internally for processing.
     headless: bool = False
 
-    generic_variables_name: tp.List[str] = None
     variables_to_drop: tp.List[str] = None
     global_attributes_to_drop: tp.List[str] = None
     drop_empty_attrs: bool = False
-    sensors_to_variables_map: tp.Dict[str, tp.List[str]] = None
-    instruments_id: tp.List[str] = None
-    #instrument_id_to_parameters_map: tp.Dict[str, tp.List[str]] = None
     p01_codes_map: tp.Dict[str, str] = None
+    global_attributes: dict = None
+
+    # platform metadata object
+    platform_metadata: PlatformMetadata = None
 
     def __init__(self, config_dict: dict = None):
         self.global_attributes: dict = {}
@@ -141,8 +140,6 @@ class BaseProcessConfig:
                 for option in options:
                     if hasattr(self, option):
                         self.__dict__[option] = config[section][option]
-                    else:
-                        self.global_attributes[option] = config[section][option]
 
     def _load_platform_metadata(self):
         if self.platform_file is not None:
@@ -158,6 +155,72 @@ class BaseProcessConfig:
 
         else:
             self.platform_metadata = None
+
+
+def add_global_attributes(dataset: xr.Dataset, pconfig: BaseProcessConfig, standard_global_attributes: dict):
+    """w
+    pconfig.global_attributes values will overwrite any values in the dataset global attributes previously set.
+    That is values in the configfile headers ["NETCDF_CF", "PROJECT", "CRUISE", "GLOBAL_ATTRIBUTES"].
+
+    Parameters
+    ----------
+    dataset
+    pconfig
+    standard_global_attributes :
+        Used to update the dataset attributes
+
+    Returns
+    -------
+
+    """
+
+    dataset.attrs.update(standard_global_attributes)
+
+    dataset.attrs["data_type"] = _get_data_type(pconfig.process, pconfig.platform_type)
+    dataset.attrs["data_subtype"] = DATA_SUBTYPES[pconfig.platform_type]
+
+    compute_global_attrs(dataset)  # already common
+
+    dataset.attrs["source"] = pconfig.platform_type
+
+    dataset.attrs.update(pconfig.global_attributes)
+
+
+def add_platform_metadata_to_dataset(dataset: xr.Dataset, pconfig: BaseProcessConfig):
+    """Add pconfig.platform_metadata.platform attributes not Instrument or buoy.
+
+    Attributes are only added if they are not null.
+
+    """
+    metadata_map = {
+        'platform': pconfig.platform_metadata.platform['platform_name'],
+        'platform_type': pconfig.platform_metadata.platform['platform_type'],
+        'platform_model': pconfig.platform_metadata.platform['platform_model'],
+        'sounding': pconfig.platform_metadata.platform['sounding'],
+        'longitude': pconfig.platform_metadata.platform['longitude'],
+        'latitude': pconfig.platform_metadata.platform['latitude'],
+        'platform_description': pconfig.platform_metadata.platform['description']
+    }
+
+    for key, value in metadata_map.items():
+        if value:
+            if key in dataset.attrs and not pconfig.force_platform_metadata:
+                if not dataset.attrs[key]:
+                    dataset.attrs[key] = value
+            else:
+                dataset.attrs[key] = value
+
+
+def _get_data_type(process: str, platform_type: str = None):
+    """Return data_type for the given process and platform_type.
+    """
+    if process == 'meteoce':
+        return METEOCE_DATA_TYPE
+    elif process == "adcp":
+        if platform_type is None:
+            platform_type = DEFAULT_PLATFORM_TYPE
+        return ADCP_DATA_TYPES[platform_type]
+    raise ValueError(f"Invalid process type. {process}")
 
 
 def resolve_output_paths(process_function: tp.Callable[[BaseProcessConfig], None]):
@@ -381,55 +444,6 @@ def is_directory(path: str):
 
 def parent_is_dir(path: str):
     return Path(path).parent.is_dir()
-
-
-def add_global_attributes(dataset: xr.Dataset, pconfig: BaseProcessConfig, standard_global_attributes: dict):
-    """
-    pconfig.global_attributes values will overwrite any values in the dataset global attributes previously set.
-    That is values in the configfile headers ["NETCDF_CF", "PROJECT", "CRUISE", "GLOBAL_ATTRIBUTES"].
-
-    Parameters
-    ----------
-    dataset
-    pconfig
-    standard_global_attributes :
-        Used to update the dataset attributes
-
-    Returns
-    -------
-
-    """
-
-    dataset.attrs.update(standard_global_attributes)
-
-    dataset.attrs["data_type"] = _get_data_type(pconfig.process, pconfig.platform_type)
-    dataset.attrs["data_subtype"] = DATA_SUBTYPES[pconfig.platform_type]
-
-    if isinstance(pconfig.platform_metadata, PlatformMetadata): # PATCH FIXME
-        pconfig.platform_metadata.add_to_dataset(
-            dataset=dataset,
-            instruments_id=list(pconfig.instrument_id_to_parameters_map.keys()),
-            force=pconfig.force_platform_metadata
-        )
-
-    compute_global_attrs(dataset)  # already common
-
-    dataset.attrs["source"] = pconfig.platform_type
-
-    dataset.attrs.update(pconfig.global_attributes)
-
-
-def _get_data_type(process: str, platform_type: str = None):
-    """Return data_type for the given process and platform_type.
-    """
-    if process == 'meteoce':
-        return METEOCE_DATA_TYPE
-    elif process == "adcp":
-        if platform_type is None:
-            platform_type = DEFAULT_PLATFORM_TYPE
-        return ADCP_DATA_TYPES[platform_type]
-    raise ValueError(f"Invalid sensor type. {process}")
-
 
 def write_netcdf(dataset: xr.Dataset, pconfig: BaseProcessConfig):
     netcdf_path = Path(pconfig.netcdf_path).with_suffix('.nc')

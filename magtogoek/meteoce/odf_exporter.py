@@ -295,7 +295,7 @@ def _make_buoy_instruments_header(odf: Odf, dataset: xr.Dataset, platform_metada
     """
     configuration = "CONFIGURATION_01" #
 
-    for sensor_id, sensor in platform_metadata.instruments.__dict__.items():
+    for sensor_id, sensor in platform_metadata.instruments.items():
         if sensor_id in ['platform', 'buoy_specs']:
             continue
         odf.add_buoy_instrument(sensor_id)

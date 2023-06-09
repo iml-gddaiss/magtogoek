@@ -125,7 +125,7 @@ P01_CODES_MAP = {
     'v_ship': "APNSGP01"
 }
 
-SENSORS_TO_PARAMETERS_MAP = {
+SENSORS_TO_VARIABLES_MAP = {
     'adcp': [
         "u", "v", "w", "e", "bt_u", "bt_v", "bt_w", "bt_e",
         'pg', 'pg1', 'pg2', 'pg3', 'pg4',

@@ -41,7 +41,8 @@ PARAMETERS_METADATA = json2dict(PARAMETERS_METADATA_PATH)
 def make_odf(
         dataset: xr.Dataset,
         platform_metadata: PlatformMetadata,
-        adcp_sensor_id: str,
+        adcp_id
+        : str,
         global_attributes: dict,
         p01_codes_map: dict,
         use_bodc_name: bool = True,
@@ -55,7 +56,8 @@ def make_odf(
         Dataset to which add the navigation data.
     platform_metadata :
         Metadata from the platform file.
-    adcp_sensor_id :
+    adcp_id
+     :
 
     global_attributes :
         Global attributes parameter from the configFile.
@@ -80,8 +82,11 @@ def make_odf(
     if platform_metadata.platform.platform_type == "buoy":
         _make_buoy_header(odf, platform_metadata)
         _make_buoy_instrument_headers(odf, platform_metadata)
-        _make_adcp_buoy_instrument_header(odf=odf, dataset=dataset, platform_metadata=platform_metadata, adcp_sensor_id=adcp_sensor_id)
-        #_make_adcp_buoy_instrument_comments(odf, adcp_sensor_id, dataset, platform_metadata)
+        _make_adcp_buoy_instrument_header(odf=odf, dataset=dataset, platform_metadata=platform_metadata, adcp_id
+        =adcp_id
+                                          )
+        #_make_adcp_buoy_instrument_comments(odf, adcp_id
+        # , dataset, platform_metadata)
     else:
         _make_instrument_header(odf, dataset)
 
@@ -249,12 +254,15 @@ def _make_buoy_header(odf: Odf, platform_metadata: PlatformMetadata):
 def _make_adcp_buoy_instrument_header(
         odf: Odf, dataset: xr.Dataset,
         platform_metadata: PlatformMetadata,
-        adcp_sensor_id: str,
+        adcp_id
+        : str,
 ):
     """TODO TEST"""
 
-    if adcp_sensor_id not in odf.buoy_instrument:
-        odf.add_buoy_instrument(adcp_sensor_id)
+    if adcp_id\
+            not in odf.buoy_instrument:
+        odf.add_buoy_instrument(adcp_id
+                                )
 
     key_map = [
         ('type', 'manufacturer'),
@@ -265,14 +273,17 @@ def _make_adcp_buoy_instrument_header(
 
     for (odf_key, netcdf_key) in key_map:
         if netcdf_key in dataset.attrs:
-            odf.buoy_instrument[adcp_sensor_id][odf_key] = dataset.attrs[netcdf_key]
+            odf.buoy_instrument[adcp_id
+            ][odf_key] = dataset.attrs[netcdf_key]
 
-    _make_adcp_buoy_instrument_comments(odf, adcp_sensor_id, dataset, platform_metadata)
+    _make_adcp_buoy_instrument_comments(odf, adcp_id
+                                        , dataset, platform_metadata)
 
 
 def _make_adcp_buoy_instrument_comments(
         odf: Odf,
-        adcp_sensor_id: str,
+        adcp_id
+        : str,
         dataset: xr.Dataset,
         platform_metadata: PlatformMetadata
 ):
@@ -318,12 +329,14 @@ def _make_adcp_buoy_instrument_comments(
 
     buoy_instrument_comments += [
         ("Bin_Count", len(dataset.depth)),
-        ("Comments", platform_metadata.instruments[adcp_sensor_id].comments)
+        ("Comments", platform_metadata.instruments[adcp_id].comments)
     ]
 
-    odf.buoy_instrument[adcp_sensor_id]["buoy_instrument_comments"] = []
+    odf.buoy_instrument[adcp_id
+    ]["buoy_instrument_comments"] = []
     for (key, value) in buoy_instrument_comments:
-        odf.buoy_instrument[adcp_sensor_id]["buoy_instrument_comments"].append(
+        odf.buoy_instrument[adcp_id
+        ]["buoy_instrument_comments"].append(
             _build_comments_string([configuration, key], value)
         )
 
@@ -372,7 +385,7 @@ def _add_buoy_instrument_header(
 
 def _add_buoy_instrument_comments(odf: Odf, instrument_id: str, instrument_metadata: InstrumentMetadata):
     """
-    TODO TEST
+    TODO TEST | get depth/height info from the dataset ????
     """
     buoy_instruments_comments = [
         (["Firmware_Version"], instrument_metadata.firmware_version),
