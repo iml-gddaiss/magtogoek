@@ -41,8 +41,7 @@ PARAMETERS_METADATA = json2dict(PARAMETERS_METADATA_PATH)
 def make_odf(
         dataset: xr.Dataset,
         platform_metadata: PlatformMetadata,
-        adcp_id
-        : str,
+        adcp_id: str,
         global_attributes: dict,
         p01_codes_map: dict,
         use_bodc_name: bool = True,
