@@ -23,6 +23,7 @@ import pandas as pd
 import xarray as xr
 from typing import List, Union, Tuple, Dict, Optional
 from magtogoek import CONFIGURATION_PATH
+import magtogoek.logger as l
 from magtogoek.odf_format import Odf, odf_time_format, ODF_PARAMETERS_TYPES
 from magtogoek.platforms import PlatformMetadata, InstrumentMetadata, SensorMetadata
 from magtogoek.utils import json2dict
@@ -30,8 +31,8 @@ from magtogoek.utils import json2dict
 REPOSITORY_ADDRESS = "https://github.com/JeromeJGuay/magtogoek"
 
 BEAM_PARAMETERS = ("time", "depth", "v1", "v2", "v3", "v4")
-VEL_PARAMTERS = ("time", "depth", "u", "v", "w", "e")
-ANC_PARAMTERS = ('time', 'pitch', 'roll_', 'heading', 'pres', 'temperature', 'lon', 'lat')
+VEL_PARAMETERS = ("time", "depth", "u", "v", "w", "e")
+ANC_PARAMETERS = ('time', 'pitch', 'roll_', 'heading', 'pres', 'temperature', 'lon', 'lat')
 QC_PARAMETERS = ('u', 'v', 'w', 'pres', 'temperature')
 
 PARAMETERS_METADATA_PATH = CONFIGURATION_PATH.joinpath("odf_parameters_metadata.json")
@@ -81,11 +82,7 @@ def make_odf(
     if platform_metadata.platform.platform_type == "buoy":
         _make_buoy_header(odf, platform_metadata)
         _make_buoy_instrument_headers(odf, platform_metadata)
-        _make_adcp_buoy_instrument_header(odf=odf, dataset=dataset, platform_metadata=platform_metadata, adcp_id
-        =adcp_id
-                                          )
-        #_make_adcp_buoy_instrument_comments(odf, adcp_id
-        # , dataset, platform_metadata)
+        _make_adcp_buoy_instrument_header(odf=odf, dataset=dataset, platform_metadata=platform_metadata, adcp_id=adcp_id)
     else:
         _make_instrument_header(odf, dataset)
 
@@ -96,9 +93,9 @@ def make_odf(
         if dataset.attrs['coord_system'] == 'beam':
             parameters = BEAM_PARAMETERS
         else:
-            parameters = VEL_PARAMTERS
+            parameters = VEL_PARAMETERS
     else:
-        parameters = ANC_PARAMTERS
+        parameters = ANC_PARAMETERS
 
     _make_parameter_headers(odf, dataset, parameters, p01_codes_map, use_bodc_name)
 
@@ -113,7 +110,7 @@ def make_odf(
 
         output_path = Path(output_path).with_suffix(".ODF")
         odf.save(output_path)
-        print(f"odf {event_qualifier2.upper()} file made -> {output_path}")
+        l.log(f"odf {event_qualifier2.upper()} file made -> {output_path}")
 
     return odf
 

@@ -556,7 +556,7 @@ def _set_xducer_depth_as_sensor_depth(dataset: xr.Dataset):
             np.median(dataset["xducer_depth"].data), 2
         )
 
-    dataset.attrs["sensor_depth_units"] = "meter"
+    dataset.attrs["sensor_depth_units"] = "meters"
 
 
 def _add_platform_instrument_metadata_to_dataset(dataset: xr.Dataset, pconfig: ProcessConfig):
@@ -564,24 +564,26 @@ def _add_platform_instrument_metadata_to_dataset(dataset: xr.Dataset, pconfig: P
 
     Overwrites global_attributes if pconfig.force_platform_metadata is True.
     """
-    instrument_metadata = {
-            'sensor_type': pconfig.platform_metadata.instruments[pconfig.adcp_id].sensor_type,
-            'sensor_height': pconfig.platform_metadata.instruments[pconfig.adcp_id].sensor_height,
-            'sensor_depth': pconfig.platform_metadata.instruments[pconfig.adcp_id].sensor_depth,
-            'serial_number': pconfig.platform_metadata.instruments[pconfig.adcp_id].serial_number,
-            'manufacturer': pconfig.platform_metadata.instruments[pconfig.adcp_id].manufacturer,
-            'model': pconfig.platform_metadata.instruments[pconfig.adcp_id].model,
-            'firmware_version': pconfig.platform_metadata.instruments[pconfig.adcp_id].firmware_version
-    }
+    if pconfig.platform_metadata is not None:
+        if pconfig.adcp_id in pconfig.platform_metadata.instruments:
+            instrument_metadata = {
+                    'sensor_type': pconfig.platform_metadata.instruments[pconfig.adcp_id].sensor_type,
+                    'sensor_height': pconfig.platform_metadata.instruments[pconfig.adcp_id].sensor_height,
+                    'sensor_depth': pconfig.platform_metadata.instruments[pconfig.adcp_id].sensor_depth,
+                    'serial_number': pconfig.platform_metadata.instruments[pconfig.adcp_id].serial_number,
+                    'manufacturer': pconfig.platform_metadata.instruments[pconfig.adcp_id].manufacturer,
+                    'model': pconfig.platform_metadata.instruments[pconfig.adcp_id].model,
+                    'firmware_version': pconfig.platform_metadata.instruments[pconfig.adcp_id].firmware_version
+            }
 
-    for key, value in instrument_metadata.items():
-        if value is None:
-            continue
-        if key in dataset.attrs and not pconfig.force_platform_metadata:
-            if not dataset.attrs[key]:
-                dataset.attrs[key] = value
-        else:
-            dataset.attrs[key] = value
+            for key, value in instrument_metadata.items():
+                if value is None:
+                    continue
+                if key in dataset.attrs and not pconfig.force_platform_metadata:
+                    if not dataset.attrs[key]:
+                        dataset.attrs[key] = value
+                else:
+                    dataset.attrs[key] = value
 
 
 def _add_platform_instrument_metadata_to_variables(dataset: xr.Dataset, pconfig: ProcessConfig, variables: tp.List[str]):
@@ -589,29 +591,30 @@ def _add_platform_instrument_metadata_to_variables(dataset: xr.Dataset, pconfig:
 
     Overwrites global_attributes if pconfig.force_platform_metadata is True.
     """
-    if pconfig.adcp_id in pconfig.platform_metadata.instruments:
-        instrument_metadata = {
-            'sensor_type': pconfig.platform_metadata.instruments[pconfig.adcp_id].sensor_type,
-            'sensor_height': pconfig.platform_metadata.instruments[pconfig.adcp_id].sensor_height,
-            'sensor_depth': pconfig.platform_metadata.instruments[pconfig.adcp_id].sensor_depth,
-            'serial_number': pconfig.platform_metadata.instruments[pconfig.adcp_id].serial_number,
-            'manufacturer': pconfig.platform_metadata.instruments[pconfig.adcp_id].manufacturer,
-            'model': pconfig.platform_metadata.instruments[pconfig.adcp_id].model,
-            'firmware_version': pconfig.platform_metadata.instruments[pconfig.adcp_id].firmware_version,
-            'chief_scientist': pconfig.platform_metadata.instruments[pconfig.adcp_id].chief_scientist,
-            'description': pconfig.platform_metadata.instruments[pconfig.adcp_id].description,
-            'comments': pconfig.platform_metadata.instruments[pconfig.adcp_id].comments,
-        }
+    if pconfig.platform_metadata is not None:
+        if pconfig.adcp_id in pconfig.platform_metadata.instruments:
+            instrument_metadata = {
+                'sensor_type': pconfig.platform_metadata.instruments[pconfig.adcp_id].sensor_type,
+                'sensor_height': pconfig.platform_metadata.instruments[pconfig.adcp_id].sensor_height,
+                'sensor_depth': pconfig.platform_metadata.instruments[pconfig.adcp_id].sensor_depth,
+                'serial_number': pconfig.platform_metadata.instruments[pconfig.adcp_id].serial_number,
+                'manufacturer': pconfig.platform_metadata.instruments[pconfig.adcp_id].manufacturer,
+                'model': pconfig.platform_metadata.instruments[pconfig.adcp_id].model,
+                'firmware_version': pconfig.platform_metadata.instruments[pconfig.adcp_id].firmware_version,
+                'chief_scientist': pconfig.platform_metadata.instruments[pconfig.adcp_id].chief_scientist,
+                'description': pconfig.platform_metadata.instruments[pconfig.adcp_id].description,
+                'comments': pconfig.platform_metadata.instruments[pconfig.adcp_id].comments,
+            }
 
-        for var in set(variables).intersection(set(dataset.variables)):
-            for key, value in instrument_metadata.items():
-                if value is None:
-                    continue
-                if key in dataset[var].attrs and not pconfig.force_platform_metadata:
-                    if not dataset.attrs[key]:
+            for var in set(variables).intersection(set(dataset.variables)):
+                for key, value in instrument_metadata.items():
+                    if value is None:
+                        continue
+                    if key in dataset[var].attrs and not pconfig.force_platform_metadata:
+                        if not dataset.attrs[key]:
+                            dataset[var].attrs[key] = value
+                    else:
                         dataset[var].attrs[key] = value
-                else:
-                    dataset[var].attrs[key] = value
 
 
 def _add_sensor_metadata_to_variables(dataset: xr.Dataset, variables: tp.List[str]):
