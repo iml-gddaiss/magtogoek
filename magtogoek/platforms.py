@@ -206,7 +206,7 @@ def load_platform_metadata(platform_file: str, platform_id: str) -> PlatformMeta
             f"Error: {err}.\n"
             f"Aborting !"
         )
-        sys.exit()
+        sys.exit()  # TODO this should not be here.
 
     try:
         platform_metadata_dict = _filter_for_dataclass(Platform, json_dict[platform_id])
@@ -228,7 +228,7 @@ def load_platform_metadata(platform_file: str, platform_id: str) -> PlatformMeta
             f"ERROR. `platform_id`: { platform_id} not found platform file: {platform_file}.\n"
             f"Aborting !"
         )
-        sys.exit()
+        sys.exit()  # TODO this should not be here.
 
 
 def _filter_for_dataclass(data_class: dataclass, raw_json_dict: dict):
@@ -255,6 +255,3 @@ if __name__ == "__main__":
     pm = load_platform_metadata(filename, _platform_id)
 
     ds = xr.Dataset()
-
-    pm.add_to_dataset(ds, ['ADCP_01'])
-

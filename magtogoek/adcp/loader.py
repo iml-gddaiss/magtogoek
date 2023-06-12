@@ -176,7 +176,7 @@ def load_adcp_binary(
             print(
                 f"ERROR: The input_files are not in a RDI pd0 format. RDI sonar : {RDI_SONAR}"
             )
-            sys.exit()
+            sys.exit() # TODO this should not be here.
         if leading_index is not None or trailing_index is not None:
             l.log(f"Time index cut: leading={0 if leading_index is None else leading_index}, "
                   f"trailing={0 if trailing_index is None else trailing_index}")
@@ -695,9 +695,3 @@ def _get_time_step(dday: np.ndarray) -> pd.Timedelta:
     deltas, counts = np.unique(np.round(np.diff(time), 4), return_counts=True)
 
     return pd.Timedelta(deltas[counts.argmax()], "seconds")
-
-
-if __name__ == "__main__":
-    path = "/home/jeromejguay/ImlSpace/Data/MPO/iml42020/"
-
-    ds = load_adcp_binary(filenames=path + "*4.ENS", sonar="sw", yearbase=2020)

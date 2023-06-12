@@ -280,6 +280,8 @@ def process_adcp(config: dict, drop_empty_attrs: bool = False, headless: bool = 
 
     The actual data processing is carried out by _process_adcp_data.
     """
+    l.reset()
+
     pconfig = ProcessConfig(config)
     pconfig.drop_empty_attrs = drop_empty_attrs
     pconfig.headless = headless

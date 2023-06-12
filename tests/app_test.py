@@ -1,4 +1,4 @@
-import pytest
+# A lots of tests a missing
 from click.testing import CliRunner
 from magtogoek.app import _magtogoek
 import os
