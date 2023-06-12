@@ -1,35 +1,77 @@
 import os
 from pathlib import Path
+import numpy as np
+import xarray as xr
+import pytest
+
+from magtogoek.utils import json2dict
 from magtogoek.config_handler import load_configfile, cli_options_to_config
 from magtogoek.adcp.process import process_adcp
+
 
 CONFIG_FILENAME = "files/adcp_iml4_2017.ini"
 PROCESS_OUTPUT_FILES = ["files/iml4_2017_sw.nc", "files/iml4_2017_sw.log"]
 
+PLATFORM_FILE = "files/iml_platforms.json"
 RAW_ADCP_FILE = "data/raw_adcp_data/iml6_2017_wh.000"
 QUICK_OUTPUT_FILES = ["data/raw_adcp_data/iml6_2017_wh.nc"]
 
+SENSOR_METADATA = {'sensor_type': 'adcp', 'sensor_depth': 1, 'serial_number': "01400000000000000000000000000553", 'sensor_depth_units': 'meters'}
+
 
 def test_process_adcp():
+    """Only testing for crash"""
     configuration = load_configfile(CONFIG_FILENAME)
 
     process_adcp(configuration, drop_empty_attrs=False, headless=False)
+
+
+def test_process_adcp_global_attributes():
+    dataset = xr.open_dataset("files/iml4_2017_sw.nc")
+
+    test_global_attributes = json2dict('data/netcdf_test_files/test_adcp_process_global_attributes.json')
+
+    for key, value in test_global_attributes.items():
+        if isinstance(dataset.attrs[key], (list, tuple, np.ndarray)):
+            assert list(value) == list(dataset.attrs[key])
+        else:
+            assert value == dataset.attrs[key]
+    dataset.close()
+
+
+def test_process_adcp_variables_sensor_metadata():
+    dataset = xr.open_dataset("files/iml4_2017_sw.nc")
+
+    for var in ['u', 'v', 'w', 'e', 'temperature']:
+        temp_dict = {}
+        for key, value in SENSOR_METADATA.items():
+            temp_dict[key] = dataset[var].attrs[key]
+        assert temp_dict == SENSOR_METADATA
+
+    dataset.close()
 
     for fn in PROCESS_OUTPUT_FILES:
         os.remove(fn)
 
 
 def test_quick_adcp():
-
+    """Only testing for crash"""
     options = {"input_files": RAW_ADCP_FILE,
                "process": "adcp",
-               "sonar": "wh", "no_fig": True,
-               "bodc_name": True}
+               "sonar": "wh",
+               "platform_file": PLATFORM_FILE,
+               "platform_id": "IML6_2017",
+               "adcp_id": "ADCP_01",
+               "no_fig": True,
+               "bodc_name": True
+               }
     configuration = cli_options_to_config('adcp', options, cwd=str(Path().cwd()))
 
     process_adcp(configuration, drop_empty_attrs=True, headless=False)
 
     for fn in QUICK_OUTPUT_FILES:
         os.remove(fn)
+
+
 
 

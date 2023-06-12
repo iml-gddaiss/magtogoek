@@ -16,7 +16,7 @@
                 "sensor_type": "adcp",
                 "sensor_depth": 1,
                 "serial_number": 553,
-                "manufacturer": "Rowe Technologie Inc. (RTI)",
+                "manufacturer": "Rowe Technologies Inc. (RTI)",
                 "model": "SeaWATCH",
                 "firmware_version": "0.2.125-4",
                 "chief_scientist": "Peter Galbraith",
@@ -49,17 +49,17 @@
                 "comments": "The model and serial number are the same for the temperature and pressure sensors as the ADCP.",
 				"sensors": {
 					"temperature": {
-						"description": "",
-						"comments": "",
+						"description": "temperature_description",
+						"comments": "temperature_comments",
 						"calibration": {
-							"date": "",
-						    "number_of_coefficents": "",
-							"coefficients": "",
-						    "calibration_equation": "",
-						    "calibration_units": "",
-						    "archiving_units": "",
-						    "conversion_factor":"",
-						    "comments": ""
+							"date": "calibration_date",
+						    "number_of_coefficients": "calibration_noc",
+							"coefficients": "calibration_coeff",
+						    "calibration_equation": "calibration_eq",
+						    "calibration_units": "calibration_units",
+						    "archiving_units": "calibration_arch_units",
+						    "conversion_factor":"calibration_conv_facto",
+						    "comments": "calibration_comments"
 						}
 					}
 				}			

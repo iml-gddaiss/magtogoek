@@ -16,10 +16,8 @@ P01_TO_GENERIC_NAME = {
     "e": "LERRAP01",
 }
 GENERIC_VARIABLES_NAME = [var for var in DATASET.variables]
-#DATASET.attrs['P01_CODES_MAP'] = P01_TO_GENERIC_NAME
-#DATASET.attrs['variables_gen_name'] = [DATASET[var].attrs['generic_name'] for var in DATASET.variables]
 
-DATASET.attrs.update({'flag_reference':'', 'flag_values':'', 'flag_meanings': ''})
+DATASET.attrs.update({'flag_reference': '', 'flag_values': '', 'flag_meanings': ''})
 
 PLATFORM_METADATA = PlatformMetadata(
     platform=Platform(platform_name='platform_name_test', description='platform_description_test'),
@@ -39,7 +37,7 @@ def test_make():
     odf = make_odf(
         dataset=DATASET,
         platform_metadata=PLATFORM_METADATA,
-        adcp_sensor_id='ADCP_01',
+        adcp_id='ADCP_01',
         global_attributes=GLOBAL_ATTRS,
         p01_codes_map=P01_TO_GENERIC_NAME
     )
@@ -58,10 +56,9 @@ def test_platform_type(platform_type, headers, cruise_platform):
     PLATFORM_METADATA.platform.platform_type = platform_type
     odf = make_odf(dataset=DATASET,
                    platform_metadata=PLATFORM_METADATA,
-                   adcp_sensor_id='ADCP_01',
+                   adcp_id='ADCP_01',
                    global_attributes=GLOBAL_ATTRS,
                    p01_codes_map=P01_TO_GENERIC_NAME,
-                   #generic_variables_name=GENERIC_VARIABLES_NAME,
                    use_bodc_name=True,
                    event_qualifier2='VEL',
                    output_path=None,
