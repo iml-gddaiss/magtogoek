@@ -42,8 +42,8 @@ class Logger:
         Resets the logbook and the warning count.
     """
 
-    def __init__(self, logbook: str = "", level: int = 0):
-
+    def __init__(self, name: str, logbook: str = "", level: int = 0):
+        self.name = name
         self.logbook = logbook
         self.w_count = 0
         self._level = level
@@ -134,20 +134,20 @@ loggers = {root_logger: Logger(root_logger, level=0)}
 
 
 def get_logger(logger_name="default"):
-    manager.current_logger = logger_name
     if logger_name not in loggers:
         loggers[logger_name] = Logger(logger_name, level=0)
+    manager.current_logger = logger_name
 
 
-def section(name: str, t =False):
+def section(name: str, t=False):
     loggers[manager.current_logger].section(name, t)
 
 
-def log(msg: str, t =False):
+def log(msg: str, t=False):
     loggers[manager.current_logger].log(msg, t)
 
 
-def warning(msg: str, t =False):
+def warning(msg: str, t=False):
     loggers[manager.current_logger].warning(msg, t)
 
 
