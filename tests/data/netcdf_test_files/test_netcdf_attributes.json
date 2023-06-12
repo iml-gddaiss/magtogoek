@@ -71,7 +71,7 @@
  "keywords": "",
  "keywords_vocabulary": "",
  "standard_name_vocabulary": "CF v.52",
- "aknowledgment": "",
+ "acknowledgment": "",
  "magnetic_declination_units": "degree east",
  "quality_comments": "[Quality Control]\n WARNING: Motion correction aborded. Bottom velocity (bt_u, bt_v, bt_w) missing\n correlation threshold 64\n percentgood threshold 90\n horizontal velocity threshold 5.0 m/s\n vertical velocity threshold 5.0 m/s\n error velocity threshold 5.0 m/s\n roll threshold 20 degree\n pitch threshold 20 degree\n WARNING: Sidelobes correction aborded. Bottom depth not found or provided.\n Good pressure range 0 to 10000 dbar\n Good temperature range -2 to 32 celsius\n",
  "flags_reference": "BODC SeaDataNet",
