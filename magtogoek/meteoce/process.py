@@ -57,14 +57,13 @@ STANDARD_GLOBAL_ATTRIBUTES = {"featureType": "timeSeriesProfile"}
 VARIABLES_TO_DROP = ['ph_temperature', 'speed', 'course', 'gps_magnetic_declination']#, 'last_heading'] Not currently loaded
 
 GLOBAL_ATTRS_TO_DROP = [
-    "platform_type",
     "VAR_TO_ADD_SENSOR_TYPE",
     "P01_CODES_MAP",
-    "xducer_depth",
+    #"xducer_depth",
     "variables_gen_name",
     "binary_mask_tests",
     "binary_mask_tests_values",
-    "bodc_name"
+    #"bodc_name"
 ]
 
 # This mapping can be updating by the meteoce.corrections modules.

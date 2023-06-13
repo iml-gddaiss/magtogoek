@@ -16,17 +16,24 @@ PLATFORM_FILE = "files/iml_platforms.json"
 RAW_ADCP_FILE = "data/raw_adcp_data/iml6_2017_wh.000"
 QUICK_OUTPUT_FILES = ["data/raw_adcp_data/iml6_2017_wh.nc"]
 
-SENSOR_METADATA = {'sensor_type': 'adcp', 'sensor_depth': 1, 'serial_number': "01400000000000000000000000000553", 'sensor_depth_units': 'meters'}
+SENSOR_METADATA = {
+    'sensor_type': 'adcp',
+    'sensor_depth': 1,
+    'serial_number': "01400000000000000000000000000553",
+    'sensor_depth_units': 'meters',
+    "chief_scientist": "adcp chief scientist"
+}
 
 
 def test_process_adcp():
-    """Only testing for crash"""
+    """Files are deleted when `test_process_adcp_variables_sensor_metadata` is run"""
     configuration = load_configfile(CONFIG_FILENAME)
 
     process_adcp(configuration, drop_empty_attrs=False, headless=False)
 
 
 def test_process_adcp_global_attributes():
+    """Requires `test_process_adcp` to be run first"""
     dataset = xr.open_dataset("files/iml4_2017_sw.nc")
 
     test_global_attributes = json2dict('data/netcdf_test_files/test_adcp_process_global_attributes.json')
@@ -40,6 +47,7 @@ def test_process_adcp_global_attributes():
 
 
 def test_process_adcp_variables_sensor_metadata():
+    """Requires `test_process_adcp` to be run first"""
     dataset = xr.open_dataset("files/iml4_2017_sw.nc")
 
     for var in ['u', 'v', 'w', 'e', 'temperature']:

@@ -5,7 +5,7 @@
         "sounding": 335,
         "longitude": -60,
         "latitude":50,
-        "description":"",
+        "description": "Platform description of iml-4",
         "buoy_specs": {"type": "MTE",
                        "model": "Viking",
                        "height": "4.5 m",
@@ -19,7 +19,7 @@
                 "manufacturer": "Rowe Technologies Inc. (RTI)",
                 "model": "SeaWATCH",
                 "firmware_version": "0.2.125-4",
-                "chief_scientist": "Peter Galbraith",
+                "chief_scientist": "adcp chief scientist",
                 "comments": "The model and serial number are the same for the temperature and pressure sensors as the ADCP."
             }
         }
@@ -30,7 +30,7 @@
         "sounding": 100,
         "longitude":-60,
         "latitude": 50,
-        "description":"This is a description of the platform.",
+        "description": "This is a description of the platform.",
         "buoy_specs": {"type": "MTE",
                        "model": "Viking",
                        "height": "4.5 m",

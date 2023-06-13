@@ -194,7 +194,6 @@ def add_platform_metadata_to_dataset(dataset: xr.Dataset, pconfig: BaseProcessCo
     """
     metadata_map = {
         'platform': pconfig.platform_metadata.platform.platform_name,
-        'platform_type': pconfig.platform_metadata.platform.platform_type,
         'platform_model': pconfig.platform_metadata.platform.platform_model,
         'sounding': pconfig.platform_metadata.platform.sounding,
         'longitude': pconfig.platform_metadata.platform.longitude,
@@ -203,7 +202,7 @@ def add_platform_metadata_to_dataset(dataset: xr.Dataset, pconfig: BaseProcessCo
     }
 
     for key, value in metadata_map.items():
-        if value is not None:
+        if value is None:
             continue
 
         if key in dataset.attrs and not pconfig.force_platform_metadata:

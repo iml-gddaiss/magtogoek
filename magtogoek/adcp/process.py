@@ -78,7 +78,6 @@ VARIABLES_TO_DROP = [
     "binary_mask"
 ]
 GLOBAL_ATTRS_TO_DROP = [
-    "platform_type",
     "xducer_depth",
     "sonar",
     "variables_gen_name",
@@ -376,6 +375,8 @@ def _process_adcp_data(pconfig: ProcessConfig):
 
     add_global_attributes(dataset, pconfig, STANDARD_GLOBAL_ATTRIBUTES)
 
+    add_platform_metadata_to_dataset(dataset=dataset, pconfig=pconfig)
+
     # >>>> ADCP SPECIFIC
     if pconfig.platform_type in ["mooring", "buoy"]:
         if "bt_depth" in dataset:
@@ -385,7 +386,7 @@ def _process_adcp_data(pconfig: ProcessConfig):
 
     _set_xducer_depth_as_sensor_depth(dataset)
 
-    _add_platform_instrument_metadata_to_dataset(dataset, pconfig)
+    _add_platform_adcp_metadata_to_dataset(dataset, pconfig)
     # <<<<
 
     # ------------- #
@@ -408,9 +409,9 @@ def _process_adcp_data(pconfig: ProcessConfig):
     )
 
     # >>>> ADCP SPECIFIC
-    _add_platform_instrument_metadata_to_dataset(dataset, pconfig)
+    _add_platform_adcp_metadata_to_dataset(dataset, pconfig)
 
-    _add_platform_instrument_metadata_to_variables(dataset, pconfig, VARIABLES_TO_ADD_SENSOR_METADATA)
+    _add_platform_adcp_metadata_to_variables(dataset, pconfig, VARIABLES_TO_ADD_SENSOR_METADATA)
 
     _add_sensor_metadata_to_variables(dataset, VARIABLES_TO_ADD_SENSOR_METADATA)
 
@@ -559,7 +560,7 @@ def _set_xducer_depth_as_sensor_depth(dataset: xr.Dataset):
     dataset.attrs["sensor_depth_units"] = "meters"
 
 
-def _add_platform_instrument_metadata_to_dataset(dataset: xr.Dataset, pconfig: ProcessConfig):
+def _add_platform_adcp_metadata_to_dataset(dataset: xr.Dataset, pconfig: ProcessConfig):
     """Add sensor metadata found in the platform instrument to the dataset
 
     Overwrites global_attributes if pconfig.force_platform_metadata is True.
@@ -579,6 +580,7 @@ def _add_platform_instrument_metadata_to_dataset(dataset: xr.Dataset, pconfig: P
             for key, value in instrument_metadata.items():
                 if value is None:
                     continue
+
                 if key in dataset.attrs and not pconfig.force_platform_metadata:
                     if not dataset.attrs[key]:
                         dataset.attrs[key] = value
@@ -586,7 +588,7 @@ def _add_platform_instrument_metadata_to_dataset(dataset: xr.Dataset, pconfig: P
                     dataset.attrs[key] = value
 
 
-def _add_platform_instrument_metadata_to_variables(dataset: xr.Dataset, pconfig: ProcessConfig, variables: tp.List[str]):
+def _add_platform_adcp_metadata_to_variables(dataset: xr.Dataset, pconfig: ProcessConfig, variables: tp.List[str]):
     """Add sensor metadata found in the platform instrument to the variables
 
     Overwrites global_attributes if pconfig.force_platform_metadata is True.
@@ -610,6 +612,7 @@ def _add_platform_instrument_metadata_to_variables(dataset: xr.Dataset, pconfig:
                 for key, value in instrument_metadata.items():
                     if value is None:
                         continue
+
                     if key in dataset[var].attrs and not pconfig.force_platform_metadata:
                         if not dataset.attrs[key]:
                             dataset[var].attrs[key] = value

@@ -78,7 +78,6 @@
     "event_qualifier1": "553",
     "event_qualifier2": "VEL",
     "event_comments": "event comments test",
-    "date_created": "2023-06-12",
     "cdm_data_type": "cdm data type test",
     "country_code": "country code test",
     "publisher_email": "jerome.guay@dfo-mpo.gc.ca",
@@ -92,5 +91,6 @@
     "sensor_depth": 1,
     "sensor_depth_units": "meters",
     "model": "SeaWATCH",
-    "date_modified": "2023-06-12"
+    "platform_description": "Platform description of iml-4",
+    "platform": "IML-4"
 }
