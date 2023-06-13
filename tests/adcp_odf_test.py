@@ -4,8 +4,8 @@ from magtogoek.adcp.odf_exporter import make_odf
 from magtogoek.platforms import PlatformMetadata, Platform, BuoySpecifications, InstrumentMetadata
 from magtogoek.utils import json2dict
 
-DATASET = xr.open_dataset("data/netcdf_test_files/test_netcdf.nc")
-GLOBAL_ATTRS = json2dict("data/test_global_attributes.json")
+DATASET = xr.open_dataset("tests/data/odf_test_files/odf_adcp_test_dataset.nc")
+GLOBAL_ATTRS = json2dict("tests/data/odf_test_global_attributes.json") # FIXME not used ?
 P01_TO_GENERIC_NAME = {
     "u": "LCEWAP01",
     "u_QC": "LCEWAP01_QC",
@@ -64,8 +64,10 @@ def test_platform_type(platform_type, headers, cruise_platform):
                    output_path=None,
                    )
     assert odf.cruise["platform"] == cruise_platform
+
     for header in headers:
         assert header in odf.__dict__
+
     if platform_type == "buoy":
         assert odf.buoy["name"] == PLATFORM_METADATA.platform.platform_name
         for key, value in PLATFORM_METADATA.buoy_specs.__dict__.items():

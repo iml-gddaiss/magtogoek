@@ -9,10 +9,10 @@ from magtogoek.config_handler import load_configfile, cli_options_to_config
 from magtogoek.adcp.process import process_adcp
 
 
-CONFIG_FILENAME = "files/adcp_iml4_2017.ini"
+CONFIG_FILENAME = "tests/files/process_test/adcp_iml4_2017.ini"
 PROCESS_OUTPUT_FILES = ["files/iml4_2017_sw.nc", "files/iml4_2017_sw.log"]
 
-PLATFORM_FILE = "files/iml_platforms.json"
+PLATFORM_FILE = "tests/files/process_test/iml_platforms.json"
 RAW_ADCP_FILE = "data/raw_adcp_data/iml6_2017_wh.000"
 QUICK_OUTPUT_FILES = ["data/raw_adcp_data/iml6_2017_wh.nc"]
 
@@ -36,7 +36,7 @@ def test_process_adcp_global_attributes():
     """Requires `test_process_adcp` to be run first"""
     dataset = xr.open_dataset("files/iml4_2017_sw.nc")
 
-    test_global_attributes = json2dict('data/netcdf_test_files/test_adcp_process_global_attributes.json')
+    test_global_attributes = json2dict('tests/data/global_attributes/adcp_process_expected_global_attributes.json')
 
     for key, value in test_global_attributes.items():
         if isinstance(dataset.attrs[key], (list, tuple, np.ndarray)):

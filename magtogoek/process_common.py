@@ -123,7 +123,7 @@ class BaseProcessConfig:
             self.input_files = ensure_list_format(self.input_files)
 
         if len(self.input_files) == 0:
-            raise ValueError("No adcp file was provided in the configfile.")
+            raise ValueError("No input file was provided in the configfile.")
 
         self._load_platform_metadata()
 
@@ -181,7 +181,10 @@ def add_global_attributes(dataset: xr.Dataset, pconfig: BaseProcessConfig, stand
 
     compute_global_attrs(dataset)  # already common
 
-    dataset.attrs["source"] = pconfig.platform_type
+    source = pconfig.platform_type
+    if "source" in pconfig.global_attributes:
+        source = pconfig.global_attributes.pop('source') or source
+    dataset.attrs["source"] = source
 
     dataset.attrs.update(pconfig.global_attributes)
 

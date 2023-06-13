@@ -1,0 +1,80 @@
+{
+    "IML4_2017": {
+        "platform_name": "IML-4",
+        "platform_type": "buoy",
+        "sounding": 335,
+        "longitude": -60,
+        "latitude":50,
+        "description": "Platform description of iml-4",
+        "buoy_specs": {"type": "MTE",
+                       "model": "Viking",
+                       "height": "4.5 m",
+                       "diameter": "2.1 m",
+                       "description": "bouée noire (partie immergée) avec jaune."},
+        "instruments": {
+            "ADCP_01": {
+                "sensor_type": "adcp",
+                "sensor_depth": 1,
+                "serial_number": 553,
+                "manufacturer": "Rowe Technologies Inc. (RTI)",
+                "model": "SeaWATCH",
+                "firmware_version": "0.2.125-4",
+                "chief_scientist": "adcp chief scientist",
+                "comments": "The model and serial number are the same for the temperature and pressure sensors as the ADCP."
+            }
+        }
+    },
+    "IML6_2017": {
+        "platform_name": "IML-6",
+        "platform_type": "buoy",
+        "sounding": 100,
+        "longitude":-60,
+        "latitude": 50,
+        "description": "This is a description of the platform.",
+        "buoy_specs": {"type": "MTE",
+                       "model": "Viking",
+                       "height": "4.5 m",
+                       "diameter": "2.1 m",
+                       "weight": "1000 kg",
+                       "description": "bouée noire (partie immergée) avec jaune."},
+        "instruments": {
+            "ADCP_01": {
+                "sensor_type": "adcp",
+                "sensor_depth": 5,
+                "serial_number": "Serial_test_platform",
+                "manufacturer": "Teledyne RD Instruments Inc.",
+                "model": "WorkHorse",
+                "firmware_version": "sensor_firmware_test",
+                "chief_scientist": "Peter Galbraith",
+                "comments": "The model and serial number are the same for the temperature and pressure sensors as the ADCP.",
+				"sensors": {
+					"temperature": {
+						"description": "temperature_description",
+						"comments": "temperature_comments",
+						"calibration": {
+							"date": "calibration_date",
+						    "number_of_coefficients": "calibration_noc",
+							"coefficients": "calibration_coeff",
+						    "calibration_equation": "calibration_eq",
+						    "calibration_units": "calibration_units",
+						    "archiving_units": "calibration_arch_units",
+						    "conversion_factor":"calibration_conv_facto",
+						    "comments": "calibration_comments"
+						}
+					}
+				}			
+			},
+            "CTD_01": {
+                "sensor_type": "ctd",
+                "sensor_depth": 10,
+                "serial_number": "ctd_serial",
+                "manufacturer": "Seabird",
+                "model": "SBE19",
+                "firmware_version": "ctd_firmware_test",
+                "chief_scientist": "ctd_chief_scientist",
+                "comments": "ctd_comments"
+            }
+        }
+   }
+}
+
