@@ -300,7 +300,9 @@ def compute_global_attrs(dataset: xr.Dataset):
 
     """
     _geospatial_global_attrs(dataset)
-    _time_global_attrs(dataset)
+
+    if "time" in dataset.coords:
+        _time_global_attrs(dataset)
 
 
 def _time_global_attrs(dataset: xr.Dataset):
