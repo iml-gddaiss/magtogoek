@@ -22,7 +22,7 @@ If bodc_name False, generic variable names are used.
 """
 import getpass
 from typing import Dict, List, Union, Optional
-from magtogoek import SENSOR_TYPES, PROCESSES
+from magtogoek import SENSOR_TYPES, PROCESSES, REPOSITORY_ADDRESS
 from magtogoek.taskparser import TaskParser
 from datetime import datetime
 from pathlib import Path
@@ -30,8 +30,6 @@ from pathlib import Path
 StrIntFloatBool = Union[str, int, float, bool]
 ListStrIntFloatBool = Union[StrIntFloatBool, List[StrIntFloatBool]]
 ParserDict = Dict[str, Dict[str, ListStrIntFloatBool]]
-
-REFERENCE = "https://github.com/JeromeJGuay/magtogoek"
 
 CONFIG_TO_CLI_MAPS = {
     'global': {
@@ -239,7 +237,7 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
     tparser.add_option(section, "title", dtypes=["str"], default="")
     tparser.add_option(section, "institution", dtypes=["str"], default="")
     tparser.add_option(section, "summary", dtypes=["str"], default="")
-    tparser.add_option(section, "references", dtypes=["str"], default=REFERENCE)
+    tparser.add_option(section, "references", dtypes=["str"], default=REPOSITORY_ADDRESS)
     tparser.add_option(section, "comments", dtypes=["str"], default="")
     tparser.add_option(section, "naming_authority", dtypes=["str"], default="BODC, SDC, CF, MEDS")
     tparser.add_option(section, "source", dtypes=["str"], default="")

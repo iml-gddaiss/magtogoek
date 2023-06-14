@@ -11,6 +11,8 @@ from magtogoek.meteoce import SENSOR_TYPES as METEOCE_SENSOR_TYPES, GENERIC_PARA
 
 logger.set_level(0)
 
+REPOSITORY_ADDRESS = "https://github.com/iml-gddaiss/magtogoek"
+
 VERSION = "0.0.1"
 
 TERMINAL_WIDTH = 80

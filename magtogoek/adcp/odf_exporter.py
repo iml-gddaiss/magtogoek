@@ -22,13 +22,12 @@ from datetime import datetime
 import pandas as pd
 import xarray as xr
 from typing import List, Union, Tuple, Dict, Optional
-from magtogoek import CONFIGURATION_PATH
+from magtogoek import CONFIGURATION_PATH, REPOSITORY_ADDRESS
 import magtogoek.logger as l
 from magtogoek.odf_format import Odf, odf_time_format, ODF_PARAMETERS_TYPES
 from magtogoek.platforms import PlatformMetadata, InstrumentMetadata, SensorMetadata
 from magtogoek.utils import json2dict
 
-REPOSITORY_ADDRESS = "https://github.com/JeromeJGuay/magtogoek"
 
 BEAM_PARAMETERS = ("time", "depth", "v1", "v2", "v3", "v4")
 VEL_PARAMETERS = ("time", "depth", "u", "v", "w", "e")
