@@ -1,3 +1,13 @@
+"""
+TODO
+----
++ comon odf exporter ? -> this will be the comon test
+
++ Missing test for sensor_comments...
+
+
+
+"""
 import pytest
 import xarray as xr
 from magtogoek.adcp.odf_exporter import make_odf
@@ -5,7 +15,20 @@ from magtogoek.platforms import PlatformMetadata, Platform, BuoySpecifications, 
 from magtogoek.utils import json2dict
 
 DATASET = xr.open_dataset("data/odf_test_files/odf_adcp_test_dataset.nc")
-GLOBAL_ATTRS = json2dict("data/odf_test_global_attributes.json") # FIXME not used ?
+GLOBAL_ATTRS = {
+    "country_institute_code": "country_institute_code_test",
+    "cruise_number": "cruise_number_test",
+    "cruise_name": "cruise_name_test",
+    "cruise_description": "cruise_description_test",
+    "organization": "organization_test",
+    "chief_scientist": "chief_scientist_test",
+    "start_date": "start_date_test",
+    "end_date": "end_date_test",
+    "event_number": "event_number_test",
+    "event_qualifier1": "event_qualifier1_test",
+    "event_qualifier2": "event_qualifier2_test",
+    "event_comments": "event_comments_test",
+}
 P01_TO_GENERIC_NAME = {
     "u": "LCEWAP01",
     "u_QC": "LCEWAP01_QC",

@@ -3,11 +3,13 @@ from pathlib import Path
 import numpy as np
 import xarray as xr
 import pytest
+import pandas as pd
 
 from magtogoek.utils import json2dict
 from magtogoek.config_handler import load_configfile, cli_options_to_config
 from magtogoek.adcp.process import process_adcp
 
+TIMESTAMP = pd.Timestamp.now().strftime("%Y-%m-%d")
 
 CONFIG_FILENAME = "files/process_test/adcp_iml4_2017.ini"
 PROCESS_OUTPUT_FILES = ["files/process_test/iml4_2017_sw.nc", "files/process_test/iml4_2017_sw.log"]
@@ -37,6 +39,8 @@ def test_process_adcp_global_attributes():
     dataset = xr.open_dataset("files/process_test/iml4_2017_sw.nc")
 
     test_global_attributes = json2dict('data/global_attributes/adcp_process_expected_global_attributes.json')
+    test_global_attributes["date_created"] = TIMESTAMP
+    test_global_attributes["date_modified"] = TIMESTAMP
 
     for key, value in test_global_attributes.items():
         if isinstance(dataset.attrs[key], (list, tuple, np.ndarray)):

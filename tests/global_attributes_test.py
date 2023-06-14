@@ -12,7 +12,6 @@ CONFIG_DICT = {
     "INPUT": {
         "input_files": [""],
     },
-    "OUTPUT": {"force_platform_metadata": False}, # test true False
     "PROJECT": {"project": "project_attr"},
     "CRUISE": {"cruise": "cruise_attr"},
     "GLOBAL_ATTRIBUTES": {
@@ -23,69 +22,74 @@ CONFIG_DICT = {
     },
 }
 
-PCONFIG = BaseProcessConfig(config_dict=CONFIG_DICT)
-PCONFIG.platform_metadata = default_platform_metadata("buoy", "test_instrument", "adcp")
+DEFAULT_METADATA = default_platform_metadata("buoy", "test_instrument", "adcp")
 
-PCONFIG.platform_metadata.platform.platform_name = 'test_platform_name'
-PCONFIG.platform_metadata.platform.platform_model = 'test_platform_model'
-PCONFIG.platform_metadata.platform.sounding = 333
-PCONFIG.platform_metadata.platform.longitude = 666
-PCONFIG.platform_metadata.platform.latitude = 999
-PCONFIG.platform_metadata.platform.description = 'test_platform_description'
+DEFAULT_METADATA.platform.platform_name = 'test_platform_name'
+DEFAULT_METADATA.platform.platform_model = 'test_platform_model'
+DEFAULT_METADATA.platform.sounding = 333
+DEFAULT_METADATA.platform.longitude = 666
+DEFAULT_METADATA.platform.latitude = 999
+DEFAULT_METADATA.platform.description = 'test_platform_description'
 
 
 EXPECTED_GLOBAL_ATTRIBUTES = {
-    "basic": {
-            "featureType": "timeSeriesProfile",
-            'platform': 'test_platform_name',
-            'platform_model': 'test_platform_model',
-            'sounding': 111,
-            'longitude': 111,
-            'latitude': 111,
-            'platform_description': 'test_platform_description',
-
-            'data_type': "madcp",
-            'data_subtype': "BUOY",
-
-            "source": "test_source",
-            "project": "project_attr",
-            "cruise": "cruise_attr",
-            "_global": "global_attr",
+    "standard": {
+        "featureType": "timeSeriesProfile",
+        'platform': 'test_platform_name',
+        'platform_model': 'test_platform_model',
+        'platform_description': 'test_platform_description',
+        "project": "project_attr",
+        "cruise": "cruise_attr",
+        "_global": "global_attr",
+        "data_type": "madcp",
+        "data_subtype": "BUOY",
+        "source": "buoy",
+        'sounding': 111,
+        'longitude': 111,
+        'latitude': 111,
+    },
+    "platform_type": {
+        "data_type": "adcp",
+        "data_subtype": "SHIPBORNE",
+        "source": "ship",
+    },
+    "source": {
+        "source": "test_source"
     },
     'force_platform': {
-            "featureType": "timeSeriesProfile",
-            'platform': 'test_platform_name',
-            'platform_model': 'test_platform_model',
             'sounding': 333,
             'longitude': 666,
             'latitude': 999,
-            'platform_description': 'test_platform_description',
-
-            'data_type': "adcp",
-            'data_subtype': "SHIPBORNE",
-
-            "source": "ship",
-            "project": "project_attr",
-            "cruise": "cruise_attr",
-            "_global": "global_attr",
     }
 }
 
 
 @pytest.mark.parametrize(
-    "platform_type, source, force_platform_metadata, global_attrs",
+    "platform_type, source, force_platform_metadata, expected_key",
     [
-        ("buoy", "test_source", False, EXPECTED_GLOBAL_ATTRIBUTES['basic']),
-        ("ship", "", True, EXPECTED_GLOBAL_ATTRIBUTES['force_platform']),
+        ("ship", None, False, "platform_type"),
+        (None, "test_source", False, "source"),
+        (None, None, True, "force_platform"),
+
     ],
 )
-def test_global_attributes(platform_type, source, force_platform_metadata, global_attrs):
-    PCONFIG.platform_type = platform_type
-    PCONFIG.global_attributes['source'] = source
-    PCONFIG.force_platform_metadata = force_platform_metadata
+def test_global_attributes(platform_type, source, force_platform_metadata, expected_key):
+    pconfig = BaseProcessConfig(config_dict=CONFIG_DICT)
+    pconfig.platform_metadata = DEFAULT_METADATA
+    pconfig.platform_type = pconfig.platform_metadata.platform.platform_type
+    
+    if platform_type is not None:
+        pconfig.platform_type = platform_type
+
+    if source is not None:
+        pconfig.global_attributes['source'] = source
+
+    pconfig.force_platform_metadata = force_platform_metadata
 
     dataset = xr.Dataset()
-    add_global_attributes(dataset, PCONFIG, STANDARD_GLOBAL_ATTRIBUTES)
-    add_platform_metadata_to_dataset(dataset=dataset, pconfig=PCONFIG)
+    add_global_attributes(dataset, pconfig, STANDARD_GLOBAL_ATTRIBUTES)
+    add_platform_metadata_to_dataset(dataset=dataset, pconfig=pconfig)
 
+    global_attrs = {**EXPECTED_GLOBAL_ATTRIBUTES['standard']}
+    global_attrs.update(EXPECTED_GLOBAL_ATTRIBUTES[expected_key])
     assert dataset.attrs == global_attrs
