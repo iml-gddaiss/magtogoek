@@ -170,7 +170,7 @@ def make_odf(
             odf.odf["file_specification"] = output_path.name
 
         output_path = Path(output_path).with_suffix(".ODF")
-        odf.save(output_path)
+        odf.write(output_path)
         print(f"odf {EVENT_QUALIFIER2.upper()} file made -> {output_path}")
 
 

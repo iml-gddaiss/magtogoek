@@ -8,7 +8,7 @@ ODF class method:
 ----------
 read()
 
-save()
+write()
 
 to_dataset()
 
@@ -34,7 +34,7 @@ ODF object structure:
     or .parameter.
     Data are pandas dataframe. ODF.data.
 Writing ODF files.
-    Using .save(filename), the ODF file will be written.
+    Using .write(filename), the ODF file will be written.
     - Headers keys are always printed in upper case.
     Header values can be one of: int, float, str, list, tuple, or list(tuple).
       - floats are printed with the number of significant digit specified by the global variable PRECISION.
@@ -233,7 +233,7 @@ class Odf:
     ---------------
     read()
 
-    save()
+    write()
 
     to_dataset()
 
@@ -257,7 +257,7 @@ class Odf:
         or .parameter.
     Data are pandas dataframe. ODF.data.
         Writing ODF files.
-        Using .save(filename), the ODF file will be written.
+        Using .write(filename), the ODF file will be written.
         - Headers keys are always printed in upper case.
         Headers values can be one of: int, float, str, list, tuple, or list(tuple).
         - floats are printed with the number of significant digit specified by the global variable PRECISION.
@@ -396,8 +396,8 @@ class Odf:
 
         return self
 
-    def save(self, filename: str = None):
-        """Save file
+    def write(self, filename: str = None):
+        """Write file
 
         Parameters
         ---------_
