@@ -1,6 +1,6 @@
 from magtogoek.platforms import load_platform_metadata
 
-FILENAME = "tests/files/platform_test/test_platforms.json"
+FILENAME = "files/platform_test/test_platforms.json"
 
 
 def test_load_platform_metadata():
