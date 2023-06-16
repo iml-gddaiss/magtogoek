@@ -651,11 +651,9 @@ def _drop_beam_metadata(dataset: xr.Dataset, pconfig: ProcessConfig):
     return dataset
 
 
-def _update_p01_codes_map(dataset: xr.Dataset, pconfig: ProcessConfig) -> dict:
+def _update_p01_codes_map(dataset: xr.Dataset, pconfig: ProcessConfig):
     """
     Update the p01_codes_map for the velocities based of the coordinate system.
-
-    TODO should work fine. but test it.
     """
     if dataset.attrs['coord_system'] == 'earth':
         pconfig.p01_codes_map.update((P01_VEL_CODES[pconfig.platform_type]))
@@ -722,8 +720,6 @@ def _write_odf(dataset: xr.Dataset, pconfig: ProcessConfig):
     if pconfig.odf_data is None:
         pconfig.odf_data = 'both'
     odf_data = {'both': ['VEL', 'ANC'], 'vel': ['VEL'], 'anc': ['ANC']}[pconfig.odf_data]
-
-    dataset.attrs['history'] = l.logbook
 
     if pconfig.platform_metadata is None:
         if not pconfig.adcp_id:

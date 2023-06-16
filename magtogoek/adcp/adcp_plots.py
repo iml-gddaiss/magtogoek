@@ -10,7 +10,7 @@ This modules contains the essential figure to do a visual inspection of the data
 """
 import logging
 from itertools import cycle
-from typing import List, Union, Dict
+from typing import List, Union, Dict, Tuple
 from pathlib import Path
 
 import cmocean as cmo
@@ -34,7 +34,7 @@ GEO_VAR = ["heading", "roll_", "pitch", "lon", "lat"]
 ANC_VAR = ["xducer_depth", "temperature", "pres"]
 
 
-def map_varname(varnames: List[str], varname_map: Dict) -> List[str]:
+def map_varname(varnames: Union[List[str], Tuple[str, ...]], varname_map: Dict) -> List[str]:
     return [varname_map[varname] for varname in varnames if (varname in varname_map)]
 
 
@@ -217,6 +217,7 @@ def plot_velocity_polar_hist(dataset: xr.Dataset, nrows: int = 3, ncols: int = 3
 
 
 def plot_velocity_fields(dataset: xr.Dataset, vel_var: List[str] = ("u", "v", "w"), flag_thres: int = 2):
+    # noinspection PyTypeChecker
     fig, axes = plt.subplots(
         figsize=(12, 8), nrows=len(vel_var), ncols=1, sharex=True, sharey=True,
     )
@@ -247,6 +248,7 @@ def plot_test_fields(dataset: xr.Dataset):
     """
     """
     extent = get_extent(dataset)
+    # noinspection PyTypeChecker
     fig, axes = plt.subplots(figsize=(12, 8), nrows=3, ncols=3, sharex=True, sharey=True)
     axes = axes.flatten()
     for index, test_name in enumerate(dataset.attrs["binary_mask_tests"]):
@@ -275,6 +277,7 @@ def plot_test_fields(dataset: xr.Dataset):
 
 def plot_vel_series(dataset: xr.Dataset, depths: Union[float, List[float]],
                     uvw: List[str] = ("u", "v", "w"), flag_thres: int = 2):
+    # noinspection PyTypeChecker
     fig, axes = plt.subplots(figsize=(12, 8), nrows=len(uvw), ncols=1, sharex=True, sharey=True)
     axes[0].tick_params(labelbottom=False)
     axes[1].tick_params(labelbottom=False)
@@ -314,6 +317,7 @@ def plot_pearson_corr(dataset: xr.Dataset, vel_var: List[str] = ("u", "v", "w"),
 
 def plot_sensor_data(dataset: xr.Dataset, varnames: List[str], flag_thres: int = 2):
     varnames = [var for var in varnames if var in dataset.variables]
+    # noinspection PyTypeChecker
     fig, axes = plt.subplots(figsize=(12, 8), nrows=len(varnames), ncols=1, sharex=True, squeeze=False)
     axes = axes.flatten()
     for var, ax in zip(varnames, axes):
@@ -331,6 +335,7 @@ def plot_sensor_data(dataset: xr.Dataset, varnames: List[str], flag_thres: int =
 
 
 def plot_bt_vel(dataset: xr.Dataset, bt_var: List[str] = ("bt_u", "bt_v", "bt_w", "bt_depth")):
+    # noinspection PyTypeChecker
     fig, axes = plt.subplots(figsize=(12, 8), nrows=len(bt_var), ncols=1, sharex=True, sharey=True)
     axes[0].tick_params(labelbottom=False)
     axes[1].tick_params(labelbottom=False)

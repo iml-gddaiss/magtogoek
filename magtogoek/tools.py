@@ -41,7 +41,7 @@ def flag_data(dataset: xr.Dataset, var: str, flag_thres: int = 2, ancillary_vari
     return dataset[var].where(dataset[ancillary_variables].data <= flag_thres)
 
 
-def round_up(x: float, scale: float = 1):
+def round_up(x: tp.Any, scale: float = 1):
     return np.ceil(np.asarray(x) * 1 / scale) * scale
 
 
