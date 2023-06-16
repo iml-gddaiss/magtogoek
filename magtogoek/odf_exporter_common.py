@@ -1,5 +1,40 @@
 """
-Module containing the function to map xarray dataset to Odf
+Module containing the common functions to map xarray dataset to Odf
+
+Examples:
+
+```
+
+Requires:
+dataset: xr.Dataset
+platform_metadata: PlatformMetadata
+global_attributes = {} Global Attributes from the process_config: process_config.global_attributes
+
+
+odf = Odf()
+
+make_cruise_header(odf, platform_metadata, global_attributes)
+make_event_header(odf, dataset, global_attributes, event_qualifier2, p01_codes_map)
+make_odf_header(odf)
+
+if platform_metadata.platform.platform_type == "buoy":
+    make_buoy_header(odf, platform_metadata)
+    make_buoy_instrument_headers(odf, platform_metadata)
+    _make_adcp_buoy_instrument_header(odf=odf, dataset=dataset, platform_metadata=platform_metadata, adcp_id=adcp_id)
+else:
+    make_instrument_header(odf, dataset)
+
+make_quality_header(odf, dataset)
+make_history_header(odf, dataset)
+
+variables = () # list or tuple of variables in the dataset to put into the Odf
+qc_variables = () # list or tuple of qc variables in the dataset to put into the Odf
+
+make_parameter_headers(odf, dataset, variables, qc_variables, p01_codes_map, bodc_name)
+
+if output_path is not None:
+    write_odf(odf=odf, event_qualifier2=event_qualifier2, output_path=output_path)
+```
 
 """
 import re
@@ -20,6 +55,7 @@ from magtogoek.utils import json2dict
 
 PARAMETERS_METADATA_PATH = CONFIGURATION_PATH.joinpath("odf_parameters_metadata.json")
 PARAMETERS_METADATA = json2dict(PARAMETERS_METADATA_PATH)
+
 
 def make_cruise_header(odf: Odf, platform_metadata: PlatformMetadata, config_attrs: dict):
     odf.cruise["country_institute_code"] = config_attrs["country_institute_code"]
@@ -277,7 +313,7 @@ def make_quality_header(odf: Odf, dataset):
         odf.quality["quality_comments"].append(key + ': ' + str(dataset.attrs[key]))
 
 
-def make_history_header(odf, dataset):
+def make_history_header(odf: Odf):
     """Make one or more history_header.
     1 - Default process comments is added with a Timestamp (datetime.now()).
     2 - Looks for log section `[Loading adcp data], [Data transformation]` in
@@ -287,7 +323,7 @@ def make_history_header(odf, dataset):
     processing = ["Data processed by Magtogoek Processing Software. More at " + REPOSITORY_ADDRESS]
     creation_date = odf_time_format(datetime.now())
 
-    iter_logbook = iter(re.split(r"(\[.*])", dataset.attrs["history"]))
+    iter_logbook = iter(re.split(r"(\[.*])", l.logbook))
     for log_entry in iter_logbook:
         if log_entry in ["[Loading adcp data]", "[Data transformation]"]:
             logs = next(iter_logbook).strip("\n").split("\n")
@@ -301,7 +337,8 @@ def make_history_header(odf, dataset):
     odf.add_history({"creation_date": creation_date, "process": processing})
 
 
-def make_parameter_headers(odf, dataset, variables: List[str], qc_variables: List[str], p01_codes_map: dict, bodc_name=False):
+def make_parameter_headers(odf, dataset, variables: Union[List[str], Tuple[str, ...]],
+                           qc_variables: Union[List[str], Tuple[str, ...]], p01_codes_map: dict, bodc_name=False):
     """
     Parameters
     ----------
@@ -312,6 +349,8 @@ def make_parameter_headers(odf, dataset, variables: List[str], qc_variables: Lis
        variables to put in the ODF.
     qc_variables:
        quality control variables to put in the ODF.
+    p01_codes_map :
+        FIXME
     bodc_name:
         If True, map from the generic to the BODC p01 variables names.
     Notes
@@ -385,7 +424,7 @@ def make_parameter_headers(odf, dataset, variables: List[str], qc_variables: Lis
             qc_count += 1
 
 
-def _find_section_timestamp(s: str) -> str:
+def _find_section_timestamp(s: str) -> Optional[str]:
     r""" String of Section - Timestamp
 
     regex : ([0-9]{4}-[0-9]{2}-[0-9]{2}\s[0-9]{2}:[0-9]{2}:[0-9]{2})'
@@ -397,7 +436,7 @@ def _find_section_timestamp(s: str) -> str:
     return None
 
 
-def write_odf(odf: Odf, event_qualifier2: str, output_path: Optional[str] = None):
+def write_odf(odf: Odf, output_path: Optional[str] = None):
     """
     If a path(str) is provided, there are two possibilities: if the path is only a directory, the file name
     will be made from the odf['file_specification']. If a file name is also provided, the 'event_qualifier2'
@@ -407,10 +446,10 @@ def write_odf(odf: Odf, event_qualifier2: str, output_path: Optional[str] = None
     if output_path.is_dir():
         output_path = output_path.joinpath(odf.odf["file_specification"])
     else:
-        if event_qualifier2 not in output_path.name:
-            output_path = Path(str(output_path.with_suffix('')) + f'_{event_qualifier2}')
+        if odf.event['event_qualifier2'] not in output_path.name:
+            output_path = Path(str(output_path.with_suffix('')) + f"_{odf.event['event_qualifier2']}")
         odf.odf["file_specification"] = output_path.name
 
-    output_path = Path(output_path).with_suffix(".ODF")
+    output_path = str(Path(output_path).with_suffix(".ODF"))
     odf.write(output_path)
-    l.log(f"odf {event_qualifier2.upper()} file made -> {output_path}")
+    l.log(f"odf {odf.event['event_qualifier2'].upper()} file made -> {output_path}")

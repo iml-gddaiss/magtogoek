@@ -1,19 +1,5 @@
 """
-module to map xarray dataset to Odf
-
-Notes TODO
------
-
--> make this more general and apply it to meteoce
--> in order to make odf buoy instrument header, the platform file need to be used.
---> `parameters` need to be changed to something like sub-sensor.
---> the sub-sensor ID<s are user define.
---> Add a `name` field and `code` to the sub_sensor
---> if calibrations is empty: do not write it.
-
-
-
-
+module to export adcp dataset to Odf
 """
 import xarray as xr
 from typing import List, Union, Tuple, Dict, Optional
@@ -54,13 +40,12 @@ def make_odf(
         Dataset to which add the navigation data.
     platform_metadata :
         Metadata from the platform file.
-    adcp_id
-     :
-
+    adcp_id :
+        FIXME
     global_attributes :
         Global attributes parameter from the configFile.
     p01_codes_map :
-
+        FIXME
     use_bodc_name:
         If True, map from the generic to the BODC p01 variables names.
     event_qualifier2:
@@ -85,7 +70,7 @@ def make_odf(
         make_instrument_header(odf, dataset)
 
     make_quality_header(odf, dataset)
-    make_history_header(odf, dataset)
+    make_history_header(odf)
 
     if event_qualifier2 == 'VEL':
         if dataset.attrs['coord_system'] == 'beam':
@@ -98,7 +83,7 @@ def make_odf(
     make_parameter_headers(odf=odf, dataset=dataset, variables=parameters, qc_variables=QC_PARAMETERS, p01_codes_map=p01_codes_map, bodc_name=use_bodc_name)
 
     if output_path is not None:
-        write_odf(odf=odf, event_qualifier2=event_qualifier2, output_path=output_path)
+        write_odf(odf=odf, output_path=output_path)
 
     return odf
 
@@ -111,10 +96,8 @@ def _make_adcp_buoy_instrument_header(
 ):
     """TODO TEST"""
 
-    if adcp_id\
-            not in odf.buoy_instrument:
-        odf.add_buoy_instrument(adcp_id
-                                )
+    if adcp_id not in odf.buoy_instrument:
+        odf.add_buoy_instrument(adcp_id)
 
     key_map = [
         ('type', 'manufacturer'),
@@ -125,11 +108,9 @@ def _make_adcp_buoy_instrument_header(
 
     for (odf_key, netcdf_key) in key_map:
         if netcdf_key in dataset.attrs:
-            odf.buoy_instrument[adcp_id
-            ][odf_key] = dataset.attrs[netcdf_key]
+            odf.buoy_instrument[adcp_id][odf_key] = dataset.attrs[netcdf_key]
 
-    _make_adcp_buoy_instrument_comments(odf, adcp_id
-                                        , dataset, platform_metadata)
+    _make_adcp_buoy_instrument_comments(odf, adcp_id, dataset, platform_metadata)
 
 
 def _make_adcp_buoy_instrument_comments(
