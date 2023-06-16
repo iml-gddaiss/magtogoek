@@ -47,7 +47,6 @@ IML flags meaning : (Basically the same)
 import numpy as np
 import typing as tp
 import xarray as xr
-from pandas import Timestamp
 from scipy.stats import circmean
 
 from magtogoek import logger as l
@@ -177,13 +176,12 @@ def adcp_quality_control(
     binary_mask = np.zeros(dataset.depth.shape + dataset.time.shape).astype(int)
 
     vel_qc_test = []
-    binary_mask_tests_value = [None] * 9
+    binary_mask_tests_value: tp.List[tp.Optional[int, float]] = [None] * 9
 
     if amp_th is not None:
         l.log(f"amplitude threshold {amp_th}")
         amp_flag = amplitude_test(dataset, amp_th)
         add_flags_values(vel_flags, amp_flag * 3)
-        #vel_flags[amp_flag] = 3
         vel_qc_test.append(f"amplitude_threshold:{amp_th} (flag=3).")
         binary_mask[amp_flag] += 2 ** 0
         binary_mask_tests_value[0] = amp_th
@@ -192,7 +190,6 @@ def adcp_quality_control(
         l.log(f"correlation threshold {corr_th}")
         corr_flag = correlation_test(dataset, corr_th)
         add_flags_values(vel_flags, corr_flag * 3)
-        #vel_flags[corr_flag] = 3
         vel_qc_test.append(f"correlation_threshold:{corr_th} (flag=3).")
         binary_mask[corr_flag] += 2 ** 1
         binary_mask_tests_value[1] = corr_th
@@ -201,7 +198,6 @@ def adcp_quality_control(
         l.log(f"percentgood threshold {pg_th}")
         pg_flag = percentgood_test(dataset, pg_th)
         add_flags_values(vel_flags, pg_flag * 3)
-        #vel_flags[pg_flag] = 3
         vel_qc_test.append(f"percentgood_threshold:{pg_th} (flag=3).")
         binary_mask[pg_flag] += 2 ** 2
         binary_mask_tests_value[2] = pg_th
@@ -211,7 +207,6 @@ def adcp_quality_control(
             l.log(f"horizontal velocity threshold {horizontal_vel_th} m/s")
             horizontal_vel_flag = horizontal_vel_test(dataset, horizontal_vel_th)
             add_flags_values(vel_flags, horizontal_vel_flag * 3)
-            #vel_flags[horizontal_vel_flag] = 3
             vel_qc_test.append(f"horizontal_velocity_threshold:{horizontal_vel_th} m/s (flag=3).")
             binary_mask[horizontal_vel_flag] += 2 ** 3
             binary_mask_tests_value[3] = horizontal_vel_th
@@ -220,7 +215,6 @@ def adcp_quality_control(
             l.log(f"vertical velocity threshold {vertical_vel_th} m/s")
             vertical_vel_flag = vertical_vel_test(dataset, vertical_vel_th)
             add_flags_values(vel_flags, vertical_vel_flag * 3)
-            #vel_flags[vertical_vel_flag] = 3
             vel_qc_test.append(f"vertical_velocity_threshold:{vertical_vel_th} m/s (flag=3).")
             binary_mask[vertical_vel_flag] += 2 ** 4
             binary_mask_tests_value[4] = vertical_vel_th
@@ -230,7 +224,6 @@ def adcp_quality_control(
             l.log(f"error velocity threshold {error_vel_th} m/s")
             error_vel_flag = error_vel_test(dataset, error_vel_th)
             add_flags_values(vel_flags, error_vel_flag * 3)
-            #vel_flags[error_vel_flag] = 3
             vel_qc_test.append(f"velocity_error_threshold:{error_vel_th} m/s (flag=3).")
             binary_mask[error_vel_flag] += 2 ** 5
             binary_mask_tests_value[5] = error_vel_th
@@ -239,7 +232,6 @@ def adcp_quality_control(
         l.log(f"Roll threshold {roll_th} degree")
         roll_flag = np.tile(roll_test(dataset, roll_th), dataset.depth.shape + (1,))
         add_flags_values(vel_flags, roll_flag * 3)
-        #vel_flags[roll_flag] = 3
         vel_qc_test.append(f"roll_threshold:{roll_th} degree (flag=4).")
         binary_mask[roll_flag] += 2 ** 6
         binary_mask_tests_value[6] = roll_th
@@ -248,7 +240,6 @@ def adcp_quality_control(
         l.log(f"Pitch threshold {pitch_th} degree")
         pitch_flag = np.tile(pitch_test(dataset, pitch_th), dataset.depth.shape + (1,))
         add_flags_values(vel_flags, pitch_flag * 3)
-        #vel_flags[pitch_flag] = 3
         vel_qc_test.append(f"pitch_threshold:{pitch_th} degree (flag=3).")
         binary_mask[pitch_flag] += 2 ** 7
         binary_mask_tests_value[7] = pitch_th
@@ -258,14 +249,12 @@ def adcp_quality_control(
         if isinstance(sidelobe_flag, np.ndarray):
             l.log(f"Sidelobe correction carried out. {msg}. (flag=3).")
             add_flags_values(vel_flags, sidelobe_flag * 3)
-            #vel_flags[sidelobe_flag] = 3
             vel_qc_test.append("sidelobes")
             binary_mask[sidelobe_flag] += 2 ** 8
             binary_mask_tests_value[8] = sidelobes_correction
 
     if "pres" in dataset:
         add_ancillary_QC_variable_to_dataset(dataset=dataset, variable='pres', default_flag=1)
-        #dataset["pres_QC"] = (["time"], np.ones(dataset.pres.shape))
         if bad_pressure is True:
             l.log("Pressure were flagged as bad (4) by the user.")
             dataset["pres_QC"].values *= 4
@@ -277,12 +266,10 @@ def adcp_quality_control(
             pressure_flag = pressure_test(dataset)
             l.log(_msg)
             add_flags_values(dataset["pres_QC"].data, pressure_flag * 4)
-            #dataset["pres_QC"].values[pressure_flag] = 4
             dataset["pres_QC"].attrs["quality_test"] += _msg + '\n'
 
             tiled_pressure_flag = np.tile(pressure_flag, dataset.depth.shape + (1,))
             add_flags_values(vel_flags, tiled_pressure_flag * 3)
-            #vel_flags[tiled_pressure_flag] = 3
             vel_qc_test.append(_msg)
 
     if "temperature" in dataset:
@@ -292,7 +279,6 @@ def adcp_quality_control(
 
         temperature_flags = temperature_test(dataset)
         add_flags_values(dataset['temperature_QC'].data, temperature_flags*4)
-        #dataset['temperature_QC'].data[temperature_flags] = 4
         dataset["temperature_QC"].attrs["quality_test"] += _msg + '\n'
         l.log(_msg)
 
@@ -307,9 +293,8 @@ def adcp_quality_control(
         vb_flag = vertical_beam_test(dataset, amp_th, corr_th, pg_th)
 
         add_ancillary_QC_variable_to_dataset(dataset=dataset, variable='vb_vel', default_flag=1)
-        #### FIXME
-        add_flags_values(dataset["vb_vel_QC"].data, vel_flags * 3)
-        #dataset["vb_vel_QC"] = (["depth", "time"], vb_flag * 3)
+        # FIXME ------------------
+        add_flags_values(dataset["vb_vel_QC"].data, vb_flag * 3)
         dataset["vb_vel_QC"].attrs["quality_test"] = (
             f"amplitude_threshold: {amp_th}\n" * ("vb_amp" in dataset)
             + f"correlation_threshold: {corr_th}\n" * ("vb_corr" in dataset)
@@ -319,7 +304,6 @@ def adcp_quality_control(
     if dataset.attrs['coord_system'] != "beam":
         impossible_vel_flag = flag_implausible_vel(dataset, threshold=ABSOLUTE_IMPOSSIBLE_VELOCITY)
         add_flags_values(vel_flags, impossible_vel_flag * 4)
-        #vel_flags[impossible_vel_flag] = 4
         l.log(f"Implausible velocity, greater than {ABSOLUTE_IMPOSSIBLE_VELOCITY}, were flagged as bad (4).")
 
     if dataset.attrs['coord_system'] == "beam":
@@ -333,7 +317,6 @@ def adcp_quality_control(
         ), axis=0, dtype=bool)
 
     add_flags_values(vel_flags, missing_vel*9)
-    #vel_flags[missing_vel] = 9
 
     for v in velocity_variables:
         add_ancillary_QC_variable_to_dataset(dataset=dataset, variable=v, default_flag=1)
@@ -341,15 +324,8 @@ def adcp_quality_control(
         # dataset[v + "_QC"] = (["depth", "time"], vel_flags)
         dataset[v + "_QC"].attrs["quality_test"] = "\n".join(vel_qc_test)
 
-    # DONE with add_ancillary_QC_variable_dataset
-    # for var in list(dataset.variables):
-    #     if "_QC" in var:
-    #         dataset[var].attrs["quality_date"] = Timestamp.now().strftime("%Y-%m-%d")
-    #         dataset[var].attrs.update(FLAG_ATTRIBUTES)
-
     dataset.attrs["quality_comments"] = l.logbook.split("[Adcp Quality Control]\n")[1]
 
-    #l.log(f"Quality Control was carried out with {l.w_count} warnings") # l.log is not reseted anymore.
     percent_good_vel = (np.sum(vel_flags == 1) + np.sum(vel_flags == 2)) / (len(dataset.depth) * len(dataset.time))
     l.log(f"{round(percent_good_vel * 100, 2)}% of the velocities have flags of 1 or 2.")
 
@@ -579,62 +555,62 @@ def pressure_test(dataset: xr.Dataset) -> np.ndarray:
         )
 
 
-if __name__ == "__main__":
-    import matplotlib.pyplot as plt
-    from magtogoek.adcp.loader import load_adcp_binary
-
-    sillex_path = "/media/jeromejguay/5df6ae8c-2af4-4e5b-a1e0-a560a316bde3/home/jeromejguay/WorkSpace_2019/Data/Raw/ADCP/"
-    sillex_fns = ["COR1805-ADCP-150kHz009_000001", "COR1805-ADCP-150kHz009_000002"]
-
-    v50_files = (
-        "/media/jeromejguay/Bruno/TREX2020/V50/TREX2020_V50_20200911T121242_003_*.ENX"
-    )
-
-    pd0_sw_path = "/home/jeromejguay/ImlSpace/Projects/magtogoek/test/files/sw_300_4beam_20deg_piston.pd0"
-
-    ens_sw_path = (
-        "/home/jeromejguay/ImlSpace/Projects/magtogoek/test/files/rowetech_seawatch.ens"
-    )
-
-    test = "SW_PD0"
-
-    if test == "SV":
-        _dataset = load_adcp_binary(
-            v50_files, sonar="sv", yearbase=2020, orientation="down",
-        )
-
-    if test == "ENX":
-        _dataset = load_adcp_binary(
-            #            [sillex_path + fn + ".ENX" for fn in sillex_fns],
-            sillex_path + "COR1805-ADCP-150kHz009.ENX",
-            sonar="os",
-            yearbase=2018,
-            orientation="down",
-        )
-    if test == "SW_PD0":
-        _dataset = load_adcp_binary(
-            pd0_sw_path, sonar="sw_pd0", yearbase=2020, orientation="down"
-        )
-    if test == "ENS":
-        _dataset = load_adcp_binary(
-            ens_sw_path,
-            sonar="sw",
-            yearbase=2020,
-            orientation="down",
-            leading_index=None,
-            trailing_index=None,
-        )
-
-    adcp_quality_control(
-        _dataset,
-        roll_th=20,
-        pitch_th=20,
-        horizontal_vel_th=2,
-        vertical_vel_th=0.1,
-        sidelobes_correction=True,
-        bottom_depth=None,
-    )
-
-    _dataset.u.where(_dataset.u_QC == 1).plot()
-
-    plt.show()
+# if __name__ == "__main__":
+#     import matplotlib.pyplot as plt
+#     from magtogoek.adcp.loader import load_adcp_binary
+#
+#     sillex_path = "/media/jeromejguay/5df6ae8c-2af4-4e5b-a1e0-a560a316bde3/home/jeromejguay/WorkSpace_2019/Data/Raw/ADCP/"
+#     sillex_fns = ["COR1805-ADCP-150kHz009_000001", "COR1805-ADCP-150kHz009_000002"]
+#
+#     v50_files = (
+#         "/media/jeromejguay/Bruno/TREX2020/V50/TREX2020_V50_20200911T121242_003_*.ENX"
+#     )
+#
+#     pd0_sw_path = "/home/jeromejguay/ImlSpace/Projects/magtogoek/test/files/sw_300_4beam_20deg_piston.pd0"
+#
+#     ens_sw_path = (
+#         "/home/jeromejguay/ImlSpace/Projects/magtogoek/test/files/rowetech_seawatch.ens"
+#     )
+#
+#     test = "SW_PD0"
+#
+#     if test == "SV":
+#         _dataset = load_adcp_binary(
+#             v50_files, sonar="sv", yearbase=2020, orientation="down",
+#         )
+#
+#     if test == "ENX":
+#         _dataset = load_adcp_binary(
+#             #            [sillex_path + fn + ".ENX" for fn in sillex_fns],
+#             sillex_path + "COR1805-ADCP-150kHz009.ENX",
+#             sonar="os",
+#             yearbase=2018,
+#             orientation="down",
+#         )
+#     if test == "SW_PD0":
+#         _dataset = load_adcp_binary(
+#             pd0_sw_path, sonar="sw_pd0", yearbase=2020, orientation="down"
+#         )
+#     if test == "ENS":
+#         _dataset = load_adcp_binary(
+#             ens_sw_path,
+#             sonar="sw",
+#             yearbase=2020,
+#             orientation="down",
+#             leading_index=None,
+#             trailing_index=None,
+#         )
+#
+#     adcp_quality_control(
+#         _dataset,
+#         roll_th=20,
+#         pitch_th=20,
+#         horizontal_vel_th=2,
+#         vertical_vel_th=0.1,
+#         sidelobes_correction=True,
+#         bottom_depth=None,
+#     )
+#
+#     _dataset.u.where(_dataset.u_QC == 1).plot()
+#
+#     plt.show()

@@ -30,9 +30,7 @@ Notes
 
 
 """
-from typing import *
 import numpy as np
-from pandas import Timestamp
 import xarray as xr
 from typing import List
 
@@ -75,7 +73,7 @@ def no_meteoce_quality_control(dataset: xr.Dataset):
 
     l.log("No quality control carried out")
 
-    _add_ancillary_variables_to_dataset(dataset, variables=dataset.variables, default_flag=0)
+    _add_ancillary_variables_to_dataset(dataset, variables=list(dataset.keys()), default_flag=0)
 
     dataset.attrs.update(FLAG_ATTRIBUTES)
     dataset.attrs["quality_comments"] = "No quality control."
@@ -179,8 +177,8 @@ def meteoce_quality_control(
     dataset.attrs.update(FLAG_ATTRIBUTES)
 
 
-def _add_ancillary_variables_to_dataset(dataset: xr.Dataset, variables: str, default_flag: int = 1):
-    for variable in set(dataset.variables).intersection(set(variables)):
+def _add_ancillary_variables_to_dataset(dataset: xr.Dataset, variables: List[str], default_flag: int = 1):
+    for variable in set(dataset.keys()).intersection(set(variables)):
         add_ancillary_QC_variable_to_dataset(dataset=dataset, variable=variable, default_flag=default_flag)
 
 
@@ -190,7 +188,7 @@ def _impossible_values_tests(dataset: xr.Dataset, region: str, flag: int):
     """
     outliers_values = IMPOSSIBLE_PARAMETERS_VALUES[region]
 
-    for variable in set(dataset.variables).intersection(set(outliers_values.keys())):
+    for variable in set(dataset.keys()).intersection(set(outliers_values.keys())):
         if 'units' in dataset[variable].attrs:
             if dataset[variable].attrs['units'] != outliers_values[variable]['units']:
                 l.warning(f"Could not carry out impossible values test (region: {region}) for {variable} due units mismatch.\n"
@@ -234,7 +232,7 @@ def _flag_propagation(dataset: xr.Dataset, use_atm_pressure: bool = False):
         'ph': ['temperature', 'salinity', 'ph'],
         }
 
-    for variable in set(dataset.variables).intersection(set(flag_propagation_rules.keys())):
+    for variable in set(dataset.keys()).intersection(set(flag_propagation_rules.keys())):
         flags_parameters = [
             dataset[_var + '_QC'].data for _var in flag_propagation_rules[variable]
         ]
@@ -248,9 +246,9 @@ def _flag_propagation(dataset: xr.Dataset, use_atm_pressure: bool = False):
 
 def _print_percent_of_good_values(dataset: xr.Dataset):
     """Only check for variables in QC_VARIABLES"""
-    for variable in set(dataset.variables).intersection(set(QC_VARIABLES)):
+    for variable in set(dataset.keys()).intersection(set(QC_VARIABLES)):
         if "_QC" in variable:
-            percent_of_good_values = np.sum(dataset.variables <= 2) / len(dataset.time)
+            percent_of_good_values = np.sum(dataset[variable + "_QC"] <= 2) / len(dataset.time)
             l.log(f"{round(percent_of_good_values * 100, 2)}% of {variable.strip('_QC')} have flags of 1 or 2.")
 
 
@@ -270,7 +268,7 @@ def _climatology_outlier_tests(
         climatology_dataset :
             Dataset containing the climatology.
             For any give `variable_name` to compare with the climatology,
-            the climatology dataset should be structured as follow:
+            the climatology dataset should be structured as follows:
                 Variables:
                     variable_name + '_mean'
                     variable_name + '_std'

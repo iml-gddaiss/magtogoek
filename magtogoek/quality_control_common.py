@@ -254,13 +254,13 @@ def data_spike_detection_tests(dataset: xr.Dataset, variable: str):
     """
     spikes_flag = data_spike_detection(
         dataset[variable].data,
-        inner=SPIKE_DETECTION_PARAMETERS[variable]['inner'],
-        outer=SPIKE_DETECTION_PARAMETERS[variable]['outer']
+        inner_thres=SPIKE_DETECTION_PARAMETERS[variable]['inner'],
+        outer_thres=SPIKE_DETECTION_PARAMETERS[variable]['outer']
     )
     if variable + "_QC" not in dataset.variables:
         add_ancillary_QC_variable_to_dataset(dataset=dataset, variable=variable, default_flag=1)
 
-    add_flags_values(variable + "_QC", spikes_flag * 3)
+    add_flags_values(dataset[variable + "_QC"].values, spikes_flag * 3)
 
     test_comment = \
         f"Spike detection inner threshold {SPIKE_DETECTION_PARAMETERS[variable]['inner']} {SPIKE_DETECTION_PARAMETERS[variable]['units']} " \
@@ -279,12 +279,12 @@ def add_ancillary_QC_variable_to_dataset(dataset: xr.Dataset, variable: str, def
     dataset[variable + "_QC"].attrs.update(FLAG_ATTRIBUTES)
 
 
-def add_flags_values(ancillary_variable: NDArray, new_flags: NDArray):
+def add_flags_values(flag_variable: np.ndarray, new_flags: np.ndarray):
     """Add `new_flags` values if it's greater than the current `ancillary_variable` values.
 
     Parameters
     ----------
-    ancillary_variable :
+    flag_variable :
         Variable to add `flag` value to.
     new_flags :
         Flag value to add.
@@ -293,7 +293,7 @@ def add_flags_values(ancillary_variable: NDArray, new_flags: NDArray):
     -------
 
     """
-    np.maximum(ancillary_variable, new_flags, out=ancillary_variable)
+    np.maximum(flag_variable, new_flags, out=flag_variable)
 
 
 def merge_flags(flags_arrays: List[NDArray]) -> NDArray:
