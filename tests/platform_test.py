@@ -5,6 +5,21 @@ FILENAME = "files/platform_test/test_platforms.json"
 
 def test_load_platform_metadata():
     platform_metadata = load_platform_metadata(platform_file=FILENAME, platform_id="IML6_2017")
+
+    assert platform_metadata.platform.platform_name == "IML-6"
+    assert platform_metadata.platform.platform_type == "buoy"
+    assert platform_metadata.platform.sounding == 100
+    assert platform_metadata.platform.longitude == -60
+    assert platform_metadata.platform.latitude == 50
+    assert platform_metadata.platform.description == "This is a description of the platform."
+
+    assert platform_metadata.buoy_specs.type == "MTE"
+    assert platform_metadata.buoy_specs.model == "Viking"
+    assert platform_metadata.buoy_specs.height == "4.5 m"
+    assert platform_metadata.buoy_specs.diameter == "2.1 m"
+    assert platform_metadata.buoy_specs.weight == "1000 kg"
+    assert platform_metadata.buoy_specs.description == "bouée noire (partie immergée) avec jaune."
+
     assert "CTD_01" in platform_metadata.instruments
 
     assert platform_metadata.instruments["ADCP_01"].sensor_type == "adcp"
