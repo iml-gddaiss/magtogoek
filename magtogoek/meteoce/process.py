@@ -779,7 +779,7 @@ if __name__ == "__main__":
         ),
         OUTPUT=dict(
             netcdf_output=out_path,
-            odf_output=None
+            odf_output=True
         ),
         CRUISE=dict(
             event_qualifier1="meteoce"

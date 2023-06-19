@@ -13,7 +13,6 @@ Notes:
 
 """
 import numpy as np
-from nptyping import NDArray
 from seawater import eos80 as eos
 from typing import Union, List
 
@@ -22,8 +21,8 @@ FARADAY_CONSTANT = 96485.365
 
 
 def compute_density(
-        temperature: np.ndarray,
-        salinity: np.ndarray,
+        temperature: Union[float, np.ndarray],
+        salinity: Union[float, np.ndarray],
         pres: Union[float, List, np.ndarray] = None
 ):
     """Compute density using seawater package eos80 functions.
@@ -51,8 +50,8 @@ def compute_density(
 
 
 def rinko_raw_measurement_from_dissolved_oxygen(
-        dissolved_oxygen: NDArray,
-        temperature: NDArray,
+        dissolved_oxygen: Union[float, np.ndarray],
+        temperature: Union[float, np.ndarray],
         coeffs: List[float],
 ):
     """Compute raw measurements from dissolved oxygen using the temperature and calibration coefficients.
@@ -101,8 +100,8 @@ def rinko_raw_measurement_from_dissolved_oxygen(
 
 
 def dissolved_oxygen_from_rinko_raw_measurement(
-        raw: NDArray,
-        temperature: NDArray,
+        raw: Union[float, np.ndarray],
+        temperature: Union[float, np.ndarray],
         coeffs: List[float]
 ):
     """Compute dissolved oxygen from raw measurements using the temperature and calibration coefficients.
@@ -154,7 +153,7 @@ def dissolved_oxygen_from_rinko_raw_measurement(
     return (A / B - 1) / C
 
 
-def dissolved_oxygen_ml_per_L_to_umol_per_L(dissolved_oxygen: np.ndarray, inverse=False) -> np.ndarray:
+def dissolved_oxygen_ml_per_L_to_umol_per_L(dissolved_oxygen: Union[float, np.ndarray], inverse=False) -> Union[float, np.ndarray]:
     """
     ```(García and Gordon, 1992)
 
@@ -183,7 +182,7 @@ def dissolved_oxygen_ml_per_L_to_umol_per_L(dissolved_oxygen: np.ndarray, invers
     return coeff * dissolved_oxygen
 
 
-def dissolved_oxygen_umol_per_L_to_umol_per_kg(dissolved_oxygen: np.ndarray, density: np.ndarray) -> np.ndarray:
+def dissolved_oxygen_umol_per_L_to_umol_per_kg(dissolved_oxygen: Union[float, np.ndarray], density: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
     """
     ```
 
@@ -206,7 +205,7 @@ def dissolved_oxygen_umol_per_L_to_umol_per_kg(dissolved_oxygen: np.ndarray, den
     return 1000 * dissolved_oxygen / density
 
 
-def compute_scaled_temperature(temperature: np.ndarray) -> np.ndarray:
+def compute_scaled_temperature(temperature: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
     """
 
     ```
@@ -224,7 +223,8 @@ def compute_scaled_temperature(temperature: np.ndarray) -> np.ndarray:
     return np.log((298.15 - temperature) / (273.15 + temperature))
 
 
-def voltEXT_from_pHEXT(temp: np.ndarray, psal: float, ph: np.ndarray, k0: float, k2: float) -> np.ndarray:
+def voltEXT_from_pHEXT(temp: Union[float, np.ndarray], psal: float, ph: Union[float, np.ndarray],
+                       k0: float, k2: float) -> Union[float, np.ndarray]:
     """Based on Seabird documentations
 
     Compute voltExt from the pHext, the temperature measured by the pH probe, the salinity used in the probe configuration
@@ -287,7 +287,8 @@ def voltEXT_from_pHEXT(temp: np.ndarray, psal: float, ph: np.ndarray, k0: float,
                                         + np.log10((1000 - 1.005 * psal) / 1000))
 
 
-def pHEXT_from_voltEXT(temp: np.ndarray, psal: np.ndarray, volt: np.ndarray, k0: float, k2: float) -> np.ndarray:
+def pHEXT_from_voltEXT(temp: Union[float, np.ndarray], psal: Union[float, np.ndarray],
+                       volt: Union[float, np.ndarray], k0: float, k2: float) -> Union[float, np.ndarray]:
     """Taken from Seabird documentations
 
     Compute pH exterior from the exterior voltage using in-situ temperature and salinity.
@@ -351,7 +352,7 @@ def pHEXT_from_voltEXT(temp: np.ndarray, psal: np.ndarray, volt: np.ndarray, k0:
             - np.log10((1000 - 1.005 * psal) / 1000))
 
 
-def total_chloride_in_seawater(psal: np.ndarray) -> np.ndarray:
+def total_chloride_in_seawater(psal: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
     """Taken from Seabird documentations
 
     ```(Dickson et al. 2007)
@@ -374,7 +375,7 @@ def total_chloride_in_seawater(psal: np.ndarray) -> np.ndarray:
     return (0.99889 / 35.453) * (psal / 1.80655) * (1000 / (1000 - 1.005 * psal))
 
 
-def sample_ionic_strength(psal: np.ndarray) -> np.ndarray:
+def sample_ionic_strength(psal: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
     """Taken from Seabird documentations
 
     ```(Dickson et al. 2007)
@@ -397,7 +398,7 @@ def sample_ionic_strength(psal: np.ndarray) -> np.ndarray:
     return (19.924 * psal) / (1000 - 1.005 * psal)
 
 
-def debye_huckel_HCl_activity_constant(temp: np.ndarray) -> np.ndarray:
+def debye_huckel_HCl_activity_constant(temp: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
     """Taken from Seabird documentations
 
     ```(Khoo et al. 1977)
@@ -421,7 +422,7 @@ def debye_huckel_HCl_activity_constant(temp: np.ndarray) -> np.ndarray:
     return 0.0000034286 * temp ** 2 + 0.00067524 * temp + 0.49172143
 
 
-def log_of_HCl_activity_as_temperature_function(temp: np.ndarray, psal: np.ndarray) -> np.ndarray:
+def log_of_HCl_activity_as_temperature_function(temp: Union[float, np.ndarray], psal: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
     """Taken from Seabird documentations
 
     ```(Khoo et al. 1977)
@@ -454,7 +455,7 @@ def log_of_HCl_activity_as_temperature_function(temp: np.ndarray, psal: np.ndarr
     return -(a_dh * np.sqrt(ionic_s)) / (1 + 1.394 * np.sqrt(ionic_s)) + (0.08885 - 0.000111 * temp) * ionic_s
 
 
-def total_sulfate_in_seawater(psal: np.ndarray) -> np.ndarray:
+def total_sulfate_in_seawater(psal: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
     """Taken from Seabird Documentations
 
     ```(Dickson et al. 2007)
@@ -478,7 +479,7 @@ def total_sulfate_in_seawater(psal: np.ndarray) -> np.ndarray:
     return (0.1400 / 96.062) * (psal / 1.80655)
 
 
-def acid_dissociation_constant_HSO4(temp: np.ndarray, psal: np.ndarray) -> np.ndarray:
+def acid_dissociation_constant_HSO4(temp: Union[float, np.ndarray], psal: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
     """Taken from Seabird documentations
 
     ```(Dickson et al. 2007)
@@ -519,9 +520,9 @@ def acid_dissociation_constant_HSO4(temp: np.ndarray, psal: np.ndarray) -> np.nd
     return (1 - 0.001005 * psal) * np.exp(a0 + a1 + a2 + a3 + a4)
 
 
-def log_of_HCl_activity_as_temperature_and_pressure_function(psal: np.ndarray,
-                                                             temp: np.ndarray,
-                                                             pres: np.ndarray) -> np.ndarray:
+def log_of_HCl_activity_as_temperature_and_pressure_function(psal: Union[float, np.ndarray],
+                                                             temp: Union[float, np.ndarray],
+                                                             pres: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
     """(Khoo et al. 1977)
 
    log(Y_HCL)_TP = log_t + ((V_HCl * P) / (10 * ln(10) * R * T)) / 2
@@ -548,7 +549,7 @@ def log_of_HCl_activity_as_temperature_and_pressure_function(psal: np.ndarray,
     return log_t + ((v_hcl * pres) / (10 * np.log(10) * GAS_CONSTANT * temp_k)) / 2
 
 
-def partial_molal_volume_hcl(temp: np.ndarray) -> np.ndarray:
+def partial_molal_volume_hcl(temp: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
     """(Millero 1983)
 
    V_HCl = 17.85 + 0.1044 * t - 0.001316 * t**2

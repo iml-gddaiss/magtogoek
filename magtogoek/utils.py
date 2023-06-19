@@ -8,7 +8,7 @@ from pathlib import Path
 import click
 
 
-def ensure_list_format(value: tp.Union[bool, str, int, float, tp.List[tp.Union[str, int, float]]]) -> tp.List[str]:
+def ensure_list_format(value: tp.Union[bool, str, int, float, tp.List[tp.Union[bool, str, int, float]]]) -> tp.List[tp.Union[bool, str, int, float]]:
     """ Returns element as a list.
 
     Description

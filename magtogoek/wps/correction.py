@@ -6,9 +6,8 @@ This script contains correction algorithm for Water Property Sensor (WPS) data.
 
 """
 from typing import Union, List
-from nptyping import NDArray
 import numpy as np
-#import pandas as pd
+import pandas as pd
 import xarray as xr
 from typing import List
 
@@ -21,10 +20,10 @@ from magtogoek.wps.sci_tools import voltEXT_from_pHEXT, pHEXT_from_voltEXT, comp
 #                      'd1', 'd2')
 
 
-def pH_correction_for_salinity(temperature: NDArray,
-                               salinity: NDArray,
-                               ph_temperature: NDArray,
-                               cal_psal: float, k0: float, k2: float) -> NDArray:
+def pH_correction_for_salinity(temperature: np.ndarray,
+                               salinity: np.ndarray,
+                               ph_temperature: np.ndarray,
+                               cal_psal: float, k0: float, k2: float) -> np.ndarray:
     """
     Recompute pH using in-situ salinity from a CTD.
     1. Compute the pH probe voltage using:
@@ -65,8 +64,8 @@ def pH_correction_for_salinity(temperature: NDArray,
 
 
 def dissolved_oxygen_correction_winkler(
-        dissolved_oxygen: NDArray,
-        temperature: NDArray,
+        dissolved_oxygen: np.ndarray,
+        temperature: np.ndarray,
         coeffs: List[float],
         winkler_coeffs: List[float],
 ):
@@ -100,7 +99,7 @@ def dissolved_oxygen_correction_winkler(
     return dissolved_oxygen_from_rinko_raw_measurement(raw=raw, temperature=temperature, coeffs=coeffs)
 
 
-def dissolved_oxygen_correction_for_salinity_SCOR_WG_142(dissolved_oxygen: NDArray, salinity: NDArray, temperature: NDArray):
+def dissolved_oxygen_correction_for_salinity_SCOR_WG_142(dissolved_oxygen: np.ndarray, salinity: np.ndarray, temperature: np.ndarray):
     """Compute salinity compensated dissolved oxygen using SCOR WG 142 recommended coefficients.
 
     ```(Benson and Krause, 1984; García and Gordon, 1992)
@@ -155,8 +154,8 @@ def dissolved_oxygen_correction_for_salinity_SCOR_WG_142(dissolved_oxygen: NDArr
 
 
 def dissolved_oxygen_correction_for_pressure_JAC(
-        dissolved_oxygen: NDArray, pressure: NDArray
-) -> NDArray:
+        dissolved_oxygen: np.ndarray, pressure: np.ndarray
+) -> np.ndarray:
     """Dissolved oxygen pressure correction for JAC(ARO-FT) oxygen sensor.
 
     ```(Thierry et al., 2022; Uchida et al., 2010)
@@ -196,9 +195,9 @@ def dissolved_oxygen_correction_for_pressure_JAC(
 
 
 def time_drift_correction(
-        data: NDArray, data_time: NDArray,
+        data: np.ndarray, data_time: pd.DateTimeIndex,
         drift: Union[float, List[float]], drift_time: List[str] = None
-) -> NDArray:
+) -> np.ndarray:
     """Apply correction for drift over time as a linear drift. fixme Make a test.
 
     ```
@@ -257,7 +256,7 @@ def time_drift_correction(
     return data - _drift_correction
 
 
-def in_situ_sample_correction(data: NDArray, slope: float, offset: float) -> NDArray:
+def in_situ_sample_correction(data: np.ndarray, slope: float, offset: float) -> np.ndarray:
     """Apply a linear correction using pre-computed linear regression coefficient. fixme TEST
 
     ```

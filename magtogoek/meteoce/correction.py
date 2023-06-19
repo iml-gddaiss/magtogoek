@@ -35,7 +35,7 @@ METEOCE_VARIABLES_TO_CORRECT_FOR_MAGNETIC_DECLINATION = [
 
 # Correct wind for roll and pitch
 
-def meteoce_data_magnetic_declination_correction(dataset: xr.Dataset, pconfig: ProcessConfig):
+def meteoce_data_magnetic_declination_correction(dataset: xr.Dataset, pconfig: "ProcessConfig"):
     """Carry magnetic declination correction on meteoce variables."""
 
     if pconfig.magnetic_declination is not None:
@@ -90,7 +90,7 @@ def wps_data_correction(
             _in_situ_sample_correction(dataset, variable, pconfig)
 
 
-def wind_motion_correction(dataset: xr.dataset):
+def wind_motion_correction(dataset: xr.Dataset):
     u_ship, v_ship = dataset['u_ship'], dataset['v_ship']
     _msg = 'Motion correction correction carried out with u_ship and v_ship.'
 
@@ -112,6 +112,7 @@ def wind_motion_correction(dataset: xr.dataset):
             add_correction_attributes_to_dataarray(dataset[variable])
             dataset[variable].attrs['comments'] += _msg
             l.log(f'{str(variable)} ' + _msg)
+
 
 def _wind_motion_correction(speed, direction, u_ship, v_ship):
     wind_u, wind_v = north_polar2cartesian(speed,direction)
@@ -175,7 +176,7 @@ def _dissolved_oxygen_winkler_correction(dataset: xr.Dataset, pconfig: "ProcessC
         if len(pconfig.rinko_coeffs) == 6:
             if len(pconfig.winkler_coeffs) == 2:
                 dissolved_oxygen_correction_winkler(
-                    dataset['dissolved_oxygen'], dataset['temperature'],
+                    dataset['dissolved_oxygen'].data, dataset['temperature'].data,
                     coeffs=pconfig.rinko_coeffs, winkler_coeffs=pconfig.winkler_coeffs
                 )
                 pconfig.p01_codes_map['dissolved_oxygen'] = "DOXYCZ01"
