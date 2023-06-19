@@ -78,7 +78,7 @@ class BaseProcessConfig:
     platform_file: str = None
     platform_id: str = None
 
-    input_files: str = None
+    input_files: tp.Union[str, tp.List[str]] = None
     netcdf_output: tp.Union[str, bool] = None
     odf_output: tp.Union[str, bool] = None
 
@@ -93,7 +93,6 @@ class BaseProcessConfig:
     make_figures: tp.Union[str, bool] = None
     make_log: bool = None
     odf_data: str = None
-
 
     netcdf_path: str = None
     odf_path: str = None

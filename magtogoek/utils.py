@@ -18,11 +18,13 @@ def ensure_list_format(value: tp.Union[bool, str, int, float, tp.List[tp.Union[s
     [tuple, set] -> [list]
     """
     if isinstance(value, (set, tuple)):
-        value = list(value)
+        _value = list(value)
     elif not isinstance(value, list):
-        value = [value]
+        _value = [value]
+    else:
+        _value = value
 
-    return value
+    return _value
 
 
 def format_filenames_for_print(file_type: str, filenames: tp.List) -> str:
