@@ -35,14 +35,17 @@ from typing import *
 from magtogoek import logger as l
 from magtogoek.sci_tools import rotate_2d_vector, north_polar2cartesian
 from magtogoek.process_common import BaseProcessConfig, resolve_output_paths, add_global_attributes, write_log, \
-    write_netcdf, add_processing_timestamp, clean_dataset_for_nc_output, format_data_encoding, add_navigation
+    write_netcdf, add_processing_timestamp, clean_dataset_for_nc_output, format_data_encoding, add_navigation, \
+    add_platform_metadata_to_dataset, add_correction_attributes_to_dataarray
 from magtogoek.attributes_formatter import format_variables_names_and_attributes
+from magtogoek.platforms import default_platform_metadata
 
 from magtogoek.wps.sci_tools import compute_density, dissolved_oxygen_ml_per_L_to_umol_per_L, dissolved_oxygen_umol_per_L_to_umol_per_kg
 
 from magtogoek.meteoce.loader import load_meteoce_data
 from magtogoek.meteoce.correction import wps_data_correction, meteoce_data_magnetic_declination_correction, wind_motion_correction
 from magtogoek.meteoce.quality_control import meteoce_quality_control, no_meteoce_quality_control
+from magtogoek.meteoce.odf_exporter import make_odf
 
 from magtogoek.adcp.correction import apply_motion_correction as adcp_motion_correction
 from magtogoek.adcp.quality_control import adcp_quality_control, no_adcp_quality_control
@@ -264,6 +267,22 @@ class ProcessConfig(BaseProcessConfig):
         self.global_attributes_to_drop = GLOBAL_ATTRS_TO_DROP
         self.p01_codes_map = P01_CODES_MAP
 
+        self.sensors_to_instrument_id = {
+            'adcp': self.adcp_id,
+            "ctd": self.ctd_id,
+            "ctdo": self.ctdo_id,
+            "doxy": self.doxy_id,
+            # 'nitrate': None,  # Not implemented yet.
+            "ph": self.ph_id,
+            'par': self.par_id,
+            'triplet': self.triplet_id,
+            'co2w': self.co2w_id,
+            'co2a': self.co2a_id,
+            'wave': self.wave_id,
+            'wind': self.wind_id,
+            'meteo': self.meteo_id
+        }
+
 
 def process_meteoce(config: dict, drop_empty_attrs: bool = False, headless: bool = False):
     """Process Viking data with parameters from a config file.
@@ -374,7 +393,10 @@ def _process_meteoce_data(pconfig: ProcessConfig):
     l.section("Adding Global Attributes")
 
     add_global_attributes(dataset, pconfig, STANDARD_GLOBAL_ATTRIBUTES)
-    dataset['sensor_depth'] = pconfig.sensor_depth
+
+    add_platform_metadata_to_dataset(dataset=dataset, pconfig=pconfig)
+
+    _add_platform_instrument_metadata_to_dataset(dataset, pconfig) # TODO TEST
 
     # ------------- #
     # DATA ENCODING #
@@ -395,6 +417,9 @@ def _process_meteoce_data(pconfig: ProcessConfig):
         sensors_to_variables_map=pconfig.sensors_to_variables_map,
         cf_profile_id='time'
     )
+
+    _add_platform_instrument_metadata_to_variables(dataset, pconfig) # TODO TEST
+
     # ------------ #
     # MAKE FIGURES #
     # ------------ #
@@ -498,14 +523,6 @@ def _set_magnetic_declination(dataset: xr.Dataset, pconfig: ProcessConfig):
         pconfig.magnetic_declination = pconfig.magnetic_declination
 
     pconfig.magnetic_declination = None
-
-#
-# def _meteoce_data_magnetic_declination_correction(dataset: xr.Dataset, pconfig: ProcessConfig):
-#     meteoce_data_magnetic_declination_correction(dataset=dataset, pconfig=pconfig)
-#
-#
-# def _wps_data_correction(dataset: xr.Dataset, pconfig: ProcessConfig):
-#     wps_data_correction(dataset, pconfig)
 
 
 def _adcp_correction(dataset: xr.Dataset, pconfig: ProcessConfig):
@@ -660,6 +677,88 @@ def _dissolved_oxygen_umol_per_L_to_umol_per_kg(dataset: xr.Dataset):
             f"Wrong dissolved oxygen units {dataset.dissolved_oxygen.attrs['units']} for conversion from [umol/L] to [umol/kg].")
 
 
+def _add_platform_instrument_metadata_to_dataset(dataset: xr.Dataset, pconfig: ProcessConfig):
+    for sensor, instrument_id in pconfig.sensors_to_instrument_id.items():
+        if instrument_id not in pconfig.platform_metadata.instruments:
+            continue
+
+        instrument_metadata = {
+            'sensor_type': pconfig.platform_metadata.instruments[pconfig.adcp_id].sensor_type,
+            'sensor_height': pconfig.platform_metadata.instruments[pconfig.adcp_id].sensor_height,
+            'sensor_depth': pconfig.platform_metadata.instruments[pconfig.adcp_id].sensor_depth,
+            'serial_number': pconfig.platform_metadata.instruments[pconfig.adcp_id].serial_number, # could be set from raw
+            'manufacturer': pconfig.platform_metadata.instruments[pconfig.adcp_id].manufacturer,
+            'model': pconfig.platform_metadata.instruments[pconfig.adcp_id].model, # could be set from raw (model_number)
+            'firmware_version': pconfig.platform_metadata.instruments[pconfig.adcp_id].firmware_version,
+            'chief_scientist': pconfig.platform_metadata.instruments[pconfig.adcp_id].chief_scientist,
+            'description': pconfig.platform_metadata.instruments[pconfig.adcp_id].description,
+            'comments': pconfig.platform_metadata.instruments[pconfig.adcp_id].comments,
+        }
+
+        for key, value in instrument_metadata.items():
+            if value is None:
+                instrument_metadata.pop(key)
+
+        for variable in set(pconfig.sensors_to_variables_map[sensor]).intersection(set(dataset.variables)):
+            for key, value in instrument_metadata.items():
+                if key in dataset[variable].attrs and not pconfig.force_platform_metadata:
+                    if not dataset[variable].attrs[key]:
+                        dataset[variable].attrs[key] = value
+                else:
+                    dataset[variable].attrs[key] = value
+
+
+def _add_platform_instrument_metadata_to_variables(dataset: xr.Dataset, pconfig: ProcessConfig):
+    for sensor, instrument_id in pconfig.sensors_to_instrument_id.items():
+        if instrument_id not in pconfig.platform_metadata.instruments:
+            continue
+
+        instrument_metadata = {
+            sensor+'_sensor_height': pconfig.platform_metadata.instruments[pconfig.adcp_id].sensor_height,
+            sensor+'_sensor_depth': pconfig.platform_metadata.instruments[pconfig.adcp_id].sensor_depth,
+            sensor+'_serial_number': pconfig.platform_metadata.instruments[pconfig.adcp_id].serial_number,
+            sensor+'_manufacturer': pconfig.platform_metadata.instruments[pconfig.adcp_id].manufacturer,
+            sensor+'_model': pconfig.platform_metadata.instruments[pconfig.adcp_id].model,
+            sensor+'_firmware_version': pconfig.platform_metadata.instruments[pconfig.adcp_id].firmware_version,
+            sensor+'_chief_scientist': pconfig.platform_metadata.instruments[pconfig.adcp_id].chief_scientist,
+            sensor+'_description': pconfig.platform_metadata.instruments[pconfig.adcp_id].description,
+            sensor+'_comments': pconfig.platform_metadata.instruments[pconfig.adcp_id].comments,
+        }
+
+        for key, value in instrument_metadata.items():
+            if value is None:
+                continue
+
+            if key in dataset.attrs and not pconfig.force_platform_metadata:
+                if not dataset.attrs[key]:
+                    dataset.attrs[key] = value
+            else:
+                dataset.attrs[key] = value
+
+
+def _write_odf(dataset: xr.Dataset, pconfig: ProcessConfig):
+    #TODO MAKE A DEFAULT PLATOFRM FILE WITH INSTRUMENTS FOR ODF IF NONE
+    if pconfig.platform_metadata is None:
+        if not pconfig.adcp_id:
+            pconfig.adcp_id = "ADCP_01"
+        platform_metadata = default_platform_metadata(pconfig.platform_type, pconfig.adcp_id, 'adcp')
+    else:
+        if pconfig.adcp_id is None:
+            pconfig.adcp_id = "ADCP_01"
+            pconfig.platform_metadata.add_instrument(instrument_id=pconfig.adcp_id, instrument_meta={"sensor_type": 'adcp'})
+        platform_metadata = pconfig.platform_metadata
+
+    _ = make_odf(
+        dataset=dataset,
+        platform_metadata=platform_metadata,
+        adcp_id=pconfig.adcp_id,
+        global_attributes=pconfig.global_attributes,
+        p01_codes_map=pconfig.p01_codes_map,
+        use_bodc_name=pconfig.use_bodc_name,
+        output_path=pconfig.odf_path,
+    )
+
+
 if __name__ == "__main__":
     import getpass
     import pandas as pd
@@ -713,6 +812,6 @@ if __name__ == "__main__":
         # ADCP_QC
     )
 
-    # process_viking(config)
+    #process_meteoce(_config)
 
     ds = xr.open_dataset(out_path)

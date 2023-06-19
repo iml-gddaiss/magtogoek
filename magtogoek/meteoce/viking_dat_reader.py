@@ -159,6 +159,8 @@ Notes
     Thus wave induced rapid horizontal oscillation and the rocking of the buoy, the GPS being located about ~2-3 meters
     above the floating line, result in higher oscillation and amplitude in the speed values. Since speed dependent values
     are average over ~ 1 minutes, we need at least ~1 minutes average values from the gps.
+[4] .. [June 2023] JeromeJGuay
+    Debit only mesure the amplitude of the flow along the heading of the buoy. It is thus utterly useless
 """
 
 import re

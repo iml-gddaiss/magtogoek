@@ -343,6 +343,7 @@ def _process_adcp_data(pconfig: ProcessConfig):
     else:
         l.log(f"No magnetic declination found in the raw file.")
 
+    # >>>> ADCP SPECIFIC
     if pconfig.magnetic_declination:
         if dataset.attrs['coord_system'] == 'earth':
             apply_magnetic_correction(dataset, pconfig.magnetic_declination)
@@ -353,6 +354,7 @@ def _process_adcp_data(pconfig: ProcessConfig):
     # motion correction #
     if pconfig.motion_correction_mode in ["bt", "nav"]:
         apply_motion_correction(dataset, pconfig.motion_correction_mode)
+    # <<<<
 
     # --------------- #
     # QUALITY CONTROL #
@@ -409,8 +411,6 @@ def _process_adcp_data(pconfig: ProcessConfig):
     )
 
     # >>>> ADCP SPECIFIC
-    _add_platform_adcp_metadata_to_dataset(dataset, pconfig)
-
     _add_platform_adcp_metadata_to_variables(dataset, pconfig, VARIABLES_TO_ADD_SENSOR_METADATA)
 
     _add_sensor_metadata_to_variables(dataset, VARIABLES_TO_ADD_SENSOR_METADATA)

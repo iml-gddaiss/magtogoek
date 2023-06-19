@@ -7,13 +7,6 @@ Module that contains function to load meteoc variable into a dataset.
 
 Notes
 -----
-[1] .. [March 2023] JeromeJGuay
-    The function `_wind_and_wave_direction_correction' made to correct for a possible error in
-    the Viking Buoy internal processing. That is, using a single heading measurements instead
-    of a time average to set the wind and wave directions. The MO tag has this single heading
-    measurements and thus needs to be loaded to make this correction.
-    However, I'm not sure if this is actually the case at this point.
-
 [2] .. [March 2023] JeromeJGuay
     The WXT wind measurements are less accurate than the wmt700. Furthermore, the WXT520
     is more likely to malfunction and not send data while the WMT700 always work.
@@ -98,17 +91,17 @@ def load_viking_data(
 
     viking_data = buoys_data[buoy_name]
 
-    meteoce_data = get_viking_meteoce_data(viking_data)
+    meteoce_data, global_attrs = get_viking_meteoce_data(viking_data)
 
     meteoce_data = _fill_data(meteoce_data)
 
     coords = {'time': np.asarray(viking_data.time)}
 
-    global_attrs = {
+    global_attrs.update({
         'platform': viking_data.buoy_name,
         'buoy_controller_firmware_version': viking_data.firmware,
         'buoy_controller_serial_number': viking_data.controller_sn
-    }
+    })
 
     dataset = xr.Dataset(meteoce_data, coords=coords, attrs=global_attrs)
 
@@ -119,7 +112,7 @@ def load_viking_data(
     return dataset
 
 
-def get_viking_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.MaskedArray, dict]]:
+def get_viking_meteoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[np.ma.MaskedArray, dict]], Dict]:
     """
 
     Parameters
@@ -131,6 +124,7 @@ def get_viking_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.Ma
         {variable_name: str -> (data: np.ma.MaskedArray, attributes: Dict)}
 
     """
+    _global_attrs = {}
     _data = {'lon': (viking_data.longitude, {}),
              'lat': (viking_data.latitude, {}),
              }
@@ -167,27 +161,10 @@ def get_viking_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.Ma
             {'atm_temperature': (viking_data.wxt520['Ta'], {}),
              'atm_humidity': (viking_data.wxt520['Ua'], {}),
              'atm_pressure': (viking_data.wxt520['Pa'], {"units": "mbar"}),
-             #'wxt_mean_wind': (np.round(viking_data.wxt520['Sm'] * KNOTS_TO_METER_PER_SECONDS, 3), {'units': 'm/s'}), # For test
-             #'wxt_mean_wind_direction': (viking_data.wxt520['Dm'], {}),
              }
         )
 
-        # See note 2 in the module docstring.
-        #
-        # A parameter could be added to choose where to load wind data from.
-        # wind data from wxt520 are not loaded at the moment.
-        # for nc_name, viking_name, scale, unit in zip(
-        #         ('wind_mean', 'wind_direction_mean', 'wind_max', 'wind_direction_max'),
-        #         ('Sm', 'Dm', 'Sx', 'Dx'),
-        #         (KNOTS_TO_METER_PER_SECONDS, 1, KNOTS_TO_METER_PER_SECONDS, 1),
-        #         ('m/s', '', 'm/s', '')
-        # ):
-        #     if nc_name in _data:
-        #         print(_data[nc_name], type(_data[nc_name]))
-        #         if not (~_data[nc_name][0].mask).any():
-        #             _data[nc_name] = (viking_data.wxt520[viking_name] * scale, {'units': unit})
-        #     else:
-        #         _data[nc_name] = (viking_data.wxt520[viking_name] * scale, {'units': unit})
+        # Wxt520 wind values are not use. See note 2 in the module docstring.
 
         l.log('wxt520 data loaded.')
 
@@ -210,10 +187,10 @@ def get_viking_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.Ma
         l.log('Ctdo data loaded.')
 
     if viking_data.wph is not None:
-        _attrs = {
-            'serial_number': viking_data.wph['serial_number'][~viking_data.wph['serial_number'].mask][0],
-            'model': viking_data.wph['model'][~viking_data.wph['model'].mask][0]
-        }
+        _serial_number = viking_data.wph['serial_number'][~viking_data.wph['serial_number'].mask][0]
+        _model = viking_data.wph['model'][~viking_data.wph['model'].mask][0]
+        _attrs = {'serial_number': _serial_number, 'model': _model}
+        _global_attrs.update({'ph_serial_number': _serial_number, 'ph_model': _model})
         _data.update(
             {
                 'ph': (viking_data.wph['ext_ph'], {**_attrs, **{"units": "pH_NBS_scale"}}),
@@ -222,8 +199,11 @@ def get_viking_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.Ma
         l.log('Wph data loaded.')
 
     if viking_data.triplet is not None:
-        _attrs = {'serial_number': viking_data.triplet['serial_number'][~viking_data.triplet['serial_number'].mask][0],
-                  'model': viking_data.triplet['model_number'][~viking_data.triplet['model_number'].mask][0]}
+        _serial_number = viking_data.triplet['serial_number'][~viking_data.triplet['serial_number'].mask][0]
+        _model = viking_data.triplet['model_number'][~viking_data.triplet['model_number'].mask][0]
+        _attrs = {'serial_number': _serial_number, 'model': _model}
+        _global_attrs.update({'triplet_serial_number': _serial_number, 'triplet_model': _model})
+
         _data.update(
             {
                 'fluorescence': (viking_data.triplet['fluo_calculated'], {**_attrs, **{"units": "mg/m**3"}}),
@@ -234,10 +214,12 @@ def get_viking_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.Ma
         l.log('Triplet data loaded.')
 
     if viking_data.par_digi is not None:
-        _attrs = {
-            'serial_number': viking_data.par_digi['serial_number'][~viking_data.par_digi['serial_number'].mask][0],
-            'model': viking_data.par_digi['model_number'][~viking_data.par_digi['model_number'].mask][0]
-        }
+        _serial_number = viking_data.par_digi['serial_number'][~viking_data.par_digi['serial_number'].mask][0]
+        _model = viking_data.par_digi['model_number'][~viking_data.par_digi['model_number'].mask][0]
+
+        _attrs = {'serial_number': _serial_number, 'model': _model}
+        _global_attrs.update({'par_serial_number': _serial_number, 'par_triplet_model': _model})
+
         _data['par'] = (viking_data.par_digi['PAR'], {**_attrs, **{"units": "umol/m**2/s"}})
         l.log('Par Digi data loaded.')
 
@@ -273,8 +255,11 @@ def get_viking_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.Ma
         l.log('Rdi data loaded.')
 
     elif viking_data.rti is not None:
-        _attrs = {'bin': viking_data.rti['bin'][~viking_data.rti['bin'].mask],
-                  'position': viking_data.rti['position_cm'][~viking_data.rti['position_cm'].mask] * CENTIMETER_TO_METER}
+        _bin = viking_data.rti['bin'][~viking_data.rti['bin'].mask]
+        _bin_position_cm = viking_data.rti['position_cm'][~viking_data.rti['position_cm'].mask] * CENTIMETER_TO_METER
+        _attrs = {'bin': _bin, 'bin_position_cm': _bin_position_cm}
+        _global_attrs = {'adcp_bin': _bin, 'adcp_bin_position_cm': _bin_position_cm}
+
         for _name in ['u', 'v', 'w', 'e']:
             _data[_name] = (viking_data.rti[_name] * MILLIMETER_TO_METER, {**_attrs, **{"units": "m/s"}})
             _data["bt_" + _name] = (viking_data.rti["bt_" + _name] * MILLIMETER_TO_METER, {**_attrs, **{"units": "m/s"}})
@@ -283,20 +268,7 @@ def get_viking_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.Ma
             _data["bt_"+_name] = (viking_data.rti["bt_"+_name], _attrs)
         l.log('Rti data loaded.')
 
-    # Useless since it returns only the amplitude of the current along the heading axis.
-    #
-    # if viking_data.debit is not None:
-    #     _data.update(
-    #         {'surface_current': (viking_data.debit['flow'], {})}
-    #     )
-
-    # See note [1] in module docstring.
-    #
-    # if viking_data.mo is not None:
-    #     _data['last_heading'] = (viking_data.mo['heading'], {})
-    #     l.log('Mo heading loaded.')
-
-    return _data
+    return _data, _global_attrs
 
 
 def _fill_data(data: Dict[str, Tuple[np.ma.MaskedArray, dict]]) -> Dict[str, Tuple[List[str], np.ndarray, dict]]:
