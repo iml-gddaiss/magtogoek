@@ -59,7 +59,6 @@ def format_variables_names_and_attributes(
         dataset: xr.Dataset,
         use_bodc_name: bool,
         p01_codes_map: dict,
-#        sensors_to_variables_map: dict, # FIXME
         cf_profile_id: str = 'time',
 ) -> xr.Dataset:
     """Format variables names and attributes
@@ -93,8 +92,6 @@ def format_variables_names_and_attributes(
     _add_generic_name_to_variables(dataset)
 
     original_coords_name = dataset.coords
-
-    #_add_sensors_attributes_to_variables(dataset, sensors_to_variables_map)
 
     dataset = _convert_variables_names(dataset, p01_codes_map)
 
@@ -209,49 +206,6 @@ def _add_data_min_max_to_var_attrs(dataset):
                 dataset[var].attrs["data_max"] = dataset[var].max().values
                 dataset[var].attrs["data_min"] = dataset[var].min().values
 
-
-# def _add_sensors_attributes_to_variables(dataset: xr.Dataset, sensors_to_variables_map: tp.Dict[str, tp.List[str]]):
-#     """
-#         Adds attributes `sensor_type`, `sensor_depth` and `serial_number` to each variable
-#     in the `dataset` if the dataset has the attributes
-#     (`<sensor_type>_sensor_type`, `<sensor_type>_sensor_depth`, `<sensor_type>_serial_number`)
-#     of the corresponding {<sensor_type>:'var'}.
-#
-#     Parameters
-#     ----------
-#     dataset
-#     sensors_to_variables_map
-#
-#     """
-#     for sensor, variables in sensors_to_variables_map.items():
-#         for var in set(variables).intersection(set(dataset.variables)):
-#
-#             dataset[var].attrs['sensor_type'] = sensor
-#
-#             for attr in ["depth", "height", "serial_number"]:
-#                 global_attr = "_".join([sensor, attr])
-#                 if global_attr in dataset.attrs:
-#                     dataset[var].attrs[attr] = dataset.attrs[global_attr]
-#
-# #
-#
-# def _add_sensor_attributes(sensor_type: str, variable: str, dataset: xr.Dataset):
-#     """
-#     Adds attributes `sensor_type`, `sensor_depth` (or `sensor_height`) and `serial_number`
-#     to the `variable` attribute using the `dataset` attribute
-#     `<sensor_type>_depth` (or `<sensor_type>_height`) and `<sensor_type>_serial_number`.
-#
-#     Parameters
-#     ----------
-#     sensor_type
-#     variable
-#     dataset
-#     """
-#     for attr in["depth", "height", "serial_number"]:
-#         global_attr = "_".join([sensor_type, attr])
-#         if global_attr in dataset.attrs:
-#             dataset[variable].attrs[attr] = dataset.attrs[global_attr]
-#
 
 def _add_ancillary_variables_to_var_attrs(dataset: xr.Dataset):
     """add ancillary_variables to variables attributes
