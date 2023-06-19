@@ -12,14 +12,14 @@ import typing as tp
 import xarray as xr
 from pathlib import Path
 
-from magtogoek import TERMINAL_WIDTH
+from magtogoek import TERMINAL_WIDTH, DEFAULT_PLATFORM_TYPE
 from magtogoek import logger as l
 from magtogoek.attributes_formatter import compute_global_attrs
 from magtogoek.navigation import load_navigation
 from magtogoek.platforms import PlatformMetadata, load_platform_metadata
 from magtogoek.utils import ensure_list_format
 
-DEFAULT_PLATFORM_TYPE = "buoy"
+
 CONFIG_GLOBAL_ATTRS_SECTIONS = ["NETCDF_CF", "PROJECT", "CRUISE", "GLOBAL_ATTRIBUTES"]
 
 ADCP_DATA_TYPES = { # SHOULDN'T THIS BE IN THE adcp/__init__.py FIXME
@@ -110,7 +110,7 @@ class BaseProcessConfig:
     global_attributes: dict = None
 
     # platform metadata object
-    platform_metadata: PlatformMetadata = None
+    platform_metadata: tp.Optional[PlatformMetadata] = None
 
     def __init__(self, config_dict: dict = None):
         self.global_attributes: dict = {}
@@ -129,7 +129,7 @@ class BaseProcessConfig:
         if self.platform_type is None:
             self.platform_type = DEFAULT_PLATFORM_TYPE
 
-    def _load_config_dict(self, config: dict) -> dict:
+    def _load_config_dict(self, config: dict):
         """Split and flattens"""
         for section, options in config.items():
             if section in CONFIG_GLOBAL_ATTRS_SECTIONS:

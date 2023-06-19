@@ -53,7 +53,7 @@ import typing as tp
 import xarray as xr
 
 import magtogoek.logger as l
-from magtogoek.platforms import default_platform_metadata
+from magtogoek.platforms import PlatformMetadata
 from magtogoek.adcp.adcp_plots import make_adcp_figure
 from magtogoek.adcp.loader import load_adcp_binary
 from magtogoek.adcp.correction import apply_motion_correction, apply_magnetic_correction
@@ -80,7 +80,6 @@ VARIABLES_TO_DROP = [
 GLOBAL_ATTRS_TO_DROP = [
     "xducer_depth",
     "sonar",
-    "variables_gen_name",
     "binary_mask_tests",
     "binary_mask_tests_values",
 ]
@@ -722,19 +721,17 @@ def _write_odf(dataset: xr.Dataset, pconfig: ProcessConfig):
     odf_data = {'both': ['VEL', 'ANC'], 'vel': ['VEL'], 'anc': ['ANC']}[pconfig.odf_data]
 
     if pconfig.platform_metadata is None:
-        if not pconfig.adcp_id:
-            pconfig.adcp_id = "ADCP_01"
-        platform_metadata = default_platform_metadata(pconfig.platform_type, pconfig.adcp_id, 'adcp')
-    else:
-        if pconfig.adcp_id is None:
-            pconfig.adcp_id = "ADCP_01"
-            pconfig.platform_metadata.add_instrument(instrument_id=pconfig.adcp_id, instrument_meta={"sensor_type": 'adcp'})
-        platform_metadata = pconfig.platform_metadata
+        pconfig.platform_metadata = PlatformMetadata()
+        pconfig.platform_metadata.platform.platform_type = pconfig.platform_type
+
+    if pconfig.adcp_id is None:
+        pconfig.adcp_id = "adcp_01"
+        pconfig.platform_metadata.add_instrument(instrument_id=pconfig.adcp_id, instrument_meta={"sensor_type": 'adcp'})
 
     for qualifier in odf_data:
         _ = make_odf(
             dataset=dataset,
-            platform_metadata=platform_metadata,
+            platform_metadata=pconfig.platform_metadata,
             adcp_id=pconfig.adcp_id,
             global_attributes=pconfig.global_attributes,
             p01_codes_map=pconfig.p01_codes_map,

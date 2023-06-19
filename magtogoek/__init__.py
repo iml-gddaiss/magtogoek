@@ -27,6 +27,7 @@ GENERIC_PARAMETERS = list(
 
 
 PLATFORM_TYPES = ["buoy", "mooring", "ship", "lowered"]
+DEFAULT_PLATFORM_TYPE = "buoy"
 
 
 ### MAGTOGOEK CONFIGURATION FILES PATH ###

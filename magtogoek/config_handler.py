@@ -214,8 +214,6 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
     else:
         tparser.add_option(section, "process", dtypes=["str"], default=process, is_required=True, choice=PROCESSES, comments=f'One of {PROCESSES}.')
 
-    tparser.add_option(section, "platform_type", dtypes=["str"], choice=["buoy", "mooring", "ship", "lowered"], comments='One of [buoy, mooring, ship, lowered]. Superseded by `platform_type` in the platform file.')
-
     section = "INPUT"
     tparser.add_option(section, "input_files", dtypes=["str"], default="", nargs_min=1, is_file=True, is_required=True)
     tparser.add_option(section, "platform_file", dtypes=["str"], default=None, is_file=True)
@@ -280,6 +278,8 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
 
     if process == 'adcp':
         section = "ADCP_PROCESSING"
+        tparser.add_option(section, "platform_type", dtypes=["str"], choice=["buoy", "mooring", "ship", "lowered"],
+                           comments='One of [buoy, mooring, ship, lowered]. Superseded by `platform_type` in the platform file.')
         if version == 0:
             tparser.add_option(section, "sensor_id", dtypes=["str"], default=None) # convert to adcp_id ?
         else:
@@ -338,13 +338,20 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
         tparser.add_option(section, "adcp_id", dtypes=["str"], default=None)
         tparser.add_option(section, "ctd_id", dtypes=["str"], default=None)
         tparser.add_option(section, "ctdo_id", dtypes=["str"], default=None)
-        tparser.add_option(section, "nitrate_id", dtypes=["str"], default=None)
-        # ...
+        tparser.add_option(section, "doxy_id", dtypes=["str"], default=None)
+        #tparser.add_option(section, "nitrate_id", dtypes=["str"], default=None)
+        tparser.add_option(section, "ph_id", dtypes=["str"], default=None)
+        tparser.add_option(section, "par_id", dtypes=["str"], default=None)
+        tparser.add_option(section, "triplet_id", dtypes=["str"], default=None)
+        tparser.add_option(section, "co2w_id", dtypes=["str"], default=None)
+        tparser.add_option(section, "co2a_id", dtypes=["str"], default=None)
+        tparser.add_option(section, "wave_id", dtypes=["str"], default=None)
+        tparser.add_option(section, "wind_id", dtypes=["str"], default=None)
+        tparser.add_option(section, "meteo_id", dtypes=["str"], default=None)
+
         # ...
         # ...
 
-        tparser.add_option(section, "leading_trim", dtypes=["int", "str"], default="", is_time_stamp=True)
-        tparser.add_option(section, "trailing_trim", dtypes=["int", "str"], default="", is_time_stamp=True)
         tparser.add_option(section, "magnetic_declination", dtypes=["float"], default="")
         tparser.add_option(section, "motion_correction_mode", dtypes=["str"], default="bt", choice=["bt", "nav", "off"], comments='[bt, nav, off].')
         tparser.add_option(section, "compute_uv_ship", dtypes=["str"], default="drop", choice=["sc", "ll", "off"], comments='[sc, ll, off] sc: speed & course, ll: longitude & latitude', null_value="keep")

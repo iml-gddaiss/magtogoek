@@ -41,11 +41,11 @@ def make_odf(
     platform_metadata :
         Metadata from the platform file.
     adcp_id :
-        FIXME
+        instrument_id of the adcp in the platform_metadata.
     global_attributes :
         Global attributes parameter from the configFile.
     p01_codes_map :
-        FIXME
+        generic name to bodc p01_code mapping.
     use_bodc_name:
         If True, map from the generic to the BODC p01 variables names.
     event_qualifier2:

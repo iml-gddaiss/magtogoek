@@ -38,7 +38,7 @@ from magtogoek.process_common import BaseProcessConfig, resolve_output_paths, ad
     write_netcdf, add_processing_timestamp, clean_dataset_for_nc_output, format_data_encoding, add_navigation, \
     add_platform_metadata_to_dataset, add_correction_attributes_to_dataarray
 from magtogoek.attributes_formatter import format_variables_names_and_attributes
-from magtogoek.platforms import default_platform_metadata
+from magtogoek.platforms import PlatformMetadata
 
 from magtogoek.wps.sci_tools import compute_density, dissolved_oxygen_ml_per_L_to_umol_per_L, dissolved_oxygen_umol_per_L_to_umol_per_kg
 
@@ -60,13 +60,8 @@ STANDARD_GLOBAL_ATTRIBUTES = {"featureType": "timeSeriesProfile"}
 VARIABLES_TO_DROP = ['ph_temperature', 'speed', 'course', 'gps_magnetic_declination']#, 'last_heading'] Not currently loaded
 
 GLOBAL_ATTRS_TO_DROP = [
-    "VAR_TO_ADD_SENSOR_TYPE",
-    "P01_CODES_MAP",
-    #"xducer_depth",
-    "variables_gen_name",
     "binary_mask_tests",
     "binary_mask_tests_values",
-    #"bodc_name"
 ]
 
 # This mapping can be updating by the meteoce.corrections modules.
@@ -127,6 +122,7 @@ P01_CODES_MAP = {
     'v_ship': "APNSGP01"
 }
 
+
 SENSORS_TO_VARIABLES_MAP = {
     'adcp': [
         "u", "v", "w", "e", "bt_u", "bt_v", "bt_w", "bt_e",
@@ -148,6 +144,7 @@ SENSORS_TO_VARIABLES_MAP = {
     'meteo': ['atm_temperature', 'atm_humidity', 'atm_pressure']
 }
 
+
 ADCP_VARIABLES_FOR_QC = [
     "u", "v", "w", "e",
     "bt_u", "bt_v", "bt_w", "bt_e",
@@ -162,15 +159,21 @@ class ProcessConfig(BaseProcessConfig):
     # PROCESSING
     buoy_name: str = None
     data_format: str = None # [viking_dat, ]
-    sensor_depth: float = None
-    # wind_sensor: str = None # only the wmt700 is used for wind.
 
     ##### ID #####
     adcp_id: str = None
     ctd_id: str = None
     ctdo_id: str = None
-    nitrate_id: str = None
-    # ADD MORE
+    doxy_id: str = None
+    #nitrate_id: str = None
+    ph_id: str = None
+    par_id: str = None
+    triplet_id: str = None
+    co2w_id: str = None
+    co2a_id: str = None
+    wave_id: str = None
+    wind_id: str = None
+    meteo_id: str = None
 
     ##### COMPUTE #####
     # GPS
@@ -262,6 +265,7 @@ class ProcessConfig(BaseProcessConfig):
 
     def __init__(self, config_dict: dict = None):
         super().__init__(config_dict)
+        self.platform_type = "buoy"  # This needs to be buoy
         self.sensors_to_variables_map = SENSORS_TO_VARIABLES_MAP
         self.variables_to_drop = VARIABLES_TO_DROP
         self.global_attributes_to_drop = GLOBAL_ATTRS_TO_DROP
@@ -441,7 +445,7 @@ def _process_meteoce_data(pconfig: ProcessConfig):
     l.section("Output")
     if pconfig.odf_output is True:
         l.warning('ODF output implemented yet')  # TODO
-    #        _write_odf(dataset, pconfig)
+        _write_odf(dataset, pconfig)
 
     # ----------------- #
     # NETCDF FORMATTING #
@@ -739,19 +743,17 @@ def _add_platform_instrument_metadata_to_variables(dataset: xr.Dataset, pconfig:
 def _write_odf(dataset: xr.Dataset, pconfig: ProcessConfig):
     #TODO MAKE A DEFAULT PLATOFRM FILE WITH INSTRUMENTS FOR ODF IF NONE
     if pconfig.platform_metadata is None:
-        if not pconfig.adcp_id:
-            pconfig.adcp_id = "ADCP_01"
-        platform_metadata = default_platform_metadata(pconfig.platform_type, pconfig.adcp_id, 'adcp')
-    else:
-        if pconfig.adcp_id is None:
-            pconfig.adcp_id = "ADCP_01"
-            pconfig.platform_metadata.add_instrument(instrument_id=pconfig.adcp_id, instrument_meta={"sensor_type": 'adcp'})
-        platform_metadata = pconfig.platform_metadata
+        pconfig.platform_metadata = PlatformMetadata()
+        pconfig.platform_metadata.platform.platform_type = pconfig.platform_type
+
+    for key, value in pconfig.sensors_to_instrument_id.items():
+        if value is None:
+            pconfig.platform_metadata.add_instrument(instrument_id=key+f"_01",
+                                                     instrument_meta={"sensor_type": key})
 
     _ = make_odf(
         dataset=dataset,
-        platform_metadata=platform_metadata,
-        adcp_id=pconfig.adcp_id,
+        platform_metadata=pconfig.platform_metadata,
         global_attributes=pconfig.global_attributes,
         p01_codes_map=pconfig.p01_codes_map,
         use_bodc_name=pconfig.use_bodc_name,
@@ -765,7 +767,7 @@ if __name__ == "__main__":
 
     file_path = '/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat'
     out_path = '/home/jeromejguay/ImlSpace/Data/iml4_2021/meteoc_riki_2021.nc'
-    config = dict(
+    _config = dict(
         HEADER=dict(
             process="viking_buoy",
             platform_type=None
