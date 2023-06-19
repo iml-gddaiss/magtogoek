@@ -224,7 +224,7 @@ TAG_VARS = dict(
 )
 
 
-class VikingData():
+class VikingData:
     """Object to store Viking data. """
 
     def __init__(self, buoy_name: str, firmware: str, controller_sn: str):

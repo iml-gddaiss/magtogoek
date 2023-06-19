@@ -40,11 +40,11 @@ matplotlib.use('Qt5Agg')
 KNOTS_TO_METER_PER_SECONDS = 1 / 1.944   # 1 kt = (1/1.944) m/s
 MILLIMETER_TO_METER = 1 / 1000
 CENTIMETER_TO_METER = 1 / 100
-#MILLIBAR_TO_DECIBAR = 1 / 100
+#  MILLIBAR_TO_DECIBAR = 1 / 100
 
 
 def load_meteoce_data(
-        filenames: Tuple[str, List[str]],
+        filenames: Union[str, List[str]],
         buoy_name: str = None,
         data_format: str = 'viking_dat',
 ) -> xr.Dataset:
@@ -75,7 +75,7 @@ def load_meteoce_data(
 
 
 def load_viking_data(
-        filenames: Tuple[str, List[str]],
+        filenames: Union[str, List[str]],
         buoy_name: str = None,
         ) -> xr.Dataset:
 
@@ -100,23 +100,19 @@ def load_viking_data(
 
     meteoce_data = get_viking_meteoce_data(viking_data)
 
+    meteoce_data = _fill_data(meteoce_data)
+
     coords = {'time': np.asarray(viking_data.time)}
 
     global_attrs = {
-        'buoy_name': viking_data.buoy_name,
-        'firmware': viking_data.firmware,
-        'controller_serial_number': viking_data.controller_sn
+        'platform': viking_data.buoy_name,
+        'buoy_controller_firmware_version': viking_data.firmware,
+        'buoy_controller_serial_number': viking_data.controller_sn
     }
-
-    meteoce_data = _fill_data(meteoce_data)
 
     dataset = xr.Dataset(meteoce_data, coords=coords, attrs=global_attrs)
 
     dataset = _average_duplicates(dataset, 'time')
-
-    # See note 1 in module docstring
-    #
-    #_wind_and_wave_direction_correction(dataset=meteoce_data) # Seem to be already using the average heading afterall
 
     dataset.attrs['logbook'] = l.logbook
 
@@ -124,6 +120,17 @@ def load_viking_data(
 
 
 def get_viking_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.MaskedArray, dict]]:
+    """
+
+    Parameters
+    ----------
+    viking_data
+
+    Returns
+    -------
+        {variable_name: str -> (data: np.ma.MaskedArray, attributes: Dict)}
+
+    """
     _data = {'lon': (viking_data.longitude, {}),
              'lat': (viking_data.latitude, {}),
              }
@@ -181,6 +188,7 @@ def get_viking_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.Ma
         #             _data[nc_name] = (viking_data.wxt520[viking_name] * scale, {'units': unit})
         #     else:
         #         _data[nc_name] = (viking_data.wxt520[viking_name] * scale, {'units': unit})
+
         l.log('wxt520 data loaded.')
 
     if viking_data.ctd is not None:
@@ -204,7 +212,7 @@ def get_viking_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.Ma
     if viking_data.wph is not None:
         _attrs = {
             'serial_number': viking_data.wph['serial_number'][~viking_data.wph['serial_number'].mask][0],
-            'model_number': viking_data.wph['model'][~viking_data.wph['model'].mask][0]
+            'model': viking_data.wph['model'][~viking_data.wph['model'].mask][0]
         }
         _data.update(
             {
@@ -215,7 +223,7 @@ def get_viking_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.Ma
 
     if viking_data.triplet is not None:
         _attrs = {'serial_number': viking_data.triplet['serial_number'][~viking_data.triplet['serial_number'].mask][0],
-                  'model_number': viking_data.triplet['model_number'][~viking_data.triplet['model_number'].mask][0]}
+                  'model': viking_data.triplet['model_number'][~viking_data.triplet['model_number'].mask][0]}
         _data.update(
             {
                 'fluorescence': (viking_data.triplet['fluo_calculated'], {**_attrs, **{"units": "mg/m**3"}}),
@@ -228,7 +236,7 @@ def get_viking_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.Ma
     if viking_data.par_digi is not None:
         _attrs = {
             'serial_number': viking_data.par_digi['serial_number'][~viking_data.par_digi['serial_number'].mask][0],
-            'model_number': viking_data.par_digi['model_number'][~viking_data.par_digi['model_number'].mask][0]
+            'model': viking_data.par_digi['model_number'][~viking_data.par_digi['model_number'].mask][0]
         }
         _data['par'] = (viking_data.par_digi['PAR'], {**_attrs, **{"units": "umol/m**2/s"}})
         l.log('Par Digi data loaded.')
@@ -293,13 +301,19 @@ def get_viking_meteoce_data(viking_data: VikingData) -> Dict[str, Tuple[np.ma.Ma
 
 def _fill_data(data: Dict[str, Tuple[np.ma.MaskedArray, dict]]) -> Dict[str, Tuple[List[str], np.ndarray, dict]]:
     """
+    Fill the masked_array missing values with the predefined np.ma.MaskedArray filled value.
+
+    Should be np.nan or 'nan'.
+
+    See magtogoek.meteoce.viking_dat_reader.py for the filled value.
     """
+    _data = {}
     for key, item in data.items():
-        data[key] = ('time', item[0].filled(), item[1])
+        _data[key] = (['time'], item[0].filled(), item[1])
 
     l.log('Missing data filled.')
 
-    return data
+    return _data
 
 
 def _average_duplicates(dataset: xr.Dataset, coord: str) -> xr.Dataset:
