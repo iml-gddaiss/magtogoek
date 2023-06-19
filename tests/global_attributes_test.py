@@ -1,7 +1,7 @@
 import pytest
 import xarray as xr
 from magtogoek.process_common import BaseProcessConfig, add_global_attributes, add_platform_metadata_to_dataset
-from magtogoek.platforms import default_platform_metadata
+from magtogoek.platforms import PlatformMetadata
 
 STANDARD_GLOBAL_ATTRIBUTES = {
     "featureType": "timeSeriesProfile",
@@ -22,8 +22,9 @@ CONFIG_DICT = {
     },
 }
 
-DEFAULT_METADATA = default_platform_metadata("buoy", "test_instrument", "adcp")
+DEFAULT_METADATA = PlatformMetadata()
 
+DEFAULT_METADATA.platform.platform_type = "buoy"
 DEFAULT_METADATA.platform.platform_name = 'test_platform_name'
 DEFAULT_METADATA.platform.platform_model = 'test_platform_model'
 DEFAULT_METADATA.platform.sounding = 333
