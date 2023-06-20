@@ -26,8 +26,6 @@ Notes
     are average over ~ 1 minutes, we need at least ~1 minutes average values from the gps.who C<e
 
 """
-# import sys
-# import click
 
 import xarray as xr
 from typing import *
@@ -315,7 +313,6 @@ def process_meteoce(config: dict, drop_empty_attrs: bool = False, headless: bool
 
     _process_meteoce_data(pconfig)
 
-
 def _load_climatology(pconfig: ProcessConfig):
     try:
         pconfig.climatology_dataset = xr.open_dataset(pconfig.climatology_dataset_path)
@@ -418,7 +415,6 @@ def _process_meteoce_data(pconfig: ProcessConfig):
         dataset=dataset,
         use_bodc_name=pconfig.use_bodc_name,
         p01_codes_map=pconfig.p01_codes_map,
-        sensors_to_variables_map=pconfig.sensors_to_variables_map,
         cf_profile_id='time'
     )
 
@@ -578,13 +574,16 @@ def _quality_control(dataset: xr.Dataset, pconfig: ProcessConfig) -> xr.Dataset:
     Or call the qc function from viking_quality_control. ??
     """
     adcp_dataset = _make_adcp_sub_dataset(dataset)
+    adcp_dataset.attrs['coord_system'] = 'earth'
 
     if pconfig.quality_control is True:
         dataset = _meteoce_quality_control(dataset, pconfig)
-        adcp_dataset = _adcp_quality_control(dataset, pconfig)
+        adcp_dataset = _adcp_quality_control(adcp_dataset, pconfig)
     else:
-        dataset = no_meteoce_quality_control(dataset)
-        adcp_dataset = no_adcp_quality_control(adcp_dataset)
+        no_meteoce_quality_control(dataset)
+        no_adcp_quality_control(adcp_dataset)
+
+    adcp_dataset.attrs.pop('coord_system')
 
     _merge_adcp_quality_control(dataset, adcp_dataset)
 
@@ -682,62 +681,64 @@ def _dissolved_oxygen_umol_per_L_to_umol_per_kg(dataset: xr.Dataset):
 
 
 def _add_platform_instrument_metadata_to_dataset(dataset: xr.Dataset, pconfig: ProcessConfig):
-    for sensor, instrument_id in pconfig.sensors_to_instrument_id.items():
-        if instrument_id not in pconfig.platform_metadata.instruments:
-            continue
+    if pconfig.platform_metadata is not None:
+        for sensor, instrument_id in pconfig.sensors_to_instrument_id.items():
+            if instrument_id not in pconfig.platform_metadata.instruments:
+                continue
 
-        instrument_metadata = {
-            'sensor_type': pconfig.platform_metadata.instruments[pconfig.adcp_id].sensor_type,
-            'sensor_height': pconfig.platform_metadata.instruments[pconfig.adcp_id].sensor_height,
-            'sensor_depth': pconfig.platform_metadata.instruments[pconfig.adcp_id].sensor_depth,
-            'serial_number': pconfig.platform_metadata.instruments[pconfig.adcp_id].serial_number, # could be set from raw
-            'manufacturer': pconfig.platform_metadata.instruments[pconfig.adcp_id].manufacturer,
-            'model': pconfig.platform_metadata.instruments[pconfig.adcp_id].model, # could be set from raw (model_number)
-            'firmware_version': pconfig.platform_metadata.instruments[pconfig.adcp_id].firmware_version,
-            'chief_scientist': pconfig.platform_metadata.instruments[pconfig.adcp_id].chief_scientist,
-            'description': pconfig.platform_metadata.instruments[pconfig.adcp_id].description,
-            'comments': pconfig.platform_metadata.instruments[pconfig.adcp_id].comments,
-        }
+            instrument_metadata = {
+                'sensor_type': pconfig.platform_metadata.instruments[pconfig.adcp_id].sensor_type,
+                'sensor_height': pconfig.platform_metadata.instruments[pconfig.adcp_id].sensor_height,
+                'sensor_depth': pconfig.platform_metadata.instruments[pconfig.adcp_id].sensor_depth,
+                'serial_number': pconfig.platform_metadata.instruments[pconfig.adcp_id].serial_number, # could be set from raw
+                'manufacturer': pconfig.platform_metadata.instruments[pconfig.adcp_id].manufacturer,
+                'model': pconfig.platform_metadata.instruments[pconfig.adcp_id].model, # could be set from raw (model_number)
+                'firmware_version': pconfig.platform_metadata.instruments[pconfig.adcp_id].firmware_version,
+                'chief_scientist': pconfig.platform_metadata.instruments[pconfig.adcp_id].chief_scientist,
+                'description': pconfig.platform_metadata.instruments[pconfig.adcp_id].description,
+                'comments': pconfig.platform_metadata.instruments[pconfig.adcp_id].comments,
+            }
 
-        for key, value in instrument_metadata.items():
-            if value is None:
-                instrument_metadata.pop(key)
-
-        for variable in set(pconfig.sensors_to_variables_map[sensor]).intersection(set(dataset.variables)):
             for key, value in instrument_metadata.items():
-                if key in dataset[variable].attrs and not pconfig.force_platform_metadata:
-                    if not dataset[variable].attrs[key]:
+                if value is None:
+                    instrument_metadata.pop(key)
+
+            for variable in set(pconfig.sensors_to_variables_map[sensor]).intersection(set(dataset.variables)):
+                for key, value in instrument_metadata.items():
+                    if key in dataset[variable].attrs and not pconfig.force_platform_metadata:
+                        if not dataset[variable].attrs[key]:
+                            dataset[variable].attrs[key] = value
+                    else:
                         dataset[variable].attrs[key] = value
-                else:
-                    dataset[variable].attrs[key] = value
 
 
 def _add_platform_instrument_metadata_to_variables(dataset: xr.Dataset, pconfig: ProcessConfig):
-    for sensor, instrument_id in pconfig.sensors_to_instrument_id.items():
-        if instrument_id not in pconfig.platform_metadata.instruments:
-            continue
-
-        instrument_metadata = {
-            sensor+'_sensor_height': pconfig.platform_metadata.instruments[pconfig.adcp_id].sensor_height,
-            sensor+'_sensor_depth': pconfig.platform_metadata.instruments[pconfig.adcp_id].sensor_depth,
-            sensor+'_serial_number': pconfig.platform_metadata.instruments[pconfig.adcp_id].serial_number,
-            sensor+'_manufacturer': pconfig.platform_metadata.instruments[pconfig.adcp_id].manufacturer,
-            sensor+'_model': pconfig.platform_metadata.instruments[pconfig.adcp_id].model,
-            sensor+'_firmware_version': pconfig.platform_metadata.instruments[pconfig.adcp_id].firmware_version,
-            sensor+'_chief_scientist': pconfig.platform_metadata.instruments[pconfig.adcp_id].chief_scientist,
-            sensor+'_description': pconfig.platform_metadata.instruments[pconfig.adcp_id].description,
-            sensor+'_comments': pconfig.platform_metadata.instruments[pconfig.adcp_id].comments,
-        }
-
-        for key, value in instrument_metadata.items():
-            if value is None:
+    if pconfig.platform_metadata is not None:
+        for sensor, instrument_id in pconfig.sensors_to_instrument_id.items():
+            if instrument_id not in pconfig.platform_metadata.instruments:
                 continue
 
-            if key in dataset.attrs and not pconfig.force_platform_metadata:
-                if not dataset.attrs[key]:
+            instrument_metadata = {
+                sensor+'_sensor_height': pconfig.platform_metadata.instruments[pconfig.adcp_id].sensor_height,
+                sensor+'_sensor_depth': pconfig.platform_metadata.instruments[pconfig.adcp_id].sensor_depth,
+                sensor+'_serial_number': pconfig.platform_metadata.instruments[pconfig.adcp_id].serial_number,
+                sensor+'_manufacturer': pconfig.platform_metadata.instruments[pconfig.adcp_id].manufacturer,
+                sensor+'_model': pconfig.platform_metadata.instruments[pconfig.adcp_id].model,
+                sensor+'_firmware_version': pconfig.platform_metadata.instruments[pconfig.adcp_id].firmware_version,
+                sensor+'_chief_scientist': pconfig.platform_metadata.instruments[pconfig.adcp_id].chief_scientist,
+                sensor+'_description': pconfig.platform_metadata.instruments[pconfig.adcp_id].description,
+                sensor+'_comments': pconfig.platform_metadata.instruments[pconfig.adcp_id].comments,
+            }
+
+            for key, value in instrument_metadata.items():
+                if value is None:
+                    continue
+
+                if key in dataset.attrs and not pconfig.force_platform_metadata:
+                    if not dataset.attrs[key]:
+                        dataset.attrs[key] = value
+                else:
                     dataset.attrs[key] = value
-            else:
-                dataset.attrs[key] = value
 
 
 def _write_odf(dataset: xr.Dataset, pconfig: ProcessConfig):
@@ -769,7 +770,7 @@ if __name__ == "__main__":
     out_path = '/home/jeromejguay/ImlSpace/Data/iml4_2021/meteoc_riki_2021.nc'
     _config = dict(
         HEADER=dict(
-            process="viking_buoy",
+            process="meteoce",
             platform_type=None
         ),
         INPUT=dict(
@@ -792,7 +793,7 @@ if __name__ == "__main__":
 
         VIKING_PROCESSING=dict(
             buoy_name="pmza_riki",
-            data_format="raw_dat",
+            data_format="viking_dat",
             sensor_depth=0,
             navigation_file=None,
             leading_trim=None,
@@ -814,6 +815,6 @@ if __name__ == "__main__":
         # ADCP_QC
     )
 
-    #process_meteoce(_config)
+    process_meteoce(_config)
 
     ds = xr.open_dataset(out_path)

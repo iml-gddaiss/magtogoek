@@ -2,14 +2,14 @@ import os
 import platform
 from pathlib import Path
 
-import magtogoek.logger
+import magtogoek.logger as l
 from magtogoek.utils import resolve_relative_path
 
 from magtogoek.adcp import SENSOR_TYPES as ADCP_SENSOR_TYPES, GENERIC_PARAMETERS as ADCP_GENERIC_PARAMETERS
 from magtogoek.wps import SENSOR_TYPES as WPS_SENSOR_TYPES
 from magtogoek.meteoce import SENSOR_TYPES as METEOCE_SENSOR_TYPES, GENERIC_PARAMETERS as METEOCE_GENERIC_PARAMTERS
 
-logger.set_level(0)
+l.set_level(0)
 
 REPOSITORY_ADDRESS = "https://github.com/iml-gddaiss/magtogoek"
 

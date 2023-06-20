@@ -194,24 +194,25 @@ def add_platform_metadata_to_dataset(dataset: xr.Dataset, pconfig: BaseProcessCo
     Attributes are only added if they are not null.
 
     """
-    metadata_map = {
-        'platform': pconfig.platform_metadata.platform.platform_name,
-        'platform_model': pconfig.platform_metadata.platform.platform_model,
-        'sounding': pconfig.platform_metadata.platform.sounding,
-        'longitude': pconfig.platform_metadata.platform.longitude,
-        'latitude': pconfig.platform_metadata.platform.latitude,
-        'platform_description': pconfig.platform_metadata.platform.description
-    }
+    if pconfig.platform_metadata is not None:
+        metadata_map = {
+            'platform': pconfig.platform_metadata.platform.platform_name,
+            'platform_model': pconfig.platform_metadata.platform.platform_model,
+            'sounding': pconfig.platform_metadata.platform.sounding,
+            'longitude': pconfig.platform_metadata.platform.longitude,
+            'latitude': pconfig.platform_metadata.platform.latitude,
+            'platform_description': pconfig.platform_metadata.platform.description
+        }
 
-    for key, value in metadata_map.items():
-        if value is None:
-            continue
+        for key, value in metadata_map.items():
+            if value is None:
+                continue
 
-        if key in dataset.attrs and not pconfig.force_platform_metadata:
-            if not dataset.attrs[key]:
+            if key in dataset.attrs and not pconfig.force_platform_metadata:
+                if not dataset.attrs[key]:
+                    dataset.attrs[key] = value
+            else:
                 dataset.attrs[key] = value
-        else:
-            dataset.attrs[key] = value
 
 
 def _get_data_type(process: str, platform_type: str = None):

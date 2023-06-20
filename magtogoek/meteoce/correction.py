@@ -83,35 +83,38 @@ def wps_data_correction(
 
     for variable in set(WPS_VARIABLES_TO_CORRECT_FOR_DRIFT_AND_IN_SITU).intersection(set(dataset.variables)):
         add_correction_attributes_to_dataarray(dataset[variable])
-        if pconfig.__dict__[variable + " _drift"] is not None:
+        if pconfig.__getattribute__(variable + "_drift") is not None:
             _time_drift_correction(dataset, variable, pconfig)
 
-        if pconfig.__dict__[variable + " _sample_correction"] is not None:
+        if pconfig.__getattribute__(variable + "_sample_correction") is not None:
             _in_situ_sample_correction(dataset, variable, pconfig)
 
 
 def wind_motion_correction(dataset: xr.Dataset):
-    u_ship, v_ship = dataset['u_ship'], dataset['v_ship']
-    _msg = 'Motion correction correction carried out with u_ship and v_ship.'
+    if all(v in dataset.variables for v in ['u_ship', 'v_ship']):
+        u_ship, v_ship = dataset['u_ship'], dataset['v_ship']
+        _msg = 'Motion correction correction carried out with u_ship and v_ship.'
 
-    if all(v in dataset for v in ['mean_wind', 'mean_wind_direction']):
-        dataset['mean_wind'].values, dataset['mean_wind_direction'].values = _wind_motion_correction(
-            dataset['mean_wind'], dataset['mean_wind_direction'], u_ship, v_ship
-        )
-        for variable in ['mean_wind', 'mean_wind_direction']:
-            add_correction_attributes_to_dataarray(dataset[variable])
-            dataset[variable].attrs['comments'] += _msg
-            l.log(f'{str(variable)} ' + _msg)
+        if all(v in dataset for v in ['mean_wind', 'mean_wind_direction']):
+            dataset['mean_wind'].values, dataset['mean_wind_direction'].values = _wind_motion_correction(
+                dataset['mean_wind'], dataset['mean_wind_direction'], u_ship, v_ship
+            )
+            for variable in ['mean_wind', 'mean_wind_direction']:
+                add_correction_attributes_to_dataarray(dataset[variable])
+                dataset[variable].attrs['comments'] += _msg
+                l.log(f'{str(variable)} ' + _msg)
 
 
-    if all(v in dataset for v in ['max_wind', 'max_wind_direction']):
-        dataset['max_wind'].values, dataset['max_wind_direction'].values = _wind_motion_correction(
-            dataset['max_wind'], dataset['max_wind_direction'], u_ship, v_ship
-        )
-        for variable in ['max_wind', 'max_wind_direction']:
-            add_correction_attributes_to_dataarray(dataset[variable])
-            dataset[variable].attrs['comments'] += _msg
-            l.log(f'{str(variable)} ' + _msg)
+        if all(v in dataset for v in ['max_wind', 'max_wind_direction']):
+            dataset['max_wind'].values, dataset['max_wind_direction'].values = _wind_motion_correction(
+                dataset['max_wind'], dataset['max_wind_direction'], u_ship, v_ship
+            )
+            for variable in ['max_wind', 'max_wind_direction']:
+                add_correction_attributes_to_dataarray(dataset[variable])
+                dataset[variable].attrs['comments'] += _msg
+                l.log(f'{str(variable)} ' + _msg)
+    else:
+        l.warning('Could not carry wind motion correction. `u_ship` and `v_ship` are missing from the dataset.')
 
 
 def _wind_motion_correction(speed, direction, u_ship, v_ship):

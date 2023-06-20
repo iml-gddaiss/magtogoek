@@ -195,7 +195,7 @@ def dissolved_oxygen_correction_for_pressure_JAC(
 
 
 def time_drift_correction(
-        data: np.ndarray, data_time: pd.DateTimeIndex,
+        data: np.ndarray, data_time: pd.DatetimeIndex,
         drift: Union[float, List[float]], drift_time: List[str] = None
 ) -> np.ndarray:
     """Apply correction for drift over time as a linear drift. fixme Make a test.

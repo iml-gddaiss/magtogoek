@@ -60,7 +60,7 @@ def load_meteoce_data(
         dataset = load_viking_data(filenames=filenames, buoy_name=buoy_name)
     else:
         l.warning('Invalid data_format.')
-        raise ValueError
+        raise ValueError('Invalid data_format.') #FIXME MAGTOGOEK PROCESS ERROR EXIT
 
     l.log('Data Loaded.')
 
