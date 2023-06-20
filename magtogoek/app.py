@@ -112,10 +112,11 @@ def _magtogoek(info, verbosis):
 
 @_magtogoek.command("init")
 @add_options(common_options)
-@click.option('-r', '--repair', is_flag=True, default=False)
-def init(info, repair):
+@click.option('-r', '--repair', is_flag=True, default=False, help="Add missing files")
+@click.option('-f', '--force', is_flag=True, default=False, help="Overwrite existing files")
+def init(info, repair, force):
     """Command to create a local magtogoek configuration"""
-    _init_magtogoek(repair)
+    _init_magtogoek(repair, force)
 
 
 @_magtogoek.command("process")
@@ -436,7 +437,7 @@ def plot_adcp(ctx, info, input_file, **options):
 #        Functions         #
 # ------------------------ #
 
-def _init_magtogoek(repair: bool):
+def _init_magtogoek(repair: bool, force: bool):
     if repair is True and LOCAL_CONFIG_EXISTS:
         missing_files = set(os.listdir(DEFAULT_CONFIGURATION_PATH)).difference(
             set(os.listdir(LOCAL_CONFIGURATION_PATH)))
@@ -448,7 +449,7 @@ def _init_magtogoek(repair: bool):
             click.echo(f'Nothing to do. Local config has no missing files.')
     else:
         try:
-            shutil.copytree(DEFAULT_CONFIGURATION_PATH, LOCAL_CONFIGURATION_PATH)
+            shutil.copytree(DEFAULT_CONFIGURATION_PATH, LOCAL_CONFIGURATION_PATH, dirs_exist_ok=force)
             click.echo(f'Magtogoek configuration written to {LOCAL_CONFIGURATION_PATH}.')
         except FileExistsError:
             click.echo(f'Magtogoek is already initialized.')
