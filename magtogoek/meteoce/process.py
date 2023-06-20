@@ -38,7 +38,7 @@ from magtogoek.process_common import BaseProcessConfig, resolve_output_paths, ad
 from magtogoek.attributes_formatter import format_variables_names_and_attributes
 from magtogoek.platforms import PlatformMetadata
 
-from magtogoek.wps.sci_tools import compute_density, dissolved_oxygen_ml_per_L_to_umol_per_L, dissolved_oxygen_umol_per_L_to_umol_per_kg
+from magtogoek.wps.sci_tools import compute_in_situ_density, dissolved_oxygen_ml_per_L_to_umol_per_L, dissolved_oxygen_umol_per_L_to_umol_per_kg
 
 from magtogoek.meteoce.loader import load_meteoce_data
 from magtogoek.meteoce.correction import wps_data_correction, meteoce_data_magnetic_declination_correction, wind_motion_correction
@@ -478,29 +478,42 @@ def _load_viking_data(pconfig: ProcessConfig):
 def _compute_ctdo_potential_density(dataset: xr.Dataset):
     """Compute potential density as sigma_t:= Density(S,T,P) - 1000
 
-    Density computed using UNESCO 1983 (EOS 80) polynomial
-    -Pressure used needs to be in dbar
-
+    Density computed using TEOS-10 polynomial (Roquet et al., 2015)
 
     """
 
     required_variables = ['temperature', 'salinity']
     if all((var in dataset for var in required_variables)):
-
+        _log_msg = 'Potential density computed using TEOS-10 polynomial. Absolute Salinity, Conservative Temperature'
         if 'pres' in dataset.variables:
             pres = dataset.pres.pint.quantify().pint.to('dbar').data
         elif 'atm_pressure' in dataset.variables:
-            pres = dataset.atm_pressure.pint.quantify().pint.to('dbar').data
+            pres = dataset.atm_pressure.pint.quantify().pint.to('dbar').data - 10.1325
         else:
-            pres = None
+            pres = 0
+            _log_msg += ', sea pressure = 0'
 
-        density = compute_density(
+        if "longitude" in dataset.variables:
+            longitude = dataset.longitude.data
+        else:
+            longitude = 0
+            _log_msg += ', longitude = 0'
+
+        if "latitude" in dataset.variables:
+            latitude = dataset.latitude.data
+        else:
+            latitude = 0
+            _log_msg += ', latitude = 0'
+
+        density = compute_in_situ_density(
             temperature=dataset.temperature.data,
             salinity=dataset.salinity.data,
-            pres=pres
+            pres=pres,
+            latitude=latitude,
+            longitude=longitude
         )
         dataset['density'] = (['time'], density - 1000)
-        l.log('Potential density computed using UNESCO 1983 (EOS 80) polynomial.')
+        l.log(_log_msg + '.')
     else:
         l.warning(f'Potential density computation aborted. One of more variables in {required_variables} was missing.')
 

@@ -13,17 +13,19 @@ Notes:
 
 """
 import numpy as np
-from seawater import eos80 as eos
+import gsw
 from typing import Union, List
 
 GAS_CONSTANT = 8.31446261815324  # the constant in seabird docs differs 8.3144621 J/(K mol). Application Note 99
 FARADAY_CONSTANT = 96485.365
 
 
-def compute_density(
+def compute_in_situ_density(
         temperature: Union[float, np.ndarray],
         salinity: Union[float, np.ndarray],
-        pres: Union[float, List, np.ndarray] = None
+        pres: Union[float, List, np.ndarray],
+        longitude: Union[float, List, np.ndarray] = None,
+        latitude: Union[float, List, np.ndarray] = None
 ):
     """Compute density using seawater package eos80 functions.
 
@@ -37,16 +39,18 @@ def compute_density(
         (pss-78)
     pres :
         dbar
+    longitude :
+
+    latitude :
 
     Returns
     -------
-        density
+        rho
     """
+    absolute_salinity = gsw.SA_from_SP(SP=salinity, p=pres, lon=longitude, lat=latitude)
+    conservative_temperature = gsw.CT_from_t(SA=absolute_salinity, t=temperature, p=pres)
 
-    if pres is not None:
-        return eos.dens(salinity, temperature, pres)
-    else:
-        return eos.dens0(salinity, temperature)
+    return gsw.rho(SA=absolute_salinity, CT=conservative_temperature, p=pres)
 
 
 def rinko_raw_measurement_from_dissolved_oxygen(
