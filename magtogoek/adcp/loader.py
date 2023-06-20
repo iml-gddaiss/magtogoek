@@ -40,6 +40,9 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import xarray as xr
+
+import gsw
+
 from magtogoek.adcp.rti_reader import RtiReader
 from magtogoek.adcp.rti_reader import l as rti_log
 from magtogoek.adcp.tools import dday_to_datetime64
@@ -239,7 +242,8 @@ def load_adcp_binary(
     xducer_depth = data.XducerDepth
 
     depth_difference = 0
-    if sensor_depth:
+    pressure_difference = 0
+    if sensor_depth is not None:
         depth_difference = round(average_xducer_depth - sensor_depth, 3)
         if abs(depth_difference) > 0:
             l.log(
@@ -256,8 +260,10 @@ def load_adcp_binary(
         average_xducer_depth = sensor_depth
         xducer_depth -= depth_difference
 
+        pressure_difference = round(np.sign(depth_difference) * gsw.p_from_z(z=-abs(depth_difference), lat=0), 3)
+
     if sonar == "os":
-        depth = data.dep
+        depth = data.dep - depth_difference
     else:
         if orientation == "down":
             depth = average_xducer_depth + data.dep
@@ -403,10 +409,11 @@ def load_adcp_binary(
     # For `wh`, `sv` and `sw` the pressure is added if available.
     if "Pressure" in data.VL.dtype.names:
         if not (data.VL["Pressure"] == 0).all():
-            dataset["pres"] = (
-                ["time"],
-                data.VL["Pressure"] / 1000,
-            )  # decapascal to decibar
+            pressure = data.VL["Pressure"] / 1000  # decapascal to decibar
+            if abs(pressure_difference) > 0:
+                l.log(f"{-pressure_difference} dbar was added to the pressure measured by the instrument.")
+                pressure -= pressure_difference
+            dataset["pres"] = (["time"], pressure)
         else:
             l.log("Pressure data unavailable")
 
