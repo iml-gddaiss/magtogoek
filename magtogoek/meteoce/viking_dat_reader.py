@@ -16,9 +16,9 @@ The Buoy Data `.dat` files
                                             L1, Raw1,   Calc1,      L2, Raw2,   Calc2,  L3, Raw3,   Calc3
                                                           ppb                     ppb                 ppb
     'BBFL2W-1688	05/24/21	10:59:03	700	1376	2.786E-03	695	190	1.066E+00	460	85	3.454E+00'
-    700 nm: (fluoresence) scattering
-    695 nm: Chlorophyll
-    460 nm: FDOM
+    700 nm: (fluoresence) scattering (m-1 from seabird)
+    695 nm: Chlorophyll (ug/L from seabird)
+    460 nm: FDOM (ppb from seabird)
     1 ppb = 1 mg / m³
 [Par_digi]: PAR (Photosynthetic Active Radiation): μmol photons•m-2•s-1,
     '110100,240521,SATPRS1093,30.415,510.646,-1.7,5.7,11.0,162'

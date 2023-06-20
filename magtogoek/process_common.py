@@ -28,7 +28,7 @@ ADCP_DATA_TYPES = { # SHOULDN'T THIS BE IN THE adcp/__init__.py FIXME
     "ship": "adcp",
     "lowered": "adcp"
 }
-METEOCE_DATA_TYPE = "meteoce" # SHOULDN'T THIS BE IN THE adcp/__init__.py FIXE
+METEOCE_DATA_TYPE = "MMOB" # SHOULDN'T THIS BE IN THE adcp/__init__.py FIXE
 
 DATA_SUBTYPES = {
     "buoy": "BUOY",

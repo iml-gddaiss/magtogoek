@@ -119,21 +119,21 @@
         "print_field_width": 10,
         "print_decimal_places": 4
     },
-    "wind_mean": {
+    "mean_wind_speed": {
         "code": "WSPD_01",
         "name": "Horizontal Wind Speed",
         "units": "m/s",
         "print_field_width": 10,
         "print_decimal_places": 4
     },
-    "wind_direction_mean": {
+    "mean_wind_direction": {
         "code": "GSPD_01",
         "name": "Gust Wind Speed",
         "units": "m/s",
         "print_field_width": 10,
         "print_decimal_places": 4
     },
-    "wind_max": {
+    "max_wind_speed": {
         "code": "WDIR_01",
         "name": "Wind Direction relative to north (T)",
         "units": "degrees",

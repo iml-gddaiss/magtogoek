@@ -83,9 +83,10 @@ P01_CODES_MAP = {
     'dissolved_oxygen': "DOXYUZ01",
     'ph': "PHXXZZXX",
     'par': "PFDPAR01",
-    'fluorescence': "FLUOZZZZ",
+    #'fluorescence': "FLUOZZZZ",
+    'fluorescence': "ABSP700A", # maybe rename to absorbance ?
     'chlorophyll': "CPHLPR01",
-    'fdom': "CCOMD002",
+    'fdom': "CCOMD002", # is this fdom ?
     'co2_a': "ACO2XXXX",
     'co2_w': "PCO2XXXX",
     'u': "LCEWAP01",
@@ -440,7 +441,6 @@ def _process_meteoce_data(pconfig: ProcessConfig):
 
     l.section("Output")
     if pconfig.odf_output is True:
-        l.warning('ODF output implemented yet')  # TODO
         _write_odf(dataset, pconfig)
 
     # ----------------- #
@@ -784,7 +784,6 @@ if __name__ == "__main__":
     _config = dict(
         HEADER=dict(
             process="meteoce",
-            platform_type=None
         ),
         INPUT=dict(
             input_files=file_path,
@@ -796,21 +795,32 @@ if __name__ == "__main__":
             odf_output=True
         ),
         CRUISE=dict(
-            event_qualifier1="meteoce"
+            country_institute_code="",
+            organization="",
+            chief_scientist="",
+            start_date="",
+            end_date="",
+            cruise_number="BOUEE2021",
+            cruise_name="",
+            cruise_description="",
+            event_number="RIMOUSKI",
+            event_qualifier1="IML4",
+            event_comments=""
         ),
         NETCDF_CF=dict(
             date_created=pd.Timestamp.now().strftime("%Y-%m-%d"),
             publisher_name=getpass.getuser(),
             source='viking_buoy'
         ),
+        PROCESSING=dict(
+            navigation_file=None,
+            leading_trim=None,
+            trailing_trim=None,
+        ),
 
         VIKING_PROCESSING=dict(
             buoy_name="pmza_riki",
             data_format="viking_dat",
-            sensor_depth=0,
-            navigation_file=None,
-            leading_trim=None,
-            trailing_trim=None,
             magnetic_declination=0,
             magnetic_declination_preset=None,
         ),

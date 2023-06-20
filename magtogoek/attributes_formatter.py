@@ -195,7 +195,7 @@ def _check_units(dataarray: xr.DataArray, sdn_meta: dict):
     if "units" in dataarray.attrs:
         if dataarray.attrs['units']: # not none or empty string
             if sdn_meta['units'] != dataarray.attrs['units']:
-                raise ValueError("Dataarray units and SND_META units don't match")
+                raise ValueError(f"DataArray ({dataarray.name}) units ({dataarray.attrs['units']}) and SND_META ({sdn_meta['units']}) units don't match")
 
 
 def _add_data_min_max_to_var_attrs(dataset):

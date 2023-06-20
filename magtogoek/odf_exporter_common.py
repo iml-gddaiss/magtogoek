@@ -58,6 +58,7 @@ PARAMETERS_METADATA = json2dict(PARAMETERS_METADATA_PATH)
 
 
 def make_cruise_header(odf: Odf, platform_metadata: PlatformMetadata, config_attrs: dict):
+    # FIXME add check for key in config_attrs ???
     odf.cruise["country_institute_code"] = config_attrs["country_institute_code"]
     odf.cruise["organization"] = config_attrs["organization"]
     odf.cruise["chief_scientist"] = config_attrs["chief_scientist"]
@@ -110,19 +111,27 @@ def _set_event_header_geospatials(odf: Odf, dataset: xr.Dataset, p01_codes_map: 
     odf.event['start_date_time'] = odf_time_format(dataset.time.values.min())
     odf.event['end_date_time'] = odf_time_format(dataset.time.values.max())
 
-    if odf.event['event_qualifier2'] == 'ANC':
-        if 'xducer_depth' in dataset:
-            odf.event['min_depth'] = dataset['xducer_depth'].values.min()
-            odf.event['max_depth'] = dataset['xducer_depth'].values.max()
-        elif p01_codes_map['xducer_depth'] in dataset:
-            odf.event['min_depth'] = dataset[p01_codes_map['xducer_depth']].values.min()
-            odf.event['max_depth'] = dataset[p01_codes_map['xducer_depth']].values.max()
+    odf.event["depth_off_bottom"] = 0
+    #odf.event['min_depth'] = 0 # not 0 ?
+    #odf.event['max_depth'] = 0 # not 0 ?
+
+    if 'depth' in dataset.variables:
+        if odf.event['event_qualifier2'] == 'ANC':
+            if 'xducer_depth' in dataset:
+                odf.event['min_depth'] = dataset['xducer_depth'].values.min()
+                odf.event['max_depth'] = dataset['xducer_depth'].values.max()
+            elif p01_codes_map['xducer_depth'] in dataset:
+                odf.event['min_depth'] = dataset[p01_codes_map['xducer_depth']].values.min()
+                odf.event['max_depth'] = dataset[p01_codes_map['xducer_depth']].values.max()
+            else:
+                odf.event['min_depth'] = dataset.attrs['sensor_depth']
+                odf.event['max_depth'] = dataset.attrs['sensor_depth']
         else:
-            odf.event['min_depth'] = dataset.attrs['sensor_depth']
-            odf.event['max_depth'] = dataset.attrs['sensor_depth']
-    else:
-        odf.event['min_depth'] = dataset.depth.values.min()
-        odf.event['max_depth'] = dataset.depth.values.max()
+            odf.event['min_depth'] = dataset.depth.values.min()
+            odf.event['max_depth'] = dataset.depth.values.max()
+
+        if odf.event["sounding"] is not None:
+            odf.event["depth_off_bottom"] = odf.event['sounding'] - odf.event['max_depth']
 
     if "lat" in dataset and "lon" in dataset:
         odf.event["initial_latitude"] = dataset.lat.values[0]
@@ -135,9 +144,8 @@ def _set_event_header_geospatials(odf: Odf, dataset: xr.Dataset, p01_codes_map: 
         odf.event["initial_longitude"] = dataset.attrs["longitude"]
         odf.event["end_longitude"] = dataset.attrs["longitude"]
 
-    odf.event["depth_off_bottom"] = 0
-    if odf.event["sounding"] is not None:
-        odf.event["depth_off_bottom"] = odf.event['sounding'] - odf.event['max_depth']
+
+
 
 
 def make_odf_header(odf):

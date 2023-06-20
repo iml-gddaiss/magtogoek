@@ -137,7 +137,7 @@ def make_odf(
     make_quality_header(odf, dataset)
     make_history_header(odf)
 
-    make_parameter_headers(odf=odf, dataset=dataset, variable=PARAMETERS, qc_variables=QC_PARAMETERS,
+    make_parameter_headers(odf=odf, dataset=dataset, variables=PARAMETERS, qc_variables=QC_PARAMETERS,
                            p01_codes_map=p01_codes_map, bodc_name=use_bodc_name)
 
     if output_path is not None:

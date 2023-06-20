@@ -193,7 +193,7 @@ def get_viking_meteoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[np
         _global_attrs.update({'ph_serial_number': _serial_number, 'ph_model': _model})
         _data.update(
             {
-                'ph': (viking_data.wph['ext_ph'], {**_attrs, **{"units": "pH_NBS_scale"}}),
+                'ph': (viking_data.wph['ext_ph'], {**_attrs, **{"units": "NBS_scale"}}),
                 'ph_temperature': (viking_data.wph['ext_ph'], _attrs)}
         )
         l.log('Wph data loaded.')
@@ -206,9 +206,9 @@ def get_viking_meteoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[np
 
         _data.update(
             {
-                'fluorescence': (viking_data.triplet['fluo_calculated'], {**_attrs, **{"units": "mg/m**3"}}),
-                'chlorophyll': (viking_data.triplet['chloro_calculated'], {**_attrs, **{"units": "mg/m**3"}}),
-                'fdom': (viking_data.triplet['fdom_calculated'], {**_attrs, **{"units": "mg/m**3"}})
+                'fluorescence': (viking_data.triplet['fluo_calculated'], {**_attrs, **{"units": "/m"}}), #ppb ?
+                'chlorophyll': (viking_data.triplet['chloro_calculated'], {**_attrs, **{"units": "mg/m**3"}}), #ug/L -> mg/m**3
+                'fdom': (viking_data.triplet['fdom_calculated'], {**_attrs, **{"units": "ppb"}}) #ppb
             }
         )
         l.log('Triplet data loaded.')

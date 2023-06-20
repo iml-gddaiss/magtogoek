@@ -810,7 +810,7 @@
     },
     "CCOMD002": {
         "units": "ppb",
-        "long_name": "fluoresecent coloured dissolved organic matter",
+        "long_name": "fluorescent coloured dissolved organic matter",
         "sdn_parameter_urn": "SDN:P01::CCOMD002",
         "sdn_parameter_name": "Concentration of coloured dissolved organic matter {CDOM Gelbstoff} per unit volume of the water body [dissolved plus reactive particulate phase] by in-situ WET Labs FDOM ECO fluorometer",
         "sdn_uom_urn": "SDN:P06:UPPB",
@@ -823,6 +823,14 @@
         "sdn_parameter_name": "Concentration of chlorophyll-a {chl-a CAS 479-61-8} per unit volume of the water body [particulate >unknown phase] by in-situ chlorophyll fluorometer",
         "sdn_uom_urn": "SDN:P06:UMMC",
         "sdn_uom_name": "Milligrams per cubic metre"
+    },
+    "ABSP700A": {
+        "units": "/m",
+        "long_name": "absorbance",
+        "sdn_parameter_urn": "SDN:P01::ABSP700A",
+        "sdn_parameter_name": "Absorbance of electromagnetic radiation (700nm wavelength) {light absorbance} by the water body [dissolved plus reactive particulate phase] by spectrophotometry",
+        "sdn_uom_urn": "SDN:P06:UPRM",
+        "sdn_uom_name": "per metre"
     },
     "FLUOZZZZ": {
         "units": "dimensionless",
