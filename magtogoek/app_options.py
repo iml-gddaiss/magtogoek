@@ -93,8 +93,6 @@ def general_options(input_files=True):
         [default: --bodc-name]""",
             default=True,
         ),
-        click.option("-T", "--platform_type", type=click.Choice(["buoy", "mooring", "ship", "lowered"]),
-                     help="Used for Proper BODC variables names", default="buoy"),
         click.option(
             "--qc/--no-qc", help="Do quality control.", default=True, show_default=True,
         ),
@@ -164,6 +162,8 @@ def adcp_options(yearbase=True, sonar=True):
             )
         ]
     options += [
+        click.option("-T", "--platform_type", type=click.Choice(["buoy", "mooring", "ship", "lowered"]),
+                     help="Used for Proper BODC variables names", default="buoy"),
         click.option(
             "-O",
             "--adcp-orientation",
