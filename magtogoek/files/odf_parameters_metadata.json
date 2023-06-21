@@ -210,7 +210,7 @@
         "print_field_width": 10,
         "print_decimal_places": 4
     },
-    "fluorescence": {
+    "fdom": {
         "code": "FLOR_01",
         "name": "Fluorescence",
         "units": "mg/m**3",

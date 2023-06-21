@@ -30,7 +30,7 @@ GENERIC_PARAMETERS = [
     'dissolved_oxygen',
     'ph',
     'par',
-    'fluorescence',
+    'scattering',
     'chlorophyll',
     'fdom',
     'co2_a',

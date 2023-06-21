@@ -67,7 +67,7 @@ PARAMETERS = (
     'density',
     'dissolved_oxygen',
     'ph',
-    'fluorescence',
+    'fdom',
     'chlorophyll',
     'par',
     'co2_a',

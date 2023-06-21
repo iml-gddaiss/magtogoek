@@ -206,9 +206,9 @@ def get_viking_meteoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[np
 
         _data.update(
             {
-                'fluorescence': (viking_data.triplet['fluo_calculated'], {**_attrs, **{"units": "/m"}}), #ppb ?
-                'chlorophyll': (viking_data.triplet['chloro_calculated'], {**_attrs, **{"units": "mg/m**3"}}), #ug/L -> mg/m**3
-                'fdom': (viking_data.triplet['fdom_calculated'], {**_attrs, **{"units": "ppb"}}) #ppb
+                'scattering': (viking_data.triplet['scatter_calculated'], {**_attrs, **{"units": "/m", "wavelength": "700nm"}}), #ppb ?
+                'chlorophyll': (viking_data.triplet['chloro_calculated'], {**_attrs, **{"units": "mg/m**3", "wavelength": "695nm"}}), #ug/L -> mg/m**3
+                'fdom': (viking_data.triplet['fdom_calculated'], {**_attrs, **{"units": "ppb", "wavelength": "460nm"}}) #ppb
             }
         )
         l.log('Triplet data loaded.')

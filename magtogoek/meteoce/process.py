@@ -84,9 +84,9 @@ P01_CODES_MAP = {
     'ph': "PHXXZZXX",
     'par': "PFDPAR01",
     #'fluorescence': "FLUOZZZZ",
-    'fluorescence': "ABSP700A", # maybe rename to absorbance ?
+    'scattering': "ABSP700A",
     'chlorophyll': "CPHLPR01",
-    'fdom': "CCOMD002", # is this fdom ?
+    'fdom': "CCOMD002",
     'co2_a': "ACO2XXXX",
     'co2_w': "PCO2XXXX",
     'u': "LCEWAP01",
@@ -135,7 +135,7 @@ SENSORS_TO_VARIABLES_MAP = {
     # 'nitrate': [],  # Not implemented yet.
     "ph": ['ph'],
     'par': ['par'],
-    'triplet': ['fluorescence', 'chlorophyll', 'fdom'],
+    'triplet': ['scattering', 'chlorophyll', 'fdom'],
     'co2w': ['co2_w'],
     'co2a': ['co2_a'],
     'wave': ['wave_mean_height', 'wave_maximal_height', 'wave_period'],
@@ -218,9 +218,9 @@ class ProcessConfig(BaseProcessConfig):
     ph_drift_time: List[str] = None
     ph_sample_correction: List[float] = None
 
-    fluorescence_drift: List[float] = None
-    fluorescence_drift_time: List[str] = None
-    fluorescence_sample_correction: List[float] = None
+    scattering_drift: List[float] = None
+    scattering_drift_time: List[str] = None
+    scattering_sample_correction: List[float] = None
 
     chlorophyll_drift: List[float] = None
     chlorophyll_drift_time: List[str] = None
