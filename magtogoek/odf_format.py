@@ -795,50 +795,54 @@ def _format_headers(name: str, header: dict) -> str:
     for key, value in header.items():
         if isinstance(value, pd.Timestamp):
             value = odf_time_format(value)
-        if isinstance(value, str):
-            s += INDENT + key.upper() + " = " + f"'{value}'," + NEWLINE
-        elif isinstance(value, (int, np.integer)):
-            s += INDENT + key.upper() + " = " + f"{value}," + NEWLINE
-        elif isinstance(value, (float, np.floating)):
-            s += INDENT + key.upper() + " = " + f"{value:.{PRECISION}f}," + NEWLINE
-        elif isinstance(value, list):
-            parent = INDENT + f"{key.upper()} = "
-            s += _format_list(value, parent)
-        elif isinstance(value, tuple):
-            s += (
-                INDENT
-                + key.upper()
-                + " = "
-                + "".join([f"{v:{12}.{8}f}" for v in value])
-                + ","
-                + NEWLINE
-            )
 
+        prefix = INDENT + key.upper() + " = "
+        if isinstance(value, str):
+            s += prefix + f"'{value}'"
+        elif isinstance(value, (int, np.integer)):
+            s += prefix + f"{value}"
+        elif isinstance(value, (float, np.floating)):
+            if not np.isfinite(value):
+                s += prefix + f"'{NA_REP}'"
+            else:
+                s += prefix + f"{value:.{PRECISION}f}"
+        elif isinstance(value, list):
+            s += _format_list(value, prefix)
+        elif isinstance(value, tuple):
+            s += prefix + "".join([f"{v:{12}.{8}f}" for v in value])
         elif not value:
-            s += INDENT + key.upper() + " = ''" + "," + NEWLINE
+            s += prefix + " = " + "''"
         else:
             print("Could not format", name, key, value, type(value))
+            continue
+
+        s += "," + NEWLINE
 
     return s
 
 
 def _format_list(_list: list, parents: str) -> str:
-    s = ""
+    # s = ""
     if len(_list) == 0:
-        s += parents + "''," + NEWLINE
-        return s
+        # s += parents + "''," + NEWLINE
+        # return s
+        return parents + "''"
     else:
+        rows = []
         for value in _list:
             if isinstance(value, tuple):
-                s += (
-                    parents
-                    + " ".join([f"{v:{12}.{8}f}" for v in value])
-                    + ","
-                    + NEWLINE
-                )
+                rows.append(parents + " ".join([f"{v:{12}.{8}f}" for v in value]))
+                # s += (
+                #     parents
+                #     + " ".join([f"{v:{12}.{8}f}" for v in value])
+                #     + ","
+                #     + NEWLINE
+                # )
             else:
-                s += parents + "'" + f"{value}'," + NEWLINE
-        return s
+                rows.append(parents + "'" + f"{value}'")
+         #       #s += parents + "'" + f"{value}'," + NEWLINE
+        return f",{NEWLINE}".join(rows)
+        #return s
 
 
 def _get_key_and_item(line):
