@@ -110,7 +110,12 @@ def write_configfile(filename: str, process: str, cli_options: Optional[dict] = 
     if cli_options is not None:
         cli_config = _format_cli_options_to_config_dict(process, tparser, cli_options)
 
-    tparser.write_from_dict(filename=filename, parser_dict=cli_config, add_missing=True, format_options=False)
+    tparser.write(
+        filename=filename,
+        new_values_dict=cli_config,
+        with_default=True,
+        with_comments=True
+    )
 
 
 def load_configfile(filename: str, cli_options: Optional[dict] = None) -> ParserDict:
@@ -205,7 +210,7 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
     tparser = TaskParser()
 
     section = "HEADER"
-    tparser.add_option(section, "version", dtypes=["int"], default=1)
+    tparser.add_option(section, "version", dtypes=["int"], default=version)
     tparser.add_option(section, "made_by", dtypes=["str"], default=getpass.getuser())
     tparser.add_option(section, "last_updated", dtypes=["str"], default=datetime.now().strftime("%Y-%m-%d"))
 
@@ -330,7 +335,7 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
             tparser.add_option(section, "make_figures", dtypes=["bool", "str"], default=True, null_value=False)
             tparser.add_option(section, "make_log", dtypes=["bool"], default=True, null_value=False)
 
-    elif process == "meteoce_buoy":
+    elif process == "meteoce":
         section = "METEOCE_PROCESSING"
         tparser.add_option(section, "data_format", dtypes=["float"], default="viking_dat")
         tparser.add_option(section, "buoy_name", dtypes=["str"],  comments='Name of the buoy in the raw file.', is_required=True)
@@ -354,7 +359,7 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
 
         tparser.add_option(section, "magnetic_declination", dtypes=["float"], default="")
         tparser.add_option(section, "motion_correction_mode", dtypes=["str"], default="bt", choice=["bt", "nav", "off"], comments='[bt, nav, off].')
-        tparser.add_option(section, "compute_uv_ship", dtypes=["str"], default="drop", choice=["sc", "ll", "off"], comments='[sc, ll, off] sc: speed & course, ll: longitude & latitude', null_value="keep")
+        tparser.add_option(section, "compute_uv_ship", dtypes=["str"], default="off", choice=["sc", "ll", "off"], comments='[sc, ll, off] sc: speed & course, ll: longitude & latitude', null_value="keep")
 
         tparser.add_option(section, "quality_control", dtypes=["bool"], default=True, null_value=False)
 
@@ -393,7 +398,6 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
         tparser.add_option(section, "drop_percent_good", dtypes=["bool"], default=True, null_value=False)
         tparser.add_option(section, "drop_correlation", dtypes=["bool"], default=True, null_value=False)
         tparser.add_option(section, "drop_amplitude", dtypes=["bool"], default=True, null_value=False)
-
 
     return tparser
 

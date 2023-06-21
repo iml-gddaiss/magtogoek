@@ -205,13 +205,18 @@ class TaskParser:
     comment_prefixes : See ConfigParser
     inline_comment_prefixes : See ConfigParser
 
-    Create Parser
-    -------------
+    Examples
+    --------
+    Create a Parser
+    ```
         parser = TaskParser()
         parser.add_option(section="section0", option="option0", dtypes=["str"], default="")
         parser.add_option(section="section0", options="option1", dtypes=["str"], default="", is_required=True)
         parser.add_option(section="section1", options="option0", dtypes=["float"], default="", choice=[1,2,3])
+    ```
 
+    Methods
+    -------
     add_option :
             section: str                              -> Section's name
             option: str                               -> Name for the option
@@ -232,9 +237,6 @@ class TaskParser:
             null_value: Optional[ListStrIntFloatBool] -> Returns `null_value` for empty filled. Default None.
             comments: str                             -> Comments to add to the ini. Comments are preceded by `;;`.
 
-
-    Other Methods
-    -------------
     load(input_filename)                         -> load '.ini' and into a dictionary with formatted(parse) values.
     write(output_filename)                       -> writes a .ini file.
     write_from_dict(output_filename, dictionary) -> format and write from a dictionary.
@@ -300,7 +302,7 @@ class TaskParser:
         )
 
     def configparser(self, with_default: bool = True, with_comments: bool = False) -> RawConfigParser:
-        """Return a RawConfigParser from the TaskParser.
+        """Return a RawConfigParser of the TaskParser.
 
         Parameters
         ----------
@@ -441,9 +443,9 @@ class TaskParser:
         else:
             self.write_from_dict(filename,
                                  parser_dict=self.as_dict(with_default=with_default),
-                                 add_missing=False,
+                                 add_missing=True,
                                  new_values_dict=new_values_dict,
-                                 format_options=True,
+                                 format_options=False,
                                  with_comments=with_comments)
 
     def write_from_dict(self, filename: str,
@@ -474,13 +476,13 @@ class TaskParser:
         self.format_parser_dict(parser_dict, add_missing=add_missing, new_values_dict=new_values_dict,
                                 format_options=format_options)
 
-        configparser = self._make_configparser(parser_dict, with_comments=with_comments)
+        configparser = self._configparser_from_parser_dict(parser_dict, with_comments=with_comments)
 
         with open(Path(filename).with_suffix('.ini'), "w") as f:
             configparser.write(f)
 
-    def _make_configparser(self, parser_dict: ParserDict, with_comments: bool = True) -> RawConfigParser:
-        """
+    def _configparser_from_parser_dict(self, parser_dict: ParserDict, with_comments: bool = True) -> RawConfigParser:
+        """Return a RawConfigParser of a parser config
 
         Parameters
         ----------
@@ -629,7 +631,7 @@ def _format_option_type(value: str, option_info: OptionInfos, file_path: Optiona
         if option_info.is_path is True:
             value = Path(file_path).joinpath(Path(value)).resolve()
             if not any((value.is_dir(), value.parent.is_dir())):
-                raise TaskParserError("path", option_info, value)
+                raise TaskParserError("path", option_info, str(value))
             value = str(value)
 
         elif option_info.is_file is True:
@@ -697,7 +699,7 @@ def _remove_quotes(value: str) -> str:
     return value
 
 
-def _check_options_length(value: StrIntFloatBool, option_info: OptionInfos):
+def _check_options_length(value: ListStrIntFloatBool, option_info: OptionInfos):
     if option_info.nargs:
         if len(value) != option_info.nargs:
             raise TaskParserError("nargs", option_info, value)
@@ -709,7 +711,7 @@ def _check_options_length(value: StrIntFloatBool, option_info: OptionInfos):
             raise TaskParserError("nargs", option_info, value)
 
 
-def _check_option_min_max(value: StrIntFloatBool, option_info: OptionInfos) -> StrIntFloatBool:
+def _check_option_min_max(value: StrIntFloatBool, option_info: OptionInfos):
     if option_info.value_max is not None:
         if value > option_info.value_max:
             raise TaskParserError("range", option_info, value)
