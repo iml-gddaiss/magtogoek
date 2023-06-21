@@ -27,6 +27,7 @@ import xarray as xr
 from typing import *
 import magtogoek.logger as l
 from magtogoek.utils import format_filenames_for_print
+import pint_xarray
 
 matplotlib.use('Qt5Agg')
 
@@ -59,7 +60,7 @@ def load_meteoce_data(
     if data_format == "viking_dat":
         dataset = load_viking_data(filenames=filenames, buoy_name=buoy_name)
     else:
-        l.warning('Invalid data_format.')
+        l.warning(f'Invalid data_format: {data_format}')
         raise ValueError('Invalid data_format.') #FIXME MAGTOGOEK PROCESS ERROR EXIT
 
     l.log('Data Loaded.')
@@ -75,19 +76,18 @@ def load_viking_data(
     l.log(format_filenames_for_print('raw_data', filenames))
 
     buoys_data = RawVikingDatReader().read(filenames)
-
     if buoy_name is None:
         if len(buoys_data.keys()) == 1:
             buoy_name = list(buoys_data.keys())[0]
             l.log(f'Data from {buoy_name} buoy selected.')
         else:
             l.warning(f'More than one buoy was found in the file {filenames}. Exiting')
-            raise ValueError
+            raise ValueError(f'More than one buoy was found in the file {filenames}. Exiting') # SHOULD NOT BE HERE FIXME
     elif buoy_name in buoys_data:
         pass
     else:
         l.warning(f'Buoy Name was not found in the file {filenames}. Exiting')
-        raise ValueError
+        raise ValueError(f'Buoy Name was not found in the file {filenames}. Exiting') # SHOULD NOT BE HERE FIXME
 
     viking_data = buoys_data[buoy_name]
 
@@ -158,7 +158,7 @@ def get_viking_meteoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[np
 
     if viking_data.wxt520 is not None:
         _data.update(
-            {'atm_temperature': (viking_data.wxt520['Ta'], {}),
+            {'atm_temperature': (viking_data.wxt520['Ta'], {"units": "degree_C"}),
              'atm_humidity': (viking_data.wxt520['Ua'], {}),
              'atm_pressure': (viking_data.wxt520['Pa'], {"units": "mbar"}),
              }
@@ -170,7 +170,7 @@ def get_viking_meteoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[np
 
     if viking_data.ctd is not None:
         _data.update(
-            {'temperature': (viking_data.ctd['temperature'], {}),
+            {'temperature': (viking_data.ctd['temperature'], {"units": "degree_C"}),
              'conductivity': (viking_data.ctd['conductivity'], {'units': 'S/m'}),
              'salinity': (viking_data.ctd['salinity'], {}),
              'density': (viking_data.ctd['density'], {})}
@@ -179,7 +179,7 @@ def get_viking_meteoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[np
 
     elif viking_data.ctdo is not None:
         _data.update(
-            {'temperature': (viking_data.ctdo['temperature'], {}),
+            {'temperature': (viking_data.ctdo['temperature'], {"units": "degree_C"}),
              'conductivity': (viking_data.ctdo['conductivity'], {'units': 'S/m'}),
              'salinity': (viking_data.ctdo['salinity'], {}),
              'dissolved_oxygen': (viking_data.ctdo['dissolved_oxygen'], {'units': 'umol/L'})}

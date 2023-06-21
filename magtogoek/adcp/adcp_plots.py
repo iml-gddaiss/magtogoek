@@ -233,7 +233,8 @@ def plot_velocity_fields(dataset: xr.Dataset, vel_var: List[str] = ("u", "v", "w
         axe.xaxis_date()
 
         cbar = plt.colorbar(im, location="right", ax=axe, pad=0.01)
-        cbar.set_label(dataset[var].attrs["units"], fontdict=FONT)
+        #cbar.set_label(dataset[var].attrs["units"], fontdict=FONT) #FIXME
+        cbar.set_label('FIXME')
         cbar.set_ticks(np.linspace(-vmax, vmax, 5))
         axe.set_title(var, fontdict=FONT)
         axe.tick_params(rotation=-30)
@@ -288,7 +289,8 @@ def plot_vel_series(dataset: xr.Dataset, depths: Union[float, List[float]],
         clines = cycle(["solid", "dotted", "dashed", "dashdotted"])
         for depth, c in zip(depths, colors):
             ax.plot(dataset.time, da.sel(depth=depth), linestyle=next(clines), c=c, label=f"{depth:.02f} m")
-        ax.set_ylabel(f"{var}\n[{dataset[var].units}]", fontdict=FONT)
+        #ax.set_ylabel(f"{var}\n[{dataset[var].attrs['units']}]", fontdict=FONT) #FIXME
+        ax.set_ylabel("FIXME")
     axes[-1].set_xlabel("time", fontdict=FONT)
     axes[2].legend(title="depth")
 

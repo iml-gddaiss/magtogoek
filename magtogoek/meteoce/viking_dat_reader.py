@@ -167,7 +167,7 @@ import re
 import struct
 from datetime import datetime, timedelta
 from math import atan2, sqrt, pi, sin, cos
-from typing import List, Dict, Union
+from typing import List, Dict, Union, Optional
 
 import numpy as np
 
@@ -286,7 +286,6 @@ data: (length: {len(self)})
         # Notes:
         if self.triplet is not None:  # This Could be done directly during the decoding
             _convert_triplet_wavelength(self.triplet)  # This Could be done directly during the decoding
-        #self._add_units()
 
     def _to_numpy_masked_array(self):
         self.time = np.array(self.time, dtype='datetime64[s]')
@@ -390,8 +389,8 @@ class RawVikingDatReader():
     """
 
     def __init__(self):
-        self._buoys_data: Dict[str, VikingData] = None
-        self.buoys: list = None
+        self._buoys_data: Optional[Dict[str, VikingData]] = None
+        self.buoys: Optional[list] = None
 
     def __repr__(self):
         _repr = f"""{self.__class__} 
@@ -412,7 +411,7 @@ buoys:\n"""
 
         return self._buoys_data
 
-    def _load_viking_data(self, decoded_data: dict):
+    def _load_viking_data(self, decoded_data: list):
         """Put the data in  VikingData object"""
         self._buoys_data = {}
         self.buoys = self._get_buoys_info(decoded_data)
@@ -445,7 +444,7 @@ buoys:\n"""
             viking_data.reformat()
 
     @staticmethod
-    def _get_buoys_info(decoded_data: dict):
+    def _get_buoys_info(decoded_data: list) -> dict:
         buoy_info = {}
         buoys = set([(block['buoy_name'], block['firmware'], block['controller_sn']) for block in decoded_data])
         for buoy_name in set(buoy[0] for buoy in buoys):
@@ -542,7 +541,7 @@ def _decode_NOM(data: str, century: int) -> dict:
         latitude = {'S': -1, 'N': 1}[_lat[1][-1]] * (int(_lat[0]) + round(float(_lat[1][:-1]) / 60, 4))
         _lon = data[8].split(' ')
         longitude = {'W': -1, 'E': 1}[_lon[1][-1]] * (int(_lon[0]) + round(float(_lon[1][:-1]) / 60, 4))
-    return {'buoy_name': data[0].lower().replace(' ', '_').replace('-', '_'),
+    return {'buoy_name': data[0],#.lower().replace(' ', '_').replace('-', '_'), # I dont remember why I did that.
             'time': _make_timestamp(str(century - 1) + data[2][4:6], data[2][2:4], data[2][0:2],
                                     data[1][0:2], data[1][2:4], data[1][4:6]),
             'firmware': data[3],
@@ -665,11 +664,12 @@ def _decode_CTDO(data: str) -> dict:
             'salinity': _safe_float(data[3])}
 
 
-def _decode_RTI(data: str) -> dict:
+def _decode_RTI(data: str) -> Optional[dict]:
     """
     Data are in meters (SI)
     """
     data = data.replace('\n', ',').split(',')
+    position = _safe_float(data[1]) / 100
     beam_vel_mms = tuple(map(_safe_float, data[2:6]))
     enu_mms = tuple(map(_safe_float, data[6:10]))
     corr_pc = tuple(map(_safe_float, data[10:14]))
@@ -678,8 +678,10 @@ def _decode_RTI(data: str) -> dict:
     bt_enu_mms = tuple(map(_safe_float, data[23:27]))
     bt_corr_pc = tuple(map(_safe_float, data[27:31]))
     bt_amp_dB = tuple(map(_safe_float, data[31:35]))
+    if len(data) != 36:
+        return None
     return {'bin': data[0],
-            'position': data[1] / 100,
+            'position': position,
             'beam1': beam_vel_mms[0], 'beam2': beam_vel_mms[1],
             'beam3': beam_vel_mms[2], 'beam4': beam_vel_mms[3],
             'u': enu_mms[0], 'v': enu_mms[0], 'w': enu_mms[0], 'e': enu_mms[3],
@@ -696,8 +698,10 @@ def _decode_RTI(data: str) -> dict:
             }
 
 
-def _decode_RDI(data: str, century: int):
+def _decode_RDI(data: str, century: int) -> Optional[dict]:
     data = data.strip('\n').split(',')
+    if len(data) != 7:
+        return None
     enu_mms = tuple(struct.unpack('hhhh', bytes.fromhex(data[2])))
     return {'time': _make_timestamp(str(century - 1) + data[1][4:6], data[1][2:4],
                                     data[1][0:2], data[0][0:2], data[0][2:4], data[0][4:6]),
@@ -705,7 +709,7 @@ def _decode_RDI(data: str, century: int):
             }
 
 
-def _decode_WAVE_M(data: str) -> dict:
+def _decode_WAVE_M(data: str) -> Optional[dict]:
     data = data.strip('\n').split(',')
     if "#" in data[0]:
         return None
@@ -770,7 +774,6 @@ def _decode_WpH(data: str) -> dict:
 
 
 def _decode_CO2_W(data: str) -> dict:
-    data = data.strip('\n').split(',')
     return {"time": _make_timestamp(*data[1:7]),
             "auto_zero": _safe_float(data[7]),
             "current": _safe_float(data[8]),
@@ -781,8 +784,10 @@ def _decode_CO2_W(data: str) -> dict:
             "cell_gas_pressure_mbar": _safe_float(data[12])}
 
 
-def _decode_CO2_A(data: str) -> dict:
+def _decode_CO2_A(data: str) -> Optional[dict]:
     data = data.strip('\n').split(',')
+    if len(data) != 15:
+        return None
     return {'time': _make_timestamp(*data[1:7]),
             'auto_zero': _safe_float(data[7]),
             'current': _safe_float(data[8]),
@@ -800,7 +805,7 @@ def _decode_Debit(data: str) -> dict:
         return {'flow': round(int(data.strip('\n'), 16) * 0.001543, 4)}
 
 
-def _decode_VEMCO(data: str) -> dict:
+def _decode_VEMCO(data: str) -> Optional[dict]:
     if "No answer" in data:
         return None
     data = data.replace('\n', '').split(',')

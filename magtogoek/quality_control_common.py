@@ -296,9 +296,9 @@ def add_flags_values(flag_variable: np.ndarray, new_flags: np.ndarray):
     np.maximum(flag_variable, new_flags, out=flag_variable)
 
 
-def merge_flags(flags_arrays: List[NDArray]) -> NDArray:
+def merge_flags(flags_arrays: List[np.ndarray]) -> np.ndarray:
     """Merge flags_arrays keeping the greatest values"""
-    return np.stack([flags_arrays], axis=-1).max(axis=-1)
+    return np.stack(flags_arrays, axis=-1).max(axis=-1)
 
 
 if __name__ == "__main__":

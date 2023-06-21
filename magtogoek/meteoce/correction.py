@@ -216,8 +216,8 @@ def _dissolved_oxygen_pressure_correction(dataset: xr.Dataset):
     """
     if all(var in dataset.variables for var in ['atm_pressure']):
         dataset.dissolved_oxygen.values = dissolved_oxygen_correction_for_pressure_JAC(
-            dissolved_oxygen=dataset.dissolved_oxygen.data,
-            pressure=dataset.atm_pressure.pint.quantify().to('dbar').data
+            dissolved_oxygen=dataset.dissolved_oxygen.values,
+            pressure=dataset.atm_pressure.pint.quantify().to('dbar').pint.dequantify().values
         )
         l.log(f'Dissolved oxygen correction for pressure was carried out')
         dataset['dissolved_oxygen'].attrs["corrections"] += 'Pressure correction carried out.\n'

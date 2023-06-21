@@ -136,7 +136,7 @@ def meteoce_quality_control(
        * 9: missing_value
 
 
-    Todos
+    Todo
     -----
     + spike detection
     + absolute limit detection
@@ -160,10 +160,11 @@ def meteoce_quality_control(
             depth_interpolation_method=climatology_depth_interpolation_method
         )
 
-    if regional_outlier in IMPOSSIBLE_PARAMETERS_VALUES:
-        _impossible_values_tests(dataset, region=regional_outlier, flag=3)
-    else:
-        l.warning(f'Region {regional_outlier} not found in the impossible parameters values file {IMPOSSIBLE_PARAMETERS_VALUES}')
+    if regional_outlier is not None:
+        if regional_outlier in IMPOSSIBLE_PARAMETERS_VALUES:
+            _impossible_values_tests(dataset, region=regional_outlier, flag=3)
+        else:
+            l.warning(f'Region {regional_outlier} not found in the impossible parameters values file {IMPOSSIBLE_PARAMETERS_VALUES}')
 
     if absolute_outlier is True:
         _impossible_values_tests(dataset, region='global', flag=4)
@@ -189,13 +190,18 @@ def _impossible_values_tests(dataset: xr.Dataset, region: str, flag: int):
     outliers_values = IMPOSSIBLE_PARAMETERS_VALUES[region]
 
     for variable in set(dataset.keys()).intersection(set(outliers_values.keys())):
+        _data = dataset[variable].values
+
         if 'units' in dataset[variable].attrs:
             if dataset[variable].attrs['units'] != outliers_values[variable]['units']:
-                l.warning(f"Could not carry out impossible values test (region: {region}) for {variable} due units mismatch.\n"
-                          f"Expected {dataset[variable].attrs['units']}")
+                _data = dataset[variable].pint.quantify().pint.to(
+                    outliers_values[variable]['units']
+                ).pint.dequantify().values
+        else:
+            l.warning(f"(outlier test, region: {region}) Could not verify units for {variable} due missing units on loaded variable.")
 
         outliers_flag = values_outliers_detection(
-            dataset[variable].data,
+            _data,
             lower_limit=outliers_values[variable]['min'],
             upper_limit=outliers_values[variable]['max']
         )
@@ -206,6 +212,7 @@ def _impossible_values_tests(dataset: xr.Dataset, region: str, flag: int):
             f"and greater than {outliers_values[variable]['max']} {outliers_values[variable]['units']} (flag={flag})."
 
         l.log(f"{variable} :" + test_comment)
+
         dataset[variable+"_QC"].attrs['quality_test'] += test_comment + "\n"
 
 
@@ -227,7 +234,7 @@ def _flag_propagation(dataset: xr.Dataset, use_atm_pressure: bool = False):
     pressure = 'atm_pressure' if use_atm_pressure is True else 'pres'
     flag_propagation_rules = {
         'depth': [pressure, 'depth'],
-        'density': ['pres', 'temperature', 'salinity', 'density'],
+        'density': [pressure, 'temperature', 'salinity', 'density'],
         'dissolved_oxygen': [pressure, 'temperature', 'salinity', 'dissolved_oxygen'],
         'ph': ['temperature', 'salinity', 'ph'],
         }
@@ -237,11 +244,13 @@ def _flag_propagation(dataset: xr.Dataset, use_atm_pressure: bool = False):
             dataset[_var + '_QC'].data for _var in flag_propagation_rules[variable]
         ]
 
-        dataset[variable + "_QC"] = merge_flags(flags_arrays=flags_parameters)
+        dataset[variable + "_QC"].data = merge_flags(flags_arrays=flags_parameters)
 
         propagation_comment = f'Flags propagation {flag_propagation_rules[variable]} -> {variable}.'
+
         l.log(propagation_comment)
-        dataset[variable].attrs['quality_test'] += propagation_comment + "\n"
+
+        dataset[variable + "_QC"].attrs['quality_test'] += propagation_comment + "\n"
 
 
 def _print_percent_of_good_values(dataset: xr.Dataset):

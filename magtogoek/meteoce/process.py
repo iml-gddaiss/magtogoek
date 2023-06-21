@@ -157,7 +157,7 @@ ADCP_VARIABLES_FOR_QC = [
 class ProcessConfig(BaseProcessConfig):
     # PROCESSING
     buoy_name: str = None
-    data_format: str = None # [viking_dat, ]
+    data_format: str = None  # [viking_dat, ]
 
     ##### ID #####
     adcp_id: str = None
@@ -238,16 +238,16 @@ class ProcessConfig(BaseProcessConfig):
     # meteoce
     quality_control: bool = None
 
-    regional_outlier: str = None,
-    absolute_outlier: bool = True,
+    regional_outlier: str = None
+    absolute_outlier: bool = True
 
-    climatology_variables: List[str] = None,
-    climatology_dataset_path: str = None,  # A PATH to a netcdf
-    climatology_threshold: float = None,
+    climatology_variables: List[str] = None
+    climatology_dataset_path: str = None  # A PATH to a netcdf
+    climatology_threshold: float = None
     # Set choices in tparser: "linear", "nearest", "zero", "slinear", "quadratic", "cubic"
-    climatology_depth_interpolation_method: str = None,
+    climatology_depth_interpolation_method: str = None
 
-    propagate_flags: bool = True,
+    propagate_flags: bool = True
 
     # adcp quality_control
     amplitude_threshold: int = None
@@ -286,6 +286,8 @@ class ProcessConfig(BaseProcessConfig):
             'meteo': self.meteo_id
         }
 
+        self.merge_output_files = True # FIXME BUG
+
 
 def process_meteoce(config: dict, drop_empty_attrs: bool = False, headless: bool = False):
     """Process Viking data with parameters from a config file.
@@ -305,14 +307,15 @@ def process_meteoce(config: dict, drop_empty_attrs: bool = False, headless: bool
     The actual data processing is carried out by _process_viking_data.
     """
     l.reset()
-
     pconfig = ProcessConfig(config)
     pconfig.drop_empty_attrs = drop_empty_attrs
     pconfig.headless = headless
 
-    _load_climatology(pconfig)  # This is done here to catch an error early and exit.
+    if pconfig.climatology_dataset_path is not None:
+        _load_climatology(pconfig)  # This is done here to catch an error early and exit.
 
     _process_meteoce_data(pconfig)
+
 
 def _load_climatology(pconfig: ProcessConfig):
     try:
@@ -486,9 +489,9 @@ def _compute_ctdo_potential_density(dataset: xr.Dataset):
     if all((var in dataset for var in required_variables)):
         _log_msg = 'Potential density computed using TEOS-10 polynomial. Absolute Salinity, Conservative Temperature'
         if 'pres' in dataset.variables:
-            pres = dataset.pres.pint.quantify().pint.to('dbar').data
+            pres = dataset.pres.pint.quantify().pint.to('dbar').pint.dequantify().values
         elif 'atm_pressure' in dataset.variables:
-            pres = dataset.atm_pressure.pint.quantify().pint.to('dbar').data - 10.1325
+            pres = dataset.atm_pressure.pint.quantify().pint.to('dbar').pint.dequantify().values - 10.1325
         else:
             pres = 0
             _log_msg += ', sea pressure = 0'
@@ -512,7 +515,9 @@ def _compute_ctdo_potential_density(dataset: xr.Dataset):
             latitude=latitude,
             longitude=longitude
         )
+
         dataset['density'] = (['time'], density - 1000)
+
         l.log(_log_msg + '.')
     else:
         l.warning(f'Potential density computation aborted. One of more variables in {required_variables} was missing.')
@@ -586,19 +591,21 @@ def _quality_control(dataset: xr.Dataset, pconfig: ProcessConfig) -> xr.Dataset:
     Pipe a sub-dataset to adcp quality control for adcp data ?
     Or call the qc function from viking_quality_control. ??
     """
-    adcp_dataset = _make_adcp_sub_dataset(dataset)
-    adcp_dataset.attrs['coord_system'] = 'earth'
-
+    # FIXME ERROR WITH HORIZONTAL VEL TEST FLAG DIMS
+    # adcp_dataset = _make_adcp_sub_dataset(dataset)
+    # adcp_dataset.attrs['coord_system'] = 'earth'
+    l.warning('ADCP QC DISABLED FIXME')
     if pconfig.quality_control is True:
         dataset = _meteoce_quality_control(dataset, pconfig)
-        adcp_dataset = _adcp_quality_control(adcp_dataset, pconfig)
+        #adcp_dataset = _adcp_quality_control(adcp_dataset, pconfig)
+        # no_adcp_quality_control(adcp_dataset)  # FIXME ERROR WITH HORIZONTAL VEL TEST FLAG DIMS
     else:
         no_meteoce_quality_control(dataset)
-        no_adcp_quality_control(adcp_dataset)
+        # no_adcp_quality_control(adcp_dataset)
 
-    adcp_dataset.attrs.pop('coord_system')
+    # adcp_dataset.attrs.pop('coord_system')
 
-    _merge_adcp_quality_control(dataset, adcp_dataset)
+    # _merge_adcp_quality_control(dataset, adcp_dataset)
 
     return dataset
 
@@ -634,7 +641,7 @@ def _meteoce_quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
         regional_outlier=pconfig.regional_outlier,
         absolute_outlier=pconfig.absolute_outlier,
         climatology_variables=pconfig.climatology_variables,
-        climatology_path=pconfig.climatology_dataset,
+        climatology_dataset=pconfig.climatology_dataset,
         climatology_threshold=pconfig.climatology_threshold,
         climatology_depth_interpolation_method=pconfig.climatology_depth_interpolation_method,
         propagate_flags=pconfig.propagate_flags
@@ -644,12 +651,12 @@ def _meteoce_quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
 
 def _adcp_quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
     """fixme"""
-    dataset = dataset.expand_dims(dim={'depth': [0]})
+    adcp_dataset = dataset.expand_dims(dim={'depth': [0]})
 
-    dataset.attrs['coord_system'] = "earth"
+    adcp_dataset.attrs['coord_system'] = "earth"
 
-    dataset = adcp_quality_control(
-        dataset,
+    adcp_dataset = adcp_quality_control(
+        adcp_dataset,
         amp_th=pconfig.amplitude_threshold,
         corr_th=pconfig.correlation_threshold,
         pg_th=pconfig.percentgood_threshold,
@@ -663,8 +670,7 @@ def _adcp_quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
         bad_pressure=False,
     )
 
-    dataset = dataset.squeeze(['depth'])
-    return dataset
+    return adcp_dataset.squeeze(['depth'])
 
 
 def _dissolved_oxygen_ml_per_L_to_umol_per_L(dataset: xr.Dataset):
@@ -732,15 +738,15 @@ def _add_platform_instrument_metadata_to_variables(dataset: xr.Dataset, pconfig:
                 continue
 
             instrument_metadata = {
-                sensor+'_sensor_height': pconfig.platform_metadata.instruments[pconfig.adcp_id].sensor_height,
-                sensor+'_sensor_depth': pconfig.platform_metadata.instruments[pconfig.adcp_id].sensor_depth,
-                sensor+'_serial_number': pconfig.platform_metadata.instruments[pconfig.adcp_id].serial_number,
-                sensor+'_manufacturer': pconfig.platform_metadata.instruments[pconfig.adcp_id].manufacturer,
-                sensor+'_model': pconfig.platform_metadata.instruments[pconfig.adcp_id].model,
-                sensor+'_firmware_version': pconfig.platform_metadata.instruments[pconfig.adcp_id].firmware_version,
-                sensor+'_chief_scientist': pconfig.platform_metadata.instruments[pconfig.adcp_id].chief_scientist,
-                sensor+'_description': pconfig.platform_metadata.instruments[pconfig.adcp_id].description,
-                sensor+'_comments': pconfig.platform_metadata.instruments[pconfig.adcp_id].comments,
+                sensor + '_sensor_height': pconfig.platform_metadata.instruments[pconfig.adcp_id].sensor_height,
+                sensor + '_sensor_depth': pconfig.platform_metadata.instruments[pconfig.adcp_id].sensor_depth,
+                sensor + '_serial_number': pconfig.platform_metadata.instruments[pconfig.adcp_id].serial_number,
+                sensor + '_manufacturer': pconfig.platform_metadata.instruments[pconfig.adcp_id].manufacturer,
+                sensor + '_model': pconfig.platform_metadata.instruments[pconfig.adcp_id].model,
+                sensor + '_firmware_version': pconfig.platform_metadata.instruments[pconfig.adcp_id].firmware_version,
+                sensor + '_chief_scientist': pconfig.platform_metadata.instruments[pconfig.adcp_id].chief_scientist,
+                sensor + '_description': pconfig.platform_metadata.instruments[pconfig.adcp_id].description,
+                sensor + '_comments': pconfig.platform_metadata.instruments[pconfig.adcp_id].comments,
             }
 
             for key, value in instrument_metadata.items():
@@ -755,7 +761,6 @@ def _add_platform_instrument_metadata_to_variables(dataset: xr.Dataset, pconfig:
 
 
 def _write_odf(dataset: xr.Dataset, pconfig: ProcessConfig):
-    #TODO MAKE A DEFAULT PLATOFRM FILE WITH INSTRUMENTS FOR ODF IF NONE
     if pconfig.platform_metadata is None:
         pconfig.platform_metadata = PlatformMetadata()
         pconfig.platform_metadata.platform.platform_type = pconfig.platform_type
@@ -819,7 +824,7 @@ if __name__ == "__main__":
         ),
 
         VIKING_PROCESSING=dict(
-            buoy_name="pmza_riki",
+            buoy_name="PMZA-RIKI",
             data_format="viking_dat",
             magnetic_declination=0,
             magnetic_declination_preset=None,
