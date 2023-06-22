@@ -41,9 +41,9 @@ def nans(shape: tp.Union[list, tuple, np.ndarray]) -> np.ndarray:
     return np.full(shape, np.nan)
 
 
-def polar_histo(dataset: xr.Dataset, x_vel: str, y_vel: str, r_max: float):
-    u = flag_data(dataset, x_vel).data.flatten()
-    v = flag_data(dataset, y_vel).data.flatten()
+def polar_histo(dataset: xr.Dataset, x_vel: str, y_vel: str, r_max: float, flag_thres: int):
+    u = flag_data(dataset, x_vel, flag_thres=flag_thres).data.flatten()
+    v = flag_data(dataset, y_vel, flag_thres=flag_thres).data.flatten()
     ii = np.isfinite(u) & np.isfinite(v)
 
     azimut, radius = cartesian2northpolar(u[ii], v[ii])
