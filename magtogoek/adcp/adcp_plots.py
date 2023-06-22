@@ -8,7 +8,6 @@ This modules contains the essential figure to do a visual inspection of the data
 
 # Use ancillary_variables for QC. modify on the flag data function tools.
 """
-import logging
 from itertools import cycle
 from typing import List, Union, Dict
 from pathlib import Path
@@ -78,7 +77,7 @@ def make_adcp_figure(dataset: xr.Dataset,
 
     """
 
-    figs, names = [], []
+    figs, figs_names = [], []
 
     varname_map = {}
     for var in dataset:
@@ -89,17 +88,17 @@ def make_adcp_figure(dataset: xr.Dataset,
         geo_var = map_varname(GEO_VAR, varname_map)
         if len(geo_var) > 0:
             figs.append(plot_sensor_data(dataset, varnames=geo_var))
-            names.append(f'sensor_data_geo')
+            figs_names.append(f'sensor_data_geo')
 
         anc_var = map_varname(ANC_VAR, varname_map)
         if len(anc_var) > 0:
             figs.append(plot_sensor_data(dataset, varnames=anc_var))
-            names.append(f'sensor_data_anc')
+            figs_names.append(f'sensor_data_anc')
 
         bt_uvw_var = map_varname(BT_UVW_VAR, varname_map)
         if len(bt_uvw_var) > 0 and all(v in dataset for v in bt_uvw_var):
             figs.append(plot_bt_vel(dataset, uvw=bt_uvw_var))
-            names.append(f'bt_vel')
+            figs_names.append(f'bt_vel')
 
     uvw_var = map_varname(UVW_VAR, varname_map)
     if len(uvw_var) > 0:
@@ -109,20 +108,15 @@ def make_adcp_figure(dataset: xr.Dataset,
                 depths = dataset.depth.data[-3:]
             figs.append(plot_vel_series(dataset, depths=depths, uvw=uvw_var, flag_thres=flag_thres))
             figs.append(plot_pearson_corr(dataset, uvw=uvw_var, flag_thres=flag_thres))
-            names.extend(('vel_series', 'pearson_corr'))
+            figs_names.extend(('vel_series', 'pearson_corr'))
 
         figs.append(plot_velocity_polar_hist(dataset, nrows=2, ncols=3, uv=uvw_var[:2], flag_thres=flag_thres))
         figs.append(plot_velocity_fields(dataset, uvw=uvw_var, flag_thres=flag_thres))
-        names.extend(('velocity_polar_hist', 'velocity_fields'))
+        figs_names.extend(('velocity_polar_hist', 'velocity_fields'))
 
-    if "binary_mask" in dataset:
+    if "binary_mask" in dataset and vel_only is False:
         figs.append(plot_test_fields(dataset))
-        names.append('test_fields')
-
-    if single is True and show_fig is True:
-        for count, fig in enumerate(figs):
-            fig.show()
-            input(f"({count + 1}/{len(figs)}) Press [enter] to plot the next figure.\033[1A \033[9C")
+        figs_names.append('test_fields')
 
     if save_path is not None:
         stem = ''
@@ -131,23 +125,40 @@ def make_adcp_figure(dataset: xr.Dataset,
         else:
             path = Path(save_path).parent
             stem = str(Path(save_path).stem) + '_'
-        for name, fig in zip(names, figs):
+        for name, fig in zip(figs_names, figs):
             fig.savefig(path.joinpath(stem + f'{name}.png'))
 
     if show_fig is True:
-        logging.info(f'make adcp_figure show fig: {show_fig}')
-        plt.show()
-    else:
-        plt.close('all')
+        if single is True:
+            for count, fig in enumerate(figs):
+                fig.show()
+                input(f"({count + 1}/{len(figs)}) Press [enter] to plot the next figure.\033[1A \033[9C")
+
+        else:
+            plt.ion()
+            plt.show(block=False)
+            input("Press Enter to continue ...")
+
+    plt.close('all')
 
 
 def plot_velocity_polar_hist(dataset: xr.Dataset, nrows: int = 3, ncols: int = 3,
                              uv: List[str] = ("u", "v"),  flag_thres: int = 2):
+
     naxes = int(nrows * ncols)
-    r_max = np.nanmax(np.hypot(
-        flag_data(dataset, var=uv[0], flag_thres=flag_thres).data,
-        flag_data(dataset, var=uv[1], flag_thres=flag_thres).data
-    ))
+    flagged_u = flag_data(dataset, var=uv[0], flag_thres=flag_thres).data
+    flagged_v = flag_data(dataset, var=uv[1], flag_thres=flag_thres).data
+
+    if not (np.isfinite(flagged_u).any() and np.isfinite(flagged_v).any()):
+        r_max = 1
+
+    else:
+        r_max = np.nanmax(np.hypot(
+            flagged_u,
+            flagged_v
+        ))
+
+
     r_max = round_up(r_max, 0.2)
     r_ticks = np.round(np.linspace(0, r_max, 6), 2)[1:]
 
@@ -162,8 +173,12 @@ def plot_velocity_polar_hist(dataset: xr.Dataset, nrows: int = 3, ncols: int = 3
     grid_subplot(axes[0], nrows, ncols)
     for index in range(naxes):
         histo, a_edges, r_edges = polar_histo(
-            dataset.sel(depth=slice(bin_depths[index], bin_depths[index + 1])),
-            uv[0], uv[1], r_max)
+            dataset=dataset.sel(depth=slice(bin_depths[index], bin_depths[index + 1])),
+            x_vel=uv[0],
+            y_vel=uv[1],
+            r_max=r_max,
+            flag_thres=flag_thres
+        )
         histo[histo < 1] = np.nan
         if np.isfinite(histo).any():
             histo /= np.nanmax(histo)
@@ -202,6 +217,8 @@ def plot_velocity_fields(dataset: xr.Dataset, uvw: List[str] = ("u", "v", "w"), 
     for var, axe in zip(uvw, axes):
         vel_da = flag_data(dataset=dataset, var=var, flag_thres=flag_thres)
         vmax = round_up(np.max(np.abs(vel_da)), 0.1)
+        if not np.isfinite(vmax):
+            vmax = 1
         extent = get_extent(dataset)
         im = axe.imshow(
             vel_da, aspect="auto", cmap=VEL_CMAP, extent=extent, vmin=-vmax, vmax=vmax, interpolation='none',
@@ -230,7 +247,7 @@ def plot_test_fields(dataset: xr.Dataset):
         value = dataset.attrs["binary_mask_tests_values"][index]
         if value is not None:
             mask = (dataset.binary_mask.astype(int) & 2 ** index).astype(bool)
-            axes[index].imshow(mask, aspect="auto", cmap=BINARY_CMAP, extent=extent, interpolation='none', )
+            axes[index].imshow(mask, aspect="auto", cmap=BINARY_CMAP, extent=extent, vmin=0, vmax=1, interpolation='none', )
             axes[index].xaxis_date()
             axes[index].set_title(test_name + f": {value}", fontdict=FONT)
         axes[index].tick_params(labelleft=False, labelbottom=False)
@@ -272,7 +289,7 @@ def plot_vel_series(dataset: xr.Dataset, depths: Union[float, List[float]],
 def plot_pearson_corr(dataset: xr.Dataset, uvw: List[str] = ("u", "v", "w"), flag_thres: int = 2):
     corr = {v: [] for v in uvw}
     for var in uvw:
-        da = flag_data(dataset=dataset, var=var)
+        da = flag_data(dataset=dataset, var=var, flag_thres=flag_thres)
         for d in range(dataset.dims["depth"] - 2):
             if np.isfinite(da[d]).any() and np.isfinite(da[d + 2]).any():
                 corr[var].append(xr.corr(da[d], da[d + 2], "time"))
