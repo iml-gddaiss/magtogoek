@@ -10,7 +10,7 @@ import json
 import sys
 
 from typing import *
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from magtogoek import SENSOR_TYPES, PLATFORM_TYPES, DEFAULT_PLATFORM_TYPE
 import magtogoek.logger as l
 from magtogoek.utils import dict2json, json2dict
@@ -25,7 +25,7 @@ def platform_template() -> dict:
 
 
 def _add_platform() -> dict:
-    return {**{k: v for k, v in Platform().__dict__.items() if not k.startswith('_')},
+    return {**{k: v for k, v in Platform().__dict__.items()},
             **{
                 'buoy_specs': _add_buoy_specs(),
                 'instruments': dict(__enter_an_instrument_ID_here__=_add_instrument()),
@@ -33,31 +33,29 @@ def _add_platform() -> dict:
 
 
 def _add_buoy_specs() -> dict:
-    return {k: v for k, v in BuoySpecifications().__dict__.items() if not k.startswith('_')}
-
+    return {k: v for k, v in BuoySpecifications().__dict__.items()}
 
 
 def _add_instrument() -> dict:
     instrument = InstrumentMetadata()
     instrument.sensors = dict(__generic_sensor_id__=_add_sensor())
-    return {k: v for k, v in instrument.__dict__.items() if not k.startswith('_')}
+    return {k: v for k, v in instrument.__dict__.items()}
 
 
 def _add_sensor() -> dict:
     sensor = SensorMetadata()
     sensor.calibration = _add_calibration()
-    return {k: v for k, v in sensor.__dict__.items() if not k.startswith('_')}
+    return {k: v for k, v in sensor.__dict__.items()}
 
 
 def _add_calibration() -> dict:
-    return {k: v for k, v in Calibration().__dict__.items() if not k.startswith('_')}
+    return {k: v for k, v in Calibration().__dict__.items()}
 
 
 @dataclass
 class Platform:
-    platform_type: str
+    platform_type: str = DEFAULT_PLATFORM_TYPE
     platform_name: str = None
-    _platform_type: str = field(init=False, default=DEFAULT_PLATFORM_TYPE)
     platform_model: str = None
     sounding: str = None
     longitude: str = None
@@ -65,15 +63,11 @@ class Platform:
     description: str = None
     chief_scientist: str = None
 
-    @property
-    def platform_type(self):
-        return self._platform_type
-
-    @platform_type.setter
-    def platform_type(self, value):
-        if value not in PLATFORM_TYPES and not isinstance(value, property):
-            l.warning(f"Invalid platform_type: `{value}`.")
-        self._platform_type = value
+    def __setattr__(self, key, value):
+        super().__setattr__(key, value)
+        if key == "platform_type":
+            if value not in PLATFORM_TYPES and value is not None:
+                l.warning(f"Invalid platform_type: `{value}`.")
 
 
 @dataclass
@@ -109,8 +103,7 @@ class SensorMetadata:
 
 @dataclass
 class InstrumentMetadata:
-    sensor_type: str
-    _sensor_type: str = field(init=False)
+    sensor_type: str = None
     sensor_height: str = None
     sensor_depth: str = None
     serial_number: str = None
@@ -122,19 +115,11 @@ class InstrumentMetadata:
     comments: str = None
     sensors: Dict[str, SensorMetadata] = None
 
-    def __post_init__(self):
-        if self.sensors is None:
-            self.sensors = {}
-
-    @property
-    def sensor_type(self):
-        return self._sensor_type
-
-    @sensor_type.setter
-    def sensor_type(self, value: str):
-        if value not in SENSOR_TYPES and not isinstance(value, property):
-            l.warning(f"Invalid sensor_type in platform file instrument: `{value}`.")
-        self._sensor_type = value
+    def __setattr__(self, key, value):
+        super().__setattr__(key, value)
+        if key == "sensor_type":
+            if value not in SENSOR_TYPES and value is not None:
+                l.warning(f"Invalid sensor_type in platform file instrument: `{value}`.")
 
 
 @dataclass

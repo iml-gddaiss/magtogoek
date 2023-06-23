@@ -131,7 +131,7 @@ SENSORS_TO_VARIABLES_MAP = {
     ],
     "ctd": ["conductivity", "salinity", "temperature", "density"],
     "ctdo": ["conductivity", "salinity", "temperature", "density", "dissolved_oxygen"],
-    "doxy": ["dissolved_oxygen"],
+    #"doxy": ["dissolved_oxygen"],
     # 'nitrate': [],  # Not implemented yet.
     "ph": ['ph'],
     'par': ['par'],
@@ -163,8 +163,8 @@ class ProcessConfig(BaseProcessConfig):
     adcp_id: str = None
     ctd_id: str = None
     ctdo_id: str = None
-    doxy_id: str = None
-    #nitrate_id: str = None
+    # doxy_id: str = None
+    # nitrate_id: str = None
     ph_id: str = None
     par_id: str = None
     triplet_id: str = None
@@ -274,7 +274,7 @@ class ProcessConfig(BaseProcessConfig):
             'adcp': self.adcp_id,
             "ctd": self.ctd_id,
             "ctdo": self.ctdo_id,
-            "doxy": self.doxy_id,
+            # "doxy": self.doxy_id,
             # 'nitrate': None,  # Not implemented yet.
             "ph": self.ph_id,
             'par': self.par_id,
@@ -578,7 +578,8 @@ def _compute_uv_ship(dataset: xr.Dataset, pconfig: ProcessConfig):
     if pconfig.compute_uv_ship == "ll":
         if all(v in dataset for v in ['lon', 'lat']):
             l.log('Platform velocities (u_ship, v_ship) computed from longitude and latitude data.')
-            _compute_navigation(dataset)
+            uv_dataset = _compute_navigation(dataset[['lon', 'lat']])
+            dataset["u_ship"], dataset["v_ship"] = uv_dataset["u_ship"], uv_dataset["v_ship"]
 
     elif pconfig.compute_uv_ship == "sp":
         if all(x in dataset for x in ('speed', 'course')):
@@ -718,7 +719,7 @@ def _add_platform_instrument_metadata_to_dataset(dataset: xr.Dataset, pconfig: P
                 'comments': pconfig.platform_metadata.instruments[pconfig.adcp_id].comments,
             }
 
-            for key, value in instrument_metadata.items():
+            for [key, value] in list(instrument_metadata.items()):
                 if value is None:
                     instrument_metadata.pop(key)
 

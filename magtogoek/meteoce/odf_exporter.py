@@ -20,20 +20,13 @@ METEOCE BODC:
         Practical Salinity                                   : PSAL_01 : SDN:P01::PSLTZZ01
         Sea Density                                          : DENS_01 : SDN:P01::SIGTEQ01
         Hydrogen Ion Concentration (pH)                      : PHPH_01 : SDN:P01::PHXXZZXX
-        Fluorescence                                         : FLOR_01 : SDN:P01::FLUOZZZZ (new)
         par                                                  : PSAR_01 : SDN:P01::PFDPAR01 (new)
-        chlorophyll                                          : CPHL_01 : SDN:P01::CPHLPR01
+        chlorophyll                                          : FLOR_01 : SDN:P01::CPHLPR01
         Partial pressure of carbon dioxide in the atmosphere : ACO2_01 : SDN:P01::ACO2XXXX
         Partial pressure of carbon dioxide in the water body : PCO2_01 : SDN:P01::PCO2XXXX
         Wave mean height                                     : VRMS_01 : SDN:P01::GAVHZZ01
         Wave maximum height                                  : VMXL_01 : SDN:P01::GCMXZZ01
         Wave period                                          : VTCA_01 : SDN:P01::GTAMZZ01
-
-        u
-        v
-        w
-        e
-
 Notes
 -----
 
@@ -67,7 +60,6 @@ PARAMETERS = (
     'density',
     'dissolved_oxygen',
     'ph',
-    'fdom',
     'chlorophyll',
     'par',
     'co2_a',
@@ -77,16 +69,16 @@ PARAMETERS = (
     'wave_mean_period',
 
     #Not in ODF meteoce file but could be added
-    # 'pitch',
-    # 'roll_',
-    # 'heading',
-    # "u",
-    # "v",
-    # "w",
-    # "e"
+    # 'pitch', ANC
+    # 'roll_',ANC
+    # 'heading', ANC
+    # "u", VEL
+    # "v", VEL
+    # "w", VEL
+    # "e" VEL
 )
 
-QC_PARAMETERS = ()  # all except time, lon, lat ? All Qc available maybe.
+QC_PARAMETERS = ()  #TODO # all except time, lon, lat ? All Qc available maybe.
 
 PARAMETERS_METADATA_PATH = CONFIGURATION_PATH.joinpath("odf_parameters_metadata.json")
 PARAMETERS_METADATA = json2dict(PARAMETERS_METADATA_PATH)

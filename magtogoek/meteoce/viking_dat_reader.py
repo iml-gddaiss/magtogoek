@@ -300,10 +300,18 @@ data: (length: {len(self)})
     def _squeeze_empty_tag(self):
         """Set tag where all data are missing to None"""
         for tag in self.tags:
-            uniques_values = set()
-            [uniques_values.update(value) for value in self.__dict__[tag].values()]
-            if len(uniques_values) == 1 and list(uniques_values)[0] == FILL_VALUE:
+            if _is_empty_tags(data=self.__dict__[tag]) is True:
                 self.__dict__[tag] = None
+
+
+def _is_empty_tags(data: dict):
+    for values in data.values():
+        unique_values = np.unique(values)
+        if len(unique_values) > 1:
+            return False
+        elif len(unique_values) == 1 and unique_values[0] != FILL_VALUE:
+            return False
+    return True
 
 
 def _to_numpy_masked_array(data: list):
@@ -402,10 +410,15 @@ buoys:\n"""
     def read(self, filenames, century=21) -> Dict[str, VikingData]:
         filenames = get_files_from_expression(filenames)
         decoded_data = []
+        _count = 0
+        _num_of_files = len(filenames)
         for _filename in filenames:
+            print(f'File read: {_count}/{_num_of_files}', end='\r')
             with open(_filename) as f:
                 data_received = f.read()
                 decoded_data += _decode_transmitted_data(data_received=data_received, century=century)
+            _count += 1
+        print(f'File read: {_count}/{_num_of_files}')
 
         self._load_viking_data(decoded_data)
 
@@ -424,7 +437,10 @@ buoys:\n"""
         tags = ['comp', 'triplet', 'par_digi', 'suna', 'gps', 'ctd', 'ctdo', 'rti', 'rdi',
                 'wave_m', 'wave_s', 'wxt520', 'wmt700', 'wph', 'co2_w', 'co2_a', 'debit', 'vemco', 'mo']
 
+        _count = 0
+        _num_of_bloc = len(decoded_data)
         for data_block in decoded_data:
+            print(f'Data Chuck loaded: {_count}/{_num_of_bloc}', end='\r')
             buoy_data = self._buoys_data[data_block['buoy_name']]
 
             buoy_data.time.append(data_block['time'])
@@ -439,9 +455,12 @@ buoys:\n"""
                 else:
                     for key in tag_data.keys():
                         tag_data[key].append(data_block[tag][key])
+            _count += 1
+        print(f'Data Chuck loaded: {_count}/{_num_of_bloc}')
 
         for viking_data in self._buoys_data.values():
             viking_data.reformat()
+
 
     @staticmethod
     def _get_buoys_info(decoded_data: list) -> dict:
@@ -481,6 +500,7 @@ def _decode_transmitted_data(data_received: str, century: int = 21) -> list:
     decoded_data = []
     tag_key = ['comp', 'triplet', 'par_digi', 'suna', 'gps', 'ctd', 'ctdo', 'rti', 'rdi',
                'wave_m', 'wave_s', 'wxt520', 'wmt700', 'wph', 'co2_w', 'co2_a', 'debit', 'vemco', 'mo']
+
     for data_block in DATA_BLOCK_REGEX.finditer(data_received):
         wxt520 = dict().fromkeys(TAG_VARS['WXT520_KEYS'], float(FILL_VALUE))
         decoded_block = dict().fromkeys(tag_key)
@@ -533,8 +553,10 @@ def _decode_transmitted_data(data_received: str, century: int = 21) -> list:
     return decoded_data
 
 
-def _decode_NOM(data: str, century: int) -> dict:
+def _decode_NOM(data: str, century: int) -> Optional[dict]:
     data = data.strip('\n').split(',')
+    if len(data) != 9:
+        return None
     latitude, longitude = FILL_VALUE, FILL_VALUE
     if "#" not in data[7]:
         _lat = data[7].split(' ')
@@ -552,13 +574,15 @@ def _decode_NOM(data: str, century: int) -> dict:
             'longitude_E': longitude}
 
 
-def _decode_COMP(data: str) -> dict:
+def _decode_COMP(data: str) -> Optional[dict]:
     """
     [COMP],FFCFBEF1,FFE17319,-2.565,17.36,-0.033,5.205,4.869,8.062
     0: total of the sinus of the heading.
     1: total of the cosine of the heading.
     """
     data = data.strip('\n').split(',')
+    if len(data) != 8:
+        return None
     sum_sinus = struct.unpack('>i', bytes.fromhex(data[0]))[0]
     sum_cosinus = struct.unpack('>i', bytes.fromhex(data[1]))[0]
     pitch = _safe_float(data[2])
@@ -574,8 +598,10 @@ def _decode_COMP(data: str) -> dict:
             'tilt_std': round(sqrt(_safe_float(data[7])), 2)}
 
 
-def _decode_Triplet(data: str, century: int) -> dict:
+def _decode_Triplet(data: str, century: int) -> Optional[dict]:
     data = data.strip('\n').split('\t')
+    if len(data) != 12:
+        return None
     date = data[1].split('/')
     hours = data[2].split(":")
     ids = data[0].split('-')
@@ -591,8 +617,10 @@ def _decode_Triplet(data: str, century: int) -> dict:
             }
 
 
-def _decode_Par_digi(data: str, century: int) -> dict:
+def _decode_Par_digi(data: str, century: int) -> Optional[dict]:
     data = data.strip('\n').split(',')
+    if len(data) != 9:
+        return None
     model_number, serial_number = re.match(r".*?([A-z]+)([0-9]+)", data[2]).groups()
     return {'time': _make_timestamp(str(century - 1) + data[1][4:6], data[1][2:4], data[1][0:2],
                                     data[0][0:2], data[0][2:4], data[0][4:6]),
@@ -605,9 +633,11 @@ def _decode_Par_digi(data: str, century: int) -> dict:
             'intern_temperature': _safe_float(data[7]), }
 
 
-def _decode_SUNA(data: str) -> dict:
+def _decode_SUNA(data: str) -> Optional[dict]:
     """[SUNA],SATSLC1363,2021144,10.499913,-3.28,-0.0460,0.0809,0.0645,0.00,0.000086"""
     data = data.replace(' ', '').split(',')
+    if len(data) != 9:
+        return None
     model_number, serial_number = re.match(r".*?([A-z]+)([0-9]+)", data[0]).groups()
     time = FILL_VALUE
     if '#' not in data[1] + data[2]:
@@ -624,12 +654,14 @@ def _decode_SUNA(data: str) -> dict:
             "spectrum_average": _safe_float(data[8])}
 
 
-def _decode_GPS(data: str, century: int) -> dict:
+def _decode_GPS(data: str, century: int) -> Optional[dict]:
     """
            0 1         2 3          4 5     6     7      8     9
      '110132,A,4839.7541,N,06834.8903,W,003.7,004.4,240521,017.5,W,*7B'
      """
     data = data.strip('\n').split(',')
+    if len(data) != 11:
+        return None
     lat_minutes = float(data[2][-7:-2])
     lon_minutes = float(data[4][-7:-2])
     lat = (int(data[2][:-7]) + round(lat_minutes / 60, 4))
@@ -646,18 +678,22 @@ def _decode_GPS(data: str, century: int) -> dict:
     # 'checksum': _safe_int(data[8])}
 
 
-def _decode_CTD(data: str) -> dict:
+def _decode_CTD(data: str) -> Optional[dict]:
     """"""
     data = data.strip('\n').replace(' ', '').split(',')
+    if len(data) != 4:
+        return None
     return {'temperature': _safe_float(data[0]),
             'conductivity': _safe_float(data[1]),
             'salinity': _safe_float(data[2]),
             'density': _safe_float(data[3])}
 
 
-def _decode_CTDO(data: str) -> dict:
+def _decode_CTDO(data: str) -> Optional[dict]:
     """No test string in files."""
     data = data.strip('\n').replace(' ', '').split(',')
+    if len(data) != 4:
+        return None
     return {'temperature': _safe_float(data[0]),
             'conductivity': _safe_float(data[1]),
             'dissolved_oxygen': _safe_float(data[2]),
@@ -711,6 +747,8 @@ def _decode_RDI(data: str, century: int) -> Optional[dict]:
 
 def _decode_WAVE_M(data: str) -> Optional[dict]:
     data = data.strip('\n').split(',')
+    if len(data) != 6:
+        return None
     if "#" in data[0]:
         return None
     return {'time': data[0].replace('/', '-') + 'T' + data[1],
@@ -720,10 +758,12 @@ def _decode_WAVE_M(data: str) -> Optional[dict]:
             "maximal_height": _safe_float(data[5])}
 
 
-def _decode_WAVE_S(data: str) -> dict:
+def _decode_WAVE_S(data: str) -> Optional[dict]:
     data = data.strip('\n').split(',')
+    if len(data) != 11:
+        return None
     time = data[10].replace(' ', 'T')
-    return {'time': data[10].replace(' ', 'T'),
+    return {'time': time,
             'heading': _safe_float(data[1]),
             'average_height': _safe_float(data[2]),
             'dominant_period': _safe_float(data[3]),
@@ -756,8 +796,10 @@ def _decode_WMT700(data: str) -> dict:
     return decoded_data
 
 
-def _decode_WpH(data: str) -> dict:
+def _decode_WpH(data: str) -> Optional[dict]:
     data = data.strip('\n').split(',')
+    if len(data) != 11:
+        return None
     model, serial_number = re.match(r".*?([A-z]+)([0-9]+)", data[0]).groups()
     return {'model': model,
             'serial_number': serial_number,
@@ -773,7 +815,10 @@ def _decode_WpH(data: str) -> dict:
             'int_temperature': _safe_float(data[10])}
 
 
-def _decode_CO2_W(data: str) -> dict:
+def _decode_CO2_W(data: str) -> Optional[dict]:
+    data = data.strip('\n').split(',')
+    if len(data) != 15:
+        return None
     return {"time": _make_timestamp(*data[1:7]),
             "auto_zero": _safe_float(data[7]),
             "current": _safe_float(data[8]),

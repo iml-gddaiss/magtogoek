@@ -145,9 +145,6 @@ def _set_event_header_geospatials(odf: Odf, dataset: xr.Dataset, p01_codes_map: 
         odf.event["end_longitude"] = dataset.attrs["longitude"]
 
 
-
-
-
 def make_odf_header(odf):
     """
     Make field specification with:
@@ -219,7 +216,6 @@ def _add_buoy_instrument_header(
         instrument_metadata: InstrumentMetadata
 ):
     """
-    FIXME test
     Uses the data from the platform metadata
     """
 
@@ -235,13 +231,13 @@ def _add_buoy_instrument_header(
 
     _add_buoy_instrument_comments(odf, instrument_id, instrument_metadata)
 
-    for sensor, sensor_metadata in instrument_metadata.sensors.items():
-        _add_buoy_instrument_sensors(sensor, odf, instrument_id, sensor_metadata)
+    if isinstance(instrument_metadata.sensors, dict):
+        for sensor, sensor_metadata in instrument_metadata.sensors.items():
+            _add_buoy_instrument_sensors(sensor, odf, instrument_id, sensor_metadata)
 
 
 def _add_buoy_instrument_comments(odf: Odf, instrument_id: str, instrument_metadata: InstrumentMetadata):
     """
-    TODO TEST | get depth/height info from the dataset ????
     """
     buoy_instruments_comments = [
         (["Firmware_Version"], instrument_metadata.firmware_version),
@@ -252,12 +248,13 @@ def _add_buoy_instrument_comments(odf: Odf, instrument_id: str, instrument_metad
         buoy_instruments_comments.append((["Depth_m"], instrument_metadata.sensor_depth))
 
     if instrument_metadata.sensor_height is not None:
-        buoy_instruments_comments.append((["Height_m"], instrument_metadata.sensor_depth))
+        buoy_instruments_comments.append((["Height_m"], instrument_metadata.sensor_height))
 
     for (key, value) in buoy_instruments_comments:
-        odf.buoy_instrument[instrument_id]["buoy_instrument_comments"].append(
-            build_comments_string(["CONFIGURATION_01"] + key, value)
-        )
+        if value is not None:
+            odf.buoy_instrument[instrument_id]["buoy_instrument_comments"].append(
+                build_comments_string(["CONFIGURATION_01"] + key, value)
+            )
 
 
 def _add_buoy_instrument_sensors(sensor: str, odf: Odf, instrument_id: str, sensor_metadata: SensorMetadata):
@@ -358,7 +355,7 @@ def make_parameter_headers(odf, dataset, variables: Union[List[str], Tuple[str, 
     qc_variables:
        quality control variables to put in the ODF.
     p01_codes_map :
-        FIXME
+        generic name to bodc p01_code mapping.
     bodc_name:
         If True, map from the generic to the BODC p01 variables names.
     Notes

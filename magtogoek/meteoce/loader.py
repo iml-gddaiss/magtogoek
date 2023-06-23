@@ -76,19 +76,18 @@ def load_viking_data(
     l.log(format_filenames_for_print('raw_data', filenames))
 
     buoys_data = RawVikingDatReader().read(filenames)
+
     if buoy_name is None:
         if len(buoys_data.keys()) == 1:
             buoy_name = list(buoys_data.keys())[0]
-            l.log(f'Data from {buoy_name} buoy selected.')
         else:
-            l.warning(f'More than one buoy was found in the file {filenames}. Exiting')
+            l.warning(f'More than one buoy name was found in the file {filenames}.\n Provide a Buoy Name \n Exiting')
             raise ValueError(f'More than one buoy was found in the file {filenames}. Exiting') # SHOULD NOT BE HERE FIXME
-    elif buoy_name in buoys_data:
-        pass
-    else:
+    elif buoy_name not in buoys_data:
         l.warning(f'Buoy Name was not found in the file {filenames}. Exiting')
         raise ValueError(f'Buoy Name was not found in the file {filenames}. Exiting') # SHOULD NOT BE HERE FIXME
 
+    l.log(f'Buoy Name: {buoy_name} found.')
     viking_data = buoys_data[buoy_name]
 
     meteoce_data, global_attrs = get_viking_meteoce_data(viking_data)
@@ -159,7 +158,7 @@ def get_viking_meteoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[np
     if viking_data.wxt520 is not None:
         _data.update(
             {'atm_temperature': (viking_data.wxt520['Ta'], {"units": "degree_C"}),
-             'atm_humidity': (viking_data.wxt520['Ua'], {}),
+             'atm_humidity': (viking_data.wxt520['Ua'], {"units": "percent"}),
              'atm_pressure': (viking_data.wxt520['Pa'], {"units": "mbar"}),
              }
         )
@@ -172,8 +171,8 @@ def get_viking_meteoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[np
         _data.update(
             {'temperature': (viking_data.ctd['temperature'], {"units": "degree_C"}),
              'conductivity': (viking_data.ctd['conductivity'], {'units': 'S/m'}),
-             'salinity': (viking_data.ctd['salinity'], {}),
-             'density': (viking_data.ctd['density'], {})}
+             'salinity': (viking_data.ctd['salinity'], {'units': 'PSU'}),
+             'density': (viking_data.ctd['density'], {'units': 'kg/m**3'})}
         )
         l.log('Ctd data loaded.')
 
@@ -181,7 +180,7 @@ def get_viking_meteoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[np
         _data.update(
             {'temperature': (viking_data.ctdo['temperature'], {"units": "degree_C"}),
              'conductivity': (viking_data.ctdo['conductivity'], {'units': 'S/m'}),
-             'salinity': (viking_data.ctdo['salinity'], {}),
+             'salinity': (viking_data.ctdo['salinity'], {'units': 'PSU'}),
              'dissolved_oxygen': (viking_data.ctdo['dissolved_oxygen'], {'units': 'umol/L'})}
         )
         l.log('Ctdo data loaded.')

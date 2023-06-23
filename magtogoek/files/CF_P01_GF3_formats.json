@@ -773,7 +773,7 @@
         "legacy_GF3_code": "CNDC"
     },
     "PSLTZZ01": {
-        "units": "psu",
+        "units": "PSU",
         "long_name": "Practical salinity of the water body",
         "sdn_parameter_urn": "SDN:P01::PSLTZZ01",
         "sdn_parameter_name": "Practical salinity of the water body",

@@ -210,17 +210,10 @@
         "print_field_width": 10,
         "print_decimal_places": 4
     },
-    "fdom": {
+    "chlorophyll": {
         "code": "FLOR_01",
         "name": "Fluorescence",
         "units": "mg/m**3",
-        "print_field_width": 10,
-        "print_decimal_places": 4
-    },
-    "chlorophyll": {
-        "code": "CPHL",
-        "name": "Chlorophyll-a Content",
-        "units": "mg/L",
         "print_field_width": 10,
         "print_decimal_places": 4
     },

@@ -12,33 +12,38 @@ def apply_motion_correction(dataset: xr.Dataset, mode: str):
     If mode is 'bt' the motion correction is along x, y, z.
     If mode is 'nav' the motion correction is along x, y.
     """
+    _msg = ""
 
     if mode == "bt":
         if all(f"bt_{v}" in dataset for v in ["u", "v", "w"]):
             for field in ["u", "v", "w"]:
                 dataset[field].values -= dataset[f"bt_{field}"].values
-            l.log("Motion correction carried out with bottom track")
-            for v in ["u", "v", "w"]:
-                add_correction_attributes_to_dataarray(dataset[v])
-                dataset[v].attrs['corrections'] += "Motion correction carried out with bottom track\n"
+            _msg = "Motion correction carried out with bottom track"
         else:
             l.warning("Motion correction aborted. Bottom velocity (bt_u, bt_v, bt_w) missing")
+            return
+
     elif mode == "nav":
         if all(f"{v}_ship" in dataset for v in ["u", "v"]):
             for field in ["u", "v"]:
-                if all([v in dataset for v in ['lon', 'lat']]):
-                    velocity_correction = dataset[field + "_ship"].where(np.isfinite(dataset.lon.values), 0)
-                else:
-                    velocity_correction = dataset[field + "_ship"]
-                dataset[field] += np.tile(velocity_correction, (dataset.depth.size, 1))
-            l.log("Motion correction carried out with navigation")
-            for v in ["u", "v", "w"]:
-                add_correction_attributes_to_dataarray(dataset[v])
-                dataset[v].attrs['corrections'] += "Motion correction carried out with navigation\n"
+                velocity_correction = dataset[field + "_ship"]
+
+                if 'depth' in dataset[field].coords:
+                    velocity_correction = np.tile(velocity_correction, (dataset.depth.size, 1))
+                dataset[field] += velocity_correction
+
+                _msg = "Motion correction carried out with navigation"
         else:
             l.warning("Motion correction aborted. Navigation velocity (u_ship, v_ship) missing")
+            return
     else:
         l.warning("Motion correction aborted. Motion correction mode invalid. ('bt' or 'nav')")
+        return
+
+    for v in ["u", "v", "w"]:
+        add_correction_attributes_to_dataarray(dataset[v])
+        dataset[v].attrs['corrections'] += _msg + '\n'
+    l.log(_msg)
 
 
 def apply_magnetic_correction(dataset: xr.Dataset, magnetic_declination: float):
