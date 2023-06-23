@@ -60,7 +60,7 @@ ABSOLUTE_IMPOSSIBLE_VELOCITY = 15
 GLOBAL_IMPOSSIBLE_PARAMETERS = IMPOSSIBLE_PARAMETERS_VALUES["global"]
 
 
-def no_adcp_quality_control(dataset: xr.Dataset):
+def no_adcp_quality_control(dataset: xr.Dataset, velocity_only: bool = False):
     """Adds var_QC ancillary variables to dataset with value 0.
 
     Ancillary variables:  temperature, pres, u, v, w.
@@ -72,16 +72,16 @@ def no_adcp_quality_control(dataset: xr.Dataset):
     ----------
     dataset :
         ADCP dataset formatted as done by adcp_init.
+    velocity_only :
+        If True, only velocities will receive quality variables.
     """
     l.section("Adcp Quality Controlled")
 
     l.log("No quality control carried out")
 
-    variables = ["temperature", "pres"]
-    if dataset.attrs['coord_system'] == 'beam':
-        variables += ['v1', 'v2', 'v3', 'v4']
-    else:
-        variables += ["u", "v", "w"]
+    variables = ['v1', 'v2', 'v3', 'v4', 'u', 'v', 'w']
+    if velocity_only is False:
+        variables += ["temperature", "pres"]
 
     for var in set(variables).intersection(set(dataset.variables)):
         add_ancillary_QC_variable_to_dataset(
@@ -405,7 +405,7 @@ def roll_test(dataset: xr.Dataset, threshold: float) -> tp.Type[np.array]:
     Roll conditions (True fails)
     Distance from mean"""
     if "roll_" in dataset:
-        roll_mean = circmean(dataset.roll_.values, low=-180, high=180)
+        roll_mean = circmean(dataset.roll_.values, low=-180, high=180, nan_policy='omit')
         roll_from_mean = circular_distance(dataset.roll_.values, roll_mean, units="deg")
         return roll_from_mean > threshold
     else:
@@ -419,10 +419,8 @@ def pitch_test(dataset: xr.Dataset, threshold: float) -> tp.Type[np.array]:
     Distance from Mean
     """
     if "pitch" in dataset:
-        pitch_mean = circmean(dataset.pitch.values, low=-180, high=180)
-        pitch_from_mean = circular_distance(
-            dataset.pitch.values, pitch_mean, units="deg"
-        )
+        pitch_mean = circmean(dataset.pitch.values, low=-180, high=180, nan_policy='omit')
+        pitch_from_mean = circular_distance(dataset.pitch.values, pitch_mean, units="deg")
         return pitch_from_mean > threshold
 
     else:

@@ -78,7 +78,27 @@ PARAMETERS = (
     # "e" VEL
 )
 
-QC_PARAMETERS = ()  #TODO # all except time, lon, lat ? All Qc available maybe.
+QC_PARAMETERS = ( # FIXME check this.
+ #   'mean_wind_speed',
+ #   'max_wind_speed',
+ #   'mean_wind_direction'
+    'atm_temperature',
+    'atm_humidity',
+    'atm_pressure',
+    'temperature',
+    'conductivity',
+    'salinity',
+    'density',
+    'dissolved_oxygen',
+    'ph',
+    'chlorophyll',
+    'par',
+    'co2_a',
+    'co2_w',
+    'wave_mean_height',
+    'wave_maximal_height',
+    'wave_mean_period',
+)
 
 PARAMETERS_METADATA_PATH = CONFIGURATION_PATH.joinpath("odf_parameters_metadata.json")
 PARAMETERS_METADATA = json2dict(PARAMETERS_METADATA_PATH)

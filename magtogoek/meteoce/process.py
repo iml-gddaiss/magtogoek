@@ -150,7 +150,6 @@ ADCP_VARIABLES_FOR_QC = [
     'pg', 'pg1', 'pg2', 'pg3', 'pg4',
     'corr1', 'corr2', 'corr3', 'corr4',
     'amp1', 'amp2', 'amp3', 'amp4',
-    'roll_', 'pitch',
 ]
 
 
@@ -592,33 +591,26 @@ def _quality_control(dataset: xr.Dataset, pconfig: ProcessConfig) -> xr.Dataset:
     Pipe a sub-dataset to adcp quality control for adcp data ?
     Or call the qc function from viking_quality_control. ??
     """
-    # FIXME ERROR WITH HORIZONTAL VEL TEST FLAG DIMS
-    # adcp_dataset = _make_adcp_sub_dataset(dataset)
-    # adcp_dataset.attrs['coord_system'] = 'earth'
-    l.warning('ADCP QC DISABLED FIXME')
     if pconfig.quality_control is True:
-        dataset = _meteoce_quality_control(dataset, pconfig)
-        #adcp_dataset = _adcp_quality_control(adcp_dataset, pconfig)
-        # no_adcp_quality_control(adcp_dataset)  # FIXME ERROR WITH HORIZONTAL VEL TEST FLAG DIMS
+        _meteoce_quality_control(dataset, pconfig)
+        adcp_dataset = _adcp_quality_control(dataset, pconfig)
+
+        _merge_adcp_quality_control(dataset, adcp_dataset)
     else:
         no_meteoce_quality_control(dataset)
-        # no_adcp_quality_control(adcp_dataset)
-
-    # adcp_dataset.attrs.pop('coord_system')
-
-    # _merge_adcp_quality_control(dataset, adcp_dataset)
+        no_adcp_quality_control(dataset, velocity_only=True)
 
     return dataset
 
 
-def _make_adcp_sub_dataset(dataset: xr.Dataset) -> xr.Dataset:
-    """Return dataset with the adcp variables.
-
-    `temperature` and `pres` variables are omitted since they are not from the adcp.
-
-    """
-    adcp_variable_subset = set(dataset.variables).intersection(set(ADCP_VARIABLES_FOR_QC))
-    return dataset[adcp_variable_subset]
+# def _make_adcp_sub_dataset(dataset: xr.Dataset) -> xr.Dataset:
+#     """Return dataset with the adcp variables.
+#
+#     `temperature` and `pres` variables are omitted since they are not from the adcp.
+#
+#     """
+#     adcp_variable_subset = set(dataset.variables).intersection(set(ADCP_VARIABLES_FOR_QC))
+#     return dataset[adcp_variable_subset]
 
 
 def _merge_adcp_quality_control(dataset: xr.Dataset, adcp_dataset: xr.Dataset):
@@ -631,12 +623,6 @@ def _merge_adcp_quality_control(dataset: xr.Dataset, adcp_dataset: xr.Dataset):
 
 def _meteoce_quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
     """fixme"""
-    try:
-        climatology_dataset = xr.load_dataset(pconfig.climatology_dataset)
-    except ValueError:
-        # FIXME
-        climatology_dataset = None
-
     dataset = meteoce_quality_control(
         dataset,
         regional_outlier=pconfig.regional_outlier,
@@ -652,11 +638,15 @@ def _meteoce_quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
 
 def _adcp_quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
     """fixme"""
-    adcp_dataset = dataset.expand_dims(dim={'depth': [0]})
+    adcp_dataset = dataset[set(dataset.variables).intersection(set(ADCP_VARIABLES_FOR_QC))]
+
+    adcp_dataset = adcp_dataset.expand_dims(dim={'depth': [0]})
+    for var in ['roll_', 'pitch']:
+        adcp_dataset[var] = dataset[var]
 
     adcp_dataset.attrs['coord_system'] = "earth"
 
-    adcp_dataset = adcp_quality_control(
+    adcp_quality_control(
         adcp_dataset,
         amp_th=pconfig.amplitude_threshold,
         corr_th=pconfig.correlation_threshold,
@@ -670,6 +660,8 @@ def _adcp_quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
         bottom_depth=None,
         bad_pressure=False,
     )
+
+    adcp_dataset.attrs.pop('coord_system')
 
     return adcp_dataset.squeeze(['depth'])
 
