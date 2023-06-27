@@ -259,13 +259,16 @@ def _flag_propagation(dataset: xr.Dataset, use_atm_pressure: bool = False):
     Pressure, Temperature, Salinity -> Dissolved Oxygen
     Temperature, Salinity -> pH
     """
-    pressure = 'atm_pressure' if use_atm_pressure is True else 'pres'
+
     flag_propagation_rules = {
-        'depth': [pressure, 'depth'],
-        'density': [pressure, 'temperature', 'salinity', 'density'],
-        'dissolved_oxygen': [pressure, 'temperature', 'salinity', 'dissolved_oxygen'],
+        'density': ['temperature', 'salinity', 'density'],
+        'dissolved_oxygen': ['temperature', 'salinity', 'dissolved_oxygen'],
         'ph': ['temperature', 'salinity', 'ph'],
         }
+
+    if use_atm_pressure is True:
+        flag_propagation_rules['density'].append('atm_pressure')
+        flag_propagation_rules['dissolved_oxygen'].append('atm_pressure')
 
     for variable in set(dataset.keys()).intersection(set(flag_propagation_rules.keys())):
         flags_parameters = [

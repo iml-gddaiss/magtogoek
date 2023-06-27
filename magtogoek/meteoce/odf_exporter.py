@@ -141,6 +141,7 @@ def make_odf(
 
     make_cruise_header(odf, platform_metadata, global_attributes)
     make_event_header(odf, dataset, global_attributes, EVENT_QUALIFIER2, p01_codes_map)
+    _set_event_header_depths(odf, dataset)
     make_odf_header(odf)
 
     make_buoy_header(odf, platform_metadata)
@@ -156,3 +157,24 @@ def make_odf(
         write_odf(odf=odf, output_path=output_path)
 
     return odf
+
+
+def _set_event_header_depths(odf: Odf, dataset: xr.Dataset):
+    """ Set even header depths metadata from dataset.
+
+    Sets :
+     - min_depth, max_depth
+     - depth_off_bottom
+
+    Parameters
+    ----------
+    odf :
+    dataset :
+    """
+
+    if 'sampling_depth_m' in dataset.attrs:
+        odf.event['min_depth'] = dataset.attrs['sampling_depth_m']
+        odf.event['max_depth'] = dataset.attrs['sampling_depth_m']
+
+    if all(odf.event[key] is not None for key in ('sounding', 'max_depth')):
+        odf.event["depth_off_bottom"] = odf.event['sounding'] - odf.event['max_depth']

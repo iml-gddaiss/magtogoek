@@ -26,7 +26,8 @@ Notes
     are average over ~ 1 minutes, we need at least ~1 minutes average values from the gps.who C<e
 
 """
-
+import gsw
+import numpy as np
 import xarray as xr
 from typing import *
 
@@ -157,6 +158,7 @@ class ProcessConfig(BaseProcessConfig):
     # PROCESSING
     buoy_name: str = None
     data_format: str = None  # [viking_dat, ]
+    sampling_depth: float = None  # Used for computation *(density) and for EVENT HEADER IN METEOCE
 
     ##### ID #####
     adcp_id: str = None
@@ -358,6 +360,8 @@ def _process_meteoce_data(pconfig: ProcessConfig):
 
     l.section("Meteoce data correction")
 
+    _compute_pressure(dataset, pconfig)
+
     _set_magnetic_declination(dataset, pconfig)
 
     meteoce_data_magnetic_declination_correction(dataset, pconfig)
@@ -373,7 +377,14 @@ def _process_meteoce_data(pconfig: ProcessConfig):
     l.section("Meteoce data computation.")
 
     if 'density' not in dataset or pconfig.recompute_density is True:
-        _compute_ctdo_potential_density(dataset)
+        _compute_ctdo_potential_density(dataset, pconfig)
+
+
+    # Dropping `pres` # QC crashed since it a valid variable but pres_QC doesn't exist.
+    # NOTE: This may not be the way to do it if a pres sensor so added to the buoy.
+    if 'pres' in dataset.variables:
+        dataset = dataset.drop_vars('pres')
+
 
     # ---------------- #
     # ADCP CORRECTION  #
@@ -399,7 +410,12 @@ def _process_meteoce_data(pconfig: ProcessConfig):
 
     add_platform_metadata_to_dataset(dataset=dataset, pconfig=pconfig)
 
-    _add_platform_instrument_metadata_to_dataset(dataset, pconfig) # TODO TEST
+    # >>>> METEOCE SPECIFIC
+    _add_platform_instrument_metadata_to_dataset(dataset, pconfig)
+
+    if pconfig.sampling_depth is not None:
+        dataset.attrs['sampling_depth_m'] = pconfig.sampling_depth # used for ODF and remove from netcdf output.
+    # <<<<
 
     # ------------- #
     # DATA ENCODING #
@@ -419,8 +435,9 @@ def _process_meteoce_data(pconfig: ProcessConfig):
         p01_codes_map=pconfig.p01_codes_map,
         cf_profile_id='time'
     )
-
-    _add_platform_instrument_metadata_to_variables(dataset, pconfig) # TODO TEST
+    # >>>> METEOCE SPECIFIC
+    _add_platform_instrument_metadata_to_variables(dataset, pconfig)
+    # <<<<
 
     # ------------ #
     # MAKE FIGURES #
@@ -476,7 +493,25 @@ def _load_viking_data(pconfig: ProcessConfig):
     return dataset
 
 
-def _compute_ctdo_potential_density(dataset: xr.Dataset):
+def _compute_pressure(dataset: xr.Dataset, pconfig: ProcessConfig):
+    """FIXME maybe add loggings ?"""
+    if "latitude" in dataset.variables:
+        latitude = dataset.latitude.data
+    else:
+        latitude = 0
+
+    if 'atm_pressure' in dataset.variables:
+        pres = dataset.atm_pressure.pint.quantify().pint.to('dbar').pint.dequantify().values - 10.1325
+    else:
+        pres = np.zeros(dataset.time.shape)
+
+    if pconfig.sampling_depth is not None:
+        pres += gsw.p_from_z(z=pconfig.sampling_depth, lat=latitude)
+
+    dataset['pres'] = (['time'], pres, {"units": "dbar"})
+
+
+def _compute_ctdo_potential_density(dataset: xr.Dataset, pconfig: ProcessConfig):
     """Compute potential density as sigma_t:= Density(S,T,P) - 1000
 
     Density computed using TEOS-10 polynomial (Roquet et al., 2015)
@@ -486,13 +521,6 @@ def _compute_ctdo_potential_density(dataset: xr.Dataset):
     required_variables = ['temperature', 'salinity']
     if all((var in dataset for var in required_variables)):
         _log_msg = 'Potential density computed using TEOS-10 polynomial. Absolute Salinity, Conservative Temperature'
-        if 'pres' in dataset.variables:
-            pres = dataset.pres.pint.quantify().pint.to('dbar').pint.dequantify().values
-        elif 'atm_pressure' in dataset.variables:
-            pres = dataset.atm_pressure.pint.quantify().pint.to('dbar').pint.dequantify().values - 10.1325
-        else:
-            pres = 0
-            _log_msg += ', sea pressure = 0'
 
         if "longitude" in dataset.variables:
             longitude = dataset.longitude.data
@@ -505,6 +533,12 @@ def _compute_ctdo_potential_density(dataset: xr.Dataset):
         else:
             latitude = 0
             _log_msg += ', latitude = 0'
+
+        if 'pres' in dataset.variables:
+            pres = dataset.pres.values
+        else:
+            pres = 0
+            _log_msg += f', pressure = 0'
 
         density = compute_in_situ_density(
             temperature=dataset.temperature.data,
@@ -602,16 +636,6 @@ def _quality_control(dataset: xr.Dataset, pconfig: ProcessConfig) -> xr.Dataset:
     return dataset
 
 
-# def _make_adcp_sub_dataset(dataset: xr.Dataset) -> xr.Dataset:
-#     """Return dataset with the adcp variables.
-#
-#     `temperature` and `pres` variables are omitted since they are not from the adcp.
-#
-#     """
-#     adcp_variable_subset = set(dataset.variables).intersection(set(ADCP_VARIABLES_FOR_QC))
-#     return dataset[adcp_variable_subset]
-
-
 def _merge_adcp_quality_control(dataset: xr.Dataset, adcp_dataset: xr.Dataset):
     """add `adcp_dataset` ancillary variables and `quality_comments` `global_attrs` to `dataset`."""
     for var in {v + "_QC" for v in ADCP_VARIABLES_FOR_QC}.intersection(set(adcp_dataset.variables)):
@@ -662,7 +686,7 @@ def _adcp_quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
 
     adcp_dataset.attrs.pop('coord_system')
 
-    return adcp_dataset.squeeze(['depth'])
+    return adcp_dataset.squeeze(['depth'], drop=True)
 
 
 def _dissolved_oxygen_ml_per_L_to_umol_per_L(dataset: xr.Dataset):

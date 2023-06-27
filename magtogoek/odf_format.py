@@ -822,27 +822,16 @@ def _format_headers(name: str, header: dict) -> str:
 
 
 def _format_list(_list: list, parents: str) -> str:
-    # s = ""
     if len(_list) == 0:
-        # s += parents + "''," + NEWLINE
-        # return s
         return parents + "''"
     else:
         rows = []
         for value in _list:
             if isinstance(value, tuple):
                 rows.append(parents + " ".join([f"{v:{12}.{8}f}" for v in value]))
-                # s += (
-                #     parents
-                #     + " ".join([f"{v:{12}.{8}f}" for v in value])
-                #     + ","
-                #     + NEWLINE
-                # )
             else:
                 rows.append(parents + "'" + f"{value}'")
-         #       #s += parents + "'" + f"{value}'," + NEWLINE
         return f",{NEWLINE}".join(rows)
-        #return s
 
 
 def _get_key_and_item(line):

@@ -54,7 +54,8 @@ def find_climatology_outlier(
 ) -> xr.DataArray:
     """Flag data that are outside the climatology.
 
-    Fixme Test needs to be carried out for:  different resolutions, missing values
+    # FIXME Test needs to be carried out for:  different resolutions, missing values
+    # TODO CHECK CF CONVENTION FOR CLIMATOLOGY DATASET. variable attributes: Cell_Method
 
     Parameters
     ----------

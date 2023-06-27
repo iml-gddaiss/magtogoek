@@ -60,6 +60,7 @@ def make_odf(
 
     make_cruise_header(odf, platform_metadata, global_attributes)
     make_event_header(odf, dataset, global_attributes, event_qualifier2, p01_codes_map)
+    _set_event_header_depths(odf, dataset)
     make_odf_header(odf)
 
     if platform_metadata.platform.platform_type == "buoy":
@@ -172,3 +173,33 @@ def _make_adcp_buoy_instrument_comments(
         ]["buoy_instrument_comments"].append(
             build_comments_string([configuration, key], value)
         )
+
+
+def _set_event_header_depths(odf: Odf, dataset: xr.Dataset, p01_codes_map: dict) -> None:
+    """ Set even header depths metadata from dataset.
+
+    Sets :
+     - min_depth, max_depth
+     - depth_off_bottom
+
+    Parameters
+    ----------
+    odf :
+    dataset :
+    """
+    if odf.event['event_qualifier2'] == 'ANC':
+        if 'xducer_depth' in dataset:
+            odf.event['min_depth'] = dataset['xducer_depth'].values.min()
+            odf.event['max_depth'] = dataset['xducer_depth'].values.max()
+        elif p01_codes_map['xducer_depth'] in dataset:
+            odf.event['min_depth'] = dataset[p01_codes_map['xducer_depth']].values.min()
+            odf.event['max_depth'] = dataset[p01_codes_map['xducer_depth']].values.max()
+        else:
+            odf.event['min_depth'] = dataset.attrs['sensor_depth']
+            odf.event['max_depth'] = dataset.attrs['sensor_depth']
+    elif 'depth' in dataset.variables:
+        odf.event['min_depth'] = dataset.depth.values.min()
+        odf.event['max_depth'] = dataset.depth.values.max()
+
+    if all(odf.event[key] is not None for key in ('sounding', 'max_depth')):
+        odf.event["depth_off_bottom"] = odf.event['sounding'] - odf.event['max_depth']

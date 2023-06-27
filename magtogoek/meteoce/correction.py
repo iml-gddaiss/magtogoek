@@ -211,18 +211,16 @@ def _dissolved_oxygen_salinity_correction(dataset: xr.Dataset):
 def _dissolved_oxygen_pressure_correction(dataset: xr.Dataset):
     """Apply `magtogoek.wps.correction.dissolved_oxygen_correction_for_pressure_JAC`
 
-    .pint.quantify().to('dbar') is called on the pressure DataArray to ensure dbar units.
-    Thus, the pressure data variable needs to have a `units` attributes.
     """
-    if all(var in dataset.variables for var in ['atm_pressure']):
+    if all(var in dataset.variables for var in ['pres']):
         dataset.dissolved_oxygen.values = dissolved_oxygen_correction_for_pressure_JAC(
             dissolved_oxygen=dataset.dissolved_oxygen.values,
-            pressure=dataset.atm_pressure.pint.quantify().to('dbar').pint.dequantify().values
+            pressure=dataset['pres'].values
         )
         l.log(f'Dissolved oxygen correction for pressure was carried out')
         dataset['dissolved_oxygen'].attrs["corrections"] += 'Pressure correction carried out.\n'
     else:
-        l.warning(f'Dissolved oxygen correction for pressure aborted. `atm_pressure` ot found.')
+        l.warning(f'Dissolved oxygen correction for pressure aborted. `pres` missing.')
 
 
 def _time_drift_correction(dataset: xr.Dataset, variable: str, pconfig: "ProcessConfig"):
