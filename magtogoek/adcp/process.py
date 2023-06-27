@@ -84,7 +84,7 @@ GLOBAL_ATTRS_TO_DROP = [
     "binary_mask_tests_values",
 ]
 
-BEAM_VEL_CODES = {
+BEAM_VEL_CODES = { # BODC REAL CODE NOT FOUND
     'v1': 'vel_beam_1',
     'v2': 'vel_beam_2',
     'v3': 'vel_beam_3',
@@ -99,7 +99,7 @@ BEAM_VEL_CODES = {
     'bt_v4': 'bt_vel_beam_4'
 }
 
-XYZ_VEL_CODES = {
+XYZ_VEL_CODES = { # BODC REAL CODE NOT FOUND
     'u': 'vel_x_axis',
     'v': 'vel_y_axis',
     'w': 'vel_z_axis',

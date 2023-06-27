@@ -36,30 +36,50 @@ from typing import List
 
 from magtogoek import logger as l
 from magtogoek.quality_control_common import IMPOSSIBLE_PARAMETERS_VALUES, values_outliers_detection, \
-    climatology_outlier_test, add_ancillary_QC_variable_to_dataset, add_flags_values, merge_flags
+    climatology_outlier_test, add_ancillary_QC_variable_to_dataset, add_flags_values, merge_flags, \
+    find_missing_values
 from magtogoek.process_common import FLAG_ATTRIBUTES
 
-QC_VARIABLES = [
-    'atm_pressure',  # Need since atm_pressure is used for correction Dissolved Oxygen or compute Density
-    'atm_temperature',
-    'atm_humidity',
-    'temperature',
-    'salinity',
-    'density',
-    'dissolved_oxygen',
-    'ph',
-    'par',
-    'fluorescence',
-    'chlorophyll',
-    'fdom',
-    'co2_w',
-]
+
+VARIABLES_WITH_QC = { # 1: QC(default flag = 1) , 0: No Qc (default flag = 0)
+    'mean_wind_speed': 0,
+    'max_wind_speed': 0,
+    'mean_wind_direction': 0,
+    'max_wind_direction': 0,
+    'atm_temperature': 1,
+    'atm_humidity': 1,
+    'atm_pressure': 1,
+    'wave_mean_height': 0,
+    'wave_maximal_height': 0,
+    'wave_period': 0,
+    'wave_direction': 0,
+    'temperature': 1,
+    'conductivity': 0,
+    'salinity': 1,
+    'density': 1,
+    'dissolved_oxygen': 1,
+    'ph': 1,
+    'par': 0,
+    'scattering': 0,
+    'chlorophyll': 0,
+    'fdom': 0,
+    'co2_a': 0,
+    'co2_w': 0,
+    'lon': 0,
+    'lat': 0,
+    'heading': 0,
+    'roll_': 0,
+    'pitch': 0,
+    'roll_std': 0,
+    'pitch_std': 0,
+    'u_ship': 0,
+    'v_ship': 0,
+    }
+
+QC_VARIABLES = [k for k, v in VARIABLES_WITH_QC.items() if v == 1]
 
 
-NO_QC_VARIABLES = [
-    'wave_mean_height', 'wave_maximal_height', 'wave_period',
-    'wind_mean', 'wind_max', 'wind_direction_mean', 'wind_direction_max',
-]
+NO_QC_VARIABLES = [k for k, v in VARIABLES_WITH_QC.items() if v == 0]
 
 
 def no_meteoce_quality_control(dataset: xr.Dataset):
@@ -169,6 +189,8 @@ def meteoce_quality_control(
     if absolute_outlier is True:
         _impossible_values_tests(dataset, region='global', flag=4)
 
+    _flag_missing_values(dataset)
+
     if propagate_flags is True:
         _flag_propagation(dataset, use_atm_pressure=True)
 
@@ -205,7 +227,7 @@ def _impossible_values_tests(dataset: xr.Dataset, region: str, flag: int):
             lower_limit=outliers_values[variable]['min'],
             upper_limit=outliers_values[variable]['max']
         )
-        add_flags_values(dataset[variable + "_QC"].data, outliers_flag * flag)
+        add_flags_values(dataset[variable + "_QC"].values, outliers_flag * flag)
 
         test_comment = \
             f"{region} outlier threshold: less than {outliers_values[variable]['min']} {outliers_values[variable]['units']} " \
@@ -214,6 +236,12 @@ def _impossible_values_tests(dataset: xr.Dataset, region: str, flag: int):
         l.log(f"{variable} :" + test_comment)
 
         dataset[variable+"_QC"].attrs['quality_test'] += test_comment + "\n"
+
+
+def _flag_missing_values(dataset: xr.Dataset):
+    """Flag missing values for all meteoce variables."""
+    for variable in set(dataset.variables).intersection(set(VARIABLES_WITH_QC.keys())):
+        add_flags_values(dataset[variable + "_QC"].data, find_missing_values(dataset[variable].values) * 9)
 
 
 def _flag_propagation(dataset: xr.Dataset, use_atm_pressure: bool = False):

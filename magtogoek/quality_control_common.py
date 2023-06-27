@@ -1,7 +1,6 @@
 import numpy as np
 import xarray as xr
 from typing import List
-from nptyping import NDArray
 from pandas import Timestamp
 
 from magtogoek import logger as l, CONFIGURATION_PATH
@@ -23,7 +22,11 @@ CLIMATOLOGY_TIME_FORMATS = {
 SEASONS_ID = ('DJF', 'JJA', 'MAM', 'SON')
 
 
-def values_outliers_detection(data: NDArray, lower_limit: float, upper_limit: float) -> NDArray:
+def find_missing_values(data: np.ndarray) -> np.ndarray:
+    return ~np.isfinite(data)
+
+
+def values_outliers_detection(data: np.ndarray, lower_limit: float, upper_limit: float) -> np.ndarray:
     """Check for data outlier
 
     Parameters
@@ -194,7 +197,7 @@ def _add_climatology_qc_variable(dataset: xr.Dataset, variable: str):
     dataset[variable + "_QC_climatology_outlier"].attrs.update(FLAG_ATTRIBUTES)
 
 
-def data_spike_detection(data: NDArray, inner_thres: float, outer_thres: float):
+def data_spike_detection(data: np.ndarray, inner_thres: float, outer_thres: float):
     """ Spike detection.
 
     ```Algorithm without first and last values:

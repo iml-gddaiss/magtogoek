@@ -50,7 +50,7 @@ import xarray as xr
 from scipy.stats import circmean
 
 from magtogoek import logger as l
-from magtogoek.quality_control_common import IMPOSSIBLE_PARAMETERS_VALUES, values_outliers_detection, \
+from magtogoek.quality_control_common import find_missing_values, IMPOSSIBLE_PARAMETERS_VALUES, values_outliers_detection, \
     add_flags_values, add_ancillary_QC_variable_to_dataset
 from magtogoek.process_common import FLAG_ATTRIBUTES
 from magtogoek.sci_tools import circular_distance
@@ -313,7 +313,7 @@ def adcp_quality_control(
 
     missing_vel = np.sum(
         np.stack(
-            [~np.isfinite(dataset[v].values) for v in velocity_variables]
+            [find_missing_values(dataset[v].values) for v in velocity_variables]
         ), axis=0, dtype=bool)
 
     add_flags_values(vel_flags, missing_vel*9)

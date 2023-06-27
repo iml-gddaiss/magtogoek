@@ -34,7 +34,7 @@ from magtogoek import logger as l
 from magtogoek.sci_tools import rotate_2d_vector, north_polar2cartesian
 from magtogoek.process_common import BaseProcessConfig, resolve_output_paths, add_global_attributes, write_log, \
     write_netcdf, add_processing_timestamp, clean_dataset_for_nc_output, format_data_encoding, add_navigation, \
-    add_platform_metadata_to_dataset, add_correction_attributes_to_dataarray
+    add_platform_metadata_to_dataset
 from magtogoek.attributes_formatter import format_variables_names_and_attributes
 from magtogoek.platforms import PlatformMetadata
 
@@ -55,7 +55,7 @@ l.get_logger("meteoce_processing")
 
 STANDARD_GLOBAL_ATTRIBUTES = {"featureType": "timeSeriesProfile"}
 
-VARIABLES_TO_DROP = ['ph_temperature', 'speed', 'course', 'gps_magnetic_declination']#, 'last_heading'] Not currently loaded
+VARIABLES_TO_DROP = ['ph_temperature', 'speed', 'course', 'gps_magnetic_declination'] #, 'last_heading'] Not currently loaded
 
 GLOBAL_ATTRS_TO_DROP = [
     "binary_mask_tests",
@@ -131,7 +131,7 @@ SENSORS_TO_VARIABLES_MAP = {
     ],
     "ctd": ["conductivity", "salinity", "temperature", "density"],
     "ctdo": ["conductivity", "salinity", "temperature", "density", "dissolved_oxygen"],
-    #"doxy": ["dissolved_oxygen"],
+    # "doxy": ["dissolved_oxygen"], # Not implemented yet.
     # 'nitrate': [],  # Not implemented yet.
     "ph": ['ph'],
     'par': ['par'],
@@ -162,8 +162,8 @@ class ProcessConfig(BaseProcessConfig):
     adcp_id: str = None
     ctd_id: str = None
     ctdo_id: str = None
-    # doxy_id: str = None
-    # nitrate_id: str = None
+    # doxy_id: str = None # Not implemented yet.
+    # nitrate_id: str = None # Not implemented yet.
     ph_id: str = None
     par_id: str = None
     triplet_id: str = None
@@ -175,8 +175,7 @@ class ProcessConfig(BaseProcessConfig):
 
     ##### COMPUTE #####
     # GPS
-    #navigation: str = "drop" # ["drop", "keep", "recompute"]
-    compute_uv_ship: str = None
+    compute_uv_ship: str = None  # ["ll", "sp", "off"]
 
     # CTD
     recompute_density: bool = None
@@ -245,7 +244,6 @@ class ProcessConfig(BaseProcessConfig):
     climatology_threshold: float = None
     # Set choices in tparser: "linear", "nearest", "zero", "slinear", "quadratic", "cubic"
     climatology_depth_interpolation_method: str = None
-
     propagate_flags: bool = True
 
     # adcp quality_control
@@ -257,6 +255,7 @@ class ProcessConfig(BaseProcessConfig):
     error_velocity_threshold: float = None
     pitch_threshold: float = None
     roll_threshold: float = None
+
 
     ##### Variables set by the processing #######
     climatology_dataset: xr.Dataset = None
@@ -273,8 +272,8 @@ class ProcessConfig(BaseProcessConfig):
             'adcp': self.adcp_id,
             "ctd": self.ctd_id,
             "ctdo": self.ctdo_id,
-            # "doxy": self.doxy_id,
-            # 'nitrate': None,  # Not implemented yet.
+            # "doxy": self.doxy_id, # Not implemented yet.
+            # 'nitrate': None,      # Not implemented yet.
             "ph": self.ph_id,
             'par': self.par_id,
             'triplet': self.triplet_id,
@@ -682,7 +681,8 @@ def _dissolved_oxygen_umol_per_L_to_umol_per_kg(dataset: xr.Dataset):
     if dataset.dissolved_oxygen.attrs['units'] == ['umol/L']:
         if 'density' in dataset.variables:
             dataset.dissolved_oxygen.values = dissolved_oxygen_umol_per_L_to_umol_per_kg(
-                dataset.dissolved_oxygen.dataset.density)
+                dataset.dissolved_oxygen.dataset.density
+            )
             dataset.dissolved_oxygen.attrs['units'] = 'umol/kg'
             l.log('Dissolved Oxygen converted from [umol/L] to [umol/kg].')
         else:
