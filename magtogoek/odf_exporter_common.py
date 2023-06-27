@@ -112,10 +112,10 @@ def _set_event_header_geospatials(odf: Odf, dataset: xr.Dataset):
     odf.event['end_date_time'] = odf_time_format(dataset.time.values.max())
 
     if "lat" in dataset and "lon" in dataset:
-        odf.event["initial_latitude"] = dataset.lat.values[0] # dropna()
-        odf.event["end_latitude"] = dataset.lat.values[-1]
-        odf.event["initial_longitude"] = dataset.lon.values[0]
-        odf.event["end_longitude"] = dataset.lon.values[-1]
+        odf.event["initial_latitude"] = dataset.lat.dropna('time').values[0]
+        odf.event["end_latitude"] = dataset.lat.dropna('time').values[-1]
+        odf.event["initial_longitude"] = dataset.lon.dropna('time').values[0]
+        odf.event["end_longitude"] = dataset.lon.dropna('time').values[-1]
     elif "latitude" in dataset.attrs and "longitude" in dataset.attrs:
         odf.event["initial_latitude"] = dataset.attrs["latitude"]
         odf.event["end_latitude"] = dataset.attrs["latitude"]

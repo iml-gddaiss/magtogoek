@@ -99,7 +99,7 @@ def load_viking_data(
     global_attrs.update({
         'platform': viking_data.buoy_name,
         'buoy_controller_firmware_version': viking_data.firmware,
-        'buoy_controller_serial_number': viking_data.controller_sn
+        'buoy_controller_serial_number': list(set(viking_data.controller_sn))
     })
 
     dataset = xr.Dataset(meteoce_data, coords=coords, attrs=global_attrs)
