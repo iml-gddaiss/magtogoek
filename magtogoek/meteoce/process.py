@@ -381,7 +381,7 @@ def _process_meteoce_data(pconfig: ProcessConfig):
 
 
     # Dropping `pres` # QC crashed since it a valid variable but pres_QC doesn't exist.
-    # NOTE: This may not be the way to do it if a pres sensor so added to the buoy.
+    # NOTE: This may not be the way to do it if a pressure sensor is added to the buoy.
     if 'pres' in dataset.variables:
         dataset = dataset.drop_vars('pres')
 
@@ -495,8 +495,10 @@ def _load_viking_data(pconfig: ProcessConfig):
 
 def _compute_pressure(dataset: xr.Dataset, pconfig: ProcessConfig):
     """FIXME maybe add loggings ?"""
-    if "latitude" in dataset.variables:
-        latitude = dataset.latitude.data
+    if "lat" in dataset.variables:
+        latitude = dataset.lat.data
+    elif isinstance(pconfig.platform_metadata.platform.latitude, (int, float)):
+        latitude = str(pconfig.platform_metadata.platform.latitude)
     else:
         latitude = 0
 
@@ -506,7 +508,7 @@ def _compute_pressure(dataset: xr.Dataset, pconfig: ProcessConfig):
         pres = np.zeros(dataset.time.shape)
 
     if pconfig.sampling_depth is not None:
-        pres += gsw.p_from_z(z=pconfig.sampling_depth, lat=latitude)
+        pres += gsw.p_from_z(z=-pconfig.sampling_depth, lat=latitude)
 
     dataset['pres'] = (['time'], pres, {"units": "dbar"})
 
@@ -522,14 +524,20 @@ def _compute_ctdo_potential_density(dataset: xr.Dataset, pconfig: ProcessConfig)
     if all((var in dataset for var in required_variables)):
         _log_msg = 'Potential density computed using TEOS-10 polynomial. Absolute Salinity, Conservative Temperature'
 
-        if "longitude" in dataset.variables:
-            longitude = dataset.longitude.data
+        if "lon" in dataset.variables:
+            longitude = dataset.lon.data
+        elif isinstance(pconfig.platform_metadata.platform.latitude, (int, float)):
+            longitude = pconfig.platform_metadata.platform.latitude
+            _log_msg += f', longitude = {longitude}'
         else:
             longitude = 0
             _log_msg += ', longitude = 0'
 
-        if "latitude" in dataset.variables:
-            latitude = dataset.latitude.data
+        if "lat" in dataset.variables:
+            latitude = dataset.lat.data
+        elif isinstance(pconfig.platform_metadata.platform.latitude, (int, float)):
+            latitude = pconfig.platform_metadata.platform.latitude
+            _log_msg += f', latitude = {latitude}'
         else:
             latitude = 0
             _log_msg += ', latitude = 0'

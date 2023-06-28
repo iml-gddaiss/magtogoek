@@ -58,8 +58,8 @@ class Platform:
     platform_name: str = None
     platform_model: str = None
     sounding: str = None
-    longitude: str = None
-    latitude: str = None
+    longitude: float = None
+    latitude: float = None
     description: str = None
     chief_scientist: str = None
 
@@ -67,7 +67,14 @@ class Platform:
         super().__setattr__(key, value)
         if key == "platform_type":
             if value not in PLATFORM_TYPES and value is not None:
+                self.__setattr__('platform_type',DEFAULT_PLATFORM_TYPE)
                 l.warning(f"Invalid platform_type: `{value}`.")
+
+        if key in ["longitude", "latitude"]:
+            if not isinstance(value, (float, int)) and value is not None:
+                l.warning(f"Invalid platform {key}. {key} must be either and Int or Float.")
+                self.__setattr__(key, None)
+
 
 
 @dataclass

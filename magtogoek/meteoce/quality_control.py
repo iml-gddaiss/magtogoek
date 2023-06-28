@@ -166,8 +166,6 @@ def meteoce_quality_control(
     """
     l.section("Meteoce Quality Control")
 
-    l.warning('QUALITY CONTROL NOT TESTED.')
-
     _add_ancillary_variables_to_dataset(dataset, variables=QC_VARIABLES, default_flag=1)
     _add_ancillary_variables_to_dataset(dataset, variables=NO_QC_VARIABLES, default_flag=0)
 
