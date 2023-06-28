@@ -73,7 +73,7 @@ def make_cruise_header(odf: Odf, platform_metadata: PlatformMetadata, config_att
         odf.cruise["platform"] = "Oceanographic Buoy"
 
 
-def make_event_header(odf, dataset, config_attrs, event_qualifier2, p01_codes_map: dict):
+def make_event_header(odf, dataset, config_attrs, event_qualifier2):
     """
     Make the event header.
 

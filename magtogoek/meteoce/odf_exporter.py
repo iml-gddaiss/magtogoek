@@ -140,7 +140,7 @@ def make_odf(
     odf = Odf()
 
     make_cruise_header(odf, platform_metadata, global_attributes)
-    make_event_header(odf, dataset, global_attributes, EVENT_QUALIFIER2, p01_codes_map)
+    make_event_header(odf, dataset, global_attributes, EVENT_QUALIFIER2)
     _set_event_header_depths(odf, dataset)
     make_odf_header(odf)
 

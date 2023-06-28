@@ -59,8 +59,8 @@ def make_odf(
     odf = Odf()
 
     make_cruise_header(odf, platform_metadata, global_attributes)
-    make_event_header(odf, dataset, global_attributes, event_qualifier2, p01_codes_map)
-    _set_event_header_depths(odf, dataset)
+    make_event_header(odf, dataset, global_attributes, event_qualifier2)
+    _set_event_header_depths(odf, dataset, p01_codes_map=p01_codes_map)
     make_odf_header(odf)
 
     if platform_metadata.platform.platform_type == "buoy":
@@ -116,8 +116,7 @@ def _make_adcp_buoy_instrument_header(
 
 def _make_adcp_buoy_instrument_comments(
         odf: Odf,
-        adcp_id
-        : str,
+        adcp_id: str,
         dataset: xr.Dataset,
         platform_metadata: PlatformMetadata
 ):
