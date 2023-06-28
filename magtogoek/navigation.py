@@ -21,6 +21,7 @@ import numpy as np
 import pynmea2
 import xarray as xr
 import matplotlib.pyplot as plt
+from magtogoek import logger as l
 from magtogoek.sci_tools import north_polar2cartesian, vincenty, get_gps_bearing
 from magtogoek.utils import get_files_from_expression
 
@@ -186,7 +187,7 @@ def compute_navigation(
         print('Loading files ... [Done]')
 
     print('Computing navigation ...', end='\r')
-    dataset = _compute_navigation(dataset, window=window)
+    _compute_navigation(dataset, window=window)
     print('Computing navigation ... [Done]')
 
     dataset.attrs["input_files"] = filenames
@@ -231,20 +232,23 @@ def _compute_navigation(
             "v_ship": (["time"], v_ship),
         },
         coords={"time": centered_time},
-        attrs={'history': []}
     )
 
     if window is not None:
         window = int(window)
         nav_dataset = nav_dataset.rolling(time=window, center=True).mean()
-        nav_dataset.attrs['history'].append(f'A rolling average of length {window} was applied to the data.')
 
     nav_dataset = nav_dataset.interp(time=dataset.time)
 
-    dataset = xr.merge((nav_dataset, dataset), compat='override')
-    dataset.attrs.update({'uv_ship_flag': True})
+    dataset['course'] = np.round(nav_dataset['course'], 2)
+    dataset['speed'] = np.round(nav_dataset['speed'], 2)
+    dataset['u_ship'] = np.round(nav_dataset['u_ship'], 2)
+    dataset['v_ship'] = np.round(nav_dataset['v_ship'], 2)
 
-    return dataset
+    #dataset = xr.merge((nav_dataset, dataset), compat='override')
+    #dataset.attrs.update({'uv_ship_flag': True})
+
+    #return dataset
 
 
 def _compute_speed_and_course(time: tp.Union[list, np.ndarray],

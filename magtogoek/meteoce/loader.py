@@ -253,9 +253,16 @@ def get_viking_meteoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[np
             _data[_name] = (viking_data.rdi[_name] * MILLIMETER_TO_METER, {"units": "m/s"})
         l.log('Rdi data loaded.')
 
-    elif viking_data.rti is not None:
+    if viking_data.rti is not None:
+        if viking_data.rdi is not None:
+            l.warning('Both RDI and RTI tag found in dataset. Only the RTI data were kept')
+
         _bin = viking_data.rti['bin'][~viking_data.rti['bin'].mask]
         _bin_position_cm = viking_data.rti['position_cm'][~viking_data.rti['position_cm'].mask] * CENTIMETER_TO_METER
+
+        _bin = np.nanmean(_bin)
+        _bin_position_cm = np.round(np.nanmean(_bin_position_cm), 2)
+
         _attrs = {'bin': _bin, 'bin_position_cm': _bin_position_cm}
         _global_attrs = {'adcp_bin': _bin, 'adcp_bin_position_cm': _bin_position_cm}
 

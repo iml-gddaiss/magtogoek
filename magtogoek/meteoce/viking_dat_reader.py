@@ -173,9 +173,9 @@ import numpy as np
 
 from magtogoek.utils import get_files_from_expression
 
-FILL_VALUE = np.nan
+NAN_FILL_VALUE = np.nan
 
-TRIPLET_FILL_VALUE = 1e20
+#TRIPLET_FILL_VALUE = 1e20
 
 TAGS = ["NOM", "COMP", "Triplet", "Par_digi", "SUNA", "GPS",
         "CTD", "CTDO", "RTI", "RDI", "WAVE_M", "WAVE_S", "WXT520",
@@ -197,7 +197,7 @@ TAG_VARS = dict(
     GPS_KEYS=['time', 'latitude_N', 'longitude_E', 'speed', 'course', 'variation_E', 'validity'],
     CTD_KEYS=['temperature', 'conductivity', 'salinity', 'density'],
     CTDO_KEYS=['temperature', 'conductivity', 'oxygen', 'salinity'],
-    RTI_KEYS=['bin', 'position', 'beam1', 'beam2', 'beam3', 'beam4', 'u', 'v', 'w', 'e',
+    RTI_KEYS=['bin', 'position_cm', 'beam1', 'beam2', 'beam3', 'beam4', 'u', 'v', 'w', 'e',
               'corr1', 'corr2', 'corr3', 'corr4', 'amp1', 'amp2', 'amp3', 'amp4',
               'bt_beam1', 'bt_beam2', 'bt_beam3', 'bt_beam4',
               'bt_u', 'bt_v', 'bt_w', 'bt_e', 'bt_corr1', 'bt_corr2', 'bt_corr3', 'bt_corr4',
@@ -309,7 +309,7 @@ def _is_empty_tags(data: dict):
         unique_values = np.unique(values)
         if len(unique_values) > 1:
             return False
-        elif len(unique_values) == 1 and unique_values[0] != FILL_VALUE:
+        elif len(unique_values) == 1 and np.isfinite(unique_values[0]):
             return False
     return True
 
@@ -320,11 +320,11 @@ def _to_numpy_masked_array(data: list):
     """
     _data = np.array(data)
     if isinstance(_data[0], str):
-        data_array = np.ma.masked_where(_data == str(FILL_VALUE), _data)
+        data_array = np.ma.masked_where(_data == str(NAN_FILL_VALUE), _data)
     else:
-        data_array = np.ma.masked_where(_data == FILL_VALUE, _data)
+        data_array = np.ma.masked_where(_data == NAN_FILL_VALUE, _data)
 
-    data_array.set_fill_value(FILL_VALUE)
+    data_array.set_fill_value(NAN_FILL_VALUE)
 
     return data_array
 
@@ -361,12 +361,12 @@ def _convert_triplet_wavelength(triplet_data: dict):
         fdom_raw[index460] = triplet_data['raw_value_' + i][index460]
         fdom_calc[index460] = triplet_data['calculated_value_' + i][index460]
 
-    scatter_raw.set_fill_value(FILL_VALUE)
-    scatter_calc.set_fill_value(FILL_VALUE)
-    chloro_raw.set_fill_value(FILL_VALUE)
-    chloro_calc.set_fill_value(FILL_VALUE)
-    fdom_raw.set_fill_value(FILL_VALUE)
-    fdom_calc.set_fill_value(FILL_VALUE)
+    scatter_raw.set_fill_value(NAN_FILL_VALUE)
+    scatter_calc.set_fill_value(NAN_FILL_VALUE)
+    chloro_raw.set_fill_value(NAN_FILL_VALUE)
+    chloro_calc.set_fill_value(NAN_FILL_VALUE)
+    fdom_raw.set_fill_value(NAN_FILL_VALUE)
+    fdom_calc.set_fill_value(NAN_FILL_VALUE)
 
     triplet_data.update({
         'scatter_raw': scatter_raw,
@@ -451,7 +451,7 @@ buoys:\n"""
                 tag_data = buoy_data.__dict__[tag]
                 if data_block[tag] is None:
                     for key in tag_data.keys():
-                        tag_data[key].append(FILL_VALUE)
+                        tag_data[key].append(NAN_FILL_VALUE)
                 else:
                     for key in tag_data.keys():
                         tag_data[key].append(data_block[tag][key])
@@ -502,7 +502,7 @@ def _decode_transmitted_data(data_received: str, century: int = 21) -> list:
                'wave_m', 'wave_s', 'wxt520', 'wmt700', 'wph', 'co2_w', 'co2_a', 'debit', 'vemco', 'mo']
 
     for data_block in DATA_BLOCK_REGEX.finditer(data_received):
-        wxt520 = dict().fromkeys(TAG_VARS['WXT520_KEYS'], float(FILL_VALUE))
+        wxt520 = dict().fromkeys(TAG_VARS['WXT520_KEYS'], float(NAN_FILL_VALUE))
         decoded_block = dict().fromkeys(tag_key)
         for data_sequence in DATA_TAG_REGEX.finditer(data_block.group(1)):
             tag = data_sequence.group(1)
@@ -557,7 +557,7 @@ def _decode_NOM(data: str, century: int) -> Optional[dict]:
     data = data.strip('\n').split(',')
     if len(data) != 9:
         return None
-    latitude, longitude = FILL_VALUE, FILL_VALUE
+    latitude, longitude = NAN_FILL_VALUE, NAN_FILL_VALUE
     if "#" not in data[7]:
         _lat = data[7].split(' ')
         latitude = {'S': -1, 'N': 1}[_lat[1][-1]] * (int(_lat[0]) + round(float(_lat[1][:-1]) / 60, 4))
@@ -639,7 +639,7 @@ def _decode_SUNA(data: str) -> Optional[dict]:
     if len(data) != 9:
         return None
     model_number, serial_number = re.match(r".*?([A-z]+)([0-9]+)", data[0]).groups()
-    time = FILL_VALUE
+    time = NAN_FILL_VALUE
     if '#' not in data[1] + data[2]:
         time = (datetime(int(data[1][0:4]), 1, 1)
                 + timedelta(days=int(data[1][4:]), hours=float(data[2]))).strftime('%Y-%m-%dT%H:%M:%S')
@@ -705,7 +705,7 @@ def _decode_RTI(data: str) -> Optional[dict]:
     Data are in meters (SI)
     """
     data = data.replace('\n', ',').split(',')
-    position = _safe_float(data[1]) / 100
+    position_cm = _safe_float(data[1])
     beam_vel_mms = tuple(map(_safe_float, data[2:6]))
     enu_mms = tuple(map(_safe_float, data[6:10]))
     corr_pc = tuple(map(_safe_float, data[10:14]))
@@ -716,8 +716,8 @@ def _decode_RTI(data: str) -> Optional[dict]:
     bt_amp_dB = tuple(map(_safe_float, data[31:35]))
     if len(data) != 36:
         return None
-    return {'bin': data[0],
-            'position': position,
+    return {'bin': _safe_float(data[0]),
+            'position_cm': _safe_float(data[1]),
             'beam1': beam_vel_mms[0], 'beam2': beam_vel_mms[1],
             'beam3': beam_vel_mms[2], 'beam4': beam_vel_mms[3],
             'u': enu_mms[0], 'v': enu_mms[0], 'w': enu_mms[0], 'e': enu_mms[3],
@@ -781,7 +781,7 @@ def _decode_WXT520(data: str) -> dict:
             'Ta', 'Ua', 'Pa',
             'Th', 'Vh', 'Vs', 'Vr']
     regex = r'([A-z]+)=(\d+(?:\.\d+)?)'
-    decoded_data = dict()#.fromkeys(keys, float(FILL_VALUE))
+    decoded_data = dict()#.fromkeys(keys, float(NAN_FILL_VALUE))
     for key, value in re.findall(regex, data.strip('\n')):
         decoded_data[key] = _safe_float(value)
     return decoded_data
@@ -790,7 +790,7 @@ def _decode_WXT520(data: str) -> dict:
 def _decode_WMT700(data: str) -> dict:
     keys = ['Dn', 'Dm', 'Dx', 'Sn', 'Sm', 'Sx']
     regex = r'([A-z]+)=(\d+(?:\.\d+)?)'
-    decoded_data = dict().fromkeys(keys, float(FILL_VALUE))
+    decoded_data = dict().fromkeys(keys, float(NAN_FILL_VALUE))
     for key, value in re.findall(regex, data.strip('\n')):
         decoded_data[key] = _safe_float(value)
     return decoded_data
@@ -845,7 +845,7 @@ def _decode_CO2_A(data: str) -> Optional[dict]:
 
 def _decode_Debit(data: str) -> dict:
     if "#" in data:
-        return {'flow': FILL_VALUE}
+        return {'flow': NAN_FILL_VALUE}
     else:
         return {'flow': round(int(data.strip('\n'), 16) * 0.001543, 4)}
 
@@ -915,13 +915,13 @@ def _decode_MO(data: str) -> dict:
 
 def _safe_float(value: str, ) -> Union[float]:
     try:
-        return float(FILL_VALUE) if '#' in value else float(value)
+        return float(NAN_FILL_VALUE) if '#' in value else float(value)
     except ValueError:
-        return float(FILL_VALUE)
+        return float(NAN_FILL_VALUE)
 
 
 # def _safe_int(value: str) -> Union[int]: everything is loaded in float
-#     return FILL_VALUE if '#' in value else int(value)
+#     return NAN_FILL_VALUE if '#' in value else int(value)
 
 
 def _compass_tilt_correction(hsin, hcos, pitch: float, roll: float):
@@ -939,7 +939,7 @@ def _compass_tilt_correction(hsin, hcos, pitch: float, roll: float):
 
 def _make_timestamp(Y: str, M: str, D: str, h: str, m: str, s: str) -> str:
     time = Y + "-" + M + "-" + D + "T" + h + ":" + m + ":" + s
-    return str(FILL_VALUE) if "#" in time else time
+    return str(NAN_FILL_VALUE) if "#" in time else time
 
 
 ##### FIXME TEST FUNCTION #####

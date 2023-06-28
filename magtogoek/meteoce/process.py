@@ -610,8 +610,8 @@ def _compute_uv_ship(dataset: xr.Dataset, pconfig: ProcessConfig):
     if pconfig.compute_uv_ship == "ll":
         if all(v in dataset for v in ['lon', 'lat']):
             l.log('Platform velocities (u_ship, v_ship) computed from longitude and latitude data.')
-            uv_dataset = _compute_navigation(dataset[['lon', 'lat']])
-            dataset["u_ship"], dataset["v_ship"] = uv_dataset["u_ship"], uv_dataset["v_ship"]
+            _compute_navigation(dataset)
+            # dataset["u_ship"], dataset["v_ship"] = uv_dataset["u_ship"], uv_dataset["v_ship"]
 
     elif pconfig.compute_uv_ship == "sp":
         if all(x in dataset for x in ('speed', 'course')):
