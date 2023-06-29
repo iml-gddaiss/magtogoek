@@ -280,6 +280,19 @@ def config_list_generic_variables(ctx, info, **options):
     for i in generic_parameters:
         print(f"`{i}`")
 
+
+@config.command("list_outlier_regions")
+@add_options(common_options)
+@click.pass_context
+def config_list_outlier_regions(ctx, info, **options):
+    """list the name of the outlier region."""
+    from magtogoek import CONFIGURATION_PATH
+    outlier_regions = json2dict(CONFIGURATION_PATH.joinpath("impossible_parameter_values.json"))
+    print(f"Regions:")
+    for key in outlier_regions.keys():
+        print(f"  {key}")
+
+
 # ---------------------------- #
 #       quick commands         #
 # ---------------------------- #
