@@ -238,8 +238,8 @@ def config_adcp(
 # @click.option("-T", "--platform", type=(click.Path(exists=True), str, str),
 #               help="platform_file, platform_id, adcp_id", default=(None, None, None), nargs=3)
 @add_options(general_options())
-@add_options(meteoce_options())
-@add_options(adcp_shared_options())
+#@add_options(meteoce_options())
+#@add_options(adcp_shared_options())
 @click.pass_context
 def config_meteoce(
         ctx, info, config_name, **options,

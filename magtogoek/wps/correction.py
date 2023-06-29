@@ -15,10 +15,6 @@ from magtogoek.utils import ensure_list_format
 from magtogoek.wps.sci_tools import voltEXT_from_pHEXT, pHEXT_from_voltEXT, compute_scaled_temperature, \
     rinko_raw_measurement_from_dissolved_oxygen, dissolved_oxygen_from_rinko_raw_measurement
 
-# RINKO_COEFFS_KEYS = ('c0', 'c1', 'c2', 'd0', 'cp',
-#                      'b0', 'b1', 'b2', 'b3', 'b4',
-#                      'd1', 'd2')
-
 
 def pH_correction_for_salinity(temperature: np.ndarray,
                                salinity: np.ndarray,
@@ -66,7 +62,7 @@ def pH_correction_for_salinity(temperature: np.ndarray,
 def dissolved_oxygen_correction_winkler(
         dissolved_oxygen: np.ndarray,
         temperature: np.ndarray,
-        coeffs: List[float],
+        rinko_coeffs: List[float],
         winkler_coeffs: List[float],
 ):
     """
@@ -79,10 +75,10 @@ def dissolved_oxygen_correction_winkler(
 
     temperature :
 
-    coeffs :
+    rinko_coeffs :
         [d0, d1, d2, c0, c1, c2]
     winkler_coeffs :
-        Winkler coefficients [d1_w. d2_w]
+        Winkler coefficients [d1_w, d2_w]
 
     Returns
     -------
@@ -92,11 +88,11 @@ def dissolved_oxygen_correction_winkler(
     -----
     Needs to be done on uncorrected data (in pressure or salinity).
     """
-    raw = rinko_raw_measurement_from_dissolved_oxygen(dissolved_oxygen=dissolved_oxygen, temperature=temperature, coeffs=coeffs)
+    raw = rinko_raw_measurement_from_dissolved_oxygen(dissolved_oxygen=dissolved_oxygen, temperature=temperature, coeffs=rinko_coeffs)
 
-    coeffs[1:3] = winkler_coeffs
+    rinko_coeffs[1:3] = winkler_coeffs
 
-    return dissolved_oxygen_from_rinko_raw_measurement(raw=raw, temperature=temperature, coeffs=coeffs)
+    return dissolved_oxygen_from_rinko_raw_measurement(raw=raw, temperature=temperature, coeffs=rinko_coeffs)
 
 
 def dissolved_oxygen_correction_for_salinity_SCOR_WG_142(dissolved_oxygen: np.ndarray, salinity: np.ndarray, temperature: np.ndarray):
@@ -266,8 +262,6 @@ def in_situ_sample_correction(data: np.ndarray, slope: float, offset: float) -> 
     """
 
     return slope * data + offset
-
-
 
 
 if __name__ == "__main__":

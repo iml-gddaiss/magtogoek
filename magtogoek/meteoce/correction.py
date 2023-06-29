@@ -155,9 +155,9 @@ def _correct_ph_for_salinity(dataset: xr.Dataset, pconfig: "ProcessConfig"):
     """
     add_correction_attributes_to_dataarray(dataset['ph'])
     required_variables = ['ph_temperature', 'temperature', 'salinity']
-    if pconfig.ph_coeffs is not None:
+    if pconfig.ph_salinity_coeffs is not None:
         if all((var in dataset for var in required_variables)):
-            [psal, k0, k2] = pconfig.ph_coeffs
+            [psal, k0, k2] = pconfig.ph_salinity_coeffs
             ph = pH_correction_for_salinity(temperature=dataset.temperature.data,
                                             salinity=dataset.salinity.data,
                                             ph_temperature=dataset.ph_temperature.data,
@@ -176,11 +176,11 @@ def _dissolved_oxygen_winkler_correction(dataset: xr.Dataset, pconfig: "ProcessC
     If the correction can be made, the p01_code_map for dissolved_oxygen is updated.
     """
     if all(var in dataset.variables for var in ['temperature']):
-        if len(pconfig.rinko_coeffs) == 6:
-            if len(pconfig.winkler_coeffs) == 2:
+        if len(pconfig.dissolved_oxygen_rinko_coeffs) == 6:
+            if len(pconfig.dissolved_oxygen_winkler_coeffs) == 2:
                 dissolved_oxygen_correction_winkler(
                     dataset['dissolved_oxygen'].data, dataset['temperature'].data,
-                    coeffs=pconfig.rinko_coeffs, winkler_coeffs=pconfig.winkler_coeffs
+                    rinko_coeffs=pconfig.dissolved_oxygen_rinko_coeffs, winkler_coeffs=pconfig.dissolved_oxygen_winkler_coeffs
                 )
                 pconfig.p01_codes_map['dissolved_oxygen'] = "DOXYCZ01"
                 dataset['dissolved_oxygen'].attrs["corrections"] += 'Winkler correction carried out.\n'
@@ -228,10 +228,10 @@ def _time_drift_correction(dataset: xr.Dataset, variable: str, pconfig: "Process
     """
     try:
         dataset[variable].data = time_drift_correction(
-            data=dataset[variable].data,
-            data_time=dataset.time.data,
-            drift=pconfig.__dict__[variable + " _drift"],
-            drift_time=pconfig.__dict__[variable + " _drift_time"]
+            data=dataset[variable].values,
+            data_time=dataset.time.values,
+            drift=pconfig.__dict__[variable + "_drift"],
+            drift_time=pconfig.__dict__[variable + "_drift_time"]
         )
         l.log(f'Time drift correction applied to {variable}.')
         dataset[variable].attrs['corrections'] += "Correction applied for sensor drift.\n"
@@ -242,10 +242,10 @@ def _time_drift_correction(dataset: xr.Dataset, variable: str, pconfig: "Process
 def _in_situ_sample_correction(dataset: xr.Dataset, variable: str, pconfig: "ProcessConfig"):
     """Apply `magtogoek.wps.correction.in_situ_sample_correction`
     """
-    slope = pconfig.__dict__[variable + " _sample_correction"][0]
-    offset = pconfig.__dict__[variable + " _sample_correction"][1]
+    slope = pconfig.__dict__[variable + "_sample_correction"][0]
+    offset = pconfig.__dict__[variable + "_sample_correction"][1]
     dataset[variable].data = in_situ_sample_correction(
-        data=dataset[variable].data,
+        data=dataset[variable].values,
         slope=slope,
         offset=offset
     )

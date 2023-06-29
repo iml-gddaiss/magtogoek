@@ -132,11 +132,6 @@ def make_odf(
         will be made from the odf['file_specification']. If a file name is also provided, the 'event_qualifier2'
         will be appended to it if it's not present in the `output_path`.
     """
-    # FIXME TODO
-    # Change oxygen value back to ml/L -> change min and max ?
-    # if dissolved oxygen units are not ml/L:
-    # dissolved_oxygen_ml_per_L_to_umol_per_L(dissolved_oxygen, inverse=True)
-
     odf = Odf()
 
     make_cruise_header(odf, platform_metadata, global_attributes)

@@ -47,6 +47,10 @@ def compute_in_situ_density(
     -------
         rho
     """
+    if any(salinity < 0): # silence error from gsw.CT_from_t
+        salinity = salinity.copy()
+        salinity[np.where(salinity < 0)] = np.nan
+
     absolute_salinity = gsw.SA_from_SP(SP=salinity, p=pres, lon=longitude, lat=latitude)
     conservative_temperature = gsw.CT_from_t(SA=absolute_salinity, t=temperature, p=pres)
 

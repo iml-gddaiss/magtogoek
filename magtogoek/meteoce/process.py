@@ -188,12 +188,12 @@ class ProcessConfig(BaseProcessConfig):
 
     # PH
     ph_salinity_correction: bool = None
-    ph_coeffs: List[float] = None  # psal, k0, k2
+    ph_salinity_coeffs: List[float] = None  # psal, k0, k2
 
     # OXY
     dissolved_oxygen_winkler_correction: bool = None
-    rinko_coeffs: List[float] = None
-    winkler_coeffs: List[float] = None
+    dissolved_oxygen_winkler_coeffs: List[float] = None  # d1_w, d2_w
+    dissolved_oxygen_rinko_coeffs: List[float] = None  # d0, d1, d2, c0, c1, c2
     dissolved_oxygen_pressure_correction: bool = None
     dissolved_oxygen_salinity_correction: bool = None
 
@@ -238,8 +238,8 @@ class ProcessConfig(BaseProcessConfig):
     # meteoce
     quality_control: bool = None
 
-    regional_outlier: str = None
     absolute_outlier: bool = True
+    regional_outlier: str = None
 
     climatology_variables: List[str] = None
     climatology_dataset_path: str = None  # A PATH to a netcdf
@@ -377,14 +377,13 @@ def _process_meteoce_data(pconfig: ProcessConfig):
     l.section("Meteoce data computation.")
 
     if 'density' not in dataset or pconfig.recompute_density is True:
-        _compute_ctdo_potential_density(dataset, pconfig)
+        _compute_ctd_potential_density(dataset, pconfig)
 
 
     # Dropping `pres` # QC crashed since it a valid variable but pres_QC doesn't exist.
     # NOTE: This may not be the way to do it if a pressure sensor is added to the buoy.
     if 'pres' in dataset.variables:
         dataset = dataset.drop_vars('pres')
-
 
     # ---------------- #
     # ADCP CORRECTION  #
@@ -513,7 +512,7 @@ def _compute_pressure(dataset: xr.Dataset, pconfig: ProcessConfig):
     dataset['pres'] = (['time'], pres, {"units": "dbar"})
 
 
-def _compute_ctdo_potential_density(dataset: xr.Dataset, pconfig: ProcessConfig):
+def _compute_ctd_potential_density(dataset: xr.Dataset, pconfig: ProcessConfig):
     """Compute potential density as sigma_t:= Density(S,T,P) - 1000
 
     Density computed using TEOS-10 polynomial (Roquet et al., 2015)
@@ -619,7 +618,6 @@ def _compute_uv_ship(dataset: xr.Dataset, pconfig: ProcessConfig):
         if all(v in dataset for v in ['lon', 'lat']):
             l.log('Platform velocities (u_ship, v_ship) computed from longitude and latitude data.')
             _compute_navigation(dataset)
-            # dataset["u_ship"], dataset["v_ship"] = uv_dataset["u_ship"], uv_dataset["v_ship"]
 
     elif pconfig.compute_uv_ship == "sp":
         if all(x in dataset for x in ('speed', 'course')):
@@ -634,22 +632,12 @@ def _quality_control(dataset: xr.Dataset, pconfig: ProcessConfig) -> xr.Dataset:
     """
     if pconfig.quality_control is True:
         _meteoce_quality_control(dataset, pconfig)
-        adcp_dataset = _adcp_quality_control(dataset, pconfig)
-
-        _merge_adcp_quality_control(dataset, adcp_dataset)
+        _adcp_quality_control(dataset, pconfig)
     else:
         no_meteoce_quality_control(dataset)
         no_adcp_quality_control(dataset, velocity_only=True)
 
     return dataset
-
-
-def _merge_adcp_quality_control(dataset: xr.Dataset, adcp_dataset: xr.Dataset):
-    """add `adcp_dataset` ancillary variables and `quality_comments` `global_attrs` to `dataset`."""
-    for var in {v + "_QC" for v in ADCP_VARIABLES_FOR_QC}.intersection(set(adcp_dataset.variables)):
-        dataset[var] = adcp_dataset[var]
-
-    dataset.attrs["quality_comments"] += adcp_dataset.attrs["quality_comments"]
 
 
 def _meteoce_quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
@@ -694,7 +682,8 @@ def _adcp_quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
 
     adcp_dataset.attrs.pop('coord_system')
 
-    return adcp_dataset.squeeze(['depth'], drop=True)
+    for var in {v + "_QC" for v in ADCP_VARIABLES_FOR_QC}.intersection(set(adcp_dataset.variables)):
+        dataset[var] = adcp_dataset[var].squeeze(['depth'], drop=True)
 
 
 def _dissolved_oxygen_ml_per_L_to_umol_per_L(dataset: xr.Dataset):
