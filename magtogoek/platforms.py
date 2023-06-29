@@ -67,14 +67,13 @@ class Platform:
         super().__setattr__(key, value)
         if key == "platform_type":
             if value not in PLATFORM_TYPES and value is not None:
-                self.__setattr__('platform_type',DEFAULT_PLATFORM_TYPE)
-                l.warning(f"Invalid platform_type: `{value}`.")
+                self.__setattr__('platform_type', DEFAULT_PLATFORM_TYPE)
+                l.warning(f"Invalid platform_type in the platform file: `{value}`. platform_type set to: {DEFAULT_PLATFORM_TYPE}")
 
         if key in ["longitude", "latitude"]:
             if not isinstance(value, (float, int)) and value is not None:
-                l.warning(f"Invalid platform {key}. {key} must be either and Int or Float.")
+                l.warning(f"Invalid platform {key} in the platform file. {key} must be either and Int or Float. Latitude set to {None}")
                 self.__setattr__(key, None)
-
 
 
 @dataclass
