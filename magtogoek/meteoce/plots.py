@@ -117,7 +117,7 @@ def plot_sensor_data(dataset: xr.Dataset, varnames: List[str], flag_thres: int =
         if 'ancillary_variables' in dataset[var].attrs:
             if dataset[var].attrs['ancillary_variables'] in dataset:
                 da = flag_data(dataset, var=var, flag_thres=flag_thres)
-        ax.plot(dataset.time, da)
+        ax.plot(dataset.time, da, marker='.')
         ax.set_ylabel(f"{var}\n[{dataset[var].units}]", fontdict=FONT)
         ax.tick_params(labelbottom=False)
     axes[-1].tick_params(labelbottom=True)
