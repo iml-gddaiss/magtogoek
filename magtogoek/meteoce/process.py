@@ -44,6 +44,7 @@ from magtogoek.wps.sci_tools import compute_in_situ_density, dissolved_oxygen_ml
 from magtogoek.meteoce.loader import load_meteoce_data
 from magtogoek.meteoce.correction import wps_data_correction, meteoce_data_magnetic_declination_correction, wind_motion_correction
 from magtogoek.meteoce.quality_control import meteoce_quality_control, no_meteoce_quality_control
+from magtogoek.meteoce.plots import make_meteoce_figure
 from magtogoek.meteoce.odf_exporter import make_odf
 
 from magtogoek.adcp.correction import apply_motion_correction as adcp_motion_correction
@@ -442,7 +443,8 @@ def _process_meteoce_data(pconfig: ProcessConfig):
     # MAKE FIGURES #
     # ------------ #
 
-    # TODO
+    if pconfig.figures_output is True:
+        make_meteoce_figure(dataset, flag_thres=2, save_path=pconfig.figures_path, show_fig=not pconfig.headless)
 
     # --------------- #
     # POST-PROCESSING #
@@ -450,7 +452,7 @@ def _process_meteoce_data(pconfig: ProcessConfig):
     l.section("Post-processing")
     l.log("Nothing to do")
 
-    # TODO if needed
+    # If needed
 
     # ---------- #
     # ODF OUTPUT #

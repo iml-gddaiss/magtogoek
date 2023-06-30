@@ -54,7 +54,7 @@ import xarray as xr
 
 import magtogoek.logger as l
 from magtogoek.platforms import PlatformMetadata
-from magtogoek.adcp.adcp_plots import make_adcp_figure
+from magtogoek.adcp.plots import make_adcp_figure
 from magtogoek.adcp.loader import load_adcp_binary
 from magtogoek.adcp.correction import apply_motion_correction, apply_magnetic_correction
 from magtogoek.adcp.odf_exporter import make_odf

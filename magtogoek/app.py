@@ -437,7 +437,7 @@ def plot_adcp(ctx, info, input_file, **options):
     """Command to compute u_ship, v_ship, bearing from gsp data."""
     logging.info(f"plot adcp function reached. headless:{options['headless']}, save_fig:{options['save_fig']}")
     import xarray as xr
-    from magtogoek.adcp.adcp_plots import make_adcp_figure
+    from magtogoek.adcp.plots import make_adcp_figure
     dataset = xr.open_dataset(input_file)
     try:
         make_adcp_figure(dataset, flag_thres=options['flag_thres'], vel_only=options["vel_only"],

@@ -174,7 +174,8 @@ def load_platform_metadata(platform_file: str, platform_id: str) -> PlatformMeta
         )
         sys.exit()  # TODO this should not be here.
 
-    try:
+    if platform_id in json_dict:
+
         platform_metadata_dict = _filter_for_dataclass(Platform, json_dict[platform_id])
 
         if 'buoy_specs' in json_dict[platform_id]:
@@ -184,12 +185,13 @@ def load_platform_metadata(platform_file: str, platform_id: str) -> PlatformMeta
 
         platform_metadata = PlatformMetadata(platform_metadata_dict, buoy_specs)
 
-        for instrument_id in json_dict[platform_id]['instruments']:
-            platform_metadata.add_instrument(instrument_id, json_dict[platform_id]["instruments"][instrument_id])
+        if 'instruments' in json_dict[platform_id]:
+            for instrument_id in json_dict[platform_id]['instruments']:
+                platform_metadata.add_instrument(instrument_id, json_dict[platform_id]["instruments"][instrument_id])
 
         return platform_metadata
 
-    except KeyError:
+    else:
         print(
             f"ERROR. `platform_id`: { platform_id} not found platform file: {platform_file}.\n"
             f"Aborting !"

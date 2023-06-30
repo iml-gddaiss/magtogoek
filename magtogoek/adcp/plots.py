@@ -8,7 +8,6 @@ This modules contains the essential figure to do a visual inspection of the data
 
 # Use ancillary_variables for QC. modify on the flag data function tools.
 """
-import logging
 from itertools import cycle
 from typing import List, Union, Dict, Tuple
 from pathlib import Path
@@ -47,12 +46,14 @@ def get_extent(dataset: xr.Dataset) -> List:
     ]
 
 
-def make_adcp_figure(dataset: xr.Dataset,
-                     single: bool = False,
-                     flag_thres: int = 2,
-                     vel_only: bool = False,
-                     save_path: str = None,
-                     show_fig: bool = True):
+def make_adcp_figure(
+        dataset: xr.Dataset,
+        single: bool = False,
+        flag_thres: int = 2,
+        vel_only: bool = False,
+        save_path: str = None,
+        show_fig: bool = True
+):
     """
 
     Looks for 'ancillary_variables' attributes on variables for QC flagging.
@@ -83,7 +84,7 @@ def make_adcp_figure(dataset: xr.Dataset,
         velocity_variables = ("u", "v", "w")
         velocity_bt_variables = ("bt_u", "bt_v", "bt_w", "bt_depth")
 
-    figs, names = [], []
+    figures = {}
 
     varname_map = {}
     for var in dataset:
@@ -93,18 +94,15 @@ def make_adcp_figure(dataset: xr.Dataset,
     if vel_only is False:
         geo_var = map_varname(GEO_VAR, varname_map)
         if len(geo_var) > 0:
-            figs.append(plot_sensor_data(dataset, varnames=geo_var))
-            names.append(f'sensor_data_geo')
+            figures[f'sensor_data_geo'] = plot_sensor_data(dataset, varnames=geo_var)
 
         anc_var = map_varname(ANC_VAR, varname_map)
         if len(anc_var) > 0:
-            figs.append(plot_sensor_data(dataset, varnames=anc_var))
-            names.append(f'sensor_data_anc')
+            figures[f'sensor_data_anc'] = plot_sensor_data(dataset, varnames=anc_var)
 
         bt_uvw_var = map_varname(velocity_bt_variables, varname_map)
         if len(bt_uvw_var) > 0 and all(v in dataset for v in bt_uvw_var):
-            figs.append(plot_bt_vel(dataset, bt_var=bt_uvw_var))
-            names.append(f'bt_vel')
+            figures[f'bt_vel'] = plot_bt_vel(dataset, bt_var=bt_uvw_var)
 
     uvw_var = map_varname(velocity_variables, varname_map)
     if len(uvw_var) > 0:
@@ -112,27 +110,25 @@ def make_adcp_figure(dataset: xr.Dataset,
             depths = dataset.depth.data[0:3]
             if dataset.attrs['orientation'] == "up":
                 depths = dataset.depth.data[-3:]
-            figs.append(plot_vel_series(dataset, depths=depths, uvw=uvw_var, flag_thres=flag_thres))
-            figs.append(plot_pearson_corr(dataset, vel_var=uvw_var, flag_thres=flag_thres))
-            names.extend(('vel_series', 'pearson_corr'))
+            figures['vel_series'] = plot_vel_series(dataset, depths=depths, uvw=uvw_var, flag_thres=flag_thres)
+            figures['pearson_corr'] = plot_pearson_corr(dataset, vel_var=uvw_var, flag_thres=flag_thres)
+
         if dataset.attrs['coord_system'] != 'beam':
             polar_fig = plot_velocity_polar_hist(dataset, nrows=2, ncols=3, uv=uvw_var[:2], flag_thres=flag_thres)
             if polar_fig is not None:
-                figs.append(polar_fig)
+                figures['velocity_polar_hist'] = polar_fig
 
         field_fig = plot_velocity_fields(dataset, vel_var=uvw_var, flag_thres=flag_thres)
         if field_fig is not None:
-            figs.append(field_fig)
-        names.extend(('velocity_polar_hist', 'velocity_fields'))
+            figures['velocity_fields'] = field_fig
 
     if "binary_mask" in dataset:
-        figs.append(plot_test_fields(dataset))
-        names.append('test_fields')
+        figures['test_fields'] = plot_test_fields(dataset)
 
     if single is True and show_fig is True:
-        for count, fig in enumerate(figs):
+        for count, fig in enumerate(figures.values()):
             fig.show()
-            input(f"({count + 1}/{len(figs)}) Press [enter] to plot the next figure.\033[1A \033[9C")
+            input(f"({count + 1}/{len(figures.keys())}) Press [enter] to plot the next figure.\033[1A \033[9C")
 
     if save_path is not None:
         stem = ''
@@ -141,11 +137,12 @@ def make_adcp_figure(dataset: xr.Dataset,
         else:
             path = Path(save_path).parent
             stem = str(Path(save_path).stem) + '_'
-        for name, fig in zip(names, figs):
+
+        print(f'Figure saved at: {path}/')
+        for name, fig in figures.items():
             fig.savefig(path.joinpath(stem + f'{name}.png'))
 
     if show_fig is True:
-        logging.info(f'make adcp_figure show fig: {show_fig}')
         plt.ion()
         plt.show(block=False)
         input("Press Enter to continue ...")
