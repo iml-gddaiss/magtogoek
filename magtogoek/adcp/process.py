@@ -130,6 +130,15 @@ P01_VEL_CODES = {
         'v_QC': "LCNSAP01_QC",
         'w_QC': "LRZAAP01_QC"
     },
+    'mooring': {
+        'u': "LCEWAP01",
+        'v': "LCNSAP01",
+        'w': "LRZAAP01",
+        'e': "LERRAP01",
+        'u_QC': "LCEWAP01_QC",
+        'v_QC': "LCNSAP01_QC",
+        'w_QC': "LRZAAP01_QC"
+    },
     'ship': {
         'u': "LCEWAS01",
         'v': "LCNSAS01",
@@ -140,7 +149,7 @@ P01_VEL_CODES = {
         'w_QC': "LRZAAS01_QC"
     }
 }
-P01_VEL_CODES["mooring"] = P01_VEL_CODES["buoy"]
+
 P01_CODES_MAP = {
     'time': "ELTMEP01",
     'depth': "PPSAADCP",
@@ -183,36 +192,48 @@ P01_CODES_MAP = {
 }
 
 VARIABLES_TO_ADD_SENSOR_METADATA = [
-        'u',
-        'v',
-        'w',
-        'e',
-        'bt_u',
-        'bt_v',
-        'bt_w',
-        'bt_e',
-        'pg',
-        'pg1',
-        'pg2',
-        'pg3',
-        'pg4',
-        'corr1',
-        'corr2',
-        'corr3',
-        'corr4',
-        'amp1',
-        'amp2',
-        'amp3',
-        'amp4',
-        'vb_vel',
-        'vb_pg',
-        'vb_cor',
-        'vb_amp',
-        'temperature',
-        'pres',
-        'xducer_depth',
-        'bt_depth'
-    ]
+    'v1',
+    'v2',
+    'v3',
+    'v4',
+    'v1_QC',
+    'v2_QC',
+    'v3_QC',
+    'v4_QC',
+    'bt_v1',
+    'bt_v2',
+    'bt_v3',
+    'bt_v4',
+    'u',
+    'v',
+    'w',
+    'e',
+    'bt_u',
+    'bt_v',
+    'bt_w',
+    'bt_e',
+    'pg',
+    'pg1',
+    'pg2',
+    'pg3',
+    'pg4',
+    'corr1',
+    'corr2',
+    'corr3',
+    'corr4',
+    'amp1',
+    'amp2',
+    'amp3',
+    'amp4',
+    'vb_vel',
+    'vb_pg',
+    'vb_cor',
+    'vb_amp',
+    'temperature',
+    'pres',
+    'xducer_depth',
+    'bt_depth'
+]
 
 
 class ProcessConfig(BaseProcessConfig):
@@ -330,6 +351,8 @@ def _process_adcp_data(pconfig: ProcessConfig):
 
     if dataset.attrs['coord_system'] != 'earth' and pconfig.coord_transform is True:
         dataset = _coordinate_system_transformation(dataset)
+    else:
+        l.log('Nothing to do')
 
     # ---------- #
     # CORRECTION #
@@ -402,6 +425,10 @@ def _process_adcp_data(pconfig: ProcessConfig):
     # -------------------- #
     l.section("Variables attributes")
 
+    # >>>> ADCP SPECIFIC
+    _update_p01_codes_map(dataset, pconfig)
+    # <<<<
+
     dataset = format_variables_names_and_attributes(
         dataset=dataset,
         use_bodc_name=pconfig.use_bodc_name,
@@ -413,8 +440,6 @@ def _process_adcp_data(pconfig: ProcessConfig):
     _add_platform_adcp_metadata_to_variables(dataset, pconfig, VARIABLES_TO_ADD_SENSOR_METADATA)
 
     _add_sensor_metadata_to_variables(dataset, VARIABLES_TO_ADD_SENSOR_METADATA)
-
-    _update_p01_codes_map(dataset, pconfig)
     # <<<<
 
     # ------------ #

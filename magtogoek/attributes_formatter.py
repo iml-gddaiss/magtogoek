@@ -45,7 +45,6 @@ CF_P01_GF3_ATTRS_KEY_TO_ADD = [
     "standard_name",
     "positive",
     "units",
-    # "sensor_type",
     "long_name",
     "sdn_parameter_urn",
     "sdn_parameter_name",
@@ -202,9 +201,9 @@ def _add_data_min_max_to_var_attrs(dataset):
     """adds data max and min to variables except ancillary and coords variables)"""
     for var in set(dataset.variables).difference(set(dataset.coords)):
         if "_QC" not in var:
-            if dataset[var].dtype == float:
-                dataset[var].attrs["data_max"] = dataset[var].max().values
-                dataset[var].attrs["data_min"] = dataset[var].min().values
+            if dataset[var].dtype in (float, int):  # Use to be only float but that I did know why (June 30th 2023)
+                dataset[var].attrs["data_max"] = dataset[var].max().values.item() # item() get the value out of the
+                dataset[var].attrs["data_min"] = dataset[var].min().values.item() #  numpy array. Maybe not necessary
 
 
 def _add_ancillary_variables_to_var_attrs(dataset: xr.Dataset):
@@ -312,9 +311,9 @@ def _geospatial_global_attrs(dataset: xr.Dataset):
     """
 
     if "lat" in dataset.variables:
-        dataset.attrs["latitude"] = round(dataset.lat.data.mean(), 4)
-        dataset.attrs["geospatial_lat_min"] = round(dataset.lat.data.min(), 4)
-        dataset.attrs["geospatial_lat_max"] = round(dataset.lat.data.max(), 4)
+        dataset.attrs["latitude"] = round(dataset.lat.mean().values.item(), 4)
+        dataset.attrs["geospatial_lat_min"] = round(dataset.lat.min().values.item(), 4)
+        dataset.attrs["geospatial_lat_max"] = round(dataset.lat.max().values.item(), 4)
         dataset.attrs["geospatial_lat_units"] = "degrees north"
     elif "latitude" in dataset.attrs:
         if dataset.attrs["latitude"]:
@@ -323,9 +322,9 @@ def _geospatial_global_attrs(dataset: xr.Dataset):
             dataset.attrs["geospatial_lat_units"] = "degrees north"
 
     if "lon" in dataset.variables:
-        dataset.attrs["longitude"] = round(dataset.lon.data.mean(), 4)
-        dataset.attrs["geospatial_lon_min"] = round(dataset.lon.data.min(), 4)
-        dataset.attrs["geospatial_lon_max"] = round(dataset.lon.data.max(), 4)
+        dataset.attrs["longitude"] = round(dataset.lon.mean().values.item(), 4)
+        dataset.attrs["geospatial_lon_min"] = round(dataset.lon.min().values.item(), 4)
+        dataset.attrs["geospatial_lon_max"] = round(dataset.lon.max().values.item(), 4)
         dataset.attrs["geospatial_lon_units"] = "degrees east"
     elif "longitude" in dataset.attrs:
         if dataset.attrs["longitude"]:
@@ -334,7 +333,7 @@ def _geospatial_global_attrs(dataset: xr.Dataset):
             dataset.attrs["geospatial_lon_units"] = "degrees east"
 
     if 'depth' in dataset.variables:
-        dataset.attrs["geospatial_vertical_min"] = round(dataset.depth.data.min(), 2)
-        dataset.attrs["geospatial_vertical_max"] = round(dataset.depth.data.max(), 2)
+        dataset.attrs["geospatial_vertical_min"] = round(dataset.depth.min().values.item(), 2)
+        dataset.attrs["geospatial_vertical_max"] = round(dataset.depth.max().values.item(), 2)
         dataset.attrs["geospatial_vertical_positive"] = "down"
         dataset.attrs["geospatial_vertical_units"] = "meters"
