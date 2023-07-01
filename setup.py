@@ -24,7 +24,6 @@ setup(
         "scipy>=1.7.0",
         "numpy",
         "pandas",
-        "netCDF4",
         "pathlib~=1.0.1",
         "nptyping~=1.4.4",
         "datetime==4.3",
