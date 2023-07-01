@@ -1,7 +1,7 @@
 import os
 from setuptools import find_packages, setup
 
-from magtogoek.__version__ import VERSION
+VERSION = "0.0.1"
 
 
 def read_file(fname):
