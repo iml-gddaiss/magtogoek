@@ -2,6 +2,7 @@ import os
 import platform
 from pathlib import Path
 
+from magtogoek.__version__ import VERSION
 import magtogoek.logger as l
 from magtogoek.utils import resolve_relative_path
 
@@ -12,8 +13,6 @@ from magtogoek.meteoce import SENSOR_TYPES as METEOCE_SENSOR_TYPES, GENERIC_PARA
 l.set_level(0)
 
 REPOSITORY_ADDRESS = "https://github.com/iml-gddaiss/magtogoek"
-
-VERSION = "0.0.1"
 
 TERMINAL_WIDTH = 80
 
