@@ -9,7 +9,6 @@
 
     "vel_beam_1": {
         "units": "m/s",
-        "sensor_type": "adcp",
         "long_name": "sea water velocity along beam 1",
         "sdn_parameter_urn": "SDN:P01::XXXXXXXX",
         "sdn_parameter_name": "",
@@ -18,7 +17,6 @@
     },
     "vel_beam_2": {
         "units": "m/s",
-        "sensor_type": "adcp",
         "long_name": "sea water velocity along beam 2",
         "sdn_parameter_urn": "SDN:P01::XXXXXXXX",
         "sdn_parameter_name": "",
@@ -27,7 +25,6 @@
     },
     "vel_beam_3": {
         "units": "m/s",
-        "sensor_type": "adcp",
         "long_name": "sea water velocity along beam 3",
         "sdn_parameter_urn": "SDN:P01::XXXXXXXX",
         "sdn_parameter_name": "",
@@ -36,7 +33,6 @@
     },
     "vel_beam_4": {
         "units": "m/s",
-        "sensor_type": "adcp",
         "long_name": "sea water velocity along beam 4",
         "sdn_parameter_urn": "SDN:P01::XXXXXXXX",
         "sdn_parameter_name": "",
@@ -46,7 +42,6 @@
 
     "bt_vel_beam_1": {
         "units": "m/s",
-        "sensor_type": "adcp",
         "long_name": "seabed velocity along beam 1",
         "sdn_parameter_urn": "SDN:P01::XXXXXXXX",
         "sdn_parameter_name": "",
@@ -55,7 +50,6 @@
     },
     "bt_vel_beam_2": {
         "units": "m/s",
-        "sensor_type": "adcp",
         "long_name": "seabed velocity along beam 2",
         "sdn_parameter_urn": "SDN:P01::XXXXXXXX",
         "sdn_parameter_name": "",
@@ -64,7 +58,6 @@
     },
     "bt_vel_beam_3": {
         "units": "m/s",
-        "sensor_type": "adcp",
         "long_name": "seabed velocity along beam 3",
         "sdn_parameter_urn": "SDN:P01::XXXXXXXX",
         "sdn_parameter_name": "",
@@ -73,7 +66,6 @@
     },
     "bt_vel_beam_4": {
         "units": "m/s",
-        "sensor_type": "adcp",
         "long_name": "seabed velocity along beam 4",
         "sdn_parameter_urn": "SDN:P01::XXXXXXXX",
         "sdn_parameter_name": "",
@@ -83,7 +75,6 @@
 
     "vel_x_axis": {
         "units": "m/s",
-        "sensor_type": "adcp",
         "long_name": "sea water velocity along the x-axis",
         "sdn_parameter_urn": "SDN:P01::XXXXXXXX",
         "sdn_parameter_name": "",
@@ -92,7 +83,6 @@
     },
     "vel_y_axis": {
         "units": "m/s",
-        "sensor_type": "adcp",
         "long_name": "sea water velocity along the y-axis",
         "sdn_parameter_urn": "SDN:P01::XXXXXXXX",
         "sdn_parameter_name": "",
@@ -101,7 +91,6 @@
     },
     "vel_z_axis": {
         "units": "m/s",
-        "sensor_type": "adcp",
         "long_name": "sea water velocity along the z-axis",
         "sdn_parameter_urn": "SDN:P01::XXXXXXXX",
         "sdn_parameter_name": "",
@@ -110,7 +99,6 @@
     },
     "vel_e": {
         "units": "m/s",
-        "sensor_type": "adcp",
         "long_name": "sea water velocity error",
         "sdn_parameter_urn": "SDN:P01::XXXXXXXX",
         "sdn_parameter_name": "",
@@ -120,7 +108,6 @@
 
     "bt_vel_x_axis": {
         "units": "m/s",
-        "sensor_type": "adcp",
         "long_name": "seabed velocity along the x-axis",
         "sdn_parameter_urn": "SDN:P01::XXXXXXXX",
         "sdn_parameter_name": "",
@@ -129,7 +116,6 @@
     },
     "bt_vel_y_axis": {
         "units": "m/s",
-        "sensor_type": "adcp",
         "long_name": "seabed velocity along the y-axis",
         "sdn_parameter_urn": "SDN:P01::XXXXXXXX",
         "sdn_parameter_name": "",
@@ -138,7 +124,6 @@
     },
     "bt_vel_z_axis": {
         "units": "m/s",
-        "sensor_type": "adcp",
         "long_name": "seabed velocity along the z-axis",
         "sdn_parameter_urn": "SDN:P01::XXXXXXXX",
         "sdn_parameter_name": "",
@@ -147,7 +132,6 @@
     },
     "bt_vel_e": {
         "units": "m/s",
-        "sensor_type": "adcp",
         "long_name": "seabed velocity error",
         "sdn_parameter_urn": "SDN:P01::XXXXXXXX",
         "sdn_parameter_name": "",
@@ -158,7 +142,6 @@
     "LCEWLW01": {
         "standard_name": "eastward_sea_water_velocity",
         "units": "m/s",
-        "sensor_type": "adcp",
         "long_name": "eastward sea water velocity",
         "sdn_parameter_urn": "SDN:P01::LCEWLW01",
         "sdn_parameter_name": "Eastward current velocity (Eulerian measurement) in the water body by lowered acoustic doppler current profiler (ADCP)",
@@ -169,7 +152,6 @@
     "LCNSLW01": {
         "standard_name": "northward_sea_water_velocity",
         "units": "m/s",
-        "sensor_type": "adcp",
         "long_name": "northward sea water velocity",
         "sdn_parameter_urn": "SDN:P01::LCNSLW01",
         "sdn_parameter_name": "Northward current velocity (Eulerian measurement) in the water body by lowered acoustic doppler current profiler (ADCP)",
@@ -180,7 +162,6 @@
     "LRZALW01": {
         "standard_name": "upward_sea_water_velocity",
         "units": "m/s",
-        "sensor_type": "adcp",
         "long_name": "upward sea water velocity",
         "sdn_parameter_urn": "SDN:P01::LRZALW01",
         "sdn_parameter_name": "Upward current velocity (Eulerian measurement) in the water body by lowered acoustic doppler current profiler (ADCP)",
@@ -190,7 +171,6 @@
     },
     "ERRVLW01": {
         "units": "m/s",
-        "sensor_type": "adcp",
         "long_name": "error velocity in sea water",
         "sdn_parameter_urn": "SDN:P01::LERRLW01",
         "sdn_parameter_name": "Current velocity error in the water body by lowered acoustic doppler current profiler(ADCP)",
@@ -202,7 +182,6 @@
     "LCEWAP01": {
         "standard_name": "eastward_sea_water_velocity",
         "units": "m/s",
-        "sensor_type": "adcp",
         "long_name": "eastward sea water velocity",
         "sdn_parameter_urn": "SDN:P01::LCEWAP01",
         "sdn_parameter_name": "Eastward current velocity (Eulerian measurement) in the water body by moored acoustic doppler current profiler (ADCP)",
@@ -213,7 +192,6 @@
     "LCNSAP01": {
         "standard_name": "northward_sea_water_velocity",
         "units": "m/s",
-        "sensor_type": "adcp",
         "long_name": "northward sea water velocity",
         "sdn_parameter_urn": "SDN:P01::LCNSAP01",
         "sdn_parameter_name": "Northward current velocity (Eulerian measurement) in the water body by moored acoustic doppler current profiler (ADCP)",
@@ -224,7 +202,6 @@
     "LRZAAP01": {
         "standard_name": "upward_sea_water_velocity",
         "units": "m/s",
-        "sensor_type": "adcp",
         "long_name": "upward sea water velocity",
         "sdn_parameter_urn": "SDN:P01::LRZAAP01",
         "sdn_parameter_name": "Upward current velocity (Eulerian measurement) in the water body by moored acoustic doppler current profiler (ADCP)",
@@ -234,7 +211,6 @@
     },
     "LERRAP01": {
         "units": "m/s",
-        "sensor_type": "adcp",
         "long_name": "error velocity in sea water",
         "sdn_parameter_urn": "SDN:P01::LERRAP01",
         "sdn_parameter_name": "Current velocity error in the water body by moored acoustic doppler current profiler(ADCP)",
@@ -246,7 +222,6 @@
     "LCEWAS01": {
         "standard_name": "eastward_sea_water_velocity",
         "units": "m/s",
-        "sensor_type": "adcp",
         "long_name": "eastward sea water velocity",
         "sdn_parameter_urn": "SDN:P01::LCEWAS01",
         "sdn_parameter_name": "Eastward current velocity (Eulerian measurement) in the water body by shipborne acoustic doppler current profiler (ADCP)",
@@ -257,7 +232,6 @@
     "LCNSAS01": {
         "standard_name": "northward_sea_water_velocity",
         "units": "m/s",
-        "sensor_type": "adcp",
         "long_name": "northward sea water velocity",
         "sdn_parameter_urn": "SDN:P01::LCNSAS01",
         "sdn_parameter_name": "Northward current velocity (Eulerian measurement) in the water body by shipborne acoustic doppler current profiler (ADCP)",
@@ -268,7 +242,6 @@
     "LRZAAS01": {
         "standard_name": "upward_sea_water_velocity",
         "units": "m/s",
-        "sensor_type": "adcp",
         "long_name": "upward sea water velocity",
         "sdn_parameter_urn": "SDN:P01::LRZAAS01",
         "sdn_parameter_name": "Upward current velocity (Eulerian measurement) in the water body by shipborne acoustic doppler current profiler (ADCP)",
@@ -278,7 +251,6 @@
     },
     "LERRAS01": {
         "units": "m/s",
-        "sensor_type": "adcp",
         "long_name": "error velocity in sea water",
         "sdn_parameter_urn": "SDN:P01::LERRAS01",
         "sdn_parameter_name": "Current velocity error in the water body by shipborne acoustic doppler current profiler(ADCP)",
@@ -289,7 +261,6 @@
 
     "LCNSBT01": {
         "units": "m/s",
-        "sensor_type": "adcp",
         "long_name": "northward seabed velocity",
         "sdn_parameter_urn": "SDN:P01::LCNSBT01",
         "sdn_parameter_name": "Northward velocity of water current (Eulerian measurement) in the water body by ADCP bottom tracking",
@@ -298,7 +269,6 @@
     },
     "LCEWBT01": {
         "units": "m/s",
-        "sensor_type": "adcp",
         "long_name": "eastward seabed velocity",
         "sdn_parameter_urn": "SDN:P01::LCEWBT01",
         "sdn_parameter_name": "Eastward velocity of water current (Eulerian measurement) in the water body by ADCP bottom tracking",
@@ -307,7 +277,6 @@
     },
     "LRZABT01": {
         "units": "m/s",
-        "sensor_type": "adcp",
         "long_name": "upward seabed velocity",
         "sdn_parameter_urn": "SDN:P01::LRZABT01",
         "sdn_parameter_name": "Upward velocity of water current (Eulerian measurement) in the water body by ADCP bottom tracking",
@@ -316,7 +285,6 @@
     },
     "LERRBT01": {
         "units": "m/s",
-        "sensor_type": "adcp",
         "long_name": "seabed error velocity",
         "sdn_parameter_urn": "SDN:P01::LERRBT01",
         "sdn_parameter_name": "Current velocity error in the water body by ADCP bottom tracking",
@@ -327,7 +295,6 @@
     "TNIHCE01": {
         "standard_name": "signal_intensity_from_multibeam_acoustic_doppler_velocity_sensor_in_sea_water",
         "units": "counts",
-        "sensor_type": "adcp",
         "long_name": "ADCP echo intensity beam 1",
         "sdn_parameter_urn": "SDN:P01::TNIHCE01",
         "sdn_parameter_name": "Echo intensity from the water body by moored acoustic doppler current profiler (ADCP) beam 1",
@@ -338,7 +305,6 @@
     "TNIHCE02": {
         "standard_name": "signal_intensity_from_multibeam_acoustic_doppler_velocity_sensor_in_sea_water",
         "units": "counts",
-        "sensor_type": "adcp",
         "long_name": "ADCP echo intensity beam 2",
         "sdn_parameter_urn": "SDN:P01::TNIHCE02",
         "sdn_parameter_name": "Echo intensity from the water body by moored acoustic doppler current profiler (ADCP) beam 2",
@@ -349,7 +315,6 @@
     "TNIHCE03": {
         "standard_name": "signal_intensity_from_multibeam_acoustic_doppler_velocity_sensor_in_sea_water",
         "units": "counts",
-        "sensor_type": "adcp",
         "long_name": "ADCP echo intensity beam 3",
         "sdn_parameter_urn": "SDN:P01::TNIHCE03",
         "sdn_parameter_name": "Echo intensity from the water body by moored acoustic doppler current profiler (ADCP) beam 3",
@@ -360,7 +325,6 @@
     "TNIHCE04": {
         "standard_name": "signal_intensity_from_multibeam_acoustic_doppler_velocity_sensor_in_sea_water",
         "units": "counts",
-        "sensor_type": "adcp",
         "long_name": "ADCP echo intensity beam 4",
         "sdn_parameter_urn": "SDN:P01::TNIHCE04",
         "sdn_parameter_name": "Echo intensity from the water body by moored acoustic doppler current profiler (ADCP) beam 4",
@@ -371,7 +335,6 @@
     "CMAGZZ01": {
         "standard_name": "beam_consistency_indicator_from_multibeam_acoustic_doppler_velocity_profiler_in_sea_water",
         "units": "counts",
-        "sensor_type": "adcp",
         "long_name": "ADCP correlation magnitude beam 1",
         "sdn_parameter_urn": "SDN:P01::CMAGZZ01",
         "sdn_parameter_name": "Correlation magnitude of acoustic signal returns from the water body by moored acoustic doppler current profiler (ADCP) beam 1",
@@ -380,7 +343,6 @@
     "CMAGZZ02": {
         "standard_name": "beam_consistency_indicator_from_multibeam_acoustic_doppler_velocity_profiler_in_sea_water",
         "units": "counts",
-        "sensor_type": "adcp",
         "long_name": "ADCP correlation magnitude beam 2",
         "sdn_parameter_urn": "SDN:P01::CMAGZZ02",
         "sdn_parameter_name": "Correlation magnitude of acoustic signal returns from the water body by moored acoustic doppler current profiler (ADCP) beam 2",
@@ -389,7 +351,6 @@
     "CMAGZZ03": {
         "standard_name": "beam_consistency_indicator_from_multibeam_acoustic_doppler_velocity_profiler_in_sea_water",
         "units": "counts",
-        "sensor_type": "adcp",
         "long_name": "ADCP correlation magnitude beam 3",
         "sdn_parameter_urn": "SDN:P01::CMAGZZ03",
         "sdn_parameter_name": "Correlation magnitude of acoustic signal returns from the water body by moored acoustic doppler current profiler (ADCP) beam 3",
@@ -398,7 +359,6 @@
     "CMAGZZ04": {
         "standard_name": "beam_consistency_indicator_from_multibeam_acoustic_doppler_velocity_profiler_in_sea_water",
         "units": "counts",
-        "sensor_type": "adcp",
         "long_name": "ADCP correlation magnitude beam 4",
         "sdn_parameter_urn": "SDN:P01::CMAGZZ04",
         "sdn_parameter_name": "Correlation magnitude of acoustic signal returns from the water body by moored acoustic doppler current profiler (ADCP) beam 4",
@@ -407,7 +367,6 @@
     "PCGDAP00": {
         "standard_name": "proportion_of_acceptable_signal_returns_from_acoustic_instrument_in_sea_water",
         "units": "percent",
-        "sensor_type": "adcp",
         "long_name": "ADCP percent good beam 1",
         "sdn_parameter_urn": "SDN:P01::PCGDAP00",
         "sdn_parameter_name": "Acceptable proportion of signal returns by moored acoustic doppler current profiler (ADCP) beam 1",
@@ -418,7 +377,6 @@
     "PCGDAP02": {
         "standard_name": "proportion_of_acceptable_signal_returns_from_acoustic_instrument_in_sea_water",
         "units": "percent",
-        "sensor_type": "adcp",
         "long_name": "ADCP percent good beam 2",
         "sdn_parameter_urn": "SDN:P01::PCGDAP02",
         "sdn_parameter_name": "Acceptable proportion of signal returns by moored acoustic doppler current profiler (ADCP) beam 2",
@@ -429,7 +387,6 @@
     "PCGDAP03": {
         "standard_name": "proportion_of_acceptable_signal_returns_from_acoustic_instrument_in_sea_water",
         "units": "percent",
-        "sensor_type": "adcp",
         "long_name": "ADCP percent good beam 3",
         "sdn_parameter_urn": "SDN:P01::PCGDAP03",
         "sdn_parameter_name": "Acceptable proportion of signal returns by moored acoustic doppler current profiler (ADCP) beam 3",
@@ -440,7 +397,6 @@
     "PCGDAP04": {
         "standard_name": "proportion_of_acceptable_signal_returns_from_acoustic_instrument_in_sea_water",
         "units": "percent",
-        "sensor_type": "adcp",
         "long_name": "ADCP percent good beam 4",
         "sdn_parameter_urn": "SDN:P01::PCGDAP04",
         "sdn_parameter_name": "Acceptable proportion of signal returns by moored acoustic doppler current profiler (ADCP) beam 4",
@@ -451,7 +407,6 @@
     "PCGDAP01": {
         "standard_name": "proportion_of_acceptable_signal_returns_from_acoustic_instrument_in_sea_water",
         "units": "percent",
-        "sensor_type": "adcp",
         "long_name": "ADCP percent good of 4 beams solution",
         "sdn_parameter_urn": "SDN:P01::PCGDA00",
         "sdn_parameter_name": "Acceptable proportion of signal returns by moored acoustic doppler current profiler (ADCP)",
@@ -461,7 +416,6 @@
     "LRZUVP01": {
         "standard_name": "upward_sea_water_velocity",
         "units": "m/s",
-        "sensor_type": "adcp",
         "long_name": "upward sea water velocity by vertical beam",
         "sdn_parameter_urn": "SDN:P01::LRZUVP01",
         "sdn_parameter_name": "upward_sea_water_velocity_by_vertical_beam",
@@ -471,7 +425,6 @@
     "TNIHCE05": {
         "standard_name": "signal_intensity_from_multibeam_acoustic_doppler_velocity_sensor_in_sea_water",
         "units": "counts",
-        "sensor_type": "adcp",
         "long_name": "ADCP echo intensity beam 5",
         "sdn_parameter_urn": "SDN:P01::TNIHCE05",
         "sdn_parameter_name": "Echo intensity from the water body by moored acoustic doppler current profiler (ADCP) vertical beam",
@@ -481,7 +434,6 @@
     "CMAGZZ05": {
         "standard_name": "beam_consistency_indicator_from_multibeam_acoustic_doppler_velocity_profiler_in_sea_water",
         "units": "counts",
-        "sensor_type": "adcp",
         "long_name": "ADCP correlation magnitude beam 5",
         "sdn_parameter_urn": "SDN:P01::CMAGZZ05",
         "sdn_parameter_name": "Correlation magnitude of acoustic signal returns from the water body by moored acoustic doppler current profiler (ADCP) vertical beam",
@@ -491,7 +443,6 @@
     "PCGDAP05": {
         "standard_name": "proportion_of_acceptable_signal_returns_from_acoustic_instrument_in_sea_water",
         "units": "percent",
-        "sensor_type": "adcp",
         "long_name": "ADCP percent good beam 5",
         "sdn_parameter_urn": "SDN:P01::PCGDAP05",
         "sdn_parameter_name": "Acceptable proportion of signal returns by moored acoustic doppler current profiler (ADCP) vertical beam",
@@ -602,7 +553,6 @@
         "standard_name": "depth",
         "positive": "down",
         "units": "m",
-        "sensor_type": "adcp",
         "long_name": "bin depth below surface",
         "sdn_parameter_urn": "SDN:P01::PPSAADCP",
         "sdn_parameter_name": "Depth below surface of the water body by acoustic doppler current profiler (ADCP) and computation from travel time averaged from all operational beams and unknown sound velocity profile",
@@ -658,7 +608,6 @@
     },
     "APNSBT01": {
         "units": "m/s",
-        "sensor_type": "adcp",
         "long_name": "northward velocity of the measurement platform by bottom tracking",
         "sdn_parameter_urn": "SDN:P01::",
         "sdn_parameter_name": "Northward velocity of measurement platform relative to ground surface by ADCP bottom tracking.",
@@ -667,7 +616,6 @@
     },
     "APEWBT01": {
         "units": "m/s",
-        "sensor_type": "adcp",
         "long_name": "eastward velocity of the measurement platform by bottom tracking",
         "sdn_parameter_urn": "SDN:P01::APEWBT01",
         "sdn_parameter_name": "Eastward velocity of measurement platform relative to ground surface by ADCP bottom tracking.",
@@ -676,7 +624,6 @@
     },
     "APZABT01": {
         "units": "m/s",
-        "sensor_type": "adcp",
         "long_name": "upward velocity of the measurement platform by bottom tracking",
         "sdn_parameter_urn": "SDN:P01::APZABT01",
         "sdn_parameter_name": "Upward velocity of measurement platform by ADCP bottom tracking.",
@@ -685,7 +632,6 @@
     },
     "APERBT01": {
         "units": "m/s",
-        "sensor_type": "adcp",
         "long_name": "error velocity of the measurement platform by bottom tracking",
         "sdn_parameter_urn": "SDN:P01::APERBT01",
         "sdn_parameter_name": "Error velocity of measurement platform relative to ground surface by ADCP bottom tracking.",
