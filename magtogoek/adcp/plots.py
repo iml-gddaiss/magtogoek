@@ -154,6 +154,7 @@ def make_adcp_figure(
 
 def plot_velocity_polar_hist(dataset: xr.Dataset, nrows: int = 3, ncols: int = 3,
                              uv: List[str] = ("u", "v"),  flag_thres: int = 2):
+
     naxes = int(nrows * ncols)
     flagged_u = flag_data(dataset, var=uv[0], flag_thres=flag_thres).data
     flagged_v = flag_data(dataset, var=uv[1], flag_thres=flag_thres).data
@@ -162,8 +163,8 @@ def plot_velocity_polar_hist(dataset: xr.Dataset, nrows: int = 3, ncols: int = 3
         return None
 
     r_max = np.nanmax(np.hypot(
-        flag_data(dataset, var=uv[0], flag_thres=flag_thres).data,
-        flag_data(dataset, var=uv[1], flag_thres=flag_thres).data
+        flagged_u,
+        flagged_v
     ))
 
     r_max = round_up(r_max, 0.2)
@@ -180,8 +181,12 @@ def plot_velocity_polar_hist(dataset: xr.Dataset, nrows: int = 3, ncols: int = 3
     grid_subplot(axes[0], nrows, ncols)
     for index in range(naxes):
         histo, a_edges, r_edges = polar_histo(
-            dataset.sel(depth=slice(bin_depths[index], bin_depths[index + 1])),
-            uv[0], uv[1], r_max)
+            dataset=dataset.sel(depth=slice(bin_depths[index], bin_depths[index + 1])),
+            x_vel=uv[0],
+            y_vel=uv[1],
+            r_max=r_max,
+            flag_thres=flag_thres
+        )
         histo[histo < 1] = np.nan
         if np.isfinite(histo).any():
             histo /= np.nanmax(histo)
@@ -252,7 +257,7 @@ def plot_test_fields(dataset: xr.Dataset):
         value = dataset.attrs["binary_mask_tests_values"][index]
         if value is not None:
             mask = (dataset.binary_mask.astype(int) & 2 ** index).astype(bool)
-            axes[index].imshow(mask, aspect="auto", cmap=BINARY_CMAP, extent=extent, interpolation='none', )
+            axes[index].imshow(mask, aspect="auto", cmap=BINARY_CMAP, extent=extent, vmin=0, vmax=1, interpolation='none', )
             axes[index].xaxis_date()
             axes[index].set_title(test_name + f": {value}", fontdict=FONT)
         axes[index].tick_params(labelleft=False, labelbottom=False)
