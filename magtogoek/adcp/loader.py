@@ -72,7 +72,7 @@ class InvalidSonarError(Exception):
 def load_adcp_binary(
     filenames: tp.Union[str, tp.List[str]],
     sonar: str,
-    yearbase: int,
+    yearbase: int = None,
     orientation: str = None,
     leading_index: int = None,
     trailing_index: int = None,

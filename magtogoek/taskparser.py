@@ -184,7 +184,7 @@ class TaskParserError(SystemExit):
         if self.error == "choice":
             self.msg = f"`{self.section}/{self.option}` expected a value in `{self.option_info.choice}` but received `{self.value}`."
         if self.error == "string_format":
-            self.msg = f"`{self.section}/{self.option}` is an invalid datetime format. Use `YYYY-MM-DDThh:mm:ss.ssss`"
+            self.msg = f"`{self.section}/{self.option}` is an invalid datetime format or timezone (TMZ). Use `YYYY-MM-DDThh:mm:ss.ssss` with `+HH` or ` TMZ`."
         if self.error == "path":
             self.msg = f"`{self.section}/{self.option}` path or path/to/file does not exist."
         if self.error == "file":
@@ -645,15 +645,22 @@ def _format_option_type(value: str, option_info: OptionInfos, file_path: Optiona
                 raise TaskParserError('file', option_info, value)
 
         elif option_info.is_time_stamp is True:
-            try:
-                value = dateutil.parser.parse(value).astimezone(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.f')[:-2]
-            except dateutil.parser.ParserError:
-                raise TaskParserError("string_format", option_info, value)
+            value = _format_timestring(value, option_info)
 
     if isinstance(value, (int, float)) and (option_info.value_min or option_info.value_max):
         _check_option_min_max(value, option_info)
 
     return value
+
+
+def _format_timestring(value: str, option_info: OptionInfos) -> str:
+    try:
+        date_time = dateutil.parser.parse(value)
+        if date_time.tzinfo is not None:
+            date_time = date_time.astimezone(timezone.utc)
+        return date_time.strftime('%Y-%m-%dT%H:%M:%S.f')[:-2]
+    except dateutil.parser.ParserError:
+        raise TaskParserError("string_format", option_info, value)
 
 
 def _format_value_dtypes(value: str, dtypes: List[str]) -> StrIntFloatBool:
@@ -680,7 +687,7 @@ def _get_sequence_from_string(sequence: str) -> List:
     """Decode string containing a sequence of value.
 
     The sequence can be between brackets, parenthesis or nothing
-    and have comma, colon, semi-colon, newlines or spaces as separators.
+    and have comma, colon, semicolon, newlines or spaces as separators.
 
     Example
     -------

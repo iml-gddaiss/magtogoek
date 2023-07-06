@@ -45,9 +45,9 @@ def round_up(x: tp.Any, scale: float = 1):
     return np.ceil(np.asarray(x) * 1 / scale) * scale
 
 
-def polar_histo(dataset: xr.Dataset, x_vel: str, y_vel: str, r_max: float):
-    u = flag_data(dataset, x_vel).data.flatten()
-    v = flag_data(dataset, y_vel).data.flatten()
+def polar_histo(dataset: xr.Dataset, x_vel: str, y_vel: str, r_max: float, flag_thres: int):
+    u = flag_data(dataset, x_vel, flag_thres=flag_thres).data.flatten()
+    v = flag_data(dataset, y_vel, flag_thres=flag_thres).data.flatten()
     ii = np.isfinite(u) & np.isfinite(v)
 
     azimut, radius = cartesian2north_polar(u[ii], v[ii])
@@ -293,7 +293,7 @@ def _new_flags_interp_regrid(dataset: xr.Dataset, variable: str) -> xr.DataArray
     Parameters
     ----------
     variable :
-        Name of the variable for which flags are being transferred.
+        Name of the variable for which flags are being transfered.
 
     Returns
     -------
@@ -426,12 +426,12 @@ def cut_times(
         if start_time > dataset.time.max():
             out_off_bound_time = True
         else:
-            msg.append(f"Start={start_time.strftime('%Y-%m-%dT%H:%M:%S')}")
+            msg.append(f"Start={start_time.strftime('%Y-%m-%dT%H:%M:%S')} [UTC]")
     if end_time is not None:
         if end_time < dataset.time.min():
             out_off_bound_time = True
         else:
-            msg.append(f"end={end_time.strftime('%Y-%m-%dT%H:%M:%S')}")
+            msg.append(f"end={end_time.strftime('%Y-%m-%dT%H:%M:%S')}  [UTC]")
     if out_off_bound_time is True:
         l.warning("Trimming datetimes out of bounds. Time slicing aborted.")
     else:
