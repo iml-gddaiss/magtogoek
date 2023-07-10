@@ -159,8 +159,14 @@ Notes
     Thus wave induced rapid horizontal oscillation and the rocking of the buoy, the GPS being located about ~2-3 meters
     above the floating line, result in higher oscillation and amplitude in the speed values. Since speed dependent values
     are average over ~ 1 minutes, we need at least ~1 minutes average values from the gps.
+
 [4] .. [June 2023] JeromeJGuay
     Debit only mesure the amplitude of the flow along the heading of the buoy. It is thus utterly useless
+
+[5] .. [July 2023] JeromeJGuay
+    WMT missing values seems to be 999.0 for mean wind speed and mean wind direction and 0 for max/min wind speed and max/min
+    wind direction. The WMT missing values are replaced with NANs using a mask made from Mean Wind Speed values.
+
 """
 
 import re
@@ -173,9 +179,12 @@ import numpy as np
 
 from magtogoek.utils import get_files_from_expression
 
+
+
 NAN_FILL_VALUE = np.nan
 
 #TRIPLET_FILL_VALUE = 1e20
+WMT_FILL_VALUE = 999.0
 
 TAGS = ["NOM", "COMP", "Triplet", "Par_digi", "SUNA", "GPS",
         "CTD", "CTDO", "RTI", "RDI", "WAVE_M", "WAVE_S", "WXT520",
@@ -283,9 +292,13 @@ data: (length: {len(self)})
     def reformat(self):
         self._squeeze_empty_tag()
         self._to_numpy_masked_array()
+
         # Notes:
         if self.triplet is not None:  # This Could be done directly during the decoding
             _convert_triplet_wavelength(self.triplet)  # This Could be done directly during the decoding
+
+        if self.wmt700 is not None:
+           _set_wmt_fill_value_to_nan(self.wmt700)
 
     def _to_numpy_masked_array(self):
         self.time = np.array(self.time, dtype='datetime64[s]')
@@ -376,6 +389,15 @@ def _convert_triplet_wavelength(triplet_data: dict):
         'fdom_raw': fdom_raw,
         'fdom_calculated': fdom_calc
     })
+
+
+def _set_wmt_fill_value_to_nan(wmt_data: dict):
+    """Set wmt fill value to NAN.
+    A mask is made where `Sm` (mean wind speed) values are equal to 999.0 and applied to all wmt values.
+    """
+    mask = wmt_data['Sm'] == WMT_FILL_VALUE
+    for key, values in wmt_data.items():
+        values[mask] = NAN_FILL_VALUE
 
 
 class RawVikingDatReader():
@@ -781,7 +803,7 @@ def _decode_WXT520(data: str) -> dict:
             'Ta', 'Ua', 'Pa',
             'Th', 'Vh', 'Vs', 'Vr']
     regex = r'([A-z]+)=(\d+(?:\.\d+)?)'
-    decoded_data = dict()#.fromkeys(keys, float(NAN_FILL_VALUE))
+    decoded_data = dict()  #.fromkeys(keys, float(NAN_FILL_VALUE)) not necessary ? July 2023
     for key, value in re.findall(regex, data.strip('\n')):
         decoded_data[key] = _safe_float(value)
     return decoded_data
@@ -790,7 +812,7 @@ def _decode_WXT520(data: str) -> dict:
 def _decode_WMT700(data: str) -> dict:
     keys = ['Dn', 'Dm', 'Dx', 'Sn', 'Sm', 'Sx']
     regex = r'([A-z]+)=(\d+(?:\.\d+)?)'
-    decoded_data = dict().fromkeys(keys, float(NAN_FILL_VALUE))
+    decoded_data = dict()  #.fromkeys(keys, float(NAN_FILL_VALUE)) not necessary ? July 2023
     for key, value in re.findall(regex, data.strip('\n')):
         decoded_data[key] = _safe_float(value)
     return decoded_data
@@ -959,16 +981,12 @@ def main():
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
+   # viking_data = main()
+    _path = "/home/jeromejguay/ImlSpace/Data/IML4_2019_meteoce/dat/*.dat"
+    #_path = '/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat'
+    buoys_data = RawVikingDatReader().read(_path)
 
-    def find_duplicates(array: np.ndarray):
-        index = np.where(array[:-1] == array[1:])[0]
-        return sorted(list(set(list(index) + list(index + 1))))
-
-
-    # viking_data = main()
-    buoys_data = RawVikingDatReader().read('/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat')
-
-    v_data = buoys_data['pmza_riki']
+    #v_data = buoys_data['pmza_riki']
 
     # plt.figure()
     # plt.plot(v_data.ctd['salinity'], label='tag')
@@ -976,9 +994,9 @@ if __name__ == "__main__":
     # plt.legend()
     # plt.show()
 
-    plt.figure()
-    plt.plot(v_data.triplet['calculated_value_1'], label='tag')
-    #plt.plot(v_data.mo['triplet_700'], '--', label='mo')
-    plt.legend()
-    plt.show()
+    # plt.figure()
+    # plt.plot(v_data.triplet['calculated_value_1'], label='tag')
+    # #plt.plot(v_data.mo['triplet_700'], '--', label='mo')
+    # plt.legend()
+    # plt.show()
 
