@@ -2,6 +2,10 @@
 #+TITLE: Notes on Magtogoek
 
 * Issues.
+** Wind data and correction
+   Wind Gust is not Wind Speed. Change that.
+   mean_wind_direction cannot be rotated twice.  min and max wind dir are not related to min/max speed.
+   'max_wind_direction': "EGTDSS01", # THIS IS THE DIRECTION for wind gust. Which is not Dx of the anemometer
 ** Motion Correction in Adcp adcp/quality_control.py and load_navigation in navigation.
    A fix has been added in vicking_dat branche.
    The load_navigation can return None if lon, lat are missing from the files which will crash in quality_control.py.

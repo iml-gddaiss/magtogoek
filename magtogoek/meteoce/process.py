@@ -70,7 +70,11 @@ P01_CODES_MAP = {
     'mean_wind_speed': "EWSBZZ01",
     'max_wind_speed': "EGTSZZ01",
     'mean_wind_direction': "EWDAZZ01",
-    'max_wind_direction': "EGTDSS01",
+    'max_wind_direction': "EGTDSS01", # THIS IS THE DIRECTION for wind gust. Which is not Dx of the anemometer
+    # 	P01: EWDMAX01  This is the wind max direction 10-min
+    #   P01: EWD1MX01  This is the wind max direction 10-min
+    #     This is the wind max direction 10-min
+    #     This is the wind max direction 10-min
     'atm_temperature': "CTMPZZ01",
     'atm_humidity': "CRELZZ01",
     'atm_pressure': "CAPHZZ01",

@@ -62,9 +62,9 @@ The Buoy Data `.dat` files
     'Rc=0.00M,Rd=0s,Ri=0.0M,Hc=0.0M,Hd=0s,Hi=0.0M'
     'Ta=6.8C,Ua=45.0P,Pa=1025.4H'
     'Th=7.6C,Vh=14.1#,Vs=14.4V,Vr=3.503V'
-    Dn = minimal wind direction
+    Dn = minimal wind direction | unrelated to min wind strength
     Dm = average wind direction
-    Dx = maximal wind direction
+    Dx = maximal wind direction | unrelated to max wind strength
     Sn = minimal wind strength
     Sm = average wind strength
     Sx = maximal wind strength

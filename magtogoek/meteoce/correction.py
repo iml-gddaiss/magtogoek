@@ -33,7 +33,7 @@ METEOCE_VARIABLES_TO_CORRECT_FOR_MAGNETIC_DECLINATION = [
 ]
 
 
-# Correct wind for roll and pitch
+# Correct wind for roll and pitch No ?? actually
 
 def meteoce_data_magnetic_declination_correction(dataset: xr.Dataset, pconfig: "ProcessConfig"):
     """Carry magnetic declination correction on meteoce variables."""
@@ -104,15 +104,15 @@ def wind_motion_correction(dataset: xr.Dataset):
                 dataset[variable].attrs['comments'] += _msg
                 l.log(f'{str(variable)} ' + _msg)
 
-
-        if all(v in dataset for v in ['max_wind', 'max_wind_direction']):
-            dataset['max_wind'].values, dataset['max_wind_direction'].values = _wind_motion_correction(
-                dataset['max_wind'], dataset['max_wind_direction'], u_ship, v_ship
-            )
-            for variable in ['max_wind', 'max_wind_direction']:
-                add_correction_attributes_to_dataarray(dataset[variable])
-                dataset[variable].attrs['comments'] += _msg
-                l.log(f'{str(variable)} ' + _msg)
+        # TODO FIXME, this doesnt work. mean_wind_direction cannot be rotated twice.  min and max wind dir are not related to min/max speed
+        # if all(v in dataset for v in ['mean_wind', 'max_wind_direction']):  # max_wind is also along the mean direction.
+        #     dataset['max_wind'].values, dataset['max_wind_direction'].values = _wind_motion_correction(
+        #         dataset['max_wind'], dataset['max_wind_direction'], u_ship, v_ship
+        #     )
+        #     for variable in ['max_wind', '_wind_direction']:
+        #         add_correction_attributes_to_dataarray(dataset[variable])
+        #         dataset[variable].attrs['comments'] += _msg
+        #         l.log(f'{str(variable)} ' + _msg)
     else:
         l.warning('Could not carry wind motion correction. `u_ship` and `v_ship` are missing from the dataset.')
 
