@@ -231,6 +231,52 @@ def compute_scaled_temperature(temperature: Union[float, np.ndarray]) -> Union[f
     return np.log((298.15 - temperature) / (273.15 + temperature))
 
 
+def phINT_from_voltINT(temp: Union[float, np.ndarray], volt: Union[float, np.ndarray], k0: float, k2: float) -> Union[float, np.ndarray]:
+    """Base on Seabird documentation
+
+    ```(Martz et al. 2010)
+    pH_INT = (V_INT - k0_INT - K2_INT * t) / S_nernst
+
+    S_nernst = (R * T * ln(10)) / F
+
+    T : temperature in Kelvin
+    t : temperature in Celsius
+    V_INT : raw interior voltage
+    K0_INT : Interior cell standard potential Offset (From Calibration).
+    K2_INT : Interior temperature slope coefficient (From Calibration).
+    F : Faraday Constant
+
+    ```
+
+    Parameters
+    ----------
+    temp :
+        Temperature in Celsius.
+    volt :
+        Raw interior voltage.
+    k0 :
+        Interior cell standard potential Offset (From Calibration).
+    k2 :
+        Interior temperature slope coefficient (From Calibration).
+
+    Returns
+    -------
+    ph :
+        Interior pH
+
+    References
+    ----------
+    .. [1] T.R. Martz, J. G. Connery, K. S. Johnson. Testing the Honeywell Durafet for seawater pH applications.
+           Limnol. Ocean-ogr.: Methods, 8:172-184, 2010.
+
+    .. [2] Sea-Bird Scientific, Technical Note on Calculating pH, Application Note 99
+
+    """
+
+    s_nernst = compute_s_nernst(temp)
+    return (volt - k0 - k2 * temp) / s_nernst
+
+
 def voltEXT_from_pHEXT(temp: Union[float, np.ndarray], psal: float, ph: Union[float, np.ndarray],
                        k0: float, k2: float) -> Union[float, np.ndarray]:
     """Based on Seabird documentations
@@ -282,7 +328,7 @@ def voltEXT_from_pHEXT(temp: Union[float, np.ndarray], psal: float, ph: Union[fl
 
     .. [2] Sea-Bird Scientific, Technical Note on Calculating pH, Application Note 99
     """
-    s_nernst = GAS_CONSTANT * (temp + 273.15) * np.log(10) / FARADAY_CONSTANT
+    s_nernst = compute_s_nernst(temp)
     cl_t = total_chloride_in_seawater(psal=psal)
     log_y_hcl_t = log_of_HCl_activity_as_temperature_function(temp=temp, psal=psal)
     s_t = total_sulfate_in_seawater(psal=psal)
@@ -347,7 +393,7 @@ def pHEXT_from_voltEXT(temp: Union[float, np.ndarray], psal: Union[float, np.nda
     .. [2] Sea-Bird Scientific, Technical Note on Calculating pH, Application Note 99
 
     """
-    s_nernst = GAS_CONSTANT * (temp + 273.15) * np.log(10) / FARADAY_CONSTANT
+    s_nernst = compute_s_nernst(temp)
     cl_t = total_chloride_in_seawater(psal=psal)
     log_y_hcl_t = log_of_HCl_activity_as_temperature_function(temp=temp, psal=psal)
     s_t = total_sulfate_in_seawater(psal=psal)
@@ -358,6 +404,10 @@ def pHEXT_from_voltEXT(temp: Union[float, np.ndarray], psal: Union[float, np.nda
             + 2 * log_y_hcl_t
             - np.log10(1 + (s_t / k_s))
             - np.log10((1000 - 1.005 * psal) / 1000))
+
+
+def compute_s_nernst(temp:  Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+    return GAS_CONSTANT * (temp + 273.15) * np.log(10) / FARADAY_CONSTANT
 
 
 def total_chloride_in_seawater(psal: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
