@@ -42,7 +42,7 @@ from magtogoek.platforms import PlatformMetadata
 from magtogoek.wps.sci_tools import compute_in_situ_density, dissolved_oxygen_ml_per_L_to_umol_per_L, dissolved_oxygen_umol_per_L_to_umol_per_kg
 
 from magtogoek.meteoce.loader import load_meteoce_data
-from magtogoek.meteoce.correction import wps_data_correction, meteoce_data_magnetic_declination_correction, wind_motion_correction
+from magtogoek.meteoce.correction import wps_data_correction, meteoce_data_magnetic_declination_correction
 from magtogoek.meteoce.quality_control import meteoce_quality_control, no_meteoce_quality_control
 from magtogoek.meteoce.plots import make_meteoce_figure
 from magtogoek.meteoce.odf_exporter import make_odf
@@ -67,14 +67,17 @@ GLOBAL_ATTRS_TO_DROP = [
 # This mapping can be updating by the meteoce.corrections modules.
 P01_CODES_MAP = {
     'time': "ELTMEP01",
-    'mean_wind_speed': "EWSBZZ01",
-    'max_wind_speed': "EGTSZZ01",
-    'mean_wind_direction': "EWDAZZ01",
-    'max_wind_direction': "EGTDSS01", # THIS IS THE DIRECTION for wind gust. Which is not Dx of the anemometer
-    # 	P01: EWDMAX01  This is the wind max direction 10-min
-    #   P01: EWD1MX01  This is the wind max direction 10-min
-    #     This is the wind max direction 10-min
-    #     This is the wind max direction 10-min
+
+    # FIXME change to
+    # wind_mean_speed, wind_mean_direction
+    # wind_mind_speed, wind_max_speed  # max speed is not wind gust.
+    # wind_max_direction, wind_min_direction | unrelated to the max and min speed
+    'mean_wind_speed': "EWSBZZ01", # EWSBSS01 Speed of wind {wind speed} in the atmosphere by in-situ anemometer
+    'mean_wind_direction': "EWDAZZ01", # P01:EWDASS01	Direction (from) of wind relative to True North {wind direction} in the atmosphere by in-situ anemometer
+    # change these to wind gust
+    'max_wind_speed': "EGTSZZ01", # P01:EGTSSS01	Speed of wind (gust) {wind speed} in the atmosphere by in-situ anemometer
+    'max_wind_direction': "EGTDSS01", # P01:EGTDSS01	Direction (from) of wind (gust) relative to True North {wind direction} in the atmosphere by in-situ anemometer
+
     'atm_temperature': "CTMPZZ01",
     'atm_humidity': "CRELZZ01",
     'atm_pressure': "CAPHZZ01",
@@ -369,11 +372,11 @@ def _process_meteoce_data(pconfig: ProcessConfig):
 
     _set_magnetic_declination(dataset, pconfig)
 
+    # >>>> METEOCE SPECIFIC
     meteoce_data_magnetic_declination_correction(dataset, pconfig)
 
     wps_data_correction(dataset, pconfig)
-
-    wind_motion_correction(dataset)
+    # <<<<
 
     # --------------- #
     # METEOCE COMPUTE #

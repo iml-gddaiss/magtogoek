@@ -90,38 +90,6 @@ def wps_data_correction(
             _in_situ_sample_correction(dataset, variable, pconfig)
 
 
-def wind_motion_correction(dataset: xr.Dataset):
-    if all(v in dataset.variables for v in ['u_ship', 'v_ship']):
-        u_ship, v_ship = dataset['u_ship'], dataset['v_ship']
-        _msg = 'Motion correction correction carried out with u_ship and v_ship.'
-
-        if all(v in dataset for v in ['mean_wind', 'mean_wind_direction']):
-            dataset['mean_wind'].values, dataset['mean_wind_direction'].values = _wind_motion_correction(
-                dataset['mean_wind'], dataset['mean_wind_direction'], u_ship, v_ship
-            )
-            for variable in ['mean_wind', 'mean_wind_direction']:
-                add_correction_attributes_to_dataarray(dataset[variable])
-                dataset[variable].attrs['comments'] += _msg
-                l.log(f'{str(variable)} ' + _msg)
-
-        # TODO FIXME, this doesnt work. mean_wind_direction cannot be rotated twice.  min and max wind dir are not related to min/max speed
-        # if all(v in dataset for v in ['mean_wind', 'max_wind_direction']):  # max_wind is also along the mean direction.
-        #     dataset['max_wind'].values, dataset['max_wind_direction'].values = _wind_motion_correction(
-        #         dataset['max_wind'], dataset['max_wind_direction'], u_ship, v_ship
-        #     )
-        #     for variable in ['max_wind', '_wind_direction']:
-        #         add_correction_attributes_to_dataarray(dataset[variable])
-        #         dataset[variable].attrs['comments'] += _msg
-        #         l.log(f'{str(variable)} ' + _msg)
-    else:
-        l.warning('Could not carry wind motion correction. `u_ship` and `v_ship` are missing from the dataset.')
-
-
-def _wind_motion_correction(speed, direction, u_ship, v_ship):
-    wind_u, wind_v = north_polar2cartesian(speed,direction)
-    return cartesian2north_polar(wind_u - u_ship, wind_v - v_ship)
-
-
 def _dissolved_oxygen_corrections(dataset: xr.Dataset, pconfig: "ProcessConfig"):
     """
     Calls:
