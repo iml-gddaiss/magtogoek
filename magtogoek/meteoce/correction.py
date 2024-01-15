@@ -32,9 +32,6 @@ METEOCE_VARIABLES_TO_CORRECT_FOR_MAGNETIC_DECLINATION = [
 
 ]
 
-
-# Correct wind for roll and pitch No ?? actually
-
 def meteoce_data_magnetic_declination_correction(dataset: xr.Dataset, pconfig: "ProcessConfig"):
     """Carry magnetic declination correction on meteoce variables."""
 
@@ -45,15 +42,7 @@ def meteoce_data_magnetic_declination_correction(dataset: xr.Dataset, pconfig: "
             dataset['heading'].attrs['corrections'] += 'Corrected for magnetic declination.\n'
             l.log(f"Heading transformed to true north.")
 
-        if 'course' in dataset.variables:
-            if 'gps_magnetic_declination' in dataset:
-                add_correction_attributes_to_dataarray(dataset['course'])
-                angle = round((pconfig.magnetic_declination - dataset['gps_magnetic_declination'].data), 4)
-                l.log(f"An additional correction of {angle} degree north was applied to the gps course.")
-                dataset['course'].values = (dataset['course'].values + angle) % 360
-                dataset['course'].attrs += 'Corrected for magnetic declination.\n'
-
-        for variable in {'mean_wind_direction', 'max_wind_direction', 'wave_direction'}.intersection(set(dataset.variables)):
+        for variable in {'mean_wind_direction', 'wave_direction'}.intersection(set(dataset.variables)):
             add_correction_attributes_to_dataarray(dataset[variable])
             dataset[variable].values = (dataset[variable].values + pconfig.magnetic_declination) % 360
             dataset[variable].attrs['corrections'] += 'Corrected for magnetic declination.\n'
@@ -217,5 +206,5 @@ def _in_situ_sample_correction(dataset: xr.Dataset, variable: str, pconfig: "Pro
         slope=slope,
         offset=offset
     )
-    dataset[variable].attrs['corrections'] += "Correction applied with in-sity sample.\n"
+    dataset[variable].attrs['corrections'] += "Correction applied with in-situ sample.\n"
     l.log(f'In situ sample correction applied to {variable}. Slope: {slope}, Offset: {offset}.')
