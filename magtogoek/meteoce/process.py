@@ -310,7 +310,7 @@ def process_meteoce(config: dict, drop_empty_attrs: bool = False, headless: bool
         If true, all netcdf empty ('') global attributes will be dropped from
         the output.
     headless :
-        If true, figures are not displayed.
+        If true, figures are not displayed but are saved in the output directory.
 
     The actual data processing is carried out by _process_viking_data.
     """

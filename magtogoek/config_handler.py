@@ -227,7 +227,7 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
     section = "OUTPUT"
     tparser.add_option(section, "netcdf_output", dtypes=["str", "bool"], default="", is_path=True, null_value=False)
     tparser.add_option(section, "odf_output", dtypes=["str", "bool"], default="", is_path=True, null_value=False)
-    tparser.add_option(section, "make_figures", dtypes=["bool", "str"], default=True, null_value=False)
+    tparser.add_option(section, "make_figures", dtypes=["str", "bool"], default=True, is_path=True, null_value=False)
     tparser.add_option(section, "make_log", dtypes=["bool"], default=True, null_value=False)
     tparser.add_option(section, "force_platform_metadata", dtypes=["bool"], default=False, null_value=False)
     tparser.add_option(section, "use_bodc_name", dtypes=["bool"], default=True, null_value=False)

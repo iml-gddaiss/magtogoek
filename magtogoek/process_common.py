@@ -94,13 +94,13 @@ class BaseProcessConfig:
     make_log: bool = None
     odf_data: str = None
 
+    # Variables set internally for processing.
     netcdf_path: str = None
     odf_path: str = None
     log_path: str = None
     figures_path: str = None
     figures_output: bool = None
 
-    # Variables set internally for processing.
     headless: bool = False
 
     variables_to_drop: tp.List[str] = None
