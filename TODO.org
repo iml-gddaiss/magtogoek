@@ -50,7 +50,8 @@ plt.show(block=False)
    + Make use of a single platform file that can be modify by the user.
 
 ** VERSION:
-    Put the version.py info in the __ini__.py ?
+    + Put the version.py info in the __ini__.py ?
+    + VERSION in app is not the same variable as in the setup.
      
 * Missing
 ** adcp
