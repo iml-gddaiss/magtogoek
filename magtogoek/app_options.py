@@ -1,7 +1,6 @@
 """
 Script that contains different click options and the functions to add them to the click command.
 
-FIXME
 """
 
 import click
@@ -101,37 +100,7 @@ def general_options(input_files=True):
     return options
 
 
-def meteoce_options():
-    """Return shared meteoce options. They can be passed to Click using @add_options()"""
-    options = []
-    options += [
-        click.option(
-            "-l",
-            "--leading-trim",
-            type=click.STRING,
-            help="""Removes a count of leading data or data before a given date or datetime.
-            Formats: Date "YYYY-MM-DD" or "YYYY-MM-DDThh:mm:ss.ssss",  Count (int): """,
-            nargs=1,
-            default=None,
-        ),
-        click.option(
-            "-t",
-            "--trailing-trim",
-            type=click.STRING,
-            help="""Removes a count of trailing data or data after a given date or datetime.
-            Formats: Date "YYYY-MM-DD" or "YYYY-MM-DDThh:mm:ss.ssss",  Count (int): """,
-            nargs=1,
-            default=None,
-        ),
-        click.option(
-            "--qc/--no-qc", help="Do quality control.", default=True, show_default=True,
-        ),
-
-    ]
-    return options
-
-
-def adcp_options(yearbase=True, sonar=True):
+def adcp_options(sonar=True):
     """Return shared adcp options. They can be passed to Click using @add_options()
 
     Parameters:
@@ -152,16 +121,14 @@ def adcp_options(yearbase=True, sonar=True):
                 help="""String designating the type of adcp. Use --info option for more information.""",
             )
         ]
-    if yearbase:
-        options += [
-            click.option(
-                "-y",
-                "--yearbase",
-                type=click.INT,
-                help="""Year when the adcp sampling started. ex: `1970`""",
-            )
-        ]
     options += [
+        click.option(
+            "-y",
+            "--yearbase",
+            type=click.INT,
+            help="""Year when the adcp sampling started. ex: `1970`""",
+            required=False
+        ),
         click.option("-T", "--platform_type", type=click.Choice(["buoy", "mooring", "ship", "lowered"]),
                      help="Used for Proper BODC variables names", default="buoy"),
         click.option(
@@ -261,13 +228,6 @@ def adcp_options(yearbase=True, sonar=True):
             nargs=1,
             default=None,
         ),
-    ]
-    return options
-
-
-def adcp_shared_options():
-    options = []
-    options += [
         click.option(
             "-a",
             "--amplitude-threshold",

@@ -32,19 +32,9 @@ from subprocess import run as subp_run
 import click
 
 from magtogoek import LOCAL_CONFIGURATION_PATH, DEFAULT_CONFIGURATION_PATH, LOCAL_CONFIG_EXISTS, VERSION, TERMINAL_WIDTH
-from magtogoek.app_options import general_options, adcp_options, adcp_shared_options, meteoce_options, add_options
-# from magtogoek.configfile import _get_taskparser
+from magtogoek.app_options import general_options, adcp_options, add_options
+
 from magtogoek.utils import is_valid_filename, json2dict, resolve_relative_path
-
-
-# ---------- Module or functions imported by commands ----------- #
-# NOTE: PROBABLY NOT UP TO DATE
-# from magtogoek.configfile import make_configfile
-# from magtogoek.platforms import make_platform_template
-# from magtogoek.adcp.loader import load_adcp_binary
-# from magtogoek.adcp.utils import Logger
-# from magtogoek.adcp.process import process_adcp, quick_process_adcp
-# --------------------------------------------------------------- #
 
 
 LOGO_PATH = resolve_relative_path("static/logo.json", __file__)
@@ -212,7 +202,6 @@ def config_platform(ctx, info, filename):
               help="platform_file, platform_id, adcp_id", default=(None, None, None), nargs=3)
 @add_options(general_options())
 @add_options(adcp_options())
-@add_options(adcp_shared_options())
 @click.pass_context
 def config_adcp(
         ctx, info, config_name, **options,
@@ -234,12 +223,7 @@ def config_adcp(
 @config.command("meteoce")
 @add_options(common_options)
 @click.argument("config_name", metavar="[config_name]", type=str)
-# SHOULD BE ONLY A PLATFORM ID OPTION
-# @click.option("-T", "--platform", type=(click.Path(exists=True), str, str),
-#               help="platform_file, platform_id, adcp_id", default=(None, None, None), nargs=3)
 @add_options(general_options())
-#@add_options(meteoce_options())
-#@add_options(adcp_shared_options())
 @click.pass_context
 def config_meteoce(
         ctx, info, config_name, **options,
@@ -252,7 +236,6 @@ def config_meteoce(
     _print_passed_options(options)
     config_name = is_valid_filename(config_name, ext=".ini")
     options['process'] = 'meteoce'
-    # options.update({k: v for k, v in zip(("platform_file", "platform_id", "adcp_id"), options.pop('platform'))})
 
     write_configfile(filename=config_name, process="meteoce", cli_options=options)
     click.secho(f"Config file created for meteoce buoy processing -> {config_name}", bold=True)
@@ -300,15 +283,12 @@ def config_list_outlier_regions(ctx, info, **options):
 @add_options(common_options)
 @click.argument("input_files", metavar="[input_files]", nargs=-1, type=click.Path(exists=True), required=True)
 @add_options(general_options(input_files=False))
-@add_options(adcp_options(sonar=False, yearbase=False))
-@add_options(adcp_shared_options())
+@add_options(adcp_options(sonar=False))
 @click.option(
     "-s", "--sonar", type=click.Choice(["wh", "sv", "os", "sw", "sw_pd0"]),
     help="String designating type of adcp. This  is fed to CODAS Multiread or switches to the magtogoek RTIReader.",
     required=True,
 )
-@click.option("-y", "--yearbase", type=click.INT,
-              help="""year when the adcp sampling started. ex: `1970`""", required=False, default=None)
 @click.option("--headless",
               is_flag=True,
               help="""Using remotely with no display capability""")
@@ -325,31 +305,6 @@ def quick_adcp(ctx, info, input_files: tuple, sonar: str, yearbase: int, **optio
     process_adcp(configuration,
                  drop_empty_attrs=True,
                  headless=options['headless'])
-
-
-# @quick.command("meteoce")
-# @add_options(common_options)
-# @click.argument("input_files", metavar="[input_files]", nargs=-1, type=click.Path(exists=True), required=True)
-# @add_options(general_options(input_files=False))
-# @add_options(viking_options())
-# @add_options(adcp_shared_options())
-# @click.option("--headless",
-#               is_flag=True,
-#               help="""Using remotely with no display capability""")
-# @click.pass_context
-# def quick_meteoce(ctx, info, input_files: tuple, sonar: str, yearbase: int, **options: dict):
-#     """Command to quickly process meteoce files. The [OPTIONS] can be added
-#     before or after the [inputs_files]."""
-#     from magtogoek.config_handler import cli_options_to_config
-#     from magtogoek.meteoce.process import process_viking
-#     options.update({"input_files": input_files, "process": "viking_buoy"})
-#     _print_passed_options(options)
-#
-#     configuration = cli_options_to_config('viking_buoy', options, cwd=str(Path().cwd()))
-#
-#     process_viking(configuration,
-#                    drop_empty_attrs=True,
-#                    headless=options['headless'])
 
 
 # ---------------------------- #
