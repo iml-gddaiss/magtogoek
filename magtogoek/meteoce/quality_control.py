@@ -7,8 +7,6 @@ Module that contains function for meteoce data quality control.
 
 Notes
 -----
-    + Spike return a flag of 3
-    + Climatology outliers get a flag of 3
     + Absolute outliers get a flag of 4
 
 
@@ -36,7 +34,7 @@ from typing import List
 
 from magtogoek import logger as l
 from magtogoek.quality_control_common import IMPOSSIBLE_PARAMETERS_VALUES, values_outliers_detection, \
-    climatology_outlier_test, add_ancillary_QC_variable_to_dataset, add_flags_values, merge_flags, \
+    add_ancillary_QC_variable_to_dataset, add_flags_values, merge_flags, \
     find_missing_values
 from magtogoek.process_common import FLAG_ATTRIBUTES
 
@@ -64,16 +62,7 @@ VARIABLES_WITH_QC = { # 1: QC(default flag = 1) , 0: No Qc (default flag = 0)
     'chlorophyll': 0,
     'fdom': 0,
     'co2_a': 0,
-    'co2_w': 0,
-    'lon': 0,
-    'lat': 0,
-    'heading': 0,
-    'roll_': 0,
-    'pitch': 0,
-    'roll_std': 0,
-    'pitch_std': 0,
-    'u_ship': 0,
-    'v_ship': 0,
+    'co2_w': 0
     }
 
 QC_VARIABLES = [k for k, v in VARIABLES_WITH_QC.items() if v == 1]
@@ -104,12 +93,6 @@ def meteoce_quality_control(
 
         regional_outlier: str = None,
         absolute_outlier: bool = True,
-
-        climatology_variables: List[str] = None,
-        climatology_dataset: xr.Dataset = None,
-        climatology_threshold: float = None,
-        climatology_depth_interpolation_method: str = None,
-
         propagate_flags: bool = True,
 ):
     """
@@ -128,11 +111,6 @@ def meteoce_quality_control(
 
     regional_outlier
     absolute_outlier
-
-    climatology_variables
-    climatology_dataset
-    climatology_threshold
-    climatology_depth_interpolation_method
 
     propagate_flags
 
@@ -156,27 +134,11 @@ def meteoce_quality_control(
        * 9: missing_value
 
 
-    Todo
-    -----
-    + spike detection
-    + absolute limit detection
-    + Flag propagation
-    + Flag Comments attrs.
-
     """
     l.section("Meteoce Quality Control")
 
     _add_ancillary_variables_to_dataset(dataset, variables=QC_VARIABLES, default_flag=1)
     _add_ancillary_variables_to_dataset(dataset, variables=NO_QC_VARIABLES, default_flag=0)
-
-    if climatology_variables is not None and climatology_dataset is not None:
-        _climatology_outlier_tests(
-            dataset=dataset,
-            climatology_dataset=climatology_dataset,
-            variables=climatology_variables,
-            threshold=climatology_threshold,
-            depth_interpolation_method=climatology_depth_interpolation_method
-        )
 
     if regional_outlier is not None:
         if regional_outlier in IMPOSSIBLE_PARAMETERS_VALUES:
@@ -190,7 +152,7 @@ def meteoce_quality_control(
     _flag_missing_values(dataset)
 
     if propagate_flags is True:
-        _flag_propagation(dataset, use_atm_pressure=True)
+        _propagate_flag(dataset, use_atm_pressure=True)
 
     _print_percent_of_good_values(dataset)
 
@@ -199,7 +161,7 @@ def meteoce_quality_control(
 
 
 def _add_ancillary_variables_to_dataset(dataset: xr.Dataset, variables: List[str], default_flag: int = 1):
-    for variable in set(dataset.keys()).intersection(set(variables)):
+    for variable in set(dataset.keys()) & set(variables):
         add_ancillary_QC_variable_to_dataset(dataset=dataset, variable=variable, default_flag=default_flag)
 
 
@@ -209,7 +171,7 @@ def _impossible_values_tests(dataset: xr.Dataset, region: str, flag: int):
     """
     outliers_values = IMPOSSIBLE_PARAMETERS_VALUES[region]
 
-    for variable in set(dataset.keys()).intersection(set(outliers_values.keys())):
+    for variable in set(dataset.keys()) & set(outliers_values.keys()) & set(QC_VARIABLES):
         _data = dataset[variable].values
 
         if 'units' in dataset[variable].attrs:
@@ -242,7 +204,7 @@ def _flag_missing_values(dataset: xr.Dataset):
         add_flags_values(dataset[variable + "_QC"].data, find_missing_values(dataset[variable].values) * 9)
 
 
-def _flag_propagation(dataset: xr.Dataset, use_atm_pressure: bool = False):
+def _propagate_flag(dataset: xr.Dataset, use_atm_pressure: bool = False):
     """ Maybe move to wps
 
     Parameters
@@ -288,49 +250,3 @@ def _print_percent_of_good_values(dataset: xr.Dataset):
         if "_QC" in variable:
             percent_of_good_values = np.sum(dataset[variable + "_QC"] <= 2) / len(dataset.time)
             l.log(f"{round(percent_of_good_values * 100, 2)}% of {variable.strip('_QC')} have flags of 1 or 2.")
-
-
-def _climatology_outlier_tests(
-        dataset: xr.Dataset,
-        climatology_dataset: xr.Dataset,
-        variables: List[str],
-        threshold: float,
-        depth_interpolation_method: str,
-):
-    """Carry climatology_outlier_test over parameters present in both dataset and climatology_dataset
-
-        Parameters
-        ----------
-        dataset :
-            Dataset containing the data to compare.
-        climatology_dataset :
-            Dataset containing the climatology.
-            For any give `variable_name` to compare with the climatology,
-            the climatology dataset should be structured as follows:
-                Variables:
-                    variable_name + '_mean'
-                    variable_name + '_std'
-                Time coords:
-                    'dayofyear': 1 .. 366
-                    'weekofyear': 1 .. 52
-                    'monthofyear': 1 .. 12
-                    'season': 'DJF', 'JJA', 'MAM', 'SON'
-        variables :
-            Variable to carry climatology test on.
-        threshold :
-            factor that is multiplier to the standard deviation.
-        depth_interpolation_method :
-            Only use when the data has a depth component.
-            "linear", "nearest", "zero", "slinear", "quadratic", "cubic" (See xarray documentation)
-        """
-    for variable in variables:
-        try:
-            climatology_outlier_test(
-                dataset=dataset,
-                climatology_dataset=climatology_dataset,
-                variable=variable,
-                threshold=threshold,
-                depth_interpolation_method=depth_interpolation_method
-            )
-        except ValueError as msg:
-            l.warning(f'Unable to carry out climatology outlier qc on {variable}.\n\t Error: {msg}')

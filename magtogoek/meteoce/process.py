@@ -32,7 +32,7 @@ import xarray as xr
 from typing import *
 
 from magtogoek import logger as l
-from magtogoek.sci_tools import rotate_2d_vector, north_polar2cartesian
+from magtogoek.sci_tools import xy_vector_magnetic_correction, north_polar2cartesian
 from magtogoek.process_common import BaseProcessConfig, resolve_output_paths, add_global_attributes, write_log, \
     write_netcdf, add_processing_timestamp, clean_dataset_for_nc_output, format_data_encoding, add_navigation, \
     add_platform_metadata_to_dataset
@@ -57,14 +57,14 @@ l.get_logger("meteoce_processing")
 
 STANDARD_GLOBAL_ATTRIBUTES = {"featureType": "timeSeriesProfile"}
 
-VARIABLES_TO_DROP = ['ph_temperature', 'speed', 'course', 'gps_magnetic_declination'] #, 'last_heading'] Not currently loaded
+VARIABLES_TO_DROP = ['ph_temperature', 'speed', 'course', 'gps_magnetic_declination', 'pres'] #, 'last_heading'] Not currently loaded
 
 GLOBAL_ATTRS_TO_DROP = [
     "binary_mask_tests",
     "binary_mask_tests_values",
 ]
 
-# This mapping can be updating by the meteoce.corrections modules.
+# This mapping can be change by the meteoce.corrections modules.
 P01_CODES_MAP = {
     'time': "ELTMEP01",
 
@@ -217,16 +217,10 @@ class ProcessConfig(BaseProcessConfig):
 
     # meteoce
     quality_control: bool = None
+    propagate_flags: bool = True
 
     absolute_outlier: bool = True
     regional_outlier: str = None
-
-    climatology_variables: List[str] = None
-    climatology_dataset_path: str = None  # A PATH to a netcdf
-    climatology_threshold: float = None
-    # Set choices in tparser: "linear", "nearest", "zero", "slinear", "quadratic", "cubic"
-    climatology_depth_interpolation_method: str = None
-    propagate_flags: bool = True
 
     # adcp quality_control
     horizontal_velocity_threshold: float = None
@@ -235,9 +229,6 @@ class ProcessConfig(BaseProcessConfig):
     pitch_threshold: float = None
     roll_threshold: float = None
 
-
-    ##### Variables set by the processing #######
-    climatology_dataset: xr.Dataset = None
 
     def __init__(self, config_dict: dict = None):
         super().__init__(config_dict)
@@ -288,17 +279,7 @@ def process_meteoce(config: dict, drop_empty_attrs: bool = False, headless: bool
     pconfig.drop_empty_attrs = drop_empty_attrs
     pconfig.headless = headless
 
-    if pconfig.climatology_dataset_path is not None:
-        _load_climatology(pconfig)  # This is done here to catch an error early and exit.
-
     _process_meteoce_data(pconfig)
-
-
-def _load_climatology(pconfig: ProcessConfig):
-    try:
-        pconfig.climatology_dataset = xr.open_dataset(pconfig.climatology_dataset_path)
-    except ValueError as msg:
-        l.warning(f'Unable to load the climatology netcdf file.\n\t Error: {msg}')
 
 
 @resolve_output_paths
@@ -337,15 +318,13 @@ def _process_meteoce_data(pconfig: ProcessConfig):
 
     l.section("Meteoce data correction")
 
-    _compute_pressure(dataset, pconfig)
+    _compute_pressure_at_sampling_depth(dataset, pconfig) # pressure (water pressure) is required for some wps correction
 
-    _set_magnetic_declination(dataset, pconfig)
+    _set_magnetic_declination(dataset, pconfig) # FIXME Metis will have auto correction.......
 
-    # >>>> METEOCE SPECIFIC
     meteoce_data_magnetic_declination_correction(dataset, pconfig)
 
     wps_data_correction(dataset, pconfig)
-    # <<<<
 
     # --------------- #
     # METEOCE COMPUTE #
@@ -464,7 +443,7 @@ def _load_viking_data(pconfig: ProcessConfig):
     return dataset
 
 
-def _compute_pressure(dataset: xr.Dataset, pconfig: ProcessConfig):
+def _compute_pressure_at_sampling_depth(dataset: xr.Dataset, pconfig: ProcessConfig):
     """FIXME maybe add loggings ?"""
     if "lat" in dataset.variables:
         latitude = dataset.lat.data
@@ -614,10 +593,6 @@ def _meteoce_quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
         dataset,
         regional_outlier=pconfig.regional_outlier,
         absolute_outlier=pconfig.absolute_outlier,
-        climatology_variables=pconfig.climatology_variables,
-        climatology_dataset=pconfig.climatology_dataset,
-        climatology_threshold=pconfig.climatology_threshold,
-        climatology_depth_interpolation_method=pconfig.climatology_depth_interpolation_method,
         propagate_flags=pconfig.propagate_flags
     )
     return dataset
@@ -780,7 +755,6 @@ if __name__ == "__main__":
         ),
         OUTPUT=dict(
             netcdf_output=out_path,
-            odf_output=True
             odf_output=True,
             merge_output_files=True,
             bodc_name=False,
@@ -820,18 +794,11 @@ if __name__ == "__main__":
             magnetic_declination=0,
             magnetic_declination_preset=None,
         ),
-        VIKING_QUALITY_CONTROL=dict(quality_control=None),
-        VIKING_OUTPUT=dict(
-            merge_output_files=True,
-            bodc_name=False,
-            force_platform_metadata=None,
-            odf_data=False,
-            make_figures=False,
-            make_log=False
         WPS_PROCESSING=dict(),
         ADCP_PROCESSING=dict(),
         METEOCE_QUALITY_CONTROL=dict(),
         ADCP_QUALITY_CONTROL=dict(
+            horizontal_velocity_threshold=2,
             vertical_velocity_threshold=1,
             error_velocity_threshold=1,
             roll_threshold=10,

@@ -308,27 +308,6 @@ def _average_duplicates(dataset: xr.Dataset, coord: str) -> xr.Dataset:
     return _dataset
 
 
-# See note [1] in module docstring.
-#
-# def _wind_and_wave_direction_correction(dataset: xr.Dataset):
-#     """Fix direction for Wind and Wave.
-#
-#     The Viking Buoy V1 uses the last measured heading value to compute the
-#     wind and wave direction instead of the average value of the measurement period.
-#
-#     The last measured heading value is sent in the `MO` tag and are used to get the
-#     raw directions values from the Wind and Wave.
-#
-#     The correct Wave and Wind directions are then computed using the average heading value.
-#     """
-#     direction_to_correct = ['wave_direction', 'mean_wind_direction', 'max_wind_direction']
-#     if all(var in dataset.variables for var in ['last_heading', 'heading']):
-#         heading = (dataset['heading'] + 360) % 360 # [-180, 180[ -> [0, 360[
-#         for variable in set(dataset.variables).intersection(set(direction_to_correct)):
-#             dataset[variable].values = (dataset[variable] - dataset['last_heading'] + heading).values % 360
-#             l.log(f'{variable} data corrected using the average heading.')
-
-
 if __name__ == "__main__":
     #vr = RawVikingDatReader()
     #_buoys_data = vr.read(['/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat'])
@@ -338,4 +317,5 @@ if __name__ == "__main__":
     #ds = load_meteoce_data(['/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat'])
     #ds.to_netcdf('/home/jeromejguay/ImlSpace/Data/iml4_2021/meteoce_riki_2021.nc')
 
-    ds = xr.open_dataset('/home/jeromejguay/ImlSpace/Data/iml4_2021/meteoce_riki_2021.nc')
+    # ds = xr.open_dataset('/home/jeromejguay/ImlSpace/Data/iml4_2021/meteoce_riki_2021.nc')
+    pass

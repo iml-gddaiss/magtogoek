@@ -5,6 +5,7 @@ from pandas import Timestamp
 
 from magtogoek import logger as l, CONFIGURATION_PATH
 from magtogoek.process_common import FLAG_ATTRIBUTES
+from magtogoek.sci_tools import data_spike_detection
 from magtogoek.utils import json2dict
 
 IMPOSSIBLE_PARAMETERS_VALUES_FILE_PATH = CONFIGURATION_PATH.joinpath("impossible_parameter_values.json")
@@ -196,45 +197,6 @@ def _add_climatology_qc_variable(dataset: xr.Dataset, variable: str):
         {'quality_test': "", "quality_date": Timestamp.now().strftime("%Y-%m-%d")}
     )
     dataset[variable + "_QC_climatology_outlier"].attrs.update(FLAG_ATTRIBUTES)
-
-
-def data_spike_detection(data: np.ndarray, inner_thres: float, outer_thres: float):
-    """ Spike detection.
-
-    ```Algorithm without first and last values:
-
-        |V2 - (V3+V1)/2| - |(V1-V3)/2|  >= Threshold_1
-    ```
-
-    ```Algorithm for first and last values:
-
-        |V2 - v1|  >= Threshold_2
-    ```
-
-    Parameters
-    ----------
-    data :
-        Time series to check for spikes.
-    inner_thres :
-        Threshold for data without first and last values.
-    outer_thres :
-        Threshold for the first and last values.
-
-    Returns
-    -------
-    Boolean array of the same shape as data where True values are data spikes.
-
-    """
-    spikes = np.zeros(data.shape).astype(bool)
-    v1 = data[0:-2]
-    v2 = data[1:-1]
-    v3 = data[2:]
-
-    spikes[0] = np.abs(data[1] - data[0]) >= outer_thres
-    spikes[1:-1] = np.abs(v2 - (v3 + v1)/2) - np.abs(v1 - v3) / 2 >= inner_thres
-    spikes[-1] = np.abs(data[-1] - data[-2]) >= outer_thres
-
-    return spikes
 
 
 def data_spike_detection_tests(dataset: xr.Dataset, variable: str):

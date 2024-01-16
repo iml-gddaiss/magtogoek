@@ -28,20 +28,24 @@ WPS_VARIABLES_TO_CORRECT_FOR_DRIFT_AND_IN_SITU = [
     'fdom'
 ]
 
-METEOCE_VARIABLES_TO_CORRECT_FOR_MAGNETIC_DECLINATION = [
-
-]
 
 def meteoce_data_magnetic_declination_correction(dataset: xr.Dataset, pconfig: "ProcessConfig"):
-    """Carry magnetic declination correction on meteoce variables."""
+    """Carry magnetic declination correction for meteoce variables
+
+    [-180, 180]: heading
+    [0, 360 ]: mean_wind_direction, wave_direction
+
+    """
 
     if pconfig.magnetic_declination is not None:
+        # '-180, 180'
         if 'heading' in dataset.variables:
             add_correction_attributes_to_dataarray(dataset['heading'])
             dataset.heading.values = rotate_heading(dataset.heading.data, dataset.magnetic_declination)
             dataset['heading'].attrs['corrections'] += 'Corrected for magnetic declination.\n'
             l.log(f"Heading transformed to true north.")
 
+        # '0, 360'
         for variable in {'mean_wind_direction', 'wave_direction'}.intersection(set(dataset.variables)):
             add_correction_attributes_to_dataarray(dataset[variable])
             dataset[variable].values = (dataset[variable].values + pconfig.magnetic_declination) % 360
