@@ -3,7 +3,7 @@ import xarray as xr
 
 from magtogoek import logger as l
 from magtogoek.process_common import add_correction_attributes_to_dataarray
-from magtogoek.sci_tools import rotate_2d_vector, rotate_heading
+from magtogoek.sci_tools import xy_vector_magnetic_correction, rotate_heading
 
 
 def apply_motion_correction(dataset: xr.Dataset, mode: str):
@@ -47,12 +47,14 @@ def apply_motion_correction(dataset: xr.Dataset, mode: str):
 
 
 def apply_magnetic_correction(dataset: xr.Dataset, magnetic_declination: float):
-    """Correct velocities and heading to true north and east.
+    """Correct velocities and heading to true north and east if required.
 
-    Computes the relative magnetic correction to apply.
+    If the `magnetic_declination` parameter values differs from the one in the
+    dataset global attribute, an additional correction is applied.
 
     Rotates velocities vector clockwise by `magnetic_declination` angle effectively
     rotating the frame fo reference by the `magnetic_declination` anti-clockwise.
+
     Corrects the heading with the `magnetic_declination`:
 
     Equation for the heading: (heading + 180 + magnetic_declination) % 360 - 180
@@ -74,15 +76,15 @@ def apply_magnetic_correction(dataset: xr.Dataset, magnetic_declination: float):
 
     magnetic_correction = _compute_relative_magnetic_declination(dataset, magnetic_declination)
 
-    dataset.u.values, dataset.v.values = rotate_2d_vector(dataset.u, dataset.v, -magnetic_correction)
+    dataset.u.values, dataset.v.values = xy_vector_magnetic_correction(dataset.u, dataset.v, magnetic_correction)
     l.log(f"Velocities transformed to true north and true east.")
     for v in ["u", "v"]:
         add_correction_attributes_to_dataarray(dataset[v])
         dataset[v].attrs['corrections'] += "Velocities transformed to true north and true east.\n"
 
     if all(v in dataset for v in ["bt_u", "bt_v"]):
-        dataset.bt_u.values, dataset.bt_v.values = rotate_2d_vector(
-            dataset.bt_u, dataset.bt_v, -magnetic_correction
+        dataset.bt_u.values, dataset.bt_v.values = xy_vector_magnetic_correction(
+            dataset.bt_u, dataset.bt_v, magnetic_correction
         )
         l.log(f"Bottom velocities transformed to true north and true east.")
         for v in ["bt_u", "bt_v"]:

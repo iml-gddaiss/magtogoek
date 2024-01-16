@@ -143,39 +143,66 @@ def get_gps_bearing(p0: tp.Tuple[float, float], p1: tp.Tuple[float, float]) -> f
     return LatLon(p0[1], p0[0]).initialBearingTo(LatLon(p1[1], p1[0]))
 
 
-def rotate_2d_vector(
-    X: NDArray, Y: NDArray, angle: float
+def rotate_xy_vector(
+    x: NDArray, y: NDArray, angle: float
 ) -> tp.Tuple[NDArray, NDArray]:
-    """Rotates the X and Y component of the velocities anti-clockwise.
+    """Rotate Vector anti-clockwise by `angle` degrees.
 
-    [X_r]  = [cos(angle), -sin(angle)][X]
-    [Y_r]  = [sin(angle),  cos(angle)][Y]
+    (Rotates the frame of reference clockwise)
+
+    [x_r]  = [cos(angle), -sin(angle)][x]
+    [y_r]  = [sin(angle),  cos(angle)][y]
 
     Parameters
     ----------
-    X:
-       Velocity components of velocities along X
+    x:
+       Vector component along x
 
-    Y:
-       Velocity components of velocities along Y
+    y:
+       Vector component along y
 
     angle:
         Angle of rotation in decimal degree
 
     Returns
     -------
-    X_r :
-        Rotated velocity components along X_r.
-    Y_r :
-        Rotated velocity components along Y_r.
+    x_r :
+        Rotated velocity components along x_r.
+    y_r :
+        Rotated velocity components along y_r.
     """
 
     angle_rad = np.deg2rad(angle)
 
-    X_r = np.cos(angle_rad) * X - np.sin(angle_rad) * Y
-    Y_r = np.sin(angle_rad) * X + np.cos(angle_rad) * Y
+    x_r = np.cos(angle_rad) * x - np.sin(angle_rad) * y
+    y_r = np.sin(angle_rad) * x + np.cos(angle_rad) * y
 
-    return X_r, Y_r
+    return x_r, y_r
+
+
+def xy_vector_magnetic_correction(x: NDArray, y: NDArray , magnetic_declination: float):
+    """Rotate vector clockwise by `magnetic_declination` degree
+
+    Parameters
+    ----------
+    x:
+       Vector component along x
+
+    y:
+       Vector component along y
+
+    magnetic_declination:
+       Angle between the True North and the Magnetic North. (positive east)
+
+    Returns
+    -------
+        x_r :
+            Rotated velocity components along x_r.
+        y_r :
+            Rotated velocity components along y_r.
+    """
+    return rotate_xy_vector(x, y, -magnetic_declination)
+
 
 
 def rotate_heading(heading: NDArray, angle: tp.Union[NDArray, float]) -> NDArray:
@@ -196,5 +223,3 @@ def rotate_heading(heading: NDArray, angle: tp.Union[NDArray, float]) -> NDArray
     Rotated Heading
     """
     return (heading + 180 + angle) % 360 - 180
-
-
