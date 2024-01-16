@@ -7,29 +7,32 @@ Module that contains function to load meteoc variable into a dataset.
 
 Notes
 -----
-[2] .. [March 2023] JeromeJGuay
+[March 2023] JeromeJGuay
     The WXT wind measurements are less accurate than the wmt700. Furthermore, the WXT520
     is more likely to malfunction and not send data while the WMT700 always work.
 
-[3] .. [March 2023] JeromeJGuay
+[March 2023] JeromeJGuay
     GPS bearing and course data seem to be bad. We believe that the bearing and course data are instant measurements.
     Thus wave induced rapid horizontal oscillation and the rocking of the buoy, the GPS being located about ~2-3 meters
     above the floating line, result in higher oscillation and amplitude in the speed values. Since speed dependent values
     are average over ~ 1 minutes, we need at least ~1 minutes average values from the gps.
 
-
+[January 2024]
+    (At the moment) WMT700 does not actually return the wind Gust but only the Max value recorded.
+    Furthermore, the direction are scalar average (not vectorial) thus the Wind Min Direction is not the
+    direction fo the Wind Min Strength. Same for Mean and Max.
+    This may change with the Metis Controller.
 """
 
 from magtogoek.meteoce.viking_dat_reader import RawVikingDatReader, VikingData
-import matplotlib
 import numpy as np
 import xarray as xr
 from typing import *
 import magtogoek.logger as l
 from magtogoek.utils import format_filenames_for_print
-import pint_xarray
 
-matplotlib.use('Qt5Agg')
+import pint_xarray # pint_xarray modify the xr.Dataset Object
+
 
 KNOTS_TO_METER_PER_SECONDS = 1 / 1.944   # 1 kt = (1/1.944) m/s
 MILLIMETER_TO_METER = 1 / 1000
@@ -77,6 +80,7 @@ def load_viking_data(
 
     buoys_data = RawVikingDatReader().read(filenames)
 
+    # Check if it's the correct files using buoy_name
     if buoy_name is None:
         if len(buoys_data.keys()) == 1:
             buoy_name = list(buoys_data.keys())[0]
@@ -84,9 +88,8 @@ def load_viking_data(
             l.warning(f'More than one buoy name was found in the file {filenames}.\n Provide a Buoy Name \n Exiting')
             raise ValueError(f'More than one buoy was found in the file {filenames}. Exiting') # SHOULD NOT BE HERE FIXME
     elif buoy_name not in buoys_data:
-        l.warning(f'Buoy Name was not found in the file {filenames}. Exiting')
+        l.warning(f'Buoy Name was not found in the files. Buoy names found: {list(buoys_data.keys())}. Exiting')
         raise ValueError(f'Buoy Name was not found in the file {filenames}. Exiting') # SHOULD NOT BE HERE FIXME
-
     l.log(f'Buoy Name: {buoy_name} found.')
     viking_data = buoys_data[buoy_name]
 
@@ -164,8 +167,6 @@ def get_viking_meteoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[np
              'atm_pressure': (viking_data.wxt520['Pa'], {"units": "mbar"}),
              }
         )
-
-        # Wxt520 wind values are not use. See note 2 in the module docstring.
 
         l.log('wxt520 data loaded.')
 
@@ -256,7 +257,7 @@ def get_viking_meteoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[np
         l.log('Rdi data loaded.')
 
     if viking_data.rti is not None:
-        if viking_data.rdi is not None:
+        if viking_data.rdi is not None: # FIXME IN THAT WEIRD CASE KEEP BOTH MERGE (ADCP MIGHT HAVE CHANGE)
             l.warning('Both RDI and RTI tag found in dataset. Only the RTI data were kept')
 
         _bin = viking_data.rti['bin'][~viking_data.rti['bin'].mask]

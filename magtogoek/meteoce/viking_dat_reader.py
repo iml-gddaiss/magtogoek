@@ -186,12 +186,16 @@ NAN_FILL_VALUE = np.nan
 #TRIPLET_FILL_VALUE = 1e20
 WMT_FILL_VALUE = 999.0
 
-TAGS = ["NOM", "COMP", "Triplet", "Par_digi", "SUNA", "GPS",
-        "CTD", "CTDO", "RTI", "RDI", "WAVE_M", "WAVE_S", "WXT520",
-        "WMT700", "WpH", "CO2_W", "CO2_A", "Debit", "VEMCO", "MO"]  # "OCR", "MO", "FIN"]
+# Tag for Unpacked data
+DATA_TAG = ['comp', 'triplet', 'par_digi', 'suna', 'gps', 'ctd', 'ctdo', 'rti', 'rdi',
+               'wave_m', 'wave_s', 'wxt520', 'wmt700', 'wph', 'co2_w', 'co2_a', 'debit', 'vemco', 'mo']
+
+# Tag found in raw files
+INSTRUMENTS_TAG = ["NOM", "COMP", "Triplet", "Par_digi", "SUNA", "GPS", "CTD", "CTDO",  "RTI", "RDI",
+                   "WAVE_M", "WAVE_S", "WXT520", "WMT700", "WpH", "CO2_W", "CO2_A", "Debit", "VEMCO", "MO"]  # "OCR", "MO", "FIN"]
 
 DATA_BLOCK_REGEX = re.compile(r"(\[NOM].+?)\[FIN]", re.DOTALL)
-DATA_TAG_REGEX = re.compile(rf"\[({'|'.join(TAGS)})],?((?:(?!\[).)*)", re.DOTALL)
+DATA_TAG_REGEX = re.compile(rf"\[({'|'.join(INSTRUMENTS_TAG)})],?((?:(?!\[).)*)", re.DOTALL)
 
 ### Tag keys ###
 TAG_VARS = dict(
@@ -286,8 +290,8 @@ data: (length: {len(self)})
 
     @property
     def tags(self):
-        return ['comp', 'triplet', 'par_digi', 'suna', 'gps', 'ctd', 'ctdo', 'rti', 'rdi',
-                'wave_m', 'wave_s', 'wxt520', 'wmt700', 'wph', 'co2_w', 'co2_a', 'debit', 'vemco', 'mo']
+        return DATA_TAG
+
 
     def reformat(self):
         self._squeeze_empty_tag()
@@ -449,15 +453,13 @@ buoys:\n"""
     def _load_viking_data(self, decoded_data: list):
         """Put the data in  VikingData object"""
         self._buoys_data = {}
+
         self.buoys = self._get_buoys_info(decoded_data)
 
         for key, value in self.buoys.items():
             self._buoys_data[key] = VikingData(buoy_name=key, firmware=value['firmware'],
                                                controller_sn=value['controller_sn'])
             self.__setattr__(key, self._buoys_data[key])
-
-        tags = ['comp', 'triplet', 'par_digi', 'suna', 'gps', 'ctd', 'ctdo', 'rti', 'rdi',
-                'wave_m', 'wave_s', 'wxt520', 'wmt700', 'wph', 'co2_w', 'co2_a', 'debit', 'vemco', 'mo']
 
         _count = 0
         _num_of_bloc = len(decoded_data)
@@ -469,7 +471,7 @@ buoys:\n"""
             buoy_data.latitude.append(data_block['latitude_N'])
             buoy_data.longitude.append(data_block['longitude_E'])
 
-            for tag in tags:
+            for tag in DATA_TAG:
                 tag_data = buoy_data.__dict__[tag]
                 if data_block[tag] is None:
                     for key in tag_data.keys():
@@ -520,12 +522,10 @@ def _decode_transmitted_data(data_received: str, century: int = 21) -> list:
     ]
     """
     decoded_data = []
-    tag_key = ['comp', 'triplet', 'par_digi', 'suna', 'gps', 'ctd', 'ctdo', 'rti', 'rdi',
-               'wave_m', 'wave_s', 'wxt520', 'wmt700', 'wph', 'co2_w', 'co2_a', 'debit', 'vemco', 'mo']
 
     for data_block in DATA_BLOCK_REGEX.finditer(data_received):
         wxt520 = dict().fromkeys(TAG_VARS['WXT520_KEYS'], float(NAN_FILL_VALUE))
-        decoded_block = dict().fromkeys(tag_key)
+        decoded_block = dict().fromkeys(DATA_TAG)
         for data_sequence in DATA_TAG_REGEX.finditer(data_block.group(1)):
             tag = data_sequence.group(1)
             data = data_sequence.group(2)
@@ -739,7 +739,7 @@ def _decode_RTI(data: str) -> Optional[dict]:
     if len(data) != 36:
         return None
     return {'bin': _safe_float(data[0]),
-            'position_cm': _safe_float(data[1]),
+            'position_cm': position_cm,
             'beam1': beam_vel_mms[0], 'beam2': beam_vel_mms[1],
             'beam3': beam_vel_mms[2], 'beam4': beam_vel_mms[3],
             'u': enu_mms[0], 'v': enu_mms[0], 'w': enu_mms[0], 'e': enu_mms[3],
@@ -758,7 +758,7 @@ def _decode_RTI(data: str) -> Optional[dict]:
 
 def _decode_RDI(data: str, century: int) -> Optional[dict]:
     data = data.strip('\n').split(',')
-    if len(data) != 7:
+    if len(data) != 3:
         return None
     enu_mms = tuple(struct.unpack('hhhh', bytes.fromhex(data[2])))
     return {'time': _make_timestamp(str(century - 1) + data[1][4:6], data[1][2:4],
@@ -981,10 +981,11 @@ def main():
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
-   # viking_data = main()
-    _path = "/home/jeromejguay/ImlSpace/Data/IML4_2019_meteoce/dat/*.dat"
+    # viking_data = main()
+    #_path = "/home/jeromejguay/ImlSpace/Data/IML4_2019_meteoce/dat/*.dat"
+    _path = '/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat'
     #_path = '/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat'
-    buoys_data = RawVikingDatReader().read(_path)
+    bd = RawVikingDatReader().read(_path)
 
     #v_data = buoys_data['pmza_riki']
 
