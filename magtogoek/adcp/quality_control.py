@@ -350,9 +350,9 @@ def adcp_quality_control(
 def flag_implausible_vel(
     dataset: xr.Dataset, threshold: float = 15
 ) -> tp.Type[np.array]:
-    """Values greater than `threshold` return True"""
+    """Abs(Values) greater than `threshold` return True"""
     return (
-        (dataset.v > threshold) & (dataset.u > threshold) & (dataset.w > threshold)
+        (abs(dataset.u) > threshold) & (abs(dataset.v) > threshold) & (abs(dataset.w) > threshold)
     ).data
 
 
