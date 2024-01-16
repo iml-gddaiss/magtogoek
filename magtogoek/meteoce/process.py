@@ -102,23 +102,6 @@ P01_CODES_MAP = {
     'v': "LCNSAP01",
     'w': "LRZAAP01",
     'e': "LERRAP01",
-    'pg': "PCGDAP01",
-    'pg1': "PCGDAP00",
-    'pg2': "PCGDAP02",
-    'pg3': "PCGDAP03",
-    'pg4': "PCGDAP04",
-    'corr1': "CMAGZZ01",
-    'corr2': "CMAGZZ02",
-    'corr3': "CMAGZZ03",
-    'corr4': "CMAGZZ04",
-    'amp1': "TNIHCE01",
-    'amp2': "TNIHCE02",
-    'amp3': "TNIHCE03",
-    'amp4': "TNIHCE04",
-    'bt_u': "APEWBT01",
-    'bt_v': "APNSBT01",
-    'bt_w': "LRZABT01",
-    'bt_e': "LERRBT01",
     'lon': "ALONZZ01",
     'lat': "ALATZZ01",
     'heading': "HEADCM01",
@@ -132,12 +115,7 @@ P01_CODES_MAP = {
 
 
 SENSORS_TO_VARIABLES_MAP = {
-    'adcp': [
-        "u", "v", "w", "e", "bt_u", "bt_v", "bt_w", "bt_e",
-        'pg', 'pg1', 'pg2', 'pg3', 'pg4',
-        'corr1', 'corr2', 'corr3', 'corr4',
-        'amp1', 'amp2', 'amp3', 'amp4'
-    ],
+    'adcp': ["u", "v", "w", "e"],
     "ctd": ["conductivity", "salinity", "temperature", "density"],
     "ctdo": ["conductivity", "salinity", "temperature", "density", "dissolved_oxygen"],
     # "doxy": ["dissolved_oxygen"], # Not implemented yet.
@@ -151,15 +129,6 @@ SENSORS_TO_VARIABLES_MAP = {
     'wind': ['mean_wind_speed', 'max_wind_speed', 'mean_wind_direction', 'max_wind_direction'],
     'meteo': ['atm_temperature', 'atm_humidity', 'atm_pressure']
 }
-
-
-ADCP_VARIABLES_FOR_QC = [
-    "u", "v", "w", "e",
-    "bt_u", "bt_v", "bt_w", "bt_e",
-    'pg', 'pg1', 'pg2', 'pg3', 'pg4',
-    'corr1', 'corr2', 'corr3', 'corr4',
-    'amp1', 'amp2', 'amp3', 'amp4',
-]
 
 
 class ProcessConfig(BaseProcessConfig):
@@ -192,7 +161,7 @@ class ProcessConfig(BaseProcessConfig):
 
     ##### CORRECTION #####
     magnetic_declination: Union[bool, float] = None
-    motion_correction_mode: str = "nav" # ["bt", "nav", "off"]
+    motion_correction_mode: str = "nav" # ["bt", "nav", "off"] | BT track data are not transmitted/loaded at the moment.
 
     # PH
     ph_salinity_correction: bool = None
@@ -239,7 +208,10 @@ class ProcessConfig(BaseProcessConfig):
     fdom_sample_correction: List[float] = None
 
     # ADCP
-    magnetic_declination_preset: float = None
+    magnetic_declination_preset: float = None # adcp_magnetic_declination_preset
+    # bin position. This is was is done with RTI at the moment TODO
+    #_attrs = {'bin': _bin, 'bin_position_cm': _bin_position_cm}
+    #_global_attrs = {'adcp_bin': _bin, 'adcp_bin_position_cm': _bin_position_cm}
 
     ##### QUALITY_CONTROL #####
 
@@ -257,9 +229,6 @@ class ProcessConfig(BaseProcessConfig):
     propagate_flags: bool = True
 
     # adcp quality_control
-    amplitude_threshold: int = None
-    percentgood_threshold: int = None
-    correlation_threshold: int = None
     horizontal_velocity_threshold: float = None
     vertical_velocity_threshold: float = None
     error_velocity_threshold: float = None
@@ -386,12 +355,6 @@ def _process_meteoce_data(pconfig: ProcessConfig):
 
     if 'density' not in dataset or pconfig.recompute_density is True:
         _compute_ctd_potential_density(dataset, pconfig)
-
-
-    # Dropping `pres` # QC crashed since it a valid variable but pres_QC doesn't exist.
-    # NOTE: This may not be the way to do it if a pressure sensor is added to the buoy.
-    if 'pres' in dataset.variables:
-        dataset = dataset.drop_vars('pres')
 
     # ---------------- #
     # ADCP CORRECTION  #
@@ -603,13 +566,9 @@ def _adcp_correction(dataset: xr.Dataset, pconfig: ProcessConfig):
             angle = pconfig.magnetic_declination
             l.log(f"A correction of {angle} degree east was applied to the ADCP velocities.")
 
-        if all(v in dataset for v in ["bt_u", "bt_v"]):
-            dataset.u.values, dataset.v.values = rotate_2d_vector(dataset.u, dataset.v, -angle)
+        if all(v in dataset for v in ["u", "v"]):
+            dataset.u.values, dataset.v.values = xy_vector_magnetic_correction(dataset.u, dataset.v, angle)
             l.log(f"Velocities transformed to true north and true east.")
-
-        if all(v in dataset for v in ["bt_u", "bt_v"]):
-            dataset.bt_u.values, dataset.bt_v.values = rotate_2d_vector(dataset.bt_u, dataset.bt_v, -angle)
-            l.log(f"Bottom velocities transformed to true north and true east.")
 
     if pconfig.motion_correction_mode in ["bt", "nav"]:
         adcp_motion_correction(dataset, pconfig.motion_correction_mode)
@@ -666,19 +625,20 @@ def _meteoce_quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
 
 def _adcp_quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
     """fixme"""
-    adcp_dataset = dataset[set(dataset.variables).intersection(set(ADCP_VARIABLES_FOR_QC))]
+    adcp_dataset = dataset[set(dataset.variables) & {"u", "v", "w", "e"}]
 
     adcp_dataset = adcp_dataset.expand_dims(dim={'depth': [0]})
-    for var in ['roll_', 'pitch']:
+
+    for var in set(dataset.variables) & {'roll_', 'pitch'}:
         adcp_dataset[var] = dataset[var]
 
     adcp_dataset.attrs['coord_system'] = "earth"
 
     adcp_quality_control(
         adcp_dataset,
-        amp_th=pconfig.amplitude_threshold,
-        corr_th=pconfig.correlation_threshold,
-        pg_th=pconfig.percentgood_threshold,
+        amp_th=None,
+        corr_th=None,
+        pg_th=None,
         roll_th=pconfig.roll_threshold,
         pitch_th=pconfig.pitch_threshold,
         horizontal_vel_th=pconfig.horizontal_velocity_threshold,
@@ -691,7 +651,7 @@ def _adcp_quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
 
     adcp_dataset.attrs.pop('coord_system')
 
-    for var in {v + "_QC" for v in ADCP_VARIABLES_FOR_QC}.intersection(set(adcp_dataset.variables)):
+    for var in set(adcp_dataset.variables) & {"u_QC", "v_QC", "w_QC"}:
         dataset[var] = adcp_dataset[var].squeeze(['depth'], drop=True)
 
 
@@ -821,6 +781,13 @@ if __name__ == "__main__":
         OUTPUT=dict(
             netcdf_output=out_path,
             odf_output=True
+            odf_output=True,
+            merge_output_files=True,
+            bodc_name=False,
+            force_platform_metadata=None,
+            odf_data=False,
+            make_figures=False,
+            make_log=False
         ),
         CRUISE=dict(
             country_institute_code="",
@@ -844,9 +811,10 @@ if __name__ == "__main__":
             navigation_file=None,
             leading_trim=None,
             trailing_trim=None,
+            quality_control=True,
         ),
 
-        VIKING_PROCESSING=dict(
+        METEOCE_PROCESSING=dict(
             buoy_name="PMZA-RIKI",
             data_format="viking_dat",
             magnetic_declination=0,
@@ -860,10 +828,15 @@ if __name__ == "__main__":
             odf_data=False,
             make_figures=False,
             make_log=False
+        WPS_PROCESSING=dict(),
+        ADCP_PROCESSING=dict(),
+        METEOCE_QUALITY_CONTROL=dict(),
+        ADCP_QUALITY_CONTROL=dict(
+            vertical_velocity_threshold=1,
+            error_velocity_threshold=1,
+            roll_threshold=10,
+            pitch_threshold=10,
         )
-        # METEO_QC
-        # WPS_QC
-        # ADCP_QC
     )
 
     process_meteoce(_config)

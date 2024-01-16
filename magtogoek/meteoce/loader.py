@@ -271,10 +271,6 @@ def get_viking_meteoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[np
 
         for _name in ['u', 'v', 'w', 'e']:
             _data[_name] = (viking_data.rti[_name] * MILLIMETER_TO_METER, {**_attrs, **{"units": "m/s"}})
-            _data["bt_" + _name] = (viking_data.rti["bt_" + _name] * MILLIMETER_TO_METER, {**_attrs, **{"units": "m/s"}})
-        for _name in ['corr1', 'corr2', 'corr3', 'corr4', 'amp1', 'amp2', 'amp3', 'amp4']:
-            _data[_name] = (viking_data.rti[_name], _attrs)
-            _data["bt_"+_name] = (viking_data.rti["bt_"+_name], _attrs)
         l.log('Rti data loaded.')
 
     return _data, _global_attrs
