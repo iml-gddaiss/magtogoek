@@ -280,6 +280,7 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
         tparser.add_option(section, "navigation_file", dtypes=["str"], default="", is_file=True)
         tparser.add_option(section, "leading_trim", dtypes=["int", "str"], default="", is_time_stamp=True)
         tparser.add_option(section, "trailing_trim", dtypes=["int", "str"], default="", is_time_stamp=True)
+        tparser.add_option(section, "quality_control", dtypes=["bool"], default=True, null_value=False)
 
     if process == 'adcp':
         section = "ADCP_PROCESSING"
@@ -292,6 +293,7 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
         tparser.add_option(section, "yearbase", dtypes=["int"], default="", is_required=False)
         tparser.add_option(section, "adcp_orientation", dtypes=["str"], default="down", choice=["up", "down"], comments='up or down')
         tparser.add_option(section, "sonar", dtypes=["str"], choice=["wh", "sv", "os", "sw", "sw_pd0"], comments='One of [wh, sv, os, sw, sw_pd0, ]', is_required=True)
+
         if version == 0:
             tparser.add_option(section, "navigation_file", dtypes=["str"], default="", is_file=True)
             tparser.add_option(section, "leading_trim", dtypes=["int", "str"], default="", is_time_stamp=True)
@@ -308,9 +310,10 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
         tparser.add_option(section, "grid_method", dtypes=["str"], default="interp", choice=["interp", "bin"], comments='One of [interp, bin].')
         tparser.add_option(section, "coord_transform", dtypes=["bool"], default=True, null_value=False, comments="Won't do reverse transformation.")
         tparser.add_option(section, "motion_correction_mode", dtypes=["str"], default="bt", choice=["bt", "nav", "off"], comments='One of [bt, nav, off].')
-        tparser.add_option(section, "quality_control", dtypes=["bool"], default=True, null_value=False)
 
         section = "ADCP_QUALITY_CONTROL"
+        if version == 0:
+            tparser.add_option(section, "quality_control", dtypes=["bool"], default=True, null_value=False)
         tparser.add_option(section, "amplitude_threshold", dtypes=["int"], default=0, value_min=0, value_max=255, comments='Value between 0 and 255.')
         tparser.add_option(section, "percentgood_threshold", dtypes=["int"], default=64, value_min=0, value_max=100, comments='Value between 0 and 100.')
         tparser.add_option(section, "correlation_threshold", dtypes=["int"], default=90, value_min=0, value_max=255, comments='Value between 0 and 255.')
@@ -357,7 +360,6 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
         tparser.add_option(section, "magnetic_declination", dtypes=["float"], default="")
         tparser.add_option(section, "compute_uv_ship", dtypes=["str"], default="off", choice=["sc", "ll", "off"], comments='One of [sc, ll, off] sc: speed & course, ll: longitude & latitude', null_value="keep")
         tparser.add_option(section, "motion_correction_mode", dtypes=["str"], default="bt", choice=["bt", "nav", "off"], comments='One of [bt, nav, off].')
-        tparser.add_option(section, "quality_control", dtypes=["bool"], default=True, null_value=False)
 
         section = "WPS_PROCESSING"
         tparser.add_option(section, "recompute_density", dtypes=["bool"], default=True, null_value=False)
@@ -376,7 +378,6 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
 
         section = "ADCP_PROCESSING"
         tparser.add_option(section, "magnetic_declination_preset", dtypes=["float"], default=None, comments="Found in the ADCP configuration file.")
-        tparser.add_option(section, "keep_bt", dtypes=["bool"], default=True, null_value=False)
 
         section = "METEOCE_QUALITY_CONTROL"
         tparser.add_option(section, "absolute_outlier", dtypes=["bool"], default=True, null_value=False)
@@ -384,23 +385,15 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
         tparser.add_option(section, "propagate_flags", dtypes=["bool"], default=True, null_value=False)
 
         section = "ADCP_QUALITY_CONTROL"
-        tparser.add_option(section, "amplitude_threshold", dtypes=["int"], default=0, value_min=0, value_max=255, comments='Value between 0 and 255.')
-        tparser.add_option(section, "percentgood_threshold", dtypes=["int"], default=64, value_min=0, value_max=100, comments='Value between 0 and 100.')
-        tparser.add_option(section, "correlation_threshold", dtypes=["int"], default=90, value_min=0, value_max=255, comments='Value between 0 and 255.')
         tparser.add_option(section, "horizontal_velocity_threshold", dtypes=["float"], default=5)
         tparser.add_option(section, "vertical_velocity_threshold", dtypes=["float"], default=5)
         tparser.add_option(section, "error_velocity_threshold", dtypes=["float"], default=5)
-        tparser.add_option(section, "sidelobes_correction", dtypes=["bool"], default=True, null_value=False)
-        tparser.add_option(section, "bottom_depth", dtypes=["float"])
         tparser.add_option(section, "pitch_threshold", dtypes=["int"], default=20, value_min=0, value_max=180, comments='Value between 0 and 180.')
         tparser.add_option(section, "roll_threshold", dtypes=["int"], default=20, value_min=0, value_max=180, comments='Value between 0 and 180.')
 
-        #tparser.add_option(section, "quality_control", dtypes=["bool"], default=True, null_value=False)
-
-        section = "ADCP_OUTPUT"
-        tparser.add_option(section, "drop_percent_good", dtypes=["bool"], default=True, null_value=False)
-        tparser.add_option(section, "drop_correlation", dtypes=["bool"], default=True, null_value=False)
-        tparser.add_option(section, "drop_amplitude", dtypes=["bool"], default=True, null_value=False)
+        # section = "METEOCE_OUTPUT"
+        # section = "WPS_OUTPUT"
+        # section = "ADCP_OUTPUT"
 
     return tparser
 
