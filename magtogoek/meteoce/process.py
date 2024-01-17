@@ -64,20 +64,14 @@ GLOBAL_ATTRS_TO_DROP = [
     "binary_mask_tests_values",
 ]
 
-# This mapping can be change by the meteoce.corrections modules.
+
+# This mapping can be changed by the meteoce.corrections modules.
 P01_CODES_MAP = {
     'time': "ELTMEP01",
-
-    # FIXME change to
-    # wind_mean_speed, wind_mean_direction
-    # wind_mind_speed, wind_max_speed  # max speed is not wind gust.
-    # wind_max_direction, wind_min_direction | unrelated to the max and min speed
-    'mean_wind_speed': "EWSBZZ01", # EWSBSS01 Speed of wind {wind speed} in the atmosphere by in-situ anemometer
-    'mean_wind_direction': "EWDAZZ01", # P01:EWDASS01	Direction (from) of wind relative to True North {wind direction} in the atmosphere by in-situ anemometer
-    # change these to wind gust
-    'max_wind_speed': "EGTSZZ01", # P01:EGTSSS01	Speed of wind (gust) {wind speed} in the atmosphere by in-situ anemometer
-    'max_wind_direction': "EGTDSS01", # P01:EGTDSS01	Direction (from) of wind (gust) relative to True North {wind direction} in the atmosphere by in-situ anemometer
-
+    "wind_speed": "EWSBSS01",
+    "wind_direction": "EWDASS01",
+    "wind_gust": "EGTSSS01",
+    #"wind_gust_direction": "EGTDSS01",
     'atm_temperature': "CTMPZZ01",
     'atm_humidity': "CRELZZ01",
     'atm_pressure': "CAPHZZ01",
@@ -126,7 +120,7 @@ SENSORS_TO_VARIABLES_MAP = {
     'co2w': ['co2_w'],
     'co2a': ['co2_a'],
     'wave': ['wave_mean_height', 'wave_maximal_height', 'wave_period'],
-    'wind': ['mean_wind_speed', 'max_wind_speed', 'mean_wind_direction', 'max_wind_direction'],
+    'wind': ["wind_speed", "wind_direction", "wind_gust"],
     'meteo': ['atm_temperature', 'atm_humidity', 'atm_pressure']
 }
 
@@ -742,6 +736,11 @@ if __name__ == "__main__":
     import getpass
     import pandas as pd
 
+    import matplotlib
+
+    matplotlib.use('QtAgg')
+    import matplotlib.pyplot as plt
+
     file_path = '/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat'
     out_path = '/home/jeromejguay/ImlSpace/Data/iml4_2021/meteoc_riki_2021.nc'
     _config = dict(
@@ -760,7 +759,7 @@ if __name__ == "__main__":
             bodc_name=False,
             force_platform_metadata=None,
             odf_data=False,
-            make_figures=False,
+            make_figures=True,
             make_log=False
         ),
         CRUISE=dict(

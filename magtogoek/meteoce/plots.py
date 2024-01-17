@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt
 
 from magtogoek.tools import round_up, flag_data
 
-
 FONT = {"family": "serif", "color": "darkred", "weight": "normal", "size": 12}
 BINARY_CMAP = plt.get_cmap("viridis_r", 2)
 
@@ -55,17 +54,19 @@ def make_meteoce_figure(
     ####
 
     # buoy
-    plots_vars = {'gsp_var': ['lon', 'lat', 'u_ship', 'v_ship'],
-                  'gyro_var': ['heading', 'roll_', 'pitch', 'roll_std', 'pitch_std'],
-                  'vel_var': ['u', 'v', 'w'],
-                  'bt_vel_var': ['bt_u', 'bt_v', 'bt_w'],
-                  'wind_var': ['mean_wind_speed', 'max_wind_speed', 'mean_wind_direction', 'max_wind_direction'],
-                  'meteo_var': ['atm_temperature', 'atm_humidity', 'atm_pressure'],
-                  'wave_var': ['wave_mean_height', 'wave_maximal_height', 'wave_period', 'wave_direction'],
-                  'ctdo_var': ['temperature', 'conductivity', 'salinity', 'density', 'dissolved_oxygen'],
-                  'ph_par': ['ph', 'par'],
-                  'triplet_var': ['scattering', 'chlorophyll', 'fdom'],
-                  'co2_var': ['co2_a', 'co2_w']}
+    plots_vars = {
+        'gsp_var': ['lon', 'lat', 'u_ship', 'v_ship'],
+        'compass_var': ['heading', 'roll_', 'pitch', 'roll_std', 'pitch_std'],
+        'vel_var': ['u', 'v', 'w'],
+        'bt_vel_var': ['bt_u', 'bt_v', 'bt_w'],
+        'wind_var': ["wind_speed", "wind_direction", "wind_gust"],
+        'meteo_var': ['atm_temperature', 'atm_humidity', 'atm_pressure'],
+        'wave_var': ['wave_mean_height', 'wave_maximal_height', 'wave_period', 'wave_direction'],
+        'ctdo_var': ['temperature', 'conductivity', 'salinity', 'density', 'dissolved_oxygen'],
+        'ph_par': ['ph', 'par'],
+        'triplet_var': ['scattering', 'chlorophyll', 'fdom'],
+        'co2_var': ['co2_a', 'co2_w']
+    }
 
     varname_map = {}
     for var in dataset:
@@ -95,10 +96,12 @@ def make_meteoce_figure(
             fig.savefig(path.joinpath(stem + f'{name}.png'))
 
     if show_fig is True:
-        plt.ion()
-        plt.show(block=False)
-        input("Press Enter to continue ...")
-        plt.close('all')
+        #FIXME
+        #plt.ion()
+        #plt.show(block=False)
+        plt.show()
+        #input("Press Enter to continue ...")
+        #plt.close('all')
 
     else:
         plt.close('all')

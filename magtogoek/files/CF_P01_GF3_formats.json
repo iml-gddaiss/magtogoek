@@ -648,34 +648,70 @@
     },
     "EWSBZZ01": {
         "units": "m/s",
-        "long_name": "Speed of wind in the atmosphere",
+        "long_name": "Wind speed",
         "sdn_parameter_urn": "SDN:P01::EWSBZZ01",
         "sdn_parameter_name": "Speed of wind {wind speed} in the atmosphere",
         "sdn_uom_urn": "SDN:P06:UVAA",
         "sdn_uom_name": "Metres per second",
         "legacy_GF3_code": "WSPD"
     },
+    "EWDAZZ01": {
+        "units": "degree_true",
+        "long_name": "Wind direction (from)",
+        "sdn_parameter_urn": "SDN:P01::EWDAZZ01",
+        "sdn_parameter_name": "Direction (from) of wind relative to True North {wind direction} in the atmosphere",
+        "sdn_uom_urn": "SDN:P06:UABB",
+        "sdn_uom_name": "Degrees True",
+        "legacy_GF3_code": "WDIR"
+    },
     "EGTSZZ01": {
         "units": "m/s",
-        "long_name": "Speed of wind (gust) in the atmosphere",
+        "long_name": "Wind gust speed",
         "sdn_parameter_urn": "SDN:P01::EGTSZZ01",
         "sdn_parameter_name": "Speed of wind (gust) {wind speed} in the atmosphere",
         "sdn_uom_urn": "SDN:P06:UVAA",
         "sdn_uom_name": "Metres per second",
         "legacy_GF3_code": "GSPD"
     },
-    "EWDAZZ01": {
+    "EGTDZZ01": {
         "units": "degree_true",
-        "long_name": "Direction (from) of wind relative to True North in the atmosphere",
+        "long_name": "Wind gust direction (from)",
+        "sdn_parameter_urn": "SDN:P01::EGTDZZ01",
+        "sdn_parameter_name": "Direction (from) of wind (gust) relative to True North {wind direction} in the atmosphere",
+        "sdn_uom_urn": "SDN:P06:UABB",
+        "sdn_uom_name": "Degrees True",
+        "legacy_GF3_code": "GDIR"
+    },
+    "EWSBSS01": {
+        "units": "m/s",
+        "long_name": "Wind speed",
+        "sdn_parameter_urn": "SDN:P01::EWSBSS01",
+        "sdn_parameter_name": "Speed of wind {wind speed} in the atmosphere by in-situ anemometer",
+        "sdn_uom_urn": "SDN:P06:UVAA",
+        "sdn_uom_name": "Metres per second",
+        "legacy_GF3_code": "WSPD"
+    },
+    "EWDASS01":{
+        "units": "degree_true",
+        "long_name": "Wind direction (from)",
         "sdn_parameter_urn": "SDN:P01::EWDASS01",
-        "sdn_parameter_name": "Direction (from) of wind relative to True North {wind direction} in the atmosphere",
+        "sdn_parameter_name": "Direction (from) of wind relative to True North {wind direction} in the atmosphere by in-situ anemometer",
         "sdn_uom_urn": "SDN:P06:UABB",
         "sdn_uom_name": "Degrees True",
         "legacy_GF3_code": "WDIR"
     },
+    "EGTSSS01": {
+        "units": "m/s",
+        "long_name": "Wind gust speed",
+        "sdn_parameter_urn": "SDN:P01::EGTSSS01",
+        "sdn_parameter_name": "Speed of wind (gust) {wind speed} in the atmosphere by in-situ anemometer",
+        "sdn_uom_urn": "SDN:P06:UVAA",
+        "sdn_uom_name": "Metres per second",
+        "legacy_GF3_code": "GSPD"
+    },
     "EGTDSS01": {
         "units": "degree_true",
-        "long_name": "Direction (from) of wind (gust) relative to True North in the atmosphere",
+        "long_name": "Wind gust direction (from)",
         "sdn_parameter_urn": "SDN:P01::EGTDSS01",
         "sdn_parameter_name": "Direction (from) of wind (gust) relative to True North {wind direction} in the atmosphere by in-situ anemometer",
         "sdn_uom_urn": "SDN:P06:UABB",

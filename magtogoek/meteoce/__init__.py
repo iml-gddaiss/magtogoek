@@ -12,10 +12,10 @@ SENSOR_TYPES = [
 
 GENERIC_PARAMETERS = [
     'time',
-    'mean_wind_speed',
-    'max_wind_speed',
-    'mean_wind_direction',
-    'max_wind_direction',
+    'wind_speed',
+    'wind_gust',
+    'wind_direction',
+    #'wind_gust_direction',
     'atm_temperature',
     'atm_humidity',
     'atm_pressure',

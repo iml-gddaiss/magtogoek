@@ -16,12 +16,8 @@ Notes
     Thus wave induced rapid horizontal oscillation and the rocking of the buoy, the GPS being located about ~2-3 meters
     above the floating line, result in higher oscillation and amplitude in the speed values. Since speed dependent values
     are average over ~ 1 minutes, we need at least ~1 minutes average values from the gps.
-
-[January 2024]
-    (At the moment) WMT700 does not actually return the wind Gust but only the Max value recorded.
-    Furthermore, the direction are scalar average (not vectorial) thus the Wind Min Direction is not the
-    direction fo the Wind Min Strength. Same for Mean and Max.
-    This may change with the Metis Controller.
+[January 2024] JeromeJGuay
+    Wind direction max is the max value (angle) not the direction of wind gust.
 """
 
 from magtogoek.meteoce.viking_dat_reader import RawVikingDatReader, VikingData
@@ -37,7 +33,6 @@ import pint_xarray # pint_xarray modify the xr.Dataset Object
 KNOTS_TO_METER_PER_SECONDS = 1 / 1.944   # 1 kt = (1/1.944) m/s
 MILLIMETER_TO_METER = 1 / 1000
 CENTIMETER_TO_METER = 1 / 100
-#  MILLIBAR_TO_DECIBAR = 1 / 100
 
 
 def load_meteoce_data(
@@ -150,13 +145,22 @@ def get_viking_meteoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[np
         l.log('Comp data loaded.')
 
     if viking_data.wmt700 is not None:
+        """
+        Sm: wind speed average
+        Sn: wind speed min
+        Sx: wind speed max
+        
+        Dm: wind direction average
+        Dn: wind direction min
+        Dx: wind direction max        
+        """
         _data.update(
-            {'mean_wind_speed': (np.round(viking_data.wmt700['Sm'] * KNOTS_TO_METER_PER_SECONDS, 3), {'units': 'm/s'}),
-             'mean_wind_direction': (viking_data.wmt700['Dm'], {}),
-             'min_wind_speed': (np.round(viking_data.wmt700['Sn'] * KNOTS_TO_METER_PER_SECONDS, 3), {'units': 'm/s'}),
-             'max_wind_speed': (np.round(viking_data.wmt700['Sx'] * KNOTS_TO_METER_PER_SECONDS, 3), {'units': 'm/s'}),
-             'min_wind_direction': (viking_data.wmt700['Dn'], {}),
-             'max_wind_direction': (viking_data.wmt700['Dx'], {})}
+            {
+
+                'wind_speed': (np.round(viking_data.wmt700['Sm'] * KNOTS_TO_METER_PER_SECONDS, 3), {'units': 'm/s'}),
+                'wind_direction': (viking_data.wmt700['Dm'], {}),
+                'wind_gust': (np.round(viking_data.wmt700['Sx'] * KNOTS_TO_METER_PER_SECONDS, 3), {'units': 'm/s'}),
+            }
         )
         l.log('wmt700 data loaded.')
 

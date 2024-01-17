@@ -9,9 +9,9 @@ METEOCE BODC:
         Time                                                 : SYTM_01 : SDN:P01::ELTMEP01
         Longitude (East +ve)                                 : LOND_01 : SDN:P01::ALONZZ01
         Latitude (North +ve)                                 : LATD_01 : SDN:P01::ALATZZ01
-        Horizontal Wind Speed                                : WSPD_01 : SDN:P01::EWSBZZ01
-        Gust Wind Speed                                      : GSPD_01 : SDN:P01::EGTSZZ01
-        Wind Direction relative to North (T)                 : WDIR_01 : SDN:P01::EWDAZZ01
+        Horizontal Wind Speed                                : WSPD_01 : SDN:P01::EWSBSS01
+        Gust Wind Speed                                      : GSPD_01 : SDN:P01::EGTSSS01
+        Wind Direction relative to North (T)                 : WDIR_01 : SDN:P01::EWDASS01
         Dry Bulb Temperature                                 : DRYT_01 : SDN:P01::CTMPZZ01
         Relative Humidity                                    : RELH_01 : SDN:P01::CRELZZ01
         Atmospheric pressure                                 : ATMP_01 : SDN:P01::CAPHZZ01
@@ -43,14 +43,13 @@ from magtogoek.odf_exporter_common import make_cruise_header, make_event_header,
 from magtogoek.platforms import PlatformMetadata
 from magtogoek.utils import json2dict
 
-
 PARAMETERS = (
     'time',
     'lon',
     'lat',
-    'mean_wind_speed',
-    'max_wind_speed',
-    'mean_wind_direction'
+    'wind_speed',
+    'wind_direction',
+    'wind_gust',
     'atm_temperature',
     'atm_humidity',
     'atm_pressure',
@@ -79,9 +78,9 @@ PARAMETERS = (
 )
 
 QC_PARAMETERS = ( # FIXME check this.
-   # 'mean_wind_speed',
-   # 'max_wind_speed',
-   # 'mean_wind_direction'
+    # 'wind_speed',
+    # 'wind_direction',
+    # 'wind_gust',
     'atm_temperature',
     'atm_humidity',
     'atm_pressure',

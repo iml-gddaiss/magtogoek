@@ -40,10 +40,9 @@ from magtogoek.process_common import FLAG_ATTRIBUTES
 
 
 VARIABLES_WITH_QC = { # 1: QC(default flag = 1) , 0: No Qc (default flag = 0)
-    'mean_wind_speed': 0,
-    'max_wind_speed': 0,
-    'mean_wind_direction': 0,
-    'max_wind_direction': 0,
+    "wind_speed":0,
+    "wind_direction":0,
+    "wind_gust":0,
     'atm_temperature': 1,
     'atm_humidity': 1,
     'atm_pressure': 1,

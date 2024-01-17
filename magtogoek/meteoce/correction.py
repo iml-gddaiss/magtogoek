@@ -33,7 +33,7 @@ def meteoce_data_magnetic_declination_correction(dataset: xr.Dataset, pconfig: "
     """Carry magnetic declination correction for meteoce variables
 
     [-180, 180]: heading
-    [0, 360 ]: mean_wind_direction, wave_direction
+    [0, 360 ]: wind_direction, wave_direction
 
     """
 
@@ -46,7 +46,7 @@ def meteoce_data_magnetic_declination_correction(dataset: xr.Dataset, pconfig: "
             l.log(f"Heading transformed to true north.")
 
         # '0, 360'
-        for variable in {'mean_wind_direction', 'wave_direction'}.intersection(set(dataset.variables)):
+        for variable in {'wind_direction', 'wave_direction'}.intersection(set(dataset.variables)):
             add_correction_attributes_to_dataarray(dataset[variable])
             dataset[variable].values = (dataset[variable].values + pconfig.magnetic_declination) % 360
             dataset[variable].attrs['corrections'] += 'Corrected for magnetic declination.\n'
