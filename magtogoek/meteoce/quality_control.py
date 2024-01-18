@@ -43,6 +43,7 @@ VARIABLES_WITH_QC = { # 1: QC(default flag = 1) , 0: No Qc (default flag = 0)
     "wind_speed":0,
     "wind_direction":0,
     "wind_gust":0,
+    "wind_gust_direction":0,
     'atm_temperature': 1,
     'atm_humidity': 1,
     'atm_pressure': 1,
@@ -81,7 +82,7 @@ def no_meteoce_quality_control(dataset: xr.Dataset):
 
     l.log("No quality control carried out")
 
-    _add_ancillary_variables_to_dataset(dataset, variables=list(dataset.keys()), default_flag=0)
+    _add_ancillary_variables_to_dataset(dataset, variables=VARIABLES_WITH_QC, default_flag=0)
 
     dataset.attrs.update(FLAG_ATTRIBUTES)
     dataset.attrs["quality_comments"] = "No quality control."

@@ -65,7 +65,7 @@ PARAMETERS = (
     'co2_w',
     'wave_mean_height',
     'wave_maximal_height',
-    'wave_mean_period',
+    'wave_period',
 
     #Not in ODF meteoce file but could be added
     # 'pitch', ANC
@@ -96,7 +96,7 @@ QC_PARAMETERS = ( # FIXME check this.
     # 'co2_w',
     # 'wave_mean_height',
     # 'wave_maximal_height',
-    # 'wave_mean_period',
+    # 'wave_period',
 )
 
 PARAMETERS_METADATA_PATH = CONFIGURATION_PATH.joinpath("odf_parameters_metadata.json")

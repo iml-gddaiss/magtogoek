@@ -48,7 +48,7 @@ def make_meteoce_figure(
     """
     figures = {}
 
-
+    # FIXME PLOT IN COLORS THE FILTERED POINT (QC)
     ####
     # CALL PLOTS HERE
     ####
@@ -96,12 +96,10 @@ def make_meteoce_figure(
             fig.savefig(path.joinpath(stem + f'{name}.png'))
 
     if show_fig is True:
-        #FIXME
-        #plt.ion()
-        #plt.show(block=False)
-        plt.show()
-        #input("Press Enter to continue ...")
-        #plt.close('all')
+        plt.ion()
+        plt.show(block=False)
+        input("Press Enter to continue ...")
+        plt.close('all')
 
     else:
         plt.close('all')

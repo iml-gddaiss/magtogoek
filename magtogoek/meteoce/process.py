@@ -60,8 +60,6 @@ STANDARD_GLOBAL_ATTRIBUTES = {"featureType": "timeSeriesProfile"}
 VARIABLES_TO_DROP = ['ph_temperature', 'speed', 'course', 'gps_magnetic_declination', 'pres'] #, 'last_heading'] Not currently loaded
 
 GLOBAL_ATTRS_TO_DROP = [
-    "binary_mask_tests",
-    "binary_mask_tests_values",
 ]
 
 
@@ -69,32 +67,57 @@ GLOBAL_ATTRS_TO_DROP = [
 P01_CODES_MAP = {
     'time': "ELTMEP01",
     "wind_speed": "EWSBSS01",
+    "wind_speed_QC": "EWSBSS01_QC",
     "wind_direction": "EWDASS01",
+    "wind_direction_QC": "EWDASS01_QC",
     "wind_gust": "EGTSSS01",
+    "wind_gust_QC": "EGTSSS01_QC",
     #"wind_gust_direction": "EGTDSS01",
+    #"wind_gust_direction_QC": "EGTDSS01_QC",
     'atm_temperature': "CTMPZZ01",
+    'atm_temperature_QC': "CTMPZZ01_QC",
     'atm_humidity': "CRELZZ01",
+    'atm_humidity_QC': "CRELZZ01_QC",
     'atm_pressure': "CAPHZZ01",
+    'atm_pressure_QC': "CAPHZZ01_QC",
     'wave_mean_height': "GAVHZZ01",
+    'wave_mean_height_QC': "GAVHZZ01_QC",
     'wave_maximal_height': "GCMXZZ01",
+    'wave_maximal_height_QC': "GCMXZZ01_QC",
     'wave_period': "GTAMZZ01",
+    'wave_period_QC': "GTAMZZ01_QC",
     'wave_direction': "GWDRWW01",
+    'wave_direction_QC': "GWDRWW01_QC",
     'temperature': "TEMPPR01",
+    'temperature_QC': "TEMPPR01_QC",
     'conductivity': "CNDCZZ01",
+    'conductivity_QC': "CNDCZZ01_QC",
     'salinity': "PSLTZZ01",
+    'salinity_QC': "PSLTZZ01_QC",
     'density': "SIGTEQ01",
+    'density_QC': "SIGTEQ01_QC",
     'dissolved_oxygen': "DOXYUZ01",
+    'dissolved_oxygen_QC': "DOXYUZ01_QC",
     'ph': "PHXXZZXX",
+    'ph_QC': "PHXXZZXX_QC",
     'par': "PFDPAR01",
-    #'fluorescence': "FLUOZZZZ",
+    'par_QC': "PFDPAR01_QC",
     'scattering': "ABSP700A",
+    'scattering_QC': "ABSP700A_QC",
     'chlorophyll': "CPHLPR01",
+    'chlorophyll_QC': "CPHLPR01_QC",
     'fdom': "CCOMD002",
+    'fdom_QC': "CCOMD002_QC",
     'co2_a': "ACO2XXXX",
+    'co2_a_QC': "ACO2XXXX_QC",
     'co2_w': "PCO2XXXX",
+    'co2_w_QC': "PCO2XXXX_QC",
     'u': "LCEWAP01",
+    'u_QC': "LCEWAP01_QC",
     'v': "LCNSAP01",
+    'v_QC': "LCNSAP01_QC",
     'w': "LRZAAP01",
+    'w_QC': "LRZAAP01_QC",
     'e': "LERRAP01",
     'lon': "ALONZZ01",
     'lat': "ALATZZ01",
@@ -104,7 +127,9 @@ P01_CODES_MAP = {
     'roll_std': "ROLLSD01",
     'pitch_std': "PTCHSD01",
     'u_ship': "APEWGP01",
-    'v_ship': "APNSGP01"
+    'v_ship': "APNSGP01",
+    #"speed": "", #FIXME # Remove from VARIABLES_TO_DROP
+    #"course": "" #FIXME # Rremove from VARIABLES_TO_DROP
 }
 
 
@@ -737,8 +762,7 @@ if __name__ == "__main__":
     import pandas as pd
 
     import matplotlib
-
-    matplotlib.use('QtAgg')
+    matplotlib.use('Qt5Agg')
     import matplotlib.pyplot as plt
 
     file_path = '/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat'
@@ -756,7 +780,7 @@ if __name__ == "__main__":
             netcdf_output=out_path,
             odf_output=True,
             merge_output_files=True,
-            bodc_name=False,
+            bodc_name=True, # NOT WORKING FIXME
             force_platform_metadata=None,
             odf_data=False,
             make_figures=True,

@@ -22,7 +22,6 @@ import xarray as xr
 from magtogoek.plot_utils import grid_subplot
 from magtogoek.tools import round_up, flag_data, polar_histo
 
-# plt.switch_backend('Qt5Agg')
 
 FONT = {"family": "serif", "color": "darkred", "weight": "normal", "size": 12}
 BINARY_CMAP = plt.get_cmap("viridis_r", 2)

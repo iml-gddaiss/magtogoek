@@ -87,21 +87,19 @@ def format_variables_names_and_attributes(
     ------
     `ValueError` if units in dataarray attributes don't match those in the CF_P01_GF3_formats.json file.
     """
-
     _add_generic_name_to_variables(dataset)
 
     original_coords_name = dataset.coords
 
-    dataset = _convert_variables_names(dataset, p01_codes_map)
+    dataset = _generic_to_bodc_name(dataset, p01_codes_map)
 
     _add_sdn_and_cf_var_attrs(dataset, json2dict(STATIC_ATTRIBUTES_PATH))
 
     if use_bodc_name is not True:
-        dataset = _convert_variables_names(dataset, p01_codes_map, convert_back_to_generic=True)
+        dataset = _bodc_to_generic_name(dataset, p01_codes_map)
     else:
-        dataset = dataset.rename(
-            {p01_codes_map[name]: name for name in original_coords_name}
-        )
+        _coord_name_map = {var: p01_codes_map[var] for var in original_coords_name}
+        dataset = _bodc_to_generic_name(dataset, _coord_name_map)
 
     _add_data_min_max_to_var_attrs(dataset)
 
@@ -121,13 +119,8 @@ def _add_generic_name_to_variables(dataset: xr.Dataset):
         dataset[var].attrs["generic_name"] = var
 
 
-def _convert_variables_names(
-    dataset: xr.Dataset, p01_codes: dict, convert_back_to_generic: bool = False
-) -> xr.Dataset:
-    """Convert variable and coords names.
-
-    From generic to BODC P01 names or from BODC P01 to generic names if
-    `convert_back_to_generic` is True.
+def _generic_to_bodc_name(dataset: xr.Dataset, p01_codes: dict)->xr.Dataset:
+    """Change variable names from generic to bodc
 
     Parameters
     ----------
@@ -135,28 +128,42 @@ def _convert_variables_names(
         dataset to format
     p01_codes :
         generic name to bodc p01_code mapping.
-    convert_back_to_generic :
-       converts from bodc to generic.
 
-    Notes
-    -----
-    Converting names is used to add the convention attributes to variables.
+    Returns
+    -------
+    dataset with bodc variable names
     """
-    varname_translator = {**p01_codes}
+    return _rename_dataset_variables(dataset=dataset, varname_map=p01_codes)
 
-    if convert_back_to_generic:
-        # mapping key and value and value to key
-        varname_translator = dict(
-            (value, key) for key, value in varname_translator.items()
+
+def _bodc_to_generic_name(dataset: xr.Dataset, p01_codes: dict)->xr.Dataset:
+    """Change variable names from bodc to generic
+
+    Parameters
+    ----------
+    dataset :
+        dataset to format
+    p01_codes :
+        generic name to bodc p01_code mapping.
+
+    Returns
+    -------
+    dataset with generic variable names
+    """
+    varname_map = dict(
+            (value, key) for key, value in p01_codes.items()
         )
+    return _rename_dataset_variables(dataset=dataset, varname_map=varname_map)
 
-    for key in tuple(varname_translator.keys()):
-        if key not in dataset:
-            del varname_translator[key]
 
-    dataset = dataset.rename(varname_translator)
+def _rename_dataset_variables(dataset: xr.Dataset, varname_map: dict) -> xr.Dataset:
+    """Rename variable using varname_map {old: new}"""
+    _varname_map = {}
+    for key, item in varname_map.items():
+        if key in dataset:
+            _varname_map[key] = item
+    return dataset.rename(_varname_map)
 
-    return dataset
 
 
 def _add_sdn_and_cf_var_attrs(dataset: xr.Dataset, sdn_meta: tp.Dict):

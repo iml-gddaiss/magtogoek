@@ -359,7 +359,7 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
 
         tparser.add_option(section, "magnetic_declination", dtypes=["float"], default="")
         tparser.add_option(section, "compute_uv_ship", dtypes=["str"], default="off", choice=["sc", "ll", "off"], comments='One of [sc, ll, off] sc: speed & course, ll: longitude & latitude', null_value="keep")
-        tparser.add_option(section, "motion_correction_mode", dtypes=["str"], default="bt", choice=["bt", "nav", "off"], comments='One of [bt, nav, off].')
+        tparser.add_option(section, "motion_correction_mode", dtypes=["str"], default="nav", choice=["bt", "nav", "off"], comments='One of [bt, nav, off].')
 
         section = "WPS_PROCESSING"
         tparser.add_option(section, "recompute_density", dtypes=["bool"], default=True, null_value=False)
