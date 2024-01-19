@@ -7,7 +7,7 @@ from typing import List, Union, Dict, Tuple
 import xarray as xr
 import matplotlib.pyplot as plt
 
-from magtogoek.tools import round_up, flag_data
+from magtogoek.tools import round_up, get_flagged_data, filter_flagged_data
 
 FONT = {"family": "serif", "color": "darkred", "weight": "normal", "size": 12}
 BINARY_CMAP = plt.get_cmap("viridis_r", 2)
@@ -22,7 +22,7 @@ def map_varname(varnames: Union[List[str], Tuple[str, ...]], varname_map: Dict) 
 def make_meteoce_figure(
         dataset: xr.Dataset,
         single: bool = False,
-        flag_thres: int = 2,
+        flag_thres: int = 2, # REMOVE
         save_path: str = None,
         show_fig: bool = True
 ):
@@ -48,12 +48,8 @@ def make_meteoce_figure(
     """
     figures = {}
 
-    # FIXME PLOT IN COLORS THE FILTERED POINT (QC)
-    ####
-    # CALL PLOTS HERE
-    ####
+    # MAKE 2D HISTOGRAM FOR WIND and WAVE
 
-    # buoy
     plots_vars = {
         'gsp_var': ['lon', 'lat', 'u_ship', 'v_ship'],
         'compass_var': ['heading', 'roll_', 'pitch', 'roll_std', 'pitch_std'],
@@ -105,9 +101,6 @@ def make_meteoce_figure(
         plt.close('all')
 
 
-# a figure(function) by instrument.
-# COLOR FLAG VALUE
-
 def plot_sensor_data(dataset: xr.Dataset, varnames: List[str], flag_thres: int = 2):
     varnames = [var for var in varnames if var in dataset.variables]
     # noinspection PyTypeChecker
@@ -115,13 +108,27 @@ def plot_sensor_data(dataset: xr.Dataset, varnames: List[str], flag_thres: int =
     axes = axes.flatten()
     for var, ax in zip(varnames, axes):
         da = dataset[var]
+
         if 'ancillary_variables' in dataset[var].attrs:
             if dataset[var].attrs['ancillary_variables'] in dataset:
-                da = flag_data(dataset, var=var, flag_thres=flag_thres)
-        ax.plot(dataset.time, da, marker='.')
+                ax.plot(da.time, get_flagged_data(dataset=dataset, var=var, flag_value=0), marker='.', color='darkblue')
+                ax.plot(da.time, get_flagged_data(dataset=dataset, var=var, flag_value=1), marker='.', color='darkgreen')
+                ax.plot(da.time, get_flagged_data(dataset=dataset, var=var, flag_value=2), marker='.', color='gold')
+                ax.plot(da.time, get_flagged_data(dataset=dataset, var=var, flag_value=3), marker='X', color='orange')
+                ax.plot(da.time, get_flagged_data(dataset=dataset, var=var, flag_value=4), marker='X', color='red')
+        else:
+            ax.plot(da, marker='.', color='darkblue')
         ax.set_ylabel(f"{var}\n[{dataset[var].units}]", fontdict=FONT)
         ax.tick_params(labelbottom=False)
     axes[-1].tick_params(labelbottom=True)
     axes[-1].set_xlabel("time", fontdict=FONT)
+
+
+    axes[0].plot([],[], marker='.', color='darkblue', label='No Quality Control')
+    axes[0].plot([], [], marker='.', color='darkgreen', label='Good')
+    axes[0].plot([], [], marker='.', color='gold', label='Probably good')
+    axes[0].plot([], [], marker='X', color='orange', label='Probably bad')
+    axes[0].plot([], [], marker='X', color='red', label='Bad')
+    axes[0].legend()
 
     return fig

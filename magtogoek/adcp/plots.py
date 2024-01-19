@@ -20,7 +20,7 @@ import numpy as np
 import xarray as xr
 
 from magtogoek.plot_utils import grid_subplot
-from magtogoek.tools import round_up, flag_data, polar_histo
+from magtogoek.tools import round_up, filter_flagged_data, polar_histo
 
 
 FONT = {"family": "serif", "color": "darkred", "weight": "normal", "size": 12}
@@ -155,8 +155,8 @@ def plot_velocity_polar_hist(dataset: xr.Dataset, nrows: int = 3, ncols: int = 3
                              uv: List[str] = ("u", "v"),  flag_thres: int = 2):
 
     naxes = int(nrows * ncols)
-    flagged_u = flag_data(dataset, var=uv[0], flag_thres=flag_thres).data
-    flagged_v = flag_data(dataset, var=uv[1], flag_thres=flag_thres).data
+    flagged_u = filter_flagged_data(dataset=dataset, var=uv[0], flag_max=flag_thres).data
+    flagged_v = filter_flagged_data(dataset=dataset, var=uv[1], flag_max=flag_thres).data
 
     if not (np.isfinite(flagged_u).any() and np.isfinite(flagged_v).any()):
         return None
@@ -223,7 +223,7 @@ def plot_velocity_fields(dataset: xr.Dataset, vel_var: List[str] = ("u", "v", "w
         figsize=(12, 8), nrows=len(vel_var), ncols=1, sharex=True, sharey=True,
     )
     for var, axe in zip(vel_var, axes):
-        vel_da = flag_data(dataset=dataset, var=var, flag_thres=flag_thres)
+        vel_da = filter_flagged_data(dataset=dataset, var=var, flag_max=flag_thres)
         vmax = round_up(np.max(np.abs(vel_da)), 0.1)
         if not np.isfinite(vmax):
             vmax=1
@@ -285,7 +285,7 @@ def plot_vel_series(dataset: xr.Dataset, depths: Union[float, List[float]],
 
     colors = plt.cm.viridis(np.linspace(0, 1, len(depths)))
     for var, ax in zip(uvw, axes):
-        da = flag_data(dataset=dataset, var=var, flag_thres=flag_thres)
+        da = filter_flagged_data(dataset=dataset, var=var, flag_max=flag_thres)
         clines = cycle(["solid", "dotted", "dashed", "dashdotted"])
         for depth, c in zip(depths, colors):
             ax.plot(dataset.time, da.sel(depth=depth), linestyle=next(clines), c=c, label=f"{depth:.02f} m")
@@ -299,7 +299,7 @@ def plot_vel_series(dataset: xr.Dataset, depths: Union[float, List[float]],
 def plot_pearson_corr(dataset: xr.Dataset, vel_var: List[str] = ("u", "v", "w"), flag_thres: int = 2):
     corr = {v: [] for v in vel_var}
     for var in vel_var:
-        da = flag_data(dataset=dataset, var=var, flag_thres=flag_thres)
+        da = filter_flagged_data(dataset=dataset, var=var, flag_max=flag_thres)
         for d in range(dataset.dims["depth"] - 2):
             if np.isfinite(da[d]).any() and np.isfinite(da[d + 2]).any():
                 corr[var].append(xr.corr(da[d], da[d + 2], "time"))
@@ -325,7 +325,7 @@ def plot_sensor_data(dataset: xr.Dataset, varnames: List[str], flag_thres: int =
         da = dataset[var]
         if 'ancillary_variables' in dataset[var].attrs:
             if dataset[var].attrs['ancillary_variables'] in dataset:
-                da = flag_data(dataset, var=var, flag_thres=flag_thres)
+                da = filter_flagged_data(dataset=dataset, var=var, flag_max=flag_thres)
         ax.plot(dataset.time, da)
         ax.set_ylabel(f"{var}\n[{dataset[var].units}]", fontdict=FONT)
         ax.tick_params(labelbottom=False)

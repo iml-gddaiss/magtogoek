@@ -19,26 +19,78 @@ def nans(shape: tp.Union[list, tuple, np.ndarray]) -> np.ndarray:
     return np.full(shape, np.nan)
 
 
-def flag_data(dataset: xr.Dataset, var: str, flag_thres: int = 2, ancillary_variables: str = None):
+# def flag_data(dataset: xr.Dataset, var: str, flag_thres: int = 2, ancillary_variables: str = None) -> xr.DataArray:
+#     """
+#     Set value to nan where the flag value is greater thant the flag_thres,
+#
+#     Parameters
+#     ----------
+#     dataset :
+#         The variable `var` must be in the dataset along with `var+'_QC'`.
+#     var :
+#     ancillary_variables :
+#     flag_thres :
+#
+#     Returns
+#     -------
+#     data with nan values where the flags were greater than the flag_thres.
+#     """
+#     if ancillary_variables is None:
+#         ancillary_variables = dataset[var].attrs["ancillary_variables"]
+#
+#     return dataset[var].where(dataset[ancillary_variables].data <= flag_thres)
+
+def get_flagged_data(dataset: xr.Dataset, var: str, flag_value: int, ancillary_variables: str = None) -> xr.DataArray:
     """
-    Set value to nan where the flag value is greater thant the flag_thres,
+    Set value to nan where the flags are not equal to the `flag_value`.
 
     Parameters
     ----------
     dataset :
         The variable `var` must be in the dataset along with `var+'_QC'`.
     var :
-    ancillary_variables :
-    flag_thres :
-
+    flag_value:
+        flag value of the data to keep.
+    ancillary_variables : Optional
+        Name of the flag variable. If not provided, the name must be defined as
+        the variable attributes `ancillary_variables`.
     Returns
     -------
-    data with nan values where the flags were greater than the flag_thres.
+    data with nan values where the flags are not equal to `flag_value`.
     """
     if ancillary_variables is None:
         ancillary_variables = dataset[var].attrs["ancillary_variables"]
 
-    return dataset[var].where(dataset[ancillary_variables].data <= flag_thres)
+    return dataset[var].where(dataset[ancillary_variables].data == flag_value)
+
+
+def filter_flagged_data(dataset: xr.Dataset, var: str, flag_min: int = 0, flag_max: int = 9, ancillary_variables: str = None) -> xr.DataArray:
+    """
+    Set value to nan where the flags are outside `flag_min` and `flag_max`.
+
+    Parameters
+    ----------
+    dataset :
+        The variable `var` must be in the dataset along with `var+'_QC'`.
+    var :
+    flag_min :
+        min flag value to include.
+    flag_max :
+        max flag value to include.
+    ancillary_variables : Optional
+        Name of the flag variable. If not provided, the name must be defined as
+        the variable attributes `ancillary_variables`.
+    Returns
+    -------
+    data with nan values where the flags are outside `flag_min` and `flag_max`.
+    """
+    if ancillary_variables is None:
+        ancillary_variables = dataset[var].attrs["ancillary_variables"]
+
+    return dataset[var].where(
+        (dataset[ancillary_variables].data >= flag_min)
+        & (dataset[ancillary_variables].data <= flag_max)
+    )
 
 
 def round_up(x: tp.Any, scale: float = 1):
@@ -46,8 +98,8 @@ def round_up(x: tp.Any, scale: float = 1):
 
 
 def polar_histo(dataset: xr.Dataset, x_vel: str, y_vel: str, r_max: float, flag_thres: int):
-    u = flag_data(dataset, x_vel, flag_thres=flag_thres).data.flatten()
-    v = flag_data(dataset, y_vel, flag_thres=flag_thres).data.flatten()
+    u = filter_flagged_data(dataset=dataset, var=x_vel, flag_max=flag_thres).data.flatten()
+    v = filter_flagged_data(dataset=dataset, var=y_vel, flag_max=flag_thres).data.flatten()
     ii = np.isfinite(u) & np.isfinite(v)
 
     azimut, radius = cartesian2north_polar(u[ii], v[ii])

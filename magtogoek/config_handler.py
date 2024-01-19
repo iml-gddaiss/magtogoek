@@ -373,7 +373,7 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
 
         for var in ["salinity", "temperature", "dissolved_oxygen", "co2w", "ph", "scattering", "chlorophyll", "fdom"]:
             tparser.add_option(section, f'{var}_drift', dtypes=["float"], nargs_min=1, default="", comments="Drift values (variation)")
-            tparser.add_option(section, f'{var}_drift_time', dtypes=["float"], nargs_min=1, is_time_stamp=True, default="", comments="TimeStamp of the drift values")
+            tparser.add_option(section, f'{var}_drift_time', dtypes=["int", "str"], nargs_min=1, is_time_stamp=True, default="", comments="TimeStamp of the drift values")
             tparser.add_option(section, f'{var}_sample_correction', dtypes=["float"], nargs=2, default="", comments="Linear regression coefficients: A, B | [A]*x + [B]")
 
         section = "ADCP_PROCESSING"

@@ -390,7 +390,6 @@ def odf2nc(ctx, info, input_files, output_name, **options):
 @click.pass_context
 def plot_adcp(ctx, info, input_file, **options):
     """Command to compute u_ship, v_ship, bearing from gsp data."""
-    logging.info(f"plot adcp function reached. headless:{options['headless']}, save_fig:{options['save_fig']}")
     import xarray as xr
     from magtogoek.adcp.plots import make_adcp_figure
     dataset = xr.open_dataset(input_file)
@@ -400,6 +399,21 @@ def plot_adcp(ctx, info, input_file, **options):
     except KeyError:
         print("Wrong format. The netcdf file is missing some attributes or doesn't have the expected variables name.")
 
+
+@plot.command("meteoce", context_settings=CONTEXT_SETTINGS)
+@add_options(common_options)
+@click.argument("input_file", metavar="[input_files]", nargs=1, type=click.Path(exists=True), required=True)
+@click.option("-s", "--save_fig", help="""Path to save figures to.""", type=click.Path(exists=True), default=None)
+@click.option("--headless", help="""If True, figures en displayed""", is_flag=True, default=False)
+@click.pass_context
+def plot_meteoce(ctx, info, input_file, **options):
+    import xarray as xr
+    from magtogoek.meteoce.plots import make_meteoce_figure
+    dataset = xr.open_dataset(input_file)
+    try:
+        make_meteoce_figure(dataset, save_path=options['save_fig'], show_fig=not options['headless'])
+    except KeyError:
+        print("Wrong format. The netcdf file is missing some attributes or doesn't have the expected variables name.")
 
 # ------------------------ #
 #        Functions         #
