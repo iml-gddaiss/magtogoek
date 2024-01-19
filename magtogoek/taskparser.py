@@ -691,9 +691,9 @@ def _get_sequence_from_string(sequence: str) -> List:
 
     Example
     -------
-    _format_string_list'(arg1, arg2, arg3)' -> [arg1 arg2 arg3]
+    _format_string_list'(arg1, arg2, arg3)' -> [arg1, arg2, arg3]
     """
-    for sep in (":", ";", " ", "\n", "(", ")", "[", "]", "'", '"'):
+    for sep in (" ", "\n", "(", ")", "[", "]", "'", '"'):
         sequence = sequence.replace(sep, ",")
 
     return list(filter(None, sequence.split(",")))
