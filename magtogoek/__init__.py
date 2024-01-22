@@ -8,7 +8,7 @@ from magtogoek.utils import resolve_relative_path
 
 from magtogoek.adcp import SENSOR_TYPES as ADCP_SENSOR_TYPES, GENERIC_PARAMETERS as ADCP_GENERIC_PARAMETERS
 from magtogoek.wps import SENSOR_TYPES as WPS_SENSOR_TYPES
-from magtogoek.meteoce import SENSOR_TYPES as METEOCE_SENSOR_TYPES, GENERIC_PARAMETERS as METEOCE_GENERIC_PARAMTERS
+from magtogoek.meteoce import SENSOR_TYPES as METEOCE_SENSOR_TYPES, GENERIC_PARAMETERS as METEOCE_GENERIC_PARAMETERS
 
 l.set_level(0)
 
@@ -21,7 +21,7 @@ PROCESSES = ['adcp', 'meteoce']
 SENSOR_TYPES = ADCP_SENSOR_TYPES + WPS_SENSOR_TYPES + METEOCE_SENSOR_TYPES
 
 GENERIC_PARAMETERS = list(
-    dict.fromkeys(ADCP_GENERIC_PARAMETERS + METEOCE_GENERIC_PARAMTERS)
+    dict.fromkeys(ADCP_GENERIC_PARAMETERS + METEOCE_GENERIC_PARAMETERS)
 )
 
 
@@ -40,9 +40,10 @@ else:
 LOCAL_CONFIG_EXISTS = False
 if Path(LOCAL_CONFIGURATION_PATH).is_dir():
     LOCAL_CONFIG_EXISTS = True
-    if os.listdir(LOCAL_CONFIGURATION_PATH) == os.listdir(DEFAULT_CONFIGURATION_PATH):
+    if set(os.listdir(DEFAULT_CONFIGURATION_PATH)) - set(os.listdir(LOCAL_CONFIGURATION_PATH)) == set():
         CONFIGURATION_PATH = LOCAL_CONFIGURATION_PATH
     else:
         print('\n\t!!! Warning. Local magtogoek configuration is missing some files. Reverting to default configurations. !!!\n')
+        CONFIGURATION_PATH = DEFAULT_CONFIGURATION_PATH
 else:
     CONFIGURATION_PATH = DEFAULT_CONFIGURATION_PATH
