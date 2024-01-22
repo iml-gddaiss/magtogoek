@@ -187,7 +187,8 @@ def compute_navigation(
         print('Loading files ... [Done]')
 
     print('Computing navigation ...', end='\r')
-    _compute_navigation(dataset, window=window)
+    compute_speed_and_course(dataset=dataset, window=window)
+    compute_uv_ship(dataset=dataset)
     print('Computing navigation ... [Done]')
 
     dataset.attrs["input_files"] = filenames
@@ -207,13 +208,43 @@ def compute_navigation(
     return dataset
 
 
-def _compute_navigation(
-    dataset: xr.Dataset, window: int = None,
-) -> xr.Dataset:
-    """compute bearing, speed, u_ship and v_ship
+# def _compute_navigation(dataset: xr.Dataset, window: int = None):
+#     """compute bearing, speed, u_ship and v_ship
+#
+#     Computes the distance between each GPS coordinates with Vincenty and
+#     WGS84 and speed = distance / time_delta.
+#
+#     Parameters
+#     ----------
+#     window :
+#         Size of the centered averaging window.
+#     """
+#     centered_time, course, speed = _compute_speed_and_course(dataset.time, dataset.lon.values, dataset.lat.values)
+#
+#     nav_dataset = xr.Dataset(
+#         {
+#             "course": (["time"], course),
+#             "speed": (["time"], speed)
+#         },
+#         coords={"time": centered_time},
+#     )
+#
+#     if window is not None:
+#         window = int(window)
+#         nav_dataset = nav_dataset.rolling(time=window, center=True).mean()
+#
+#     nav_dataset = nav_dataset.interp(time=dataset.time)
+#
+#     dataset['course'] = np.round(nav_dataset['course'], 2)
+#     dataset['speed'] = np.round(nav_dataset['speed'], 2)
+#
+#     dataset["u_ship"], dataset["v_ship"] = north_polar2cartesian(dataset.speed, dataset.course)
 
-    Computes the distance between each GPS coordinates with Vincenty and
-    WGS84 and speed = distance / time_delta.
+
+def compute_speed_and_course(dataset: xr.Dataset, window: int = None):
+    """Compute `speed` and `course` from `lon` and `lat`.
+
+    Add `speed` and `course` variables to dataset.
 
     Parameters
     ----------
@@ -222,14 +253,10 @@ def _compute_navigation(
     """
     centered_time, course, speed = _compute_speed_and_course(dataset.time, dataset.lon.values, dataset.lat.values)
 
-    u_ship, v_ship = north_polar2cartesian(speed, course)
-
     nav_dataset = xr.Dataset(
         {
             "course": (["time"], course),
-            "speed": (["time"], speed),
-            "u_ship": (["time"], u_ship),
-            "v_ship": (["time"], v_ship),
+            "speed": (["time"], speed)
         },
         coords={"time": centered_time},
     )
@@ -242,13 +269,14 @@ def _compute_navigation(
 
     dataset['course'] = np.round(nav_dataset['course'], 2)
     dataset['speed'] = np.round(nav_dataset['speed'], 2)
-    dataset['u_ship'] = np.round(nav_dataset['u_ship'], 2)
-    dataset['v_ship'] = np.round(nav_dataset['v_ship'], 2)
 
-    #dataset = xr.merge((nav_dataset, dataset), compat='override')
-    #dataset.attrs.update({'uv_ship_flag': True})
 
-    #return dataset
+def compute_uv_ship(dataset: xr.Dataset):
+    """Add `u_ship` and `v_ship` variables to dataset.
+
+    Computes `u_ship` and `v_ship` from `speed` and `course`
+    """
+    dataset["u_ship"], dataset["v_ship"] = north_polar2cartesian(dataset.speed, dataset.course)
 
 
 def _compute_speed_and_course(time: tp.Union[list, np.ndarray],

@@ -586,6 +586,38 @@
         "sdn_uom_urn": "SDN:P06::UVAA",
         "sdn_uom_name": "Metres per second"
     },
+    "APEWZZ01": {
+        "units": "m/s",
+        "long_name": "eastward velocity of the measurement platform",
+        "sdn_parameter_urn": "SDN:P01::APEWZZ01",
+        "sdn_parameter_name": "Eastward velocity of measurement platform relative to ground surface",
+        "sdn_uom_urn": "SDN:P06::UVAA",
+        "sdn_uom_name": "Metres per second"
+    },
+    "APNSZZ01": {
+        "units": "m/s",
+        "long_name": "northward velocity of the measurement platform",
+        "sdn_parameter_urn": "SDN:P01::APNSZZ01",
+        "sdn_parameter_name": "Northward velocity of measurement platform relative to ground surface",
+        "sdn_uom_urn": "SDN:P06::UVAA",
+        "sdn_uom_name": "Metres per second"
+    },
+    "APSAZZ01": {
+        "units": "m/s",
+        "long_name": "Speed over ground",
+        "sdn_parameter_urn": "SDN:P01::APSAZZ01",
+        "sdn_parameter_name": "Speed of measurement platform relative to ground surface {speed over ground}",
+        "sdn_uom_urn": "SDN:P06::UVAA",
+        "sdn_uom_name": "Metres per second"
+    },
+    "APDAZZ01": {
+        "units": "degree_true",
+        "long_name": "Course made good",
+        "sdn_parameter_urn": "SDN:P01::APDAZZ01",
+        "sdn_parameter_name": "Direction of motion of measurement platform relative to ground surface {course made good}",
+        "sdn_uom_urn": "SDN:P06::UABB",
+        "sdn_uom_name": "Degrees True"
+    },
     "ADEPZZ01": {
         "standard_name": "depth",
         "positive": "down",

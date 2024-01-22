@@ -6,6 +6,8 @@ This module contains general mathematical and scientific functions.
 """
 import numpy as np
 import typing as tp
+
+import pygeodesy.errors
 from nptyping import NDArray
 from pygeodesy.ellipsoidalVincenty import LatLon
 
@@ -119,8 +121,10 @@ def vincenty(p0: tp.Tuple[float, float], p1: tp.Tuple[float, float]) -> float:
     distance :
         distance between the two points in meters.
     """
-
-    return LatLon(p0[1], p0[0]).distanceTo(LatLon(p1[1], p1[0]))
+    try:
+        return LatLon(p0[1], p0[0]).distanceTo(LatLon(p1[1], p1[0]))
+    except pygeodesy.errors.RangeError:
+        return np.nan
 
 
 def get_gps_bearing(p0: tp.Tuple[float, float], p1: tp.Tuple[float, float]) -> float:
@@ -139,8 +143,10 @@ def get_gps_bearing(p0: tp.Tuple[float, float], p1: tp.Tuple[float, float]) -> f
     -------
     bearing in degrees [0, 360]
     """
-
-    return LatLon(p0[1], p0[0]).initialBearingTo(LatLon(p1[1], p1[0]))
+    try:
+        return LatLon(p0[1], p0[0]).initialBearingTo(LatLon(p1[1], p1[0]))
+    except pygeodesy.errors.RangeError:
+        return np.nan
 
 
 def rotate_xy_vector(

@@ -22,7 +22,6 @@ def map_varname(varnames: Union[List[str], Tuple[str, ...]], varname_map: Dict) 
 def make_meteoce_figure(
         dataset: xr.Dataset,
         single: bool = False,
-        flag_thres: int = 2, # REMOVE
         save_path: str = None,
         show_fig: bool = True
 ):
@@ -51,7 +50,8 @@ def make_meteoce_figure(
     # MAKE 2D HISTOGRAM FOR WIND and WAVE
 
     plots_vars = {
-        'gsp_var': ['lon', 'lat', 'u_ship', 'v_ship'],
+        'gsp_var_1': ['lon', 'lat'],
+        'gps_var_2': ['speed', 'course', 'u_ship', 'v_ship'],
         'compass_var': ['heading', 'roll_', 'pitch', 'roll_std', 'pitch_std'],
         'vel_var': ['u', 'v', 'w'],
         'bt_vel_var': ['bt_u', 'bt_v', 'bt_w'],
@@ -72,7 +72,7 @@ def make_meteoce_figure(
     for fig_name, variables in plots_vars.items():
         _variables = map_varname(variables, varname_map)
         if any(x in dataset.variables for x in _variables):
-            figures[fig_name] = plot_sensor_data(dataset, _variables, flag_thres=flag_thres)
+            figures[fig_name] = plot_sensor_data(dataset, _variables)
 
     if single is True and show_fig is True:
         for count, fig in enumerate(figures.values()):
@@ -101,7 +101,7 @@ def make_meteoce_figure(
         plt.close('all')
 
 
-def plot_sensor_data(dataset: xr.Dataset, varnames: List[str], flag_thres: int = 2):
+def plot_sensor_data(dataset: xr.Dataset, varnames: List[str]):
     varnames = [var for var in varnames if var in dataset.variables]
     # noinspection PyTypeChecker
     fig, axes = plt.subplots(figsize=(12, 8), nrows=len(varnames), ncols=1, sharex=True, squeeze=False)

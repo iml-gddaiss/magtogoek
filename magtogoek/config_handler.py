@@ -358,8 +358,10 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
         tparser.add_option(section, "meteo_id", dtypes=["str"], default=None)
 
         tparser.add_option(section, "magnetic_declination", dtypes=["float"], default="")
-        tparser.add_option(section, "compute_uv_ship", dtypes=["str"], default="off", choice=["sc", "ll", "off"], comments='One of [sc, ll, off] sc: speed & course, ll: longitude & latitude', null_value="keep")
-        tparser.add_option(section, "motion_correction_mode", dtypes=["str"], default="nav", choice=["bt", "nav", "off"], comments='One of [bt, nav, off].')
+        tparser.add_option(section, "recompute_speed_course", dtypes=["bool"], default=False, null_value=False)
+        tparser.add_option(section, "compute_uv_ship", dtypes=["bool"], default=False, null_value=False)
+        # tparser.add_option(section, "compute_uv_ship", dtypes=["str"], default="off", choice=["sc", "ll", "off"], comments='One of [sc, ll, off] sc: speed & course, ll: longitude & latitude')
+        tparser.add_option(section, "motion_correction", dtypes=["bool"], default=False, null_value=False)
 
         section = "WPS_PROCESSING"
         tparser.add_option(section, "recompute_density", dtypes=["bool"], default=True, null_value=False)

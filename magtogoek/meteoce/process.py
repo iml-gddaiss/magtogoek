@@ -50,14 +50,14 @@ from magtogoek.meteoce.odf_exporter import make_odf
 from magtogoek.adcp.correction import apply_motion_correction as adcp_motion_correction
 from magtogoek.adcp.quality_control import adcp_quality_control, no_adcp_quality_control
 
-from magtogoek.navigation import _compute_navigation
+from magtogoek.navigation import compute_speed_and_course, compute_uv_ship
 
 
 l.get_logger("meteoce_processing")
 
 STANDARD_GLOBAL_ATTRIBUTES = {"featureType": "timeSeriesProfile"}
 
-VARIABLES_TO_DROP = ['ph_temperature', 'speed', 'course', 'gps_magnetic_declination', 'pres'] #, 'last_heading'] Not currently loaded
+VARIABLES_TO_DROP = ['ph_temperature', 'gps_magnetic_declination', 'pres'] #, 'last_heading'] Not currently loaded
 
 GLOBAL_ATTRS_TO_DROP = [
 ]
@@ -126,10 +126,10 @@ P01_CODES_MAP = {
     'pitch': "PTCHGP01",
     'roll_std': "ROLLSD01",
     'pitch_std': "PTCHSD01",
-    'u_ship': "APEWGP01",
-    'v_ship': "APNSGP01",
-    #"speed": "", #FIXME # Remove from VARIABLES_TO_DROP
-    #"course": "" #FIXME # Rremove from VARIABLES_TO_DROP
+    'u_ship': "APEWZZ01",
+    'v_ship': "APNSZZ01",
+    "speed": "APSAZZ01",
+    "course": "APDAZZ01"
 }
 
 
@@ -173,14 +173,16 @@ class ProcessConfig(BaseProcessConfig):
 
     ##### COMPUTE #####
     # GPS
-    compute_uv_ship: str = None  # ["ll", "sp", "off"]
+    recompute_speed_course: bool = None
+    compute_uv_ship: bool = None
+    #compute_uv_ship: str = None  # ["ll", "sp", "off"] #FIXME Remove here and in ConfigHandler
 
     # CTD
     recompute_density: bool = None
 
     ##### CORRECTION #####
     magnetic_declination: Union[bool, float] = None
-    motion_correction_mode: str = "nav" # ["bt", "nav", "off"] | BT track data are not transmitted/loaded at the moment.
+    motion_correction: bool = None
 
     # PH
     ph_salinity_correction: bool = None
@@ -327,9 +329,10 @@ def _process_meteoce_data(pconfig: ProcessConfig):
         add_navigation(dataset, pconfig.navigation_file)
 
     l.section('Navigation data computation')
-
-    if pconfig.compute_uv_ship != "off":
-        _compute_uv_ship(dataset=dataset, pconfig=pconfig)
+    if pconfig.recompute_speed_course is True:
+        _recompute_speed_course(dataset=dataset)
+    if pconfig.compute_uv_ship is True:
+        _compute_uv_ship(dataset=dataset)
 
     # ------------------- #
     # METEOCE CORRECTION  #
@@ -412,7 +415,7 @@ def _process_meteoce_data(pconfig: ProcessConfig):
     # ------------ #
 
     if pconfig.figures_output is True:
-        make_meteoce_figure(dataset, flag_thres=2, save_path=pconfig.figures_path, show_fig=not pconfig.headless)
+        make_meteoce_figure(dataset, save_path=pconfig.figures_path, show_fig=not pconfig.headless)
 
     # --------------- #
     # POST-PROCESSING #
@@ -568,27 +571,30 @@ def _adcp_correction(dataset: xr.Dataset, pconfig: ProcessConfig):
             dataset.u.values, dataset.v.values = xy_vector_magnetic_correction(dataset.u, dataset.v, angle)
             l.log(f"Velocities transformed to true north and true east.")
 
-    if pconfig.motion_correction_mode in ["bt", "nav"]:
-        adcp_motion_correction(dataset, pconfig.motion_correction_mode)
+    if pconfig.motion_correction is True:
+        adcp_motion_correction(dataset, "nav")
 
 
-def _compute_uv_ship(dataset: xr.Dataset, pconfig: ProcessConfig):
-    """Compute u_ship and v_ship and add them to dataset.
+def _recompute_speed_course(dataset: xr.Dataset):
+    if all(v in dataset for v in ['lon', 'lat']):
+        l.log('Platform `speed` and `course` computed from longitude and latitude data.')
+        compute_speed_and_course(dataset=dataset)
+    else:
+        l.warning("Could not compute `speed` and `course`. `lon`/`lat` data not found.")
 
-    Either from speed and course or longitude and latitude depending on
-    `pconfig.compute_uv_ship` value.
-        ll: longitude and latitude
-        sc: speed and course
-    """
-    if pconfig.compute_uv_ship == "ll":
-        if all(v in dataset for v in ['lon', 'lat']):
-            l.log('Platform velocities (u_ship, v_ship) computed from longitude and latitude data.')
-            _compute_navigation(dataset)
+def _compute_uv_ship(dataset: xr.Dataset):
+    if all(x in dataset for x in ('speed', 'course')):
+        l.log('Platform `u_ship`, `v_ship` computed from speed and course data.')
+        compute_uv_ship(dataset=dataset)
 
-    elif pconfig.compute_uv_ship == "sp":
-        if all(x in dataset for x in ('speed', 'course')):
-            l.log('Platform velocities (u_ship, v_ship) computed from speed and course data.')
-            dataset["u_ship"], dataset["v_ship"] = north_polar2cartesian(dataset.speed, dataset.course)
+    elif all(v in dataset for v in ['lon', 'lat']):
+        l.log('Platform velocities (u_ship, v_ship) computed from longitude and latitude data.')
+        compute_speed_and_course(dataset=dataset)
+        compute_uv_ship(dataset=dataset)
+
+    else:
+        l.warning("Could not compute `u_ship` and `v_ship`. GPS data not found.")
+
 
 
 def _quality_control(dataset: xr.Dataset, pconfig: ProcessConfig) -> xr.Dataset:
