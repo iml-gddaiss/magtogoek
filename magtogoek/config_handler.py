@@ -257,8 +257,8 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
     tparser.add_option(section, "cruise_description", dtypes=["str"], default="")
     tparser.add_option(section, "organization", dtypes=["str"], default="")
     tparser.add_option(section, "chief_scientist", dtypes=["str"], default="")
-    tparser.add_option(section, "start_date", dtypes=["str", "int"], default="", is_time_stamp=True)
-    tparser.add_option(section, "end_date", dtypes=["str", "int"], default="", is_time_stamp=True)
+    tparser.add_option(section, "start_date", dtypes=["str", "int"], default="", is_time_stamp=True, comments="Format: %Y-%m-%dT%H:%M:%S")
+    tparser.add_option(section, "end_date", dtypes=["str", "int"], default="", is_time_stamp=True, comments="Format: %Y-%m-%dT%H:%M:%S")
     tparser.add_option(section, "event_number", dtypes=["str"], default="", null_value="")
     tparser.add_option(section, "event_qualifier1", dtypes=["str"], default="", null_value="")
     tparser.add_option(section, "event_comments", dtypes=["str"], default="")
@@ -278,8 +278,8 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
     if version > 0:
         section = "PROCESSING"
         tparser.add_option(section, "navigation_file", dtypes=["str"], default="", is_file=True)
-        tparser.add_option(section, "leading_trim", dtypes=["int", "str"], default="", is_time_stamp=True)
-        tparser.add_option(section, "trailing_trim", dtypes=["int", "str"], default="", is_time_stamp=True)
+        tparser.add_option(section, "leading_trim", dtypes=["int", "str"], default="", is_time_stamp=True, comments="Int or TimeStamp. Format: %Y-%m-%dT%H:%M:%S")
+        tparser.add_option(section, "trailing_trim", dtypes=["int", "str"], default="", is_time_stamp=True, comments="Int or TimeStamp. Format: %Y-%m-%dT%H:%M:%S")
         tparser.add_option(section, "quality_control", dtypes=["bool"], default=True, null_value=False)
 
     if process == 'adcp':
@@ -360,7 +360,6 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
         tparser.add_option(section, "magnetic_declination", dtypes=["float"], default="")
         tparser.add_option(section, "recompute_speed_course", dtypes=["bool"], default=False, null_value=False)
         tparser.add_option(section, "compute_uv_ship", dtypes=["bool"], default=False, null_value=False)
-        # tparser.add_option(section, "compute_uv_ship", dtypes=["str"], default="off", choice=["sc", "ll", "off"], comments='One of [sc, ll, off] sc: speed & course, ll: longitude & latitude')
         tparser.add_option(section, "motion_correction", dtypes=["bool"], default=False, null_value=False)
 
         section = "WPS_PROCESSING"
@@ -374,9 +373,9 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
         tparser.add_option(section, "dissolved_oxygen_salinity_correction", dtypes=["bool"], default=True, null_value=False)
 
         for var in ["salinity", "temperature", "dissolved_oxygen", "co2w", "ph", "scattering", "chlorophyll", "fdom"]:
-            tparser.add_option(section, f'{var}_drift', dtypes=["float"], nargs_min=1, default="", comments="Drift values (variation)")
-            tparser.add_option(section, f'{var}_drift_time', dtypes=["int", "str"], nargs_min=1, is_time_stamp=True, default="", comments="TimeStamp of the drift values")
-            tparser.add_option(section, f'{var}_sample_correction', dtypes=["float"], nargs=2, default="", comments="Linear regression coefficients: A, B | [A]*x + [B]")
+            tparser.add_option(section, f'{var}_drift', dtypes=["float"], default="", comments="Total drift")
+            tparser.add_option(section, f'{var}_drift_start_time', dtypes=["str"], is_time_stamp=True, default="", comments="Format: %Y-%m-%dT%H:%M:%S")
+            tparser.add_option(section, f'{var}_sample_correction', dtypes=["float"], nargs=2, default="", comments="Linear regression coefficients: A, B | [Corrected_Data] = A * [Data] + B")
 
         section = "ADCP_PROCESSING"
         tparser.add_option(section, "magnetic_declination_preset", dtypes=["float"], default=None, comments="Found in the ADCP configuration file.")

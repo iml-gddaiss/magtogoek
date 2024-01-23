@@ -176,7 +176,6 @@ class ProcessConfig(BaseProcessConfig):
     # GPS
     recompute_speed_course: bool = None
     compute_uv_ship: bool = None
-    #compute_uv_ship: str = None  # ["ll", "sp", "off"] #FIXME Remove here and in ConfigHandler
 
     # CTD
     recompute_density: bool = None
@@ -198,35 +197,35 @@ class ProcessConfig(BaseProcessConfig):
 
     # WPS sample and drift correction
     salinity_drift: List[float] = None
-    salinity_drift_time: List[str] = None
+    salinity_drift_start_time: List[str] = None
     salinity_sample_correction: List[float] = None  # a*x + b
 
     temperature_drift: List[float] = None
-    temperature_drift_time: List[str] = None
+    temperature_drift_start_time: List[str] = None
     temperature_sample_correction: List[float] = None
 
     dissolved_oxygen_drift: List[float] = None
-    dissolved_oxygen_drift_time: List[str] = None
+    dissolved_oxygen_drift_start_time: List[str] = None
     dissolved_oxygen_sample_correction: List[float] = None
 
     co2w_drift: List[float] = None
-    co2w_drift_time: List[str] = None
+    co2w_drift_start_time: List[str] = None
     co2w_sample_correction: List[float] = None
 
     ph_drift: List[float] = None
-    ph_drift_time: List[str] = None
+    ph_drift_start_time: List[str] = None
     ph_sample_correction: List[float] = None
 
     scattering_drift: List[float] = None
-    scattering_drift_time: List[str] = None
+    scattering_drift_start_time: List[str] = None
     scattering_sample_correction: List[float] = None
 
     chlorophyll_drift: List[float] = None
-    chlorophyll_drift_time: List[str] = None
+    chlorophyll_drift_start_time: List[str] = None
     chlorophyll_sample_correction: List[float] = None
 
     fdom_drift: List[float] = None
-    fdom_drift_time: List[str] = None
+    fdom_drift_start_time: List[str] = None
     fdom_sample_correction: List[float] = None
 
     # ADCP

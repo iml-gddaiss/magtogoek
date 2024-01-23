@@ -191,63 +191,46 @@ def dissolved_oxygen_correction_for_pressure_JAC(
 
 
 def time_drift_correction(
-        data: np.ndarray, data_time: pd.DatetimeIndex,
-        drift: Union[float, List[float]], drift_time: List[str] = None
+        data: np.ndarray,
+        data_time: pd.DatetimeIndex,
+        drift: float,
+        start_time: List[str] = None
 ) -> np.ndarray:
-    """Apply correction for drift over time as a linear drift. fixme Make a test.
+    """Apply a linear correction for drift over time.
+
+    Subtracts the drift from the data as a linear regression
+
+    drift_array[0] = 0 and drift_array[-1] = drift
 
     ```
-    data_corrected(time) = data(time) - drift(time)
+    data_corrected(time) = data(time) - drift_array(time)
     ```
-
-    If a single drift value is passed:
-        drift(t_initial) = 0 and drift(t_final) = drift
-
-    If multiple drift values are passed, `drift_time` needs to have the corresponding times.
-        - `len(drift_time)` must be equal to `len(drift)`.
-
-        - Drift will be extrapolated if:
-            `drift_time[0]` > `data_time[0]` and/or `drift_time[-1]` < `data_time[-1]`.
-
-        - Drift slope can vary between drift_time segments.
-
 
     Parameters
     ----------
     data :
-        Data to be corrected.
     data_time :
-        Data time.
     drift :
-        Total drift time or  list of drift values for the corresponding `drift_time`.
-    drift_time :
-        Drift times for the corresponding drifts.
+        Total drift. Amount of drift by the end of the time series.
+    start_time : (Optional) TimeStamp %Y-%m-%dT%H:%M:%S
+        Timestamp that the drift started. If not provided, the correction will start at
+        the initial time (time[0]).
 
     Returns
     -------
-
-    Raises
-    ------
-    Value Error for invalid prameters values:
-       - len(drift) != 1 and drift_time is None
-       - len(drift) != 1 and len(drift) != len(drift_time)
+    Corrected data
     """
-    drift = ensure_list_format(drift)
 
-    if len(drift) == 1:
-        drift = [0] + drift
-        drift_time = [data_time[0], data_time[-1]]
+    drift = [0, drift]
+    drift_time = data_time[[0,-1]]
 
-    elif drift_time is None:
-        raise ValueError(f'Drift time need to be provided if more than one drift values are given.')
-
-    elif len(drift_time) != len(drift):
-        raise ValueError(f'Mismatch length for `drift_time` and `drift`. {len(drift_time), len(drift)}')
+    if start_time is not None:
+        drift_time[0] = start_time
 
     _data = xr.DataArray(data, coords={'time': data_time})
     _drift = xr.DataArray(drift, coords={'time': drift_time})
 
-    _drift_correction = _drift.interp(time=_data.time, kwargs={'fill_value': 'extrapolate'}).data
+    _drift_correction = _drift.interp(time=_data.time, kwargs={'fill_value': 0}).data
 
     return data - _drift_correction
 
@@ -258,35 +241,6 @@ def in_situ_sample_correction(data: np.ndarray, slope: float, offset: float) -> 
     ```
     data_corr = slope * data + offset
     ```
-
     """
 
     return slope * data + offset
-
-
-if __name__ == "__main__":
-    import pandas as pd
-    import matplotlib.pyplot as plt
-
-    data = np.random.random(200) - .5
-    data_time = pd.date_range('2020-05-01', '2020-09-01', 200)
-
-    # drift = np.array([0, 1, 3, 3.5])
-    # drift_time = pd.date_range('2020-04-01', '2020-09-01', 4)
-
-    drift = np.array([.6, 2])
-    drift_time = list(pd.date_range('2020-06-01', '2020-08-01', 2))
-
-    data_raw = time_drift_correction(data, data_time, list(-drift), drift_time)
-
-    data_c = time_drift_correction(data_raw, data_time, list(drift), drift_time)
-
-    plt.figure()
-    plt.plot(data_raw, data_time, label='raw')
-    plt.plot(data_c, data_time, label='corrected')
-    plt.plot(drift, drift_time, label='drift')
-
-    plt.legend()
-    plt.show()
-
-

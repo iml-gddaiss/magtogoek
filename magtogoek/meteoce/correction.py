@@ -192,7 +192,7 @@ def _time_drift_correction(dataset: xr.Dataset, variable: str, pconfig: "Process
             data=dataset[variable].values,
             data_time=dataset.time.values,
             drift=pconfig.__dict__[variable + "_drift"],
-            drift_time=pconfig.__dict__[variable + "_drift_time"]
+            start_time=pconfig.__dict__[variable + "_drift_start_time"]
         )
         l.log(f'Time drift correction applied to {variable}.')
         dataset[variable].attrs['corrections'] += "Correction applied for sensor drift.\n"
