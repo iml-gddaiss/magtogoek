@@ -62,7 +62,8 @@ from magtogoek.adcp.quality_control import (adcp_quality_control,
                                             no_adcp_quality_control)
 from magtogoek.adcp.transform import coordsystem2earth
 from magtogoek.attributes_formatter import format_variables_names_and_attributes, _add_data_min_max_to_var_attrs
-from magtogoek.process_common import BaseProcessConfig, resolve_output_paths, add_global_attributes, write_log, write_netcdf, \
+from magtogoek.process_common import BaseProcessConfig, resolve_output_paths, add_global_attributes, \
+    write_log, write_netcdf, netcdf_raw_exist, load_netcdf_raw, write_netcdf_raw, \
     add_processing_timestamp, clean_dataset_for_nc_output, format_data_encoding, add_navigation, add_platform_metadata_to_dataset
 from magtogoek.tools import (
     regrid_dataset, _prepare_flags_for_regrid, _new_flags_bin_regrid,
@@ -282,7 +283,8 @@ class ProcessConfig(BaseProcessConfig):
         self.global_attributes_to_drop = GLOBAL_ATTRS_TO_DROP
 
 
-def process_adcp(config: dict, drop_empty_attrs: bool = False, headless: bool = False):
+def process_adcp(config: dict, drop_empty_attrs: bool = False,
+                 headless: bool = False, from_raw: bool = False):
     """Process adcp data with parameters from a config file.
 
     If `pconfig.merge_output_files` is False, each input file is process individually.
@@ -296,6 +298,8 @@ def process_adcp(config: dict, drop_empty_attrs: bool = False, headless: bool = 
         the output.
     headless :
         If true, figures are not displayed but are saved in the output directory.
+    from_raw :
+        If true, data is loaded from the raw files (input_files).
 
     The actual data processing is carried out by _process_adcp_data.
     """
@@ -304,6 +308,7 @@ def process_adcp(config: dict, drop_empty_attrs: bool = False, headless: bool = 
     pconfig = ProcessConfig(config)
     pconfig.drop_empty_attrs = drop_empty_attrs
     pconfig.headless = headless
+    pconfig.from_raw = from_raw
 
     _process_adcp_data(pconfig)
 
@@ -334,8 +339,11 @@ def _process_adcp_data(pconfig: ProcessConfig):
     # ----------------- #
     # LOADING ADCP DATA #
     # ----------------- #
-
-    dataset = _load_adcp_data(pconfig)
+    if netcdf_raw_exist(pconfig) and pconfig.from_raw is not True:
+        dataset = load_netcdf_raw(pconfig)
+    else:
+        dataset = _load_adcp_data(pconfig)
+        write_netcdf_raw(dataset=dataset,pconfig=pconfig)
 
     # ----------------------------------------- #
     # ADDING THE NAVIGATION DATA TO THE DATASET #

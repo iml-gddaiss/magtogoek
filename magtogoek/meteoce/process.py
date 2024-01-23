@@ -32,9 +32,10 @@ import xarray as xr
 from typing import *
 
 from magtogoek import logger as l
-from magtogoek.sci_tools import xy_vector_magnetic_correction, north_polar2cartesian
+from magtogoek.sci_tools import xy_vector_magnetic_correction
 from magtogoek.process_common import BaseProcessConfig, resolve_output_paths, add_global_attributes, write_log, \
-    write_netcdf, add_processing_timestamp, clean_dataset_for_nc_output, format_data_encoding, add_navigation, \
+    write_netcdf, netcdf_raw_exist, load_netcdf_raw, write_netcdf_raw, \
+    add_processing_timestamp, clean_dataset_for_nc_output, format_data_encoding, add_navigation, \
     add_platform_metadata_to_dataset
 from magtogoek.attributes_formatter import format_variables_names_and_attributes
 from magtogoek.platforms import PlatformMetadata
@@ -278,7 +279,8 @@ class ProcessConfig(BaseProcessConfig):
         self.merge_output_files = True # FIXME BUG
 
 
-def process_meteoce(config: dict, drop_empty_attrs: bool = False, headless: bool = False):
+def process_meteoce(config: dict, drop_empty_attrs: bool = False,
+                    headless: bool = False, from_raw: bool = False):
     """Process Viking data with parameters from a config file.
 
     call process_common.process
@@ -292,6 +294,8 @@ def process_meteoce(config: dict, drop_empty_attrs: bool = False, headless: bool
         the output.
     headless :
         If true, figures are not displayed but are saved in the output directory.
+    from_raw :
+        If true, data is loaded from the raw files (input_files).
 
     The actual data processing is carried out by _process_viking_data.
     """
@@ -299,6 +303,7 @@ def process_meteoce(config: dict, drop_empty_attrs: bool = False, headless: bool
     pconfig = ProcessConfig(config)
     pconfig.drop_empty_attrs = drop_empty_attrs
     pconfig.headless = headless
+    pconfig.from_raw = from_raw
 
     _process_meteoce_data(pconfig)
 
@@ -315,8 +320,11 @@ def _process_meteoce_data(pconfig: ProcessConfig):
     # ------------------- #
     # LOADING VIKING DATA #
     # ------------------- #
-
-    dataset = _load_viking_data(pconfig)
+    if netcdf_raw_exist(pconfig) and pconfig.from_raw is not True:
+        dataset = load_netcdf_raw(pconfig)
+    else:
+        dataset = _load_viking_data(pconfig)
+        write_netcdf_raw(dataset=dataset, pconfig=pconfig)
 
     # ----------------------------------------- #
     # ADDING THE NAVIGATION DATA TO THE DATASET #

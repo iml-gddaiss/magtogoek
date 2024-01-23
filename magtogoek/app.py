@@ -119,6 +119,9 @@ def init(info, repair, force):
 @click.option("--headless",
               is_flag=True,
               help="""Using remotely with no display capability""")
+@click.option("--from-raw",
+              is_flag=True,
+              help="""Reload data from raw files (input files)""")
 def process(info, config_file: str, **options):
     """Process data by reading configfile"""
     # This could be updated as a group with sensor specific command.
@@ -140,10 +143,10 @@ def process(info, config_file: str, **options):
 
     if configuration['HEADER']['process'] == "adcp":
         from magtogoek.adcp.process import process_adcp
-        process_adcp(configuration, headless=options['headless'])
+        process_adcp(configuration, headless=options['headless'], from_raw=options["from_raw"])
     elif configuration['HEADER']['process'] == "meteoce":
         from magtogoek.meteoce.process import process_meteoce
-        process_meteoce(configuration, headless=options['headless'])
+        process_meteoce(configuration, headless=options['headless'], from_raw=options["from_raw"])
 
 
 # --------------------------- #

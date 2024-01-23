@@ -94,7 +94,10 @@ class BaseProcessConfig:
     make_log: bool = None
     odf_data: str = None
 
+    from_raw: bool = None
+
     # Variables set internally for processing.
+    netcdf_raw_path: str = None
     netcdf_path: str = None
     odf_path: str = None
     log_path: str = None
@@ -376,6 +379,7 @@ def _resolve_outputs(pconfig: BaseProcessConfig):
         _make_figure_output_path(pconfig, default_path, default_filename)
 
     pconfig.log_path = str(default_path.joinpath(default_filename))
+    pconfig.netcdf_raw_path = str(default_path.joinpath(default_filename + '_raw'))
 
 
 def _make_netcdf_output_path(pconfig: BaseProcessConfig, default_path: Path, default_filename: Path):
@@ -454,6 +458,23 @@ def write_netcdf(dataset: xr.Dataset, pconfig: BaseProcessConfig):
     netcdf_path = Path(pconfig.netcdf_path).with_suffix('.nc')
     dataset.to_netcdf(netcdf_path)
     l.log(f"netcdf file made -> {netcdf_path}")
+
+
+def netcdf_raw_exist(pconfig: BaseProcessConfig):
+    return Path(pconfig.netcdf_raw_path).with_suffix('.nc').exists()
+
+
+def load_netcdf_raw(pconfig: BaseProcessConfig) -> xr.Dataset:
+    l.section("Loading data")
+    netcdf_raw_path = Path(pconfig.netcdf_raw_path).with_suffix('.nc')
+    l.log(f"Data loaded from {netcdf_raw_path}.")
+    return xr.open_dataset(netcdf_raw_path)
+
+
+def write_netcdf_raw(dataset: xr.Dataset, pconfig: BaseProcessConfig):
+    netcdf_raw_path = Path(pconfig.netcdf_raw_path).with_suffix('.nc')
+    dataset.to_netcdf(netcdf_raw_path)
+    l.log(f"netcdf raw file made -> {netcdf_raw_path}")
 
 
 def write_log(pconfig: BaseProcessConfig):
