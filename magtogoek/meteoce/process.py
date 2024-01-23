@@ -423,7 +423,14 @@ def _process_meteoce_data(pconfig: ProcessConfig):
     # ------------ #
 
     if pconfig.figures_output is True:
-        make_meteoce_figure(dataset, save_path=pconfig.figures_path, show_fig=not pconfig.headless)
+        #if plot_against_raw ... (add to pconfig comon)
+        dataset_raw=load_netcdf_raw(pconfig)
+        make_meteoce_figure(
+            dataset,
+            save_path=pconfig.figures_path,
+            show_fig=not pconfig.headless,
+            dataset_raw=dataset_raw
+        )
 
     # --------------- #
     # POST-PROCESSING #

@@ -389,7 +389,7 @@ def odf2nc(ctx, info, input_files, output_name, **options):
 @click.option("-v", "--vel-only", help="""Only plots 2D velocity fields and polar histogram.""", is_flag=True,
               default=False)
 @click.option("-s", "--save_fig", help="""Path to save figures to.""", type=click.Path(exists=True), default=None)
-@click.option("--headless", help="""If True, figures en displayed""", is_flag=True, default=False)
+@click.option("--headless", help="""If True, figures are displayed""", is_flag=True, default=False)
 @click.pass_context
 def plot_adcp(ctx, info, input_file, **options):
     """Command to compute u_ship, v_ship, bearing from gsp data."""
@@ -407,14 +407,24 @@ def plot_adcp(ctx, info, input_file, **options):
 @add_options(common_options)
 @click.argument("input_file", metavar="[input_files]", nargs=1, type=click.Path(exists=True), required=True)
 @click.option("-s", "--save_fig", help="""Path to save figures to.""", type=click.Path(exists=True), default=None)
-@click.option("--headless", help="""If True, figures en displayed""", is_flag=True, default=False)
+@click.option("--headless", help="""If True, figures are displayed""", is_flag=True, default=False)
+@click.option("-r", "--plot-raw", help="""If True, data are plotted against raw data if available.""", is_flag=True, default=False)
 @click.pass_context
 def plot_meteoce(ctx, info, input_file, **options):
     import xarray as xr
     from magtogoek.meteoce.plots import make_meteoce_figure
     dataset = xr.open_dataset(input_file)
     try:
-        make_meteoce_figure(dataset, save_path=options['save_fig'], show_fig=not options['headless'])
+        raw_dataset = None
+        if options['plot_raw'] is True:
+            _path = Path(input_file)
+            raw_data_path = _path.parent / (_path.stem + "_raw" + _path.suffix)
+            if raw_data_path.exists():
+                raw_dataset = xr.open_dataset(raw_data_path)
+            else:
+                print(f"Raw data file not found ({raw_dataset}).")
+        make_meteoce_figure(dataset, save_path=options['save_fig'], show_fig=not options['headless'], dataset_raw=raw_dataset)
+
     except KeyError:
         print("Wrong format. The netcdf file is missing some attributes or doesn't have the expected variables name.")
 

@@ -23,7 +23,8 @@ def make_meteoce_figure(
         dataset: xr.Dataset,
         single: bool = False,
         save_path: str = None,
-        show_fig: bool = True
+        show_fig: bool = True,
+        dataset_raw: xr.Dataset = None,
 ):
     """
 
@@ -31,15 +32,15 @@ def make_meteoce_figure(
 
     Parameters
     ----------
-    dataset
-    single :
+    dataset: Dataset containing the processed data.
+    single:
         If True, figures are plotted one at a time.
-    flag_thres :
-        Value with QC flag of `flag_thres` or lower will be plotted ([0, ..., flag_thres])
-    save_path :
+    save_path:
         Write figures to file.
-    show_fig :
+    show_fig:
          Show figure if True.
+    dataset_raw:
+        Dataset containing the raw data. Use to plot process data against raw.
 
     Returns
     -------
@@ -72,7 +73,7 @@ def make_meteoce_figure(
     for fig_name, variables in plots_vars.items():
         _variables = map_varname(variables, varname_map)
         if any(x in dataset.variables for x in _variables):
-            figures[fig_name] = plot_sensor_data(dataset, _variables)
+            figures[fig_name] = plot_sensor_data(dataset, _variables, dataset_raw)
 
     if single is True and show_fig is True:
         for count, fig in enumerate(figures.values()):
@@ -101,13 +102,15 @@ def make_meteoce_figure(
         plt.close('all')
 
 
-def plot_sensor_data(dataset: xr.Dataset, varnames: List[str]):
+def plot_sensor_data(dataset: xr.Dataset, varnames: List[str], dataset_raw: xr.Dataset = None):
     varnames = [var for var in varnames if var in dataset.variables]
     # noinspection PyTypeChecker
     fig, axes = plt.subplots(figsize=(12, 8), nrows=len(varnames), ncols=1, sharex=True, squeeze=False)
     axes = axes.flatten()
     for var, ax in zip(varnames, axes):
         da = dataset[var]
+        if dataset_raw is not None and var in dataset_raw:
+            ax.plot(dataset.time, dataset_raw[var], linestyle="--", marker='.', color='cyan')
 
         if 'ancillary_variables' in dataset[var].attrs:
             if dataset[var].attrs['ancillary_variables'] in dataset:
@@ -117,13 +120,13 @@ def plot_sensor_data(dataset: xr.Dataset, varnames: List[str]):
                 ax.plot(da.time, get_flagged_data(dataset=dataset, var=var, flag_value=3), marker='X', color='orange')
                 ax.plot(da.time, get_flagged_data(dataset=dataset, var=var, flag_value=4), marker='X', color='red')
         else:
-            ax.plot(da, marker='.', color='darkblue')
+            ax.plot(da.time, da, marker='.', color='darkblue')
         ax.set_ylabel(f"{var}\n[{dataset[var].units}]", fontdict=FONT)
         ax.tick_params(labelbottom=False)
     axes[-1].tick_params(labelbottom=True)
     axes[-1].set_xlabel("time", fontdict=FONT)
-
-
+    if dataset_raw is not None:
+        axes[0].plot([], [], linestyle="--", marker='.', color='cyan', label="raw")
     axes[0].plot([],[], marker='.', color='darkblue', label='No Quality Control')
     axes[0].plot([], [], marker='.', color='darkgreen', label='Good')
     axes[0].plot([], [], marker='.', color='gold', label='Probably good')
