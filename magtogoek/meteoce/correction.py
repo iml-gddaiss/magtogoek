@@ -58,7 +58,7 @@ def wps_data_correction(
         pconfig: "ProcessConfig"
 ):
     """
-    Function that calls all the wps data corrections.
+    Function that calls all the wps (Water Property Sensor) data corrections.
 
     pconfig.p01_codes_map values can be modified when certain corrections are carried out.
 

@@ -302,7 +302,7 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
         tparser.add_option(section, "depth_range", dtypes=["float"], nargs_min=0, nargs_max=2)
         tparser.add_option(section, "bad_pressure", dtypes=["bool"], default=False, null_value=False)
         tparser.add_option(section, "magnetic_declination", dtypes=["float"], default="")
-        tparser.add_option(section, "magnetic_declination_preset", dtypes=["float"], default=None, comments="Found in the ADCP configuration file.")
+        tparser.add_option(section, "magnetic_declination_preset", dtypes=["float"], default=None, comments="Found in the ADCP configuration file. (Used for RTI)")
         tparser.add_option(section, "keep_bt", dtypes=["bool"], default=True, null_value=False)
         tparser.add_option(section, "start_time", dtypes=["str"], default="", is_time_stamp=True)
         tparser.add_option(section, "time_step", dtypes=["float"], default="")
@@ -346,8 +346,6 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
         tparser.add_option(section, "adcp_id", dtypes=["str"], default=None)
         tparser.add_option(section, "ctd_id", dtypes=["str"], default=None)
         tparser.add_option(section, "ctdo_id", dtypes=["str"], default=None)
-        #tparser.add_option(section, "doxy_id", dtypes=["str"], default=None)
-        #tparser.add_option(section, "nitrate_id", dtypes=["str"], default=None)
         tparser.add_option(section, "ph_id", dtypes=["str"], default=None)
         tparser.add_option(section, "par_id", dtypes=["str"], default=None)
         tparser.add_option(section, "triplet_id", dtypes=["str"], default=None)
@@ -357,13 +355,15 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
         tparser.add_option(section, "wind_id", dtypes=["str"], default=None)
         tparser.add_option(section, "meteo_id", dtypes=["str"], default=None)
 
-        tparser.add_option(section, "magnetic_declination", dtypes=["float"], default="")
         tparser.add_option(section, "recompute_speed_course", dtypes=["bool"], default=False, null_value=False)
         tparser.add_option(section, "compute_uv_ship", dtypes=["bool"], default=False, null_value=False)
-        tparser.add_option(section, "motion_correction", dtypes=["bool"], default=False, null_value=False)
-
-        section = "WPS_PROCESSING"
         tparser.add_option(section, "recompute_density", dtypes=["bool"], default=True, null_value=False)
+
+        tparser.add_option(section, "magnetic_declination", dtypes=["float"], default="")
+        tparser.add_option(section, "adcp_magnetic_declination_preset", dtypes=["float"], default=None, comments="Found in the ADCP configuration file. (Used for RTI)")
+
+        section = "METEOCE_CORRECTION"
+        tparser.add_option(section, "motion_correction", dtypes=["bool"], default=False, null_value=False)
         tparser.add_option(section, "ph_salinity_correction", dtypes=["bool"], default=True, null_value=False)
         tparser.add_option(section, 'ph_salinity_coeffs', dtypes=["float"], nargs=3, default="", comments="Calibration coefficient: [psal, k0, k2]")
         tparser.add_option(section, "dissolved_oxygen_winkler_correction", dtypes=["bool"], default=True, null_value=False)
@@ -377,24 +377,21 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
             tparser.add_option(section, f'{var}_drift_start_time', dtypes=["str"], is_time_stamp=True, default="", comments="Format: %Y-%m-%dT%H:%M:%S")
             tparser.add_option(section, f'{var}_sample_correction', dtypes=["float"], nargs=2, default="", comments="Linear regression coefficients: A, B | [Corrected_Data] = A * [Data] + B")
 
-        section = "ADCP_PROCESSING"
-        tparser.add_option(section, "magnetic_declination_preset", dtypes=["float"], default=None, comments="Found in the ADCP configuration file.")
-
         section = "METEOCE_QUALITY_CONTROL"
         tparser.add_option(section, "absolute_outlier", dtypes=["bool"], default=True, null_value=False)
         tparser.add_option(section, "regional_outlier", dtypes=["str"], default="", comments="Name of the region defined in the `impossible_parameters_values.json`")
         tparser.add_option(section, "propagate_flags", dtypes=["bool"], default=True, null_value=False)
 
-        section = "ADCP_QUALITY_CONTROL"
-        tparser.add_option(section, "horizontal_velocity_threshold", dtypes=["float"], default=5)
-        tparser.add_option(section, "vertical_velocity_threshold", dtypes=["float"], default=5)
-        tparser.add_option(section, "error_velocity_threshold", dtypes=["float"], default=5)
-        tparser.add_option(section, "pitch_threshold", dtypes=["int"], default=20, value_min=0, value_max=180, comments='Value between 0 and 180.')
-        tparser.add_option(section, "roll_threshold", dtypes=["int"], default=20, value_min=0, value_max=180, comments='Value between 0 and 180.')
+        for var in ["salinity", "temperature", "dissolved_oxygen", "co2w", "ph", "scattering", "chlorophyll", "fdom"]:
+            tparser.add_option(section, f'{var}_spike_threshold', dtypes=["float"], default=None)
+            tparser.add_option(section, f'{var}_spike_window', dtypes=["int"], default=3, comments="Window size")
 
-        # section = "METEOCE_OUTPUT"
-        # section = "WPS_OUTPUT"
-        # section = "ADCP_OUTPUT"
+        tparser.add_option(section, "adcp_horizontal_velocity_threshold", dtypes=["float"], default=5)
+        tparser.add_option(section, "adcp_vertical_velocity_threshold", dtypes=["float"], default=5)
+        tparser.add_option(section, "adcp_error_velocity_threshold", dtypes=["float"], default=5)
+        tparser.add_option(section, "adcp_pitch_threshold", dtypes=["int"], default=20, value_min=0, value_max=180, comments='Value between 0 and 180.')
+        tparser.add_option(section, "adcp_roll_threshold", dtypes=["int"], default=20, value_min=0, value_max=180, comments='Value between 0 and 180.')
+
 
     return tparser
 

@@ -7,6 +7,7 @@ This module contains general mathematical and scientific functions.
 import numpy as np
 import typing as tp
 
+import pandas as pd
 import pygeodesy.errors
 from nptyping import NDArray
 from pygeodesy.ellipsoidalVincenty import LatLon
@@ -231,40 +232,37 @@ def rotate_heading(heading: NDArray, angle: tp.Union[NDArray, float]) -> NDArray
     return (heading + 180 + angle) % 360 - 180
 
 
-def data_spike_detection(data: np.ndarray, inner_thres: float, outer_thres: float):
-    """ Spike detection.
+def data_spike_detection(data: np.ndarray, threshold: float, window: int = 3):
+    """ Spike detection in time series.
 
-    ```Algorithm without first and last values:
-
-        |V2 - (V3+V1)/2| - |(V1-V3)/2|  >= Threshold_1
     ```
-
-    ```Algorithm for first and last values:
-
-        |V2 - v1|  >= Threshold_2
+    d : `data`
+    d': Rolling average of the `data`
+    spike = |d' - d| >= threshold
     ```
+    The rolling average window is centered and has a window of size `window`.
+    The minimum number of points in the window is set 1.
 
     Parameters
     ----------
     data :
         Time series to check for spikes.
-    inner_thres :
-        Threshold for data without first and last values.
-    outer_thres :
-        Threshold for the first and last values.
+    threshold :
+        Threshold for spike detection.
+    window : Default = 3
+        Size of the rolling window.
 
     Returns
     -------
     Boolean array of the same shape as data where True values are data spikes.
 
     """
-    spikes = np.zeros(data.shape).astype(bool)
-    v1 = data[0:-2]
-    v2 = data[1:-1]
-    v3 = data[2:]
 
-    spikes[0] = np.abs(data[1] - data[0]) >= outer_thres
-    spikes[1:-1] = np.abs(v2 - (v3 + v1)/2) - np.abs(v1 - v3) / 2 >= inner_thres
-    spikes[-1] = np.abs(data[-1] - data[-2]) >= outer_thres
+    if window is None:
+        window = 3
+
+    data_rolled = pd.DataFrame(data).interpolate().rolling(window=window, min_periods=1, center=True).mean()[0].values
+
+    spikes = np.abs(data - data_rolled) >= threshold
 
     return spikes

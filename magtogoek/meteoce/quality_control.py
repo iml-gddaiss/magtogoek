@@ -30,12 +30,12 @@ Notes
 """
 import numpy as np
 import xarray as xr
-from typing import List
+from typing import List, Dict
 
 from magtogoek import logger as l
 from magtogoek.quality_control_common import IMPOSSIBLE_PARAMETERS_VALUES, values_outliers_detection, \
     add_ancillary_QC_variable_to_dataset, add_flags_values, merge_flags, \
-    find_missing_values
+    find_missing_values, data_spike_detection_tests
 from magtogoek.process_common import FLAG_ATTRIBUTES
 
 
@@ -94,6 +94,7 @@ def meteoce_quality_control(
         regional_outlier: str = None,
         absolute_outlier: bool = True,
         propagate_flags: bool = True,
+        spike_tests: Dict = None
 ):
     """
 
@@ -149,6 +150,8 @@ def meteoce_quality_control(
     if absolute_outlier is True:
         _impossible_values_tests(dataset, region='global', flag=4)
 
+    _spike_detection_tests(dataset, spike_tests)
+
     _flag_missing_values(dataset)
 
     if propagate_flags is True:
@@ -193,9 +196,20 @@ def _impossible_values_tests(dataset: xr.Dataset, region: str, flag: int):
             f"{region} outlier threshold: less than {outliers_values[variable]['min']} {outliers_values[variable]['units']} " \
             f"and greater than {outliers_values[variable]['max']} {outliers_values[variable]['units']} (flag={flag})."
 
-        l.log(f"{variable} :" + test_comment)
+        l.log(f"{variable} " + test_comment)
 
         dataset[variable+"_QC"].attrs['quality_test'] += test_comment + "\n"
+
+
+def _spike_detection_tests(dataset: xr.Dataset, spike_tests: Dict[str, List[float]]):
+    for var in set(dataset.variables) & set(spike_tests.keys()):
+        if spike_tests[var]['threshold'] is not None:
+            data_spike_detection_tests(
+                dataset=dataset,
+                variable=var,
+                threshold=spike_tests[var]['threshold'],
+                window=spike_tests[var]['window']
+            )
 
 
 def _flag_missing_values(dataset: xr.Dataset):

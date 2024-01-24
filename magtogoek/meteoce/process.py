@@ -151,6 +151,12 @@ SENSORS_TO_VARIABLES_MAP = {
 }
 
 
+# If modified, carry the modification to `meteoce.process.ProcessConfig` and to `config_handler.py`.
+SPIKE_QC_VARIABLES = [
+    "salinity", "temperature", "dissolved_oxygen", "co2w", "ph", "scattering", "chlorophyll", "fdom"
+]
+
+
 class ProcessConfig(BaseProcessConfig):
     # PROCESSING
     buoy_name: str = None
@@ -228,8 +234,32 @@ class ProcessConfig(BaseProcessConfig):
     fdom_drift_start_time: List[str] = None
     fdom_sample_correction: List[float] = None
 
+    salinity_spike_threshold: float = None
+    salinity_spike_window: int = None
+
+    temperature_spike_threshold: float = None
+    temperature_spike_window: int = None
+
+    dissolved_oxygen_spike_threshold: float = None
+    dissolved_oxygen_spike_window: int = None
+
+    co2w_spike_threshold: float = None
+    co2w_spike_window: int = None
+
+    ph_spike_threshold: float = None
+    ph_spike_window: int = None
+
+    scattering_spike_threshold: float = None
+    scattering_spike_window: int = None
+
+    chlorophyll_spike_threshold: float = None
+    chlorophyll_spike_window: int = None
+
+    fdom_spike_threshold: float = None
+    fdom_spike_window: int = None
+
     # ADCP
-    magnetic_declination_preset: float = None # adcp_magnetic_declination_preset
+    adcp_magnetic_declination_preset: float = None # adcp_magnetic_declination_preset
     # bin position. This is was is done with RTI at the moment TODO
     #_attrs = {'bin': _bin, 'bin_position_cm': _bin_position_cm}
     #_global_attrs = {'adcp_bin': _bin, 'adcp_bin_position_cm': _bin_position_cm}
@@ -244,11 +274,11 @@ class ProcessConfig(BaseProcessConfig):
     regional_outlier: str = None
 
     # adcp quality_control
-    horizontal_velocity_threshold: float = None
-    vertical_velocity_threshold: float = None
-    error_velocity_threshold: float = None
-    pitch_threshold: float = None
-    roll_threshold: float = None
+    adcp_horizontal_velocity_threshold: float = None
+    adcp_vertical_velocity_threshold: float = None
+    adcp_error_velocity_threshold: float = None
+    adcp_pitch_threshold: float = None
+    adcp_roll_threshold: float = None
 
 
     def __init__(self, config_dict: dict = None):
@@ -574,8 +604,8 @@ def _adcp_correction(dataset: xr.Dataset, pconfig: ProcessConfig):
     Carry magnetic declination correction and motion correction.
     """
     if pconfig.magnetic_declination is not None:
-        if pconfig.magnetic_declination_preset is not None:
-            angle = round((pconfig.magnetic_declination - pconfig.magnetic_declination_preset), 4)
+        if pconfig.adcp_magnetic_declination_preset is not None:
+            angle = round((pconfig.magnetic_declination - pconfig.adcp_magnetic_declination_preset), 4)
             l.log(f"An additional correction of {angle} degree east was applied to the ADCP velocities.")
         else:
             angle = pconfig.magnetic_declination
@@ -628,11 +658,18 @@ def _quality_control(dataset: xr.Dataset, pconfig: ProcessConfig) -> xr.Dataset:
 
 def _meteoce_quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
     """fixme"""
+    spike_tests = {
+        var: {
+            'threshold': pconfig.__getattribute__(var + "_spike_threshold"),
+            'window': pconfig.__getattribute__(var + "_spike_window")}
+        for var in SPIKE_QC_VARIABLES
+    }
     dataset = meteoce_quality_control(
         dataset,
         regional_outlier=pconfig.regional_outlier,
         absolute_outlier=pconfig.absolute_outlier,
-        propagate_flags=pconfig.propagate_flags
+        propagate_flags=pconfig.propagate_flags,
+        spike_tests = spike_tests
     )
     return dataset
 
@@ -653,11 +690,11 @@ def _adcp_quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
         amp_th=None,
         corr_th=None,
         pg_th=None,
-        roll_th=pconfig.roll_threshold,
-        pitch_th=pconfig.pitch_threshold,
-        horizontal_vel_th=pconfig.horizontal_velocity_threshold,
-        vertical_vel_th=pconfig.vertical_velocity_threshold,
-        error_vel_th=pconfig.error_velocity_threshold,
+        roll_th=pconfig.adcp_roll_threshold,
+        pitch_th=pconfig.adcp_pitch_threshold,
+        horizontal_vel_th=pconfig.adcp_horizontal_velocity_threshold,
+        vertical_vel_th=pconfig.adcp_vertical_velocity_threshold,
+        error_vel_th=pconfig.adcp_error_velocity_threshold,
         sidelobes_correction=False,
         bottom_depth=None,
         bad_pressure=False,

@@ -6,8 +6,8 @@ SENSOR_TYPES = [
     'wave',
     'meteo',  # atm_{humidity, temperature, pressure}
     'wind',
-    'debit',  # water current. NOT LOADED as of feb 2023
-    'vemco'  # Receptor for tags. NOT LOADED as of feb 2023
+    #'debit',  # water current. NOT LOADED as of feb 2023 # FIXME could be removed
+    #'vemco'  # Receptor for tags. NOT LOADED as of feb 2023 # FIXME could be removed
 ]
 
 GENERIC_PARAMETERS = [

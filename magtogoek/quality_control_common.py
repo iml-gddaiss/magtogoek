@@ -11,8 +11,7 @@ from magtogoek.utils import json2dict
 IMPOSSIBLE_PARAMETERS_VALUES_FILE_PATH = CONFIGURATION_PATH.joinpath("impossible_parameter_values.json")
 IMPOSSIBLE_PARAMETERS_VALUES = json2dict(IMPOSSIBLE_PARAMETERS_VALUES_FILE_PATH)
 
-SPIKE_DETECTION_PARAMETERS_FILE_PATH = CONFIGURATION_PATH.joinpath("spike_thresholds.json")
-SPIKE_DETECTION_PARAMETERS = json2dict(SPIKE_DETECTION_PARAMETERS_FILE_PATH)
+
 
 CLIMATOLOGY_TIME_FORMATS = {
         'dayofyear': 'time.dayofyear',
@@ -199,20 +198,20 @@ def _add_climatology_qc_variable(dataset: xr.Dataset, variable: str):
     dataset[variable + "_QC_climatology_outlier"].attrs.update(FLAG_ATTRIBUTES)
 
 
-def data_spike_detection_tests(dataset: xr.Dataset, variable: str):
+def data_spike_detection_tests(dataset: xr.Dataset, variable: str, threshold: float, window: int):
     """
     Carry spike detection for inner and other threshold.
-
-    Variable spikes thresholds are define in files/spike_thresholds.json.
 
     Adds add an ancillary variable named <variable>_QC to dataset if one does not exist.
         Set ancillary Set new_flag of 3 for spikes.
 
     Parameters
     ----------
-    dataset :
+    dataset:
 
-    variable :
+    variable:
+
+    threshold:
 
     See Also
     --------
@@ -220,8 +219,8 @@ def data_spike_detection_tests(dataset: xr.Dataset, variable: str):
     """
     spikes_flag = data_spike_detection(
         dataset[variable].data,
-        inner_thres=SPIKE_DETECTION_PARAMETERS[variable]['inner'],
-        outer_thres=SPIKE_DETECTION_PARAMETERS[variable]['outer']
+        threshold=threshold,
+        window=window
     )
     if variable + "_QC" not in dataset.variables:
         add_ancillary_QC_variable_to_dataset(dataset=dataset, variable=variable, default_flag=1)
@@ -229,11 +228,10 @@ def data_spike_detection_tests(dataset: xr.Dataset, variable: str):
     add_flags_values(dataset[variable + "_QC"].values, spikes_flag * 3)
 
     test_comment = \
-        f"Spike detection inner threshold {SPIKE_DETECTION_PARAMETERS[variable]['inner']} {SPIKE_DETECTION_PARAMETERS[variable]['units']} " \
-        f"and outer threshold {SPIKE_DETECTION_PARAMETERS[variable]['outer']} {SPIKE_DETECTION_PARAMETERS[variable]['units']} (new_flag=3)"
+        f"Spike detection threshold {threshold} {dataset[variable].attrs['units']} (flag=3)"
 
     l.log(f"{variable} :" + test_comment)
-    dataset[variable+"_QC"].attrs['quality_test'].append(test_comment + "\n")
+    dataset[variable+"_QC"].attrs['quality_test'] += test_comment + "\n"
 
 
 def add_ancillary_QC_variable_to_dataset(dataset: xr.Dataset, variable: str, default_flag=1):
