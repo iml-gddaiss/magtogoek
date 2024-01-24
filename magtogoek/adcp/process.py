@@ -368,7 +368,7 @@ def _process_adcp_data(pconfig: ProcessConfig):
     l.section("Data Correction")
 
     # magnetic declination #
-    if dataset.attrs['magnetic_declination'] is not None:
+    if dataset.attrs['magnetic_declination'] != "NA":
         l.log(f"Magnetic declination found in the raw file: {dataset.attrs['magnetic_declination']} degree east.")
     else:
         l.log(f"No magnetic declination found in the raw file.")

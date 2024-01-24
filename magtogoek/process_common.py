@@ -212,7 +212,7 @@ def add_platform_metadata_to_dataset(dataset: xr.Dataset, pconfig: BaseProcessCo
                 continue
 
             if key in dataset.attrs and not pconfig.force_platform_metadata:
-                if not dataset.attrs[key]:
+                if dataset.attrs[key] is None or dataset.attrs[key] in ["NA", ""]:
                     dataset.attrs[key] = value
             else:
                 dataset.attrs[key] = value

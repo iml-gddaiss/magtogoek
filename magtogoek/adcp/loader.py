@@ -477,7 +477,7 @@ def load_adcp_binary(
 
     dataset.attrs["janus"] = "5-Beam" if sonar == "sv" else "4-Beam"
 
-    dataset.attrs["magnetic_declination"] = None
+    dataset.attrs["magnetic_declination"] = "NA"
     if "FL" in data:
         if "EV" in data.FL:
             dataset.attrs["magnetic_declination"] = data.FL["EV"] / 100
@@ -485,7 +485,7 @@ def load_adcp_binary(
 
     dataset.attrs["orientation"] = orientation
     dataset.attrs["serial_number"] = (
-        data.SerialNumber if "SerialNumber" in data else None
+        data.SerialNumber if "SerialNumber" in data else "NA"
     )
     l.log(f"File(s) loaded with {l.w_count} warnings")
 

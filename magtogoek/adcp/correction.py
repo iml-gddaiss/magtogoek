@@ -118,7 +118,7 @@ def _compute_relative_magnetic_declination(dataset: xr.Dataset, magnetic_declina
         Absolute magnetic declination
 
     """
-    if dataset.attrs["magnetic_declination"]:
+    if dataset.attrs["magnetic_declination"] and dataset.attrs["magnetic_declination"] != "NA":
         angle = round((magnetic_declination - dataset.attrs["magnetic_declination"]), 4)
         l.log(f"An additional correction of {angle} degree north was applied.")
         return angle
