@@ -51,18 +51,18 @@ def make_meteoce_figure(
     # MAKE 2D HISTOGRAM FOR WIND and WAVE
 
     plots_vars = {
-        'gsp_var_1': ['lon', 'lat'],
-        'gps_var_2': ['speed', 'course', 'u_ship', 'v_ship'],
-        'compass_var': ['heading', 'roll_', 'pitch', 'roll_std', 'pitch_std'],
-        'vel_var': ['u', 'v', 'w'],
-        'bt_vel_var': ['bt_u', 'bt_v', 'bt_w'],
-        'wind_var': ["wind_speed", "wind_direction", "wind_gust"],
-        'meteo_var': ['atm_temperature', 'atm_humidity', 'atm_pressure'],
-        'wave_var': ['wave_mean_height', 'wave_maximal_height', 'wave_period', 'wave_direction'],
-        'ctdo_var': ['temperature', 'conductivity', 'salinity', 'density', 'dissolved_oxygen'],
-        'ph_par': ['ph', 'par'],
-        'triplet_var': ['scattering', 'chlorophyll', 'fdom'],
-        'co2_var': ['co2_a', 'co2_w']
+        'gsp_position': ['lon', 'lat'],
+        'gps_motion': ['speed', 'course', 'u_ship', 'v_ship'],
+        'compass': ['heading', 'roll_', 'pitch', 'roll_std', 'pitch_std'],
+        'velocity': ['u', 'v', 'w'],
+        'wind': ["wind_speed", "wind_direction", "wind_gust"],
+        'meteo': ['atm_temperature', 'atm_humidity', 'atm_pressure'],
+        'wave': ['wave_mean_height', 'wave_maximal_height', 'wave_period', 'wave_direction'],
+        'ctdo': ['temperature', 'conductivity', 'salinity', 'density', 'dissolved_oxygen'],
+        'ph': ['ph'],
+        'par': ['par'],
+        'triplet': ['scattering', 'chlorophyll', 'fdom'],
+        'co2': ['co2_a', 'co2_w']
     }
 
     varname_map = {}
@@ -73,7 +73,7 @@ def make_meteoce_figure(
     for fig_name, variables in plots_vars.items():
         _variables = map_varname(variables, varname_map)
         if any(x in dataset.variables for x in _variables):
-            figures[fig_name] = plot_sensor_data(dataset, _variables, dataset_raw)
+            figures[fig_name] = plot_sensor_data(dataset, _variables, dataset_raw, fig_name=fig_name)
 
     if single is True and show_fig is True:
         for count, fig in enumerate(figures.values()):
@@ -102,10 +102,10 @@ def make_meteoce_figure(
         plt.close('all')
 
 
-def plot_sensor_data(dataset: xr.Dataset, varnames: List[str], dataset_raw: xr.Dataset = None):
+def plot_sensor_data(dataset: xr.Dataset, varnames: List[str], dataset_raw: xr.Dataset = None, fig_name: str = None):
     varnames = [var for var in varnames if var in dataset.variables]
     # noinspection PyTypeChecker
-    fig, axes = plt.subplots(figsize=(12, 8), nrows=len(varnames), ncols=1, sharex=True, squeeze=False)
+    fig, axes = plt.subplots(figsize=(12, 8), nrows=len(varnames), ncols=1, sharex=True, squeeze=False, num=fig_name)
     axes = axes.flatten()
     for var, ax in zip(varnames, axes):
         da = dataset[var]

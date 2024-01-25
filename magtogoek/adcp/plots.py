@@ -93,15 +93,15 @@ def make_adcp_figure(
     if vel_only is False:
         geo_var = map_varname(GEO_VAR, varname_map)
         if len(geo_var) > 0:
-            figures[f'sensor_data_geo'] = plot_sensor_data(dataset, varnames=geo_var)
+            figures[f'geospatial'] = plot_sensor_data(dataset, varnames=geo_var, fig_name='geospatial')
 
         anc_var = map_varname(ANC_VAR, varname_map)
         if len(anc_var) > 0:
-            figures[f'sensor_data_anc'] = plot_sensor_data(dataset, varnames=anc_var)
+            figures[f'ancillary_data'] = plot_sensor_data(dataset, varnames=anc_var, fig_name='ancillary data')
 
         bt_uvw_var = map_varname(velocity_bt_variables, varname_map)
         if len(bt_uvw_var) > 0 and all(v in dataset for v in bt_uvw_var):
-            figures[f'bt_vel'] = plot_bt_vel(dataset, bt_var=bt_uvw_var)
+            figures[f'bottom_velocities'] = plot_bt_vel(dataset, bt_var=bt_uvw_var)
 
     uvw_var = map_varname(velocity_variables, varname_map)
     if len(uvw_var) > 0:
@@ -109,17 +109,17 @@ def make_adcp_figure(
             depths = dataset.depth.data[0:3]
             if dataset.attrs['orientation'] == "up":
                 depths = dataset.depth.data[-3:]
-            figures['vel_series'] = plot_vel_series(dataset, depths=depths, uvw=uvw_var, flag_thres=flag_thres)
-            figures['pearson_corr'] = plot_pearson_corr(dataset, vel_var=uvw_var, flag_thres=flag_thres)
+            figures['velocities_series'] = plot_vel_series(dataset, depths=depths, uvw=uvw_var, flag_thres=flag_thres)
+            figures["velocities_pearson_correlation"] = plot_pearson_corr(dataset, vel_var=uvw_var, flag_thres=flag_thres)
 
         if dataset.attrs['coord_system'] != 'beam':
             polar_fig = plot_velocity_polar_hist(dataset, nrows=2, ncols=3, uv=uvw_var[:2], flag_thres=flag_thres)
             if polar_fig is not None:
-                figures['velocity_polar_hist'] = polar_fig
+                figures['velocities_polar_histogram'] = polar_fig
 
         field_fig = plot_velocity_fields(dataset, vel_var=uvw_var, flag_thres=flag_thres)
         if field_fig is not None:
-            figures['velocity_fields'] = field_fig
+            figures['velocities_field'] = field_fig
 
     if "binary_mask" in dataset:
         figures['test_fields'] = plot_test_fields(dataset)
@@ -172,7 +172,8 @@ def plot_velocity_polar_hist(dataset: xr.Dataset, nrows: int = 3, ncols: int = 3
     bin_depths = np.linspace(dataset.depth.min(), dataset.depth.max(), naxes + 1)
 
     fig, axes = plt.subplots(figsize=(12, 8), nrows=nrows, ncols=ncols,
-                             subplot_kw={"projection": "polar"}, constrained_layout=True)
+                             subplot_kw={"projection": "polar"}, constrained_layout=True,
+                             num="velocities polar histogram")
     if naxes > 1:
         axes = axes.flatten()
     else:
@@ -220,7 +221,7 @@ def plot_velocity_polar_hist(dataset: xr.Dataset, nrows: int = 3, ncols: int = 3
 def plot_velocity_fields(dataset: xr.Dataset, vel_var: List[str] = ("u", "v", "w"), flag_thres: int = 2):
     # noinspection PyTypeChecker
     fig, axes = plt.subplots(
-        figsize=(12, 8), nrows=len(vel_var), ncols=1, sharex=True, sharey=True,
+        figsize=(12, 8), nrows=len(vel_var), ncols=1, sharex=True, sharey=True, num="velocities field"
     )
     for var, axe in zip(vel_var, axes):
         vel_da = filter_flagged_data(dataset=dataset, var=var, flag_max=flag_thres)
@@ -279,7 +280,7 @@ def plot_test_fields(dataset: xr.Dataset):
 def plot_vel_series(dataset: xr.Dataset, depths: Union[float, List[float]],
                     uvw: List[str] = ("u", "v", "w"), flag_thres: int = 2):
     # noinspection PyTypeChecker
-    fig, axes = plt.subplots(figsize=(12, 8), nrows=len(uvw), ncols=1, sharex=True, sharey=True)
+    fig, axes = plt.subplots(figsize=(12, 8), nrows=len(uvw), ncols=1, sharex=True, sharey=True, num='velocities series')
     axes[0].tick_params(labelbottom=False)
     axes[1].tick_params(labelbottom=False)
 
@@ -305,7 +306,7 @@ def plot_pearson_corr(dataset: xr.Dataset, vel_var: List[str] = ("u", "v", "w"),
                 corr[var].append(xr.corr(da[d], da[d + 2], "time"))
             else:
                 corr[var].append(np.nan)
-    fig, axe = plt.subplots(figsize=(6, 8))
+    fig, axe = plt.subplots(figsize=(6, 8), num="velocities pearson correlation")
     for var in vel_var:
         axe.plot(corr[var], dataset.depth[:-2], label=var)
     axe.invert_yaxis()
@@ -316,10 +317,10 @@ def plot_pearson_corr(dataset: xr.Dataset, vel_var: List[str] = ("u", "v", "w"),
     return fig
 
 
-def plot_sensor_data(dataset: xr.Dataset, varnames: List[str], flag_thres: int = 2):
+def plot_sensor_data(dataset: xr.Dataset, varnames: List[str], flag_thres: int = 2, fig_name: str = None):
     varnames = [var for var in varnames if var in dataset.variables]
     # noinspection PyTypeChecker
-    fig, axes = plt.subplots(figsize=(12, 8), nrows=len(varnames), ncols=1, sharex=True, squeeze=False)
+    fig, axes = plt.subplots(figsize=(12, 8), nrows=len(varnames), ncols=1, sharex=True, squeeze=False, num=fig_name)
     axes = axes.flatten()
     for var, ax in zip(varnames, axes):
         da = dataset[var]
@@ -337,7 +338,7 @@ def plot_sensor_data(dataset: xr.Dataset, varnames: List[str], flag_thres: int =
 
 def plot_bt_vel(dataset: xr.Dataset, bt_var: List[str] = ("bt_u", "bt_v", "bt_w", "bt_depth")):
     # noinspection PyTypeChecker
-    fig, axes = plt.subplots(figsize=(12, 8), nrows=len(bt_var), ncols=1, sharex=True, sharey=True)
+    fig, axes = plt.subplots(figsize=(12, 8), nrows=len(bt_var), ncols=1, sharex=True, sharey=True, num="bottom velocities")
     axes[0].tick_params(labelbottom=False)
     axes[1].tick_params(labelbottom=False)
     for var, ax in zip(bt_var, axes):
