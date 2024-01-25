@@ -97,7 +97,21 @@ def round_up(x: tp.Any, scale: float = 1):
     return np.ceil(np.asarray(x) * 1 / scale) * scale
 
 
-def polar_histo(dataset: xr.Dataset, x_vel: str, y_vel: str, r_max: float, flag_thres: int):
+def polar_histo_from_cartesian(dataset: xr.Dataset, x_vel: str, y_vel: str, r_max: float, flag_thres: int):
+    """Return a polar histogram from data in cartesian coordinates
+
+    Parameters
+    ----------
+    dataset
+    x_vel
+    y_vel
+    r_max
+    flag_thres
+
+    Returns
+    -------
+
+    """
     u = filter_flagged_data(dataset=dataset, var=x_vel, flag_max=flag_thres).data.flatten()
     v = filter_flagged_data(dataset=dataset, var=y_vel, flag_max=flag_thres).data.flatten()
     ii = np.isfinite(u) & np.isfinite(v)

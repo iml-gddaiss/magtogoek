@@ -4,10 +4,14 @@
 from pathlib import Path
 from typing import List, Union, Dict, Tuple
 
+# import cmocean as cmo
+# import numpy as np
 import xarray as xr
 import matplotlib.pyplot as plt
 
-from magtogoek.tools import round_up, get_flagged_data, filter_flagged_data
+# from magtogoek.plot_utils import add_gridlines_to_subplot
+#from magtogoek.tools import round_up, filter_flagged_data
+from magtogoek.tools import get_flagged_data
 
 FONT = {"family": "serif", "color": "darkred", "weight": "normal", "size": 12}
 BINARY_CMAP = plt.get_cmap("viridis_r", 2)
@@ -65,15 +69,32 @@ def make_meteoce_figure(
         'co2': ['co2_a', 'co2_w']
     }
 
-    varname_map = {}
+    # polar_histogram_vars = {
+    #     'wind_speed': 'wind_direction',
+    #     'wave_mean_height': 'wave_direction',
+    #     'wave_maximal_height': 'wave_direction',
+    #     'wave_period': 'wave_direction',
+    # }
+
+    var_name_map = {}
     for var in dataset:
         if 'generic_name' in dataset[var].attrs:
-            varname_map[dataset[var].attrs['generic_name']] = var
+            var_name_map[dataset[var].attrs['generic_name']] = var
 
     for fig_name, variables in plots_vars.items():
-        _variables = map_varname(variables, varname_map)
+        _variables = map_varname(variables, var_name_map)
         if any(x in dataset.variables for x in _variables):
             figures[fig_name] = plot_sensor_data(dataset, _variables, dataset_raw, fig_name=fig_name)
+
+    # for variables in list(polar_histogram_vars.items()):
+    #     polar_histogram_vars.pop(variables[0])
+    #     _variables = map_varname(variables, var_name_map)
+    #     if len(_variables) == 2:
+    #         polar_histogram_vars[_variables[0]] = _variables[1]
+    #
+    # if polar_histogram_vars:
+    #     figures["wind_wave_polar_histograms"] = plot_wind_wave_polar_hist(dataset, variables=polar_histogram_vars, flag_thres = 2, nrows= 1, fig_name= "wind & wave polar histogram")
+
 
     if single is True and show_fig is True:
         for count, fig in enumerate(figures.values()):
@@ -135,3 +156,73 @@ def plot_sensor_data(dataset: xr.Dataset, varnames: List[str], dataset_raw: xr.D
     axes[0].legend()
 
     return fig
+
+# def plot_wind_wave_polar_hist(dataset: xr.Dataset, variables: Dict[str,str], flag_thres: int = 2, nrows: int = 1, fig_name:str = None):
+#
+#     ncols = int(np.ceil(len(variables) / nrows))
+#
+#     naxes = int(nrows * ncols)
+#
+#     fig, axes = plt.subplots(figsize=(12, 8), nrows=nrows, ncols=ncols,
+#                              subplot_kw={"projection": "polar"}, constrained_layout=True,
+#                              num=fig_name)
+#     if naxes > 1:
+#         axes = axes.flatten()
+#     else:
+#         axes = [axes]
+#     add_gridlines_to_subplot(axes[0], nrows, ncols)
+#
+#     for index, (radial_var, azimutal_var) in zip(range(naxes), variables.items()):
+#         axes[index].set_title(
+#             f"{radial_var}"
+#         )
+#
+#         if "ancillary_variables" in dataset[radial_var].attrs:
+#             radial = filter_flagged_data(dataset=dataset, var=radial_var, flag_max=flag_thres).data
+#         else:
+#             radial = dataset[radial_var]
+#
+#         if "ancillary_variables" in dataset[azimutal_var].attrs:
+#             azimutal = filter_flagged_data(dataset=dataset, var=azimutal_var, flag_max=flag_thres).data
+#         else:
+#             azimutal = dataset[azimutal_var]
+#
+#         azimutal = np.deg2rad(azimutal)
+#         if not (np.isfinite(radial).any() and np.isfinite(azimutal).any()):
+#             continue
+#
+#         radial_max = round_up(np.nanmax(radial), .2)
+#         radial_ticks = np.round(np.linspace(0, radial_max, 6), 2)[1:]
+#
+#         rN, aN = 30, 180
+#
+#         rbins, abins = np.linspace(0, radial_max, rN), np.linspace(0, 2 * np.pi, aN)
+#         histo, a_edges, r_edges = np.histogram2d(azimutal, radial, bins=(abins, rbins))
+#
+#         histo[histo < 1] = np.nan
+#         if np.isfinite(histo).any():
+#             histo /= np.nanmax(histo)
+#             axes[index].grid(False)
+#             axes[index].pcolormesh(a_edges, r_edges, histo.T, cmap=cmo.cm.amp, shading="flat")
+#
+#         axes[index].grid(True)
+#         axes[index].set_theta_zero_location("N")
+#         axes[index].set_theta_direction(-1)
+#         axes[index].set_rgrids(radial_ticks, angle=0)
+#         axes[index].set_yticklabels([])
+#
+#         rlabels_rpos = np.hypot(1.3 * radial_max, radial_ticks)
+#         rlabels_tpos = np.arctan2(1.3 * radial_max, radial_ticks)
+#
+#         for label, rpos, tpos, rtick in zip(radial_ticks, rlabels_rpos, rlabels_tpos, radial_ticks):
+#             axes[index].text(tpos, rpos, f"{label:.2f}", fontsize=10, clip_on=False, va="center", rotation=0)
+#             axes[index].plot(
+#                 (0, tpos), (rtick, rpos), "--", lw=0.6, c="k", clip_on=False
+#             )
+#         axes[index].set_ylim(0, radial_max)
+#         axes[index].text(np.arctan2(1.6 * radial_max, np.mean(radial_ticks)), np.hypot(1.6 * radial_max, np.mean(radial_ticks)),
+#                          f"velocity [{dataset[radial_var].attrs['units']}]", rotation=90, va="center", fontsize=12)
+#         axes[index].set_facecolor("lightslategrey")
+#         axes[index].set_xlabel("direction (from) [deg]", fontsize=12)
+#
+#     return fig

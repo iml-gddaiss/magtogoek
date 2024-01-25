@@ -19,8 +19,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 
-from magtogoek.plot_utils import grid_subplot
-from magtogoek.tools import round_up, filter_flagged_data, polar_histo
+from magtogoek.plot_utils import add_gridlines_to_subplot
+from magtogoek.tools import round_up, filter_flagged_data, polar_histo_from_cartesian
 
 
 FONT = {"family": "serif", "color": "darkred", "weight": "normal", "size": 12}
@@ -178,9 +178,9 @@ def plot_velocity_polar_hist(dataset: xr.Dataset, nrows: int = 3, ncols: int = 3
         axes = axes.flatten()
     else:
         axes = [axes]
-    grid_subplot(axes[0], nrows, ncols)
+    add_gridlines_to_subplot(axes[0], nrows, ncols)
     for index in range(naxes):
-        histo, a_edges, r_edges = polar_histo(
+        histo, a_edges, r_edges = polar_histo_from_cartesian(
             dataset=dataset.sel(depth=slice(bin_depths[index], bin_depths[index + 1])),
             x_vel=uv[0],
             y_vel=uv[1],
@@ -213,7 +213,7 @@ def plot_velocity_polar_hist(dataset: xr.Dataset, nrows: int = 3, ncols: int = 3
         axes[index].text(np.arctan2(1.6 * r_max, np.mean(r_ticks)), np.hypot(1.6 * r_max, np.mean(r_ticks)),
                          "velocity [m s$^{-1}$]", rotation=90, va="center", fontsize=12)
         axes[index].set_facecolor("lightslategrey")
-        axes[index].set_xlabel("absolute bearing [deg]", fontsize=12)
+        axes[index].set_xlabel("direction [deg]", fontsize=12)
 
     return fig
 

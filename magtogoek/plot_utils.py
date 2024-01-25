@@ -1,7 +1,8 @@
 import matplotlib.pyplot as plt
 
 
-def grid_subplot(axe: plt.Axes, nrows: int, ncols: int):
+def add_gridlines_to_subplot(axe: plt.Axes, nrows: int, ncols: int):
+    """Add grid line to plot"""
     for c in range(ncols - 1):
         axe.plot(
             [(c + 1) / ncols, (c + 1) / ncols],
