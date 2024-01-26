@@ -420,6 +420,8 @@ class RawVikingDatReader():
                List( {tags: { var1: value, ..., varN: value} } )
            to
                VikingData(var1: MaskedArray, ..., varN: MaskedArray)
+        3) If more then one buoy name was found, returns a Dict of VikingData.
+           If not only a VikingData.
     """
 
     def __init__(self):
@@ -433,7 +435,7 @@ buoys:\n"""
             _repr += f"  {buoy_name}: (length = {len(viking_data)})\n"
         return _repr
 
-    def read(self, filenames, century=21) -> Dict[str, VikingData]:
+    def read(self, filenames, century:int = 21) -> Union[VikingData, Dict[str, VikingData]]:
         filenames = get_files_from_expression(filenames)
         decoded_data = []
         _count = 0
@@ -448,7 +450,10 @@ buoys:\n"""
 
         self._load_viking_data(decoded_data)
 
-        return self._buoys_data
+        if len(self._buoys_data) == 1:
+            return list(self._buoys_data.values())[0]
+        else:
+            return self._buoys_data
 
     def _load_viking_data(self, decoded_data: list):
         """Put the data in  VikingData object"""

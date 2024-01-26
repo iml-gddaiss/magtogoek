@@ -260,9 +260,6 @@ class ProcessConfig(BaseProcessConfig):
 
     # ADCP
     adcp_magnetic_declination_preset: float = None # adcp_magnetic_declination_preset
-    # bin position. This is was is done with RTI at the moment TODO
-    #_attrs = {'bin': _bin, 'bin_position_cm': _bin_position_cm}
-    #_global_attrs = {'adcp_bin': _bin, 'adcp_bin_position_cm': _bin_position_cm}
 
     ##### QUALITY_CONTROL #####
 

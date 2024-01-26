@@ -73,22 +73,16 @@ def load_viking_data(
 
     l.log(format_filenames_for_print('raw_data', filenames))
 
-    buoys_data = RawVikingDatReader().read(filenames)
+    viking_data = RawVikingDatReader().read(filenames)
 
-    # Check if it's the correct files using buoy_name
-    if buoy_name is None:
-        if len(buoys_data.keys()) == 1:
-            buoy_name = list(buoys_data.keys())[0]
-        else:
-            l.warning(f'More than one buoy name was found in the file {filenames}.\n Provide a Buoy Name \n Exiting')
-            raise ValueError(f'More than one buoy was found in the file {filenames}. Exiting') # SHOULD NOT BE HERE FIXME
-    elif buoy_name not in buoys_data:
-        l.warning(f'Buoy Name was not found in the files. Buoy names found: {list(buoys_data.keys())}. Exiting')
-        raise ValueError(f'Buoy Name was not found in the file {filenames}. Exiting') # SHOULD NOT BE HERE FIXME
-    l.log(f'Buoy Name: {buoy_name} found.')
-    viking_data = buoys_data[buoy_name]
+    if isinstance(viking_data, Dict):
+        l.warning(f'More than one buoy name was found in the file {filenames}.\n Buoy names fround: {list(viking_data.keys())} \n Specify a buoy_name\n Exiting')
+        raise ValueError(f'More than one buoy was found in the file {filenames}. Exiting') # SHOULD NOT BE HERE FIXME
 
-    meteoce_data, global_attrs = get_viking_meteoce_data(viking_data)
+    if buoy_name is not None and viking_data.buoy_name != buoy_name:
+        l.log(f'Buoy Name found in files is different from the one provided.')
+
+    meteoce_data, global_attrs = _load_viking_meteoce_data(viking_data)
 
     meteoce_data = _fill_data(meteoce_data)
 
@@ -109,7 +103,7 @@ def load_viking_data(
     return dataset
 
 
-def get_viking_meteoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[np.ma.MaskedArray, dict]], Dict]:
+def _load_viking_meteoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[np.ma.MaskedArray, dict]], Dict]:
     """
 
     Parameters
@@ -121,13 +115,13 @@ def get_viking_meteoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[np
         {variable_name: str -> (data: np.ma.MaskedArray, attributes: Dict)}
 
     """
-    _global_attrs = {}
-    _data = {'lon': (viking_data.longitude, {}),
+    global_attrs = {}
+    data = {'lon': (viking_data.longitude, {}),
              'lat': (viking_data.latitude, {}),
              }
 
     if viking_data.gps is not None:
-        _data.update(
+        data.update(
             {'speed': (np.round(viking_data.gps['speed'] * KNOTS_TO_METER_PER_SECONDS, 3), {"units": "m/s"}),
              'course': (viking_data.gps['course'], {}),
              'gps_magnetic_declination': (viking_data.gps['variation_E'], {})}
@@ -135,7 +129,7 @@ def get_viking_meteoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[np
         l.log('Gps data loaded.')
 
     if viking_data.comp is not None:
-        _data.update(
+        data.update(
             {'heading': (viking_data.comp['heading'], {}),
              'pitch': (viking_data.comp['pitch'], {}),
              'roll_': (viking_data.comp['roll'], {}),
@@ -154,7 +148,7 @@ def get_viking_meteoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[np
         Dn: wind direction min
         Dx: wind direction max        
         """
-        _data.update(
+        data.update(
             {
 
                 'wind_speed': (np.round(viking_data.wmt700['Sm'] * KNOTS_TO_METER_PER_SECONDS, 3), {'units': 'm/s'}),
@@ -165,7 +159,7 @@ def get_viking_meteoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[np
         l.log('wmt700 data loaded.')
 
     if viking_data.wxt520 is not None:
-        _data.update(
+        data.update(
             {'atm_temperature': (viking_data.wxt520['Ta'], {"units": "degree_C"}),
              'atm_humidity': (viking_data.wxt520['Ua'], {"units": "percent"}),
              'atm_pressure': (viking_data.wxt520['Pa'], {"units": "mbar"}),
@@ -175,7 +169,7 @@ def get_viking_meteoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[np
         l.log('wxt520 data loaded.')
 
     if viking_data.ctd is not None:
-        _data.update(
+        data.update(
             {'temperature': (viking_data.ctd['temperature'], {"units": "degree_C"}),
              'conductivity': (viking_data.ctd['conductivity'], {'units': 'S/m'}),
              'salinity': (viking_data.ctd['salinity'], {'units': 'PSU'}),
@@ -184,7 +178,7 @@ def get_viking_meteoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[np
         l.log('Ctd data loaded.')
 
     elif viking_data.ctdo is not None:
-        _data.update(
+        data.update(
             {'temperature': (viking_data.ctdo['temperature'], {"units": "degree_C"}),
              'conductivity': (viking_data.ctdo['conductivity'], {'units': 'S/m'}),
              'salinity': (viking_data.ctdo['salinity'], {'units': 'PSU'}),
@@ -196,8 +190,8 @@ def get_viking_meteoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[np
         _serial_number = viking_data.wph['serial_number'][~viking_data.wph['serial_number'].mask][0]
         _model = viking_data.wph['model'][~viking_data.wph['model'].mask][0]
         _attrs = {'serial_number': _serial_number, 'model': _model}
-        _global_attrs.update({'ph_serial_number': _serial_number, 'ph_model': _model})
-        _data.update(
+        global_attrs.update({'ph_serial_number': _serial_number, 'ph_model': _model})
+        data.update(
             {
                 'ph': (viking_data.wph['ext_ph'], {**_attrs, **{"units": "NBS_scale"}}),
                 'ph_temperature': (viking_data.wph['ext_ph'], _attrs)}
@@ -208,9 +202,9 @@ def get_viking_meteoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[np
         _serial_number = viking_data.triplet['serial_number'][~viking_data.triplet['serial_number'].mask][0]
         _model = viking_data.triplet['model_number'][~viking_data.triplet['model_number'].mask][0]
         _attrs = {'serial_number': _serial_number, 'model': _model}
-        _global_attrs.update({'triplet_serial_number': _serial_number, 'triplet_model': _model})
+        global_attrs.update({'triplet_serial_number': _serial_number, 'triplet_model': _model})
 
-        _data.update(
+        data.update(
             {
                 'scattering': (viking_data.triplet['scatter_calculated'], {**_attrs, **{"units": "/m", "wavelength": "700nm"}}), #ppb ?
                 'chlorophyll': (viking_data.triplet['chloro_calculated'], {**_attrs, **{"units": "mg/m**3", "wavelength": "695nm"}}), #ug/L -> mg/m**3
@@ -224,21 +218,21 @@ def get_viking_meteoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[np
         _model = viking_data.par_digi['model_number'][~viking_data.par_digi['model_number'].mask][0]
 
         _attrs = {'serial_number': _serial_number, 'model': _model}
-        _global_attrs.update({'par_serial_number': _serial_number, 'par_triplet_model': _model})
+        global_attrs.update({'par_serial_number': _serial_number, 'par_triplet_model': _model})
 
-        _data['par'] = (viking_data.par_digi['PAR'], {**_attrs, **{"units": "umol/m**2/s"}})
+        data['par'] = (viking_data.par_digi['PAR'], {**_attrs, **{"units": "umol/m**2/s"}})
         l.log('Par Digi data loaded.')
 
     if viking_data.co2_a is not None: # co2 partial pressure = (ppm / 1e6)* cell gas pressure
-        _data.update({'co2_a': (viking_data.co2_a['cell_gas_pressure_mbar'] * viking_data.co2_a['co2_ppm'] / 1e6, {})})
+        data.update({'co2_a': (viking_data.co2_a['cell_gas_pressure_mbar'] * viking_data.co2_a['co2_ppm'] / 1e6, {})})
         l.log('Co2_a data loaded.')
 
     if viking_data.co2_w is not None: # co2 partial pressure = (ppm / 1e6)* cell gas pressure
-        _data.update({'co2_w': (viking_data.co2_w['cell_gas_pressure_mbar'] * viking_data.co2_w['co2_ppm'] / 1e6, {})})
+        data.update({'co2_w': (viking_data.co2_w['cell_gas_pressure_mbar'] * viking_data.co2_w['co2_ppm'] / 1e6, {})})
         l.log('Co2_w data loaded.')
 
     if viking_data.wave_m is not None:
-        _data.update(
+        data.update(
             {'wave_mean_height': (viking_data.wave_m['average_height'], {}),
              'wave_maximal_height': (viking_data.wave_m['maximal_height'], {}),
              'wave_period': (viking_data.wave_m['period'], {})}
@@ -247,7 +241,7 @@ def get_viking_meteoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[np
 
     elif viking_data.wave_s is not None:
         _attrs = {'comments': 'Height values were truncated at the first decimal.\n'}
-        _data.update(
+        data.update(
             {'wave_mean_height': (viking_data.wave_s['average_height'], _attrs),
              'wave_maximal_height': (viking_data.wave_s['Hmax'], _attrs),
              'wave_period': (viking_data.wave_s['dominant_period'], {}),
@@ -255,29 +249,49 @@ def get_viking_meteoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[np
         )
         l.log('Wave_s data loaded.')
 
-    if viking_data.rdi is not None:
+    if viking_data.rdi is not None and viking_data.rti is not None:
+        l.warning('Both RDI and RTI tag found in dataset.')
+        _adcp_data = dict()
+        # load RDI data
         for _name in ['u', 'v', 'w', 'e']:
-            _data[_name] = (viking_data.rdi[_name] * MILLIMETER_TO_METER, {"units": "m/s"})
-        l.log('Rdi data loaded.')
+            _adcp_data[_name] = viking_data.rdi[_name]
 
-    if viking_data.rti is not None:
-        if viking_data.rdi is not None: # FIXME IN THAT WEIRD CASE KEEP BOTH MERGE (ADCP MIGHT HAVE CHANGE)
-            l.warning('Both RDI and RTI tag found in dataset. Only the RTI data were kept')
+        if not any(~viking_data.rti['u'].mask & ~viking_data.rdi['u'].mask):
+            l.warning('Merging RDI and RTI data')
+            # load RTI data
+            for _name in ['u', 'v', 'w', 'e']:
+                _adcp_data[_name][~viking_data.rti[_name].mask] = viking_data.rti[_name][~viking_data.rti[_name].mask]
 
-        _bin = viking_data.rti['bin'][~viking_data.rti['bin'].mask]
-        _bin_position_cm = viking_data.rti['position_cm'][~viking_data.rti['position_cm'].mask] * CENTIMETER_TO_METER
+        else:
+            l.warning('There is a time overlap between RDI and RTI data. RTI data were discarded.')
 
-        _bin = np.nanmean(_bin)
-        _bin_position_cm = np.round(np.nanmean(_bin_position_cm), 2)
-
-        _attrs = {'bin': _bin, 'bin_position_cm': _bin_position_cm}
-        _global_attrs = {'adcp_bin': _bin, 'adcp_bin_position_cm': _bin_position_cm}
 
         for _name in ['u', 'v', 'w', 'e']:
-            _data[_name] = (viking_data.rti[_name] * MILLIMETER_TO_METER, {**_attrs, **{"units": "m/s"}})
-        l.log('Rti data loaded.')
+            _adcp_data[_name].mask = viking_data.rti[_name].mask & viking_data.rdi[_name].mask
+            data[_name] = (_adcp_data[_name] * MILLIMETER_TO_METER, {"units": "m/s"})
 
-    return _data, _global_attrs
+    else:
+        if viking_data.rdi is not None:
+            for _name in ['u', 'v', 'w', 'e']:
+                data[_name] = (viking_data.rdi[_name] * MILLIMETER_TO_METER, {"units": "m/s"})
+            l.log('Rdi data loaded.')
+
+        if viking_data.rti is not None:
+
+            # NOTES should be added as a global attributes by the user
+            # _bin = viking_data.rti['bin'][~viking_data.rti['bin'].mask]
+            # _bin_position_cm = viking_data.rti['position_cm'][~viking_data.rti['position_cm'].mask] * CENTIMETER_TO_METER
+            #
+            # _bin = np.nanmean(_bin)
+            # _bin_position_cm = np.round(np.nanmean(_bin_position_cm), 2)
+            #_attrs = {'bin': _bin, 'bin_position_cm': _bin_position_cm}
+            #global_attrs.update({'adcp_bin': _bin, 'adcp_bin_position_cm': _bin_position_cm})
+
+            for _name in ['u', 'v', 'w', 'e']:
+                data[_name] = (viking_data.rti[_name] * MILLIMETER_TO_METER, {"units": "m/s"})
+            l.log('Rti data loaded.')
+
+    return data, global_attrs
 
 
 def _fill_data(data: Dict[str, Tuple[np.ma.MaskedArray, dict]]) -> Dict[str, Tuple[List[str], np.ndarray, dict]]:
