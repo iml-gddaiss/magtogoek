@@ -26,13 +26,16 @@ Notes
     are average over ~ 1 minutes, we need at least ~1 minutes average values from the gps.who C<e
 
 """
+import sys
+
 import gsw
 import numpy as np
 import xarray as xr
 from typing import *
 
 from magtogoek import logger as l
-from magtogoek.sci_tools import xy_vector_magnetic_correction
+
+from magtogoek.tools import cut_index, cut_times, get_datetime_and_count
 from magtogoek.process_common import BaseProcessConfig, resolve_output_paths, add_global_attributes, write_log, \
     write_netcdf, netcdf_raw_exist, load_netcdf_raw, write_netcdf_raw, \
     add_processing_timestamp, clean_dataset_for_nc_output, format_data_encoding, add_navigation, \
@@ -43,12 +46,11 @@ from magtogoek.platforms import PlatformMetadata
 from magtogoek.wps.sci_tools import compute_in_situ_density, dissolved_oxygen_ml_per_L_to_umol_per_L, dissolved_oxygen_umol_per_L_to_umol_per_kg
 
 from magtogoek.meteoce.loader import load_meteoce_data
-from magtogoek.meteoce.correction import wps_data_correction, meteoce_data_magnetic_declination_correction
+from magtogoek.meteoce.correction import wps_data_correction, apply_magnetic_correction, apply_motion_correction
 from magtogoek.meteoce.quality_control import meteoce_quality_control, no_meteoce_quality_control
 from magtogoek.meteoce.plots import make_meteoce_figure
 from magtogoek.meteoce.odf_exporter import make_odf
 
-from magtogoek.adcp.correction import apply_motion_correction as adcp_motion_correction
 from magtogoek.adcp.quality_control import adcp_quality_control, no_adcp_quality_control
 
 from magtogoek.navigation import compute_speed_and_course, compute_uv_ship
@@ -58,7 +60,7 @@ l.get_logger("meteoce_processing")
 
 STANDARD_GLOBAL_ATTRIBUTES = {"featureType": "timeSeriesProfile"}
 
-VARIABLES_TO_DROP = ['ph_temperature', 'gps_magnetic_declination', 'pres'] #, 'last_heading'] Not currently loaded
+VARIABLES_TO_DROP = ['ph_temperature', 'pres'] # 'magnetic_declination' can be added in _set_magnetic_declination
 
 GLOBAL_ATTRS_TO_DROP = [
 ]
@@ -73,8 +75,8 @@ P01_CODES_MAP = {
     "wind_direction_QC": "EWDASS01_QC",
     "wind_gust": "EGTSSS01",
     "wind_gust_QC": "EGTSSS01_QC",
-    #"wind_gust_direction": "EGTDSS01",
-    #"wind_gust_direction_QC": "EGTDSS01_QC",
+    "wind_gust_direction": "EGTDSS01",         # Not in Viking Data
+    "wind_gust_direction_QC": "EGTDSS01_QC",   # Not in Viking Data
     'atm_temperature': "CTMPZZ01",
     'atm_temperature_QC': "CTMPZZ01_QC",
     'atm_humidity': "CRELZZ01",
@@ -187,8 +189,9 @@ class ProcessConfig(BaseProcessConfig):
     recompute_density: bool = None
 
     ##### CORRECTION #####
-    magnetic_declination: Union[bool, float] = None
-    motion_correction: bool = None
+    magnetic_declination: float = None
+    adcp_motion_correction: bool = None
+    wind_motion_correction: bool = None
 
     # PH
     ph_salinity_correction: bool = None
@@ -259,7 +262,7 @@ class ProcessConfig(BaseProcessConfig):
     fdom_spike_window: int = None
 
     # ADCP
-    adcp_magnetic_declination_preset: float = None # adcp_magnetic_declination_preset
+    adcp_magnetic_declination_preset: float = None # set in the adcp config.
 
     ##### QUALITY_CONTROL #####
 
@@ -304,6 +307,8 @@ class ProcessConfig(BaseProcessConfig):
 
         self.merge_output_files = True # FIXME BUG
 
+        self.magnetic_correction_to_apply: float = None
+
 
 def process_meteoce(config: dict, drop_empty_attrs: bool = False,
                     headless: bool = False, from_raw: bool = False):
@@ -336,21 +341,11 @@ def process_meteoce(config: dict, drop_empty_attrs: bool = False,
 
 @resolve_output_paths
 def _process_meteoce_data(pconfig: ProcessConfig):
-    """
-    Notes
-    -----
-    Time drift corrections are the last to be carried out.
-
-    """
 
     # ------------------- #
     # LOADING VIKING DATA #
     # ------------------- #
-    if netcdf_raw_exist(pconfig) and pconfig.from_raw is not True:
-        dataset = load_netcdf_raw(pconfig)
-    else:
-        dataset = _load_viking_data(pconfig)
-        write_netcdf_raw(dataset=dataset, pconfig=pconfig)
+    dataset = _load_viking_data(pconfig)
 
     # ----------------------------------------- #
     # ADDING THE NAVIGATION DATA TO THE DATASET #
@@ -376,9 +371,9 @@ def _process_meteoce_data(pconfig: ProcessConfig):
 
     _compute_pressure_at_sampling_depth(dataset, pconfig) # pressure (water pressure) is required for some wps correction
 
-    _set_magnetic_declination(dataset, pconfig) # FIXME Metis will have auto correction.......
+    apply_magnetic_correction(dataset, pconfig)
 
-    meteoce_data_magnetic_declination_correction(dataset, pconfig)
+    apply_motion_correction(dataset, pconfig)
 
     wps_data_correction(dataset, pconfig)
 
@@ -391,13 +386,6 @@ def _process_meteoce_data(pconfig: ProcessConfig):
     if 'density' not in dataset or pconfig.recompute_density is True:
         _compute_ctd_potential_density(dataset, pconfig)
 
-    # ---------------- #
-    # ADCP CORRECTION  #
-    # ---------------- #
-
-    l.section("Adcp data correction")
-
-    _adcp_correction(dataset, pconfig)
 
     # --------------- #
     # QUALITY CONTROL #
@@ -450,7 +438,7 @@ def _process_meteoce_data(pconfig: ProcessConfig):
 
     if pconfig.figures_output is True:
         #if plot_against_raw ... (add to pconfig comon)
-        dataset_raw=load_netcdf_raw(pconfig)
+        dataset_raw=load_netcdf_raw(pconfig).sel(time=slice(dataset.time[0], dataset.time[-1]))
         make_meteoce_figure(
             dataset,
             save_path=pconfig.figures_path,
@@ -498,11 +486,24 @@ def _process_meteoce_data(pconfig: ProcessConfig):
 
 
 def _load_viking_data(pconfig: ProcessConfig):
-    dataset = load_meteoce_data(
-        filenames=pconfig.input_files,
-        buoy_name=pconfig.buoy_name,
-        data_format=pconfig.data_format,
-    )
+    if netcdf_raw_exist(pconfig) and pconfig.from_raw is not True:
+        dataset = load_netcdf_raw(pconfig)
+    else:
+        dataset = load_meteoce_data(
+            filenames=pconfig.input_files,
+            buoy_name=pconfig.buoy_name,
+            data_format=pconfig.data_format,
+        )
+        write_netcdf_raw(dataset=dataset, pconfig=pconfig)
+
+
+    start_time, start_index = get_datetime_and_count(pconfig.leading_trim)
+    end_time, end_index = get_datetime_and_count(pconfig.trailing_trim)
+
+    dataset = cut_times(dataset, start_time, end_time)
+
+    dataset = cut_index(dataset=dataset, dim='time', start_index=start_index, end_index=end_index)
+
     return dataset
 
 
@@ -576,52 +577,13 @@ def _compute_ctd_potential_density(dataset: xr.Dataset, pconfig: ProcessConfig):
         l.warning(f'Potential density computation aborted. One of more variables in {required_variables} was missing.')
 
 
-def _set_magnetic_declination(dataset: xr.Dataset, pconfig: ProcessConfig):
-    """Set the magnetic_declination value or values in the process config.
-
-    Either from the GPS (dataset variable) or the ProcessConfig.magnetic_declination .
-
-    If the magnetic declination is taken from the GSP data, any nan values will be interpolated.
-    """
-    if pconfig.magnetic_declination is True:
-        if 'gps_magnetic_declination' in dataset.variables:
-            pconfig.magnetic_declination = dataset['gps_magnetic_declination'].interpolate_na('time').data
-        else:
-            l.warning('Unable to carry magnetic declination correction. No magnetic declination value found.')
-            pconfig.magnetic_declination = None
-
-    if isinstance(pconfig.magnetic_declination, (float, int)):
-        pconfig.magnetic_declination = pconfig.magnetic_declination
-
-    pconfig.magnetic_declination = None
-
-
-def _adcp_correction(dataset: xr.Dataset, pconfig: ProcessConfig):
-    """
-    Carry magnetic declination correction and motion correction.
-    """
-    if pconfig.magnetic_declination is not None:
-        if pconfig.adcp_magnetic_declination_preset is not None:
-            angle = round((pconfig.magnetic_declination - pconfig.adcp_magnetic_declination_preset), 4)
-            l.log(f"An additional correction of {angle} degree east was applied to the ADCP velocities.")
-        else:
-            angle = pconfig.magnetic_declination
-            l.log(f"A correction of {angle} degree east was applied to the ADCP velocities.")
-
-        if all(v in dataset for v in ["u", "v"]):
-            dataset.u.values, dataset.v.values = xy_vector_magnetic_correction(dataset.u, dataset.v, angle)
-            l.log(f"Velocities transformed to true north and true east.")
-
-    if pconfig.motion_correction is True:
-        adcp_motion_correction(dataset, "nav")
-
-
 def _recompute_speed_course(dataset: xr.Dataset):
     if all(v in dataset for v in ['lon', 'lat']):
         l.log('Platform `speed` and `course` computed from longitude and latitude data.')
         compute_speed_and_course(dataset=dataset)
     else:
         l.warning("Could not compute `speed` and `course`. `lon`/`lat` data not found.")
+
 
 def _compute_uv_ship(dataset: xr.Dataset):
     if all(x in dataset for x in ('speed', 'course')):
@@ -867,7 +829,7 @@ if __name__ == "__main__":
 
         METEOCE_PROCESSING=dict(
             buoy_name="PMZA-RIKI",
-            data_format="viking_dat",
+            data_format="viking",
             magnetic_declination=0,
             magnetic_declination_preset=None,
         ),

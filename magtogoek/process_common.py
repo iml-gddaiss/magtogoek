@@ -474,6 +474,7 @@ def load_netcdf_raw(pconfig: BaseProcessConfig) -> xr.Dataset:
 def write_netcdf_raw(dataset: xr.Dataset, pconfig: BaseProcessConfig):
     netcdf_raw_path = Path(pconfig.netcdf_raw_path).with_suffix('.nc')
     dataset.to_netcdf(netcdf_raw_path)
+    dataset.close()
     l.log(f"netcdf raw file made -> {netcdf_raw_path}")
 
 

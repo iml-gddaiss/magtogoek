@@ -374,7 +374,7 @@ def _process_adcp_data(pconfig: ProcessConfig):
         l.log(f"No magnetic declination found in the raw file.")
 
     # >>>> ADCP SPECIFIC
-    if pconfig.magnetic_declination:
+    if pconfig.magnetic_declination is not None:
         if dataset.attrs['coord_system'] == 'earth':
             apply_magnetic_correction(dataset, pconfig.magnetic_declination)
         else:
@@ -503,19 +503,24 @@ def _load_adcp_data(pconfig: ProcessConfig) -> xr.Dataset:
     start_time, leading_index = get_datetime_and_count(pconfig.leading_trim)
     end_time, trailing_index = get_datetime_and_count(pconfig.trailing_trim)
 
-    dataset = load_adcp_binary(
-        filenames=pconfig.input_files,
-        yearbase=pconfig.yearbase,
-        sonar=pconfig.sonar,
-        leading_index=leading_index,
-        trailing_index=trailing_index,
-        orientation=pconfig.adcp_orientation,
-        sensor_depth=pconfig.sensor_depth,
-        bad_pressure=pconfig.bad_pressure,
-        start_time=pconfig.start_time,
-        time_step=pconfig.time_step,
-        magnetic_declination_preset=pconfig.magnetic_declination_preset,
-    )
+    if netcdf_raw_exist(pconfig) and pconfig.from_raw is not True:
+        dataset = load_netcdf_raw(pconfig)
+    else:
+        dataset = load_adcp_binary(
+            filenames=pconfig.input_files,
+            yearbase=pconfig.yearbase,
+            sonar=pconfig.sonar,
+            leading_index=leading_index,
+            trailing_index=trailing_index,
+            orientation=pconfig.adcp_orientation,
+            sensor_depth=pconfig.sensor_depth,
+            bad_pressure=pconfig.bad_pressure,
+            start_time=pconfig.start_time,
+            time_step=pconfig.time_step,
+            magnetic_declination_preset=pconfig.magnetic_declination_preset,
+        )
+
+        write_netcdf_raw(dataset=dataset, pconfig=pconfig)
 
     dataset = cut_bin_depths(dataset, pconfig.depth_range)
 

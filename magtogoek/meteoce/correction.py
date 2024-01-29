@@ -4,12 +4,14 @@ Made by jeromejguay
 
 Module containing the correction functions for meteoce data processing.
 """
+import numpy as np
 import xarray as xr
 from typing import TYPE_CHECKING
 
 from magtogoek import logger as l
 from magtogoek.process_common import add_correction_attributes_to_dataarray
-from magtogoek.sci_tools import rotate_heading, cartesian2north_polar, north_polar2cartesian
+from magtogoek.sci_tools import rotate_heading, xy_vector_magnetic_correction, \
+    north_polar2cartesian, cartesian2north_polar
 from magtogoek.wps.correction import pH_correction_for_salinity, dissolved_oxygen_correction_winkler, \
     dissolved_oxygen_correction_for_salinity_SCOR_WG_142, dissolved_oxygen_correction_for_pressure_JAC, \
     time_drift_correction, in_situ_sample_correction
@@ -28,29 +30,153 @@ WPS_VARIABLES_TO_CORRECT_FOR_DRIFT_AND_IN_SITU = [
     'fdom'
 ]
 
+def apply_motion_correction(dataset: xr.Dataset, pconfig: "ProcessConfig"):
+    """Carry motion correction"""
 
-def meteoce_data_magnetic_declination_correction(dataset: xr.Dataset, pconfig: "ProcessConfig"):
+    if pconfig.wind_motion_correction is True:
+        _wind_motion_correction(dataset=dataset)
+
+    if pconfig.adcp_motion_correction is True:
+        _adcp_motion_correction(dataset=dataset)
+
+def _wind_motion_correction(dataset:xr.Dataset):
+    """ Correct wind_speed and wind_gust with u_ship and v_ship.
+
+    Required variable in dataset:
+        wind_speed: (wind_speed, wind_direction)
+        wind_gust: (wind_gust, wind_gust_direction)
+
+    ```Correction
+    wind_x' = wind_x + u_ship
+    wind_y' = wind_y + v_ship
+    ```
+
+
+    """
+    if all(v in dataset for v in ("u_ship", "v_ship")):
+        l.log("Wind motion correction was carried out with gps data.")
+        _msg = "Motion correction was carried out with gps data."
+        if all(v in dataset for v in ("wind_speed", "wind_direction")):
+            wind_x, wind_y = north_polar2cartesian(dataset.wind_speed, dataset.wind_direction - 180)
+            wind_x += dataset.u_ship
+            wind_y += dataset.v_ship
+            dataset.wind_direction.values, dataset.wind_speed.values = cartesian2north_polar(wind_x, wind_y)
+            dataset.wind_direction.values = (dataset.wind_direction.values + 180 ) % 360
+
+            for v in ("wind_speed", "wind_direction"):
+                add_correction_attributes_to_dataarray(dataset[v])
+                dataset[v].attrs["correction"] = _msg + "\n"
+
+        if all(v in dataset for v in ("wind_gust", "wind_gust_direction")):
+            gust_x, gust_y = north_polar2cartesian(dataset.wind_gust, dataset.wind_gust_direction - 180)
+            gust_x += dataset.u_ship
+            gust_y += dataset.v_ship
+            dataset.wind_gust_direction.values, dataset.wind_gust.values = cartesian2north_polar(gust_x, gust_y)
+            dataset.wind_gust_direction.values = (dataset.wind_gust_direction.values + 180) % 360
+            for v in ("wind_gust", "wind_gust_direction"):
+                add_correction_attributes_to_dataarray(dataset[v])
+                dataset[v].attrs["correction"] = _msg + "\n"
+
+def _adcp_motion_correction(dataset: xr.Dataset):
+    l.log("Adcp motion correction was carried out with gps data.")
+    _msg = "Motion correction was carried out with gps data"
+    if all(f"{v}_ship" in dataset for v in ["u", "v"]):
+        for field in ["u", "v"]:
+            dataset[field] += dataset[field + "_ship"]
+            add_correction_attributes_to_dataarray(dataset[field])
+
+
+
+def apply_magnetic_correction(dataset: xr.Dataset, pconfig: "ProcessConfig"):
     """Carry magnetic declination correction for meteoce variables
 
     [-180, 180]: heading
     [0, 360 ]: wind_direction, wave_direction
 
     """
+    _set_magnetic_correction_to_apply(dataset, pconfig)
 
-    if pconfig.magnetic_declination is not None:
+    if pconfig.magnetic_correction_to_apply is not None:
         # '-180, 180'
         if 'heading' in dataset.variables:
             add_correction_attributes_to_dataarray(dataset['heading'])
-            dataset.heading.values = rotate_heading(dataset.heading.data, dataset.magnetic_declination)
+            dataset.heading.values = rotate_heading(dataset.heading.data, pconfig.magnetic_correction_to_apply)
             dataset['heading'].attrs['corrections'] += 'Corrected for magnetic declination.\n'
             l.log(f"Heading transformed to true north.")
 
         # '0, 360'
         for variable in {'wind_direction', 'wave_direction'}.intersection(set(dataset.variables)):
             add_correction_attributes_to_dataarray(dataset[variable])
-            dataset[variable].values = (dataset[variable].values + pconfig.magnetic_declination) % 360
+            dataset[variable].values = (dataset[variable].values + pconfig.magnetic_correction_to_apply) % 360
             dataset[variable].attrs['corrections'] += 'Corrected for magnetic declination.\n'
             l.log(f"{variable} transformed to true north.")
+
+    if pconfig.magnetic_declination is not None:
+        _adcp_magnetic_correction(dataset=dataset, pconfig=pconfig)
+
+
+
+def _set_magnetic_correction_to_apply(dataset: xr.Dataset, pconfig: "ProcessConfig"):
+    """Set the magnetic_correction_to_apply and "magnetic_declination" global attribute.
+
+    Either from the GPS (dataset variable) or the ProcessConfig.magnetic_declination .
+
+    For `Metis` data, the correction takes into account the one already carried out by the buoy
+    controller.
+    """
+
+
+    if pconfig.data_format == "viking":
+        if isinstance(pconfig.magnetic_declination, (int, float)):
+            pconfig.magnetic_correction_to_apply = pconfig.magnetic_declination
+            dataset.attrs['magnetic_declination'] = pconfig.magnetic_declination
+            dataset.attrs["magnetic_declination_units"] = "degree east"
+            if 'magnetic_declination' in dataset.variables:
+                pconfig.variables_to_drop.append('magnetic_declination')
+        else:
+            if 'magnetic_declination' in dataset.variables:
+                pconfig.magnetic_correction_to_apply = dataset['magnetic_declination'].values
+
+            elif "magnetic_declination" in dataset.attrs and dataset.attrs["magnetic_declination"] != "NA":
+                pconfig.magnetic_correction_to_apply = dataset.attrs["magnetic_declination"]
+
+            else:
+                l.warning('Unable to carry magnetic declination correction. No magnetic declination value found.')
+
+    elif pconfig.data_format == "metis":
+        if isinstance(pconfig.magnetic_declination, (int, float)):
+            if 'magnetic_declination' in dataset.variables:
+                pconfig.magnetic_correction_to_apply = pconfig.magnetic_declination - dataset['magnetic_declination']
+                pconfig.variables_to_drop.append('magnetic_declination')
+
+            elif dataset.attrs["magnetic_declination"] and dataset.attrs["magnetic_declination"] != "NA":
+                pconfig.magnetic_correction_to_apply = pconfig.magnetic_declination - dataset.attrs["magnetic_declination"]
+
+            else:
+                pconfig.magnetic_correction_to_apply = pconfig.magnetic_declination
+
+            dataset.attrs['magnetic_declination'] = pconfig.magnetic_declination
+            dataset.attrs["magnetic_declination_units"] = "degree east"
+
+
+def _adcp_magnetic_correction(dataset: xr.Dataset, pconfig: "ProcessConfig"):
+    """
+    Carry magnetic declination correction and motion correction.
+    """
+
+    angle = pconfig.magnetic_declination
+    if pconfig.adcp_magnetic_declination_preset is not None:
+        angle = round((pconfig.magnetic_declination - pconfig.adcp_magnetic_declination_preset), 4)
+        l.log(f"An additional magnetic correction of {angle} degree east was applied to the ADCP velocities.")
+    else:
+        l.log(f"A magnetic correction of {angle} degree east was applied to the ADCP velocities.")
+
+    if all(v in dataset for v in ("u", "v")):
+        dataset.u.values, dataset.v.values = xy_vector_magnetic_correction(dataset.u, dataset.v, angle)
+        l.log(f"Velocities transformed to true north and true east.")
+        for variable in ("u", "v"):
+            add_correction_attributes_to_dataarray(dataset[variable])
+            dataset[variable].attrs['corrections'] += 'Corrected for magnetic declination.\n'
 
 
 def wps_data_correction(

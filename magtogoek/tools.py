@@ -506,3 +506,54 @@ def cut_times(
             l.log('Time slicing: ' + ', '.join(msg) + '.')
 
     return dataset
+
+def cut_index(
+        dataset: xr.Dataset, dim: str, start_index:int = None, end_index: int = None
+) -> xr.Dataset:
+    """
+    Return a dataset with time cut if they are not outside the dataset index.
+
+    Parameters
+    ----------
+    dataset :
+    dim :
+    start_index :
+    end_index :
+
+    Returns
+    -------
+    dataset with index cut.
+
+    """
+    msg = []
+    out_off_bound_index = False
+    if start_index is not None:
+        msg.append(f"start_index: {start_index}")
+        if start_index > len(dataset[dim]):
+            out_off_bound_index = True
+
+
+    if end_index is not None:
+        msg.append(f"end_index: {end_index}")
+        if end_index < 0:
+            out_off_bound_index = True
+
+    if start_index is not None and end_index is not None:
+        if start_index >= end_index:
+            out_off_bound_index = True
+    if out_off_bound_index is True:
+        l.warning("Trimming indices out of bounds. Index slicing aborted.")
+    else:
+        dataset = dataset.isel({'time': slice(start_index, end_index)})
+        if len(msg) > 0:
+            l.log('Index slicing: ' + ', '.join(msg) + '.')
+
+    return dataset
+
+def is_unique(array: np.ndarray):
+    """Return True if array is single valued (Omits nan)."""
+    return len(nan_unique(array)) == 1
+
+def nan_unique(array: np.array) -> tp.Any:
+    """np.unique() with np.nan omitted"""
+    return np.unique(array[np.isfinite(array)])

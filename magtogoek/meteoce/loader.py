@@ -26,6 +26,7 @@ import xarray as xr
 from typing import *
 import magtogoek.logger as l
 from magtogoek.utils import format_filenames_for_print
+from magtogoek.tools import is_unique, nan_unique
 
 import pint_xarray # pint_xarray modify the xr.Dataset Object
 
@@ -38,7 +39,7 @@ CENTIMETER_TO_METER = 1 / 100
 def load_meteoce_data(
         filenames: Union[str, List[str]],
         buoy_name: str = None,
-        data_format: str = 'viking_dat',
+        data_format: str = 'viking',
 ) -> xr.Dataset:
     """
 
@@ -55,7 +56,7 @@ def load_meteoce_data(
     """
     l.section('Loading meteoce data')
 
-    if data_format == "viking_dat":
+    if data_format == "viking":
         dataset = load_viking_data(filenames=filenames, buoy_name=buoy_name)
     else:
         l.warning(f'Invalid data_format: {data_format}')
@@ -98,6 +99,11 @@ def load_viking_data(
 
     dataset = _average_duplicates(dataset, 'time')
 
+    if is_unique(dataset['magnetic_declination']):
+        dataset.attrs["magnetic_declination"] = nan_unique(dataset['magnetic_declination'])[0]
+        dataset.attrs["magnetic_declination_units"] = "degree east"
+        dataset = dataset.drop_vars('magnetic_declination')
+
     dataset.attrs['logbook'] = l.logbook
 
     return dataset
@@ -124,7 +130,7 @@ def _load_viking_meteoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[
         data.update(
             {'speed': (np.round(viking_data.gps['speed'] * KNOTS_TO_METER_PER_SECONDS, 3), {"units": "m/s"}),
              'course': (viking_data.gps['course'], {}),
-             'gps_magnetic_declination': (viking_data.gps['variation_E'], {})}
+             'magnetic_declination': (viking_data.gps['variation_E'], {})}
         )
         l.log('Gps data loaded.')
 

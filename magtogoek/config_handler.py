@@ -301,7 +301,7 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
         tparser.add_option(section, "sensor_depth", dtypes=["float"], default="")
         tparser.add_option(section, "depth_range", dtypes=["float"], nargs_min=0, nargs_max=2)
         tparser.add_option(section, "bad_pressure", dtypes=["bool"], default=False, null_value=False)
-        tparser.add_option(section, "magnetic_declination", dtypes=["float"], default="")
+        tparser.add_option(section, "magnetic_declination", dtypes=["float"], default=None)
         tparser.add_option(section, "magnetic_declination_preset", dtypes=["float"], default=None, comments="Found in the ADCP configuration file. (Used for RTI)")
         tparser.add_option(section, "keep_bt", dtypes=["bool"], default=True, null_value=False)
         tparser.add_option(section, "start_time", dtypes=["str"], default="", is_time_stamp=True)
@@ -340,7 +340,7 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
 
     elif process == "meteoce":
         section = "METEOCE_PROCESSING"
-        tparser.add_option(section, "data_format", dtypes=["str"], default="viking_dat", choice=['viking_dat'])
+        tparser.add_option(section, "data_format", dtypes=["str"], default="viking", choice=['viking'])
         tparser.add_option(section, "buoy_name", dtypes=["str"],  comments='Name of the buoy in the raw file.', is_required=False)
         tparser.add_option(section, "sampling_depth", dtypes=["float"], default="")
         tparser.add_option(section, "adcp_id", dtypes=["str"], default=None)
@@ -359,11 +359,14 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
         tparser.add_option(section, "compute_uv_ship", dtypes=["bool"], default=False, null_value=False)
         tparser.add_option(section, "recompute_density", dtypes=["bool"], default=True, null_value=False)
 
-        tparser.add_option(section, "magnetic_declination", dtypes=["float"], default="")
+        tparser.add_option(section, "magnetic_declination", dtypes=["float"], default=None)
         tparser.add_option(section, "adcp_magnetic_declination_preset", dtypes=["float"], default=None, comments="Found in the ADCP configuration file. (Used for RTI)")
 
+
         section = "METEOCE_CORRECTION"
-        tparser.add_option(section, "motion_correction", dtypes=["bool"], default=False, null_value=False)
+        tparser.add_option(section, "adcp_motion_correction", dtypes=["bool"], default=False, null_value=False)
+        tparser.add_option(section, "wind_motion_correction", dtypes=["bool"], default=False, null_value=False)
+
         tparser.add_option(section, "ph_salinity_correction", dtypes=["bool"], default=True, null_value=False)
         tparser.add_option(section, 'ph_salinity_coeffs', dtypes=["float"], nargs=3, default="", comments="Calibration coefficient: [psal, k0, k2]")
         tparser.add_option(section, "dissolved_oxygen_winkler_correction", dtypes=["bool"], default=True, null_value=False)

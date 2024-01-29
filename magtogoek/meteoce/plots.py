@@ -131,7 +131,7 @@ def plot_sensor_data(dataset: xr.Dataset, varnames: List[str], dataset_raw: xr.D
     for var, ax in zip(varnames, axes):
         da = dataset[var]
         if dataset_raw is not None and var in dataset_raw:
-            ax.plot(dataset.time, dataset_raw[var], linestyle="--", marker='.', color='cyan')
+            ax.plot(dataset_raw.time, dataset_raw[var], linestyle="--", marker='.', color='cyan')
 
         if 'ancillary_variables' in dataset[var].attrs:
             if dataset[var].attrs['ancillary_variables'] in dataset:

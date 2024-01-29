@@ -13,7 +13,7 @@ from nptyping import NDArray
 from pygeodesy.ellipsoidalVincenty import LatLon
 
 
-def cartesian2north_polar(x: NDArray, y: NDArray):
+def cartesian2north_polar(x: NDArray, y: NDArray) -> tp.Tuple[NDArray, NDArray]:
     """Compute the azimut (north clockwise)  and the radius from x, y vector.
 
     ```

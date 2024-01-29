@@ -420,7 +420,7 @@ def plot_meteoce(ctx, info, input_file, **options):
             _path = Path(input_file)
             raw_data_path = _path.parent / (_path.stem + "_raw" + _path.suffix)
             if raw_data_path.exists():
-                raw_dataset = xr.open_dataset(raw_data_path)
+                raw_dataset = xr.open_dataset(raw_data_path).sel(time=slice(dataset.time[0], dataset.time[-1]))
             else:
                 print(f"Raw data file not found ({raw_dataset}).")
         make_meteoce_figure(dataset, save_path=options['save_fig'], show_fig=not options['headless'], dataset_raw=raw_dataset)
