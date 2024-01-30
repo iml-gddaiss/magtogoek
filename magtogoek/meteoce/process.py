@@ -497,12 +497,12 @@ def _load_viking_data(pconfig: ProcessConfig):
         write_netcdf_raw(dataset=dataset, pconfig=pconfig)
 
 
-    start_time, start_index = get_datetime_and_count(pconfig.leading_trim)
-    end_time, end_index = get_datetime_and_count(pconfig.trailing_trim)
+    start_time, start_trim = get_datetime_and_count(pconfig.leading_trim)
+    end_time, end_trim = get_datetime_and_count(pconfig.trailing_trim)
 
     dataset = cut_times(dataset, start_time, end_time)
 
-    dataset = cut_index(dataset=dataset, dim='time', start_index=start_index, end_index=end_index)
+    dataset = cut_index(dataset=dataset, dim='time', start_trim=start_trim, end_trim=end_trim)
 
     return dataset
 

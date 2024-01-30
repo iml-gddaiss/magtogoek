@@ -508,45 +508,43 @@ def cut_times(
     return dataset
 
 def cut_index(
-        dataset: xr.Dataset, dim: str, start_index:int = None, end_index: int = None
+        dataset: xr.Dataset, dim: str, start_trim:int = None, end_trim: int = None
 ) -> xr.Dataset:
     """
-    Return a dataset with time cut if they are not outside the dataset index.
+    Return a dataset with data cut along dims.
 
     Parameters
     ----------
     dataset :
     dim :
-    start_index :
-    end_index :
+    start_trim : Number of point removed from the start.
+    end_trim : Number of point removed from the end
 
     Returns
     -------
     dataset with index cut.
 
     """
+    if start_trim is None and end_trim is None:
+        return dataset
+
+    total_trim = 0
     msg = []
-    out_off_bound_index = False
-    if start_index is not None:
-        msg.append(f"start_index: {start_index}")
-        if start_index > len(dataset[dim]):
-            out_off_bound_index = True
 
 
-    if end_index is not None:
-        msg.append(f"end_index: {end_index}")
-        if end_index < 0:
-            out_off_bound_index = True
+    if start_trim is not None:
+        total_trim += start_trim
+        msg.append(f"start_index: {start_trim}")
 
-    if start_index is not None and end_index is not None:
-        if start_index >= end_index:
-            out_off_bound_index = True
-    if out_off_bound_index is True:
-        l.warning("Trimming indices out of bounds. Index slicing aborted.")
+    if end_trim is not None:
+        total_trim += end_trim
+        msg.append(f"end_index: {end_trim}")
+
+    if total_trim < dataset.dims[dim]:
+        l.log('Index slicing: ' + ', '.join(msg) + '.')
+        dataset = dataset.sel({dim: slice(start_trim, dataset.dims[dim] - end_trim)})
     else:
-        dataset = dataset.isel({'time': slice(start_index, end_index)})
-        if len(msg) > 0:
-            l.log('Index slicing: ' + ', '.join(msg) + '.')
+        l.warning("Trimming indices out of bounds. Index slicing aborted.")
 
     return dataset
 
