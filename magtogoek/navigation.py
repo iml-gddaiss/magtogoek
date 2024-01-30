@@ -21,7 +21,9 @@ import numpy as np
 import pynmea2
 import xarray as xr
 import matplotlib.pyplot as plt
+
 from magtogoek import logger as l
+from magtogoek.exceptions import MagtogoekExit
 from magtogoek.sci_tools import north_polar2cartesian, vincenty, get_gps_bearing
 from magtogoek.utils import get_files_from_expression
 
@@ -154,7 +156,7 @@ def compute_navigation(
 ):
     """Compute the `bearing`, `speed`, `u_ship` and `v_ship` from gps data in nmea text format or gpx xml format.
 
-    Returns an xarray.dataset object with the compute data and gps data.
+    Returns a xarray.Dataset object with the compute data and gps data.
 
     Parameters
     ----------
@@ -171,20 +173,20 @@ def compute_navigation(
     """
     filenames = get_files_from_expression(filenames)
     print('Loading files ...', end='\r')
+
     dataset = load_navigation(filenames)
     if dataset is None:
-        print('Could not load navigation data from file(s).')
-        'Loading files ... [Error]'
+        print('Loading files ... [Error]')
+        raise MagtogoekExit('Could not load navigation data from file(s).')
     elif 'time' not in dataset:
-        'Loading files ... [Error]'
-        print(f"`time` in the coordinates. Valid time name {VARIABLE_NAME_MAPPING['time']}")
-        sys.exit()
+        print('Loading files ... [Error]')
+        raise MagtogoekExit(f"`time` in the coordinates. Valid time name {VARIABLE_NAME_MAPPING['time']}")
     elif 'lon' not in dataset or 'lat' not in dataset:
         print('Loading files ... [Error]')
-        print(f"Either `lon` and/or `lat` variable not found the dataset. Valid `lon` name {VARIABLE_NAME_MAPPING['lon']}, Valid `lat` name {VARIABLE_NAME_MAPPING['lon']}")
-        sys.exit()
-    else:
-        print('Loading files ... [Done]')
+        raise MagtogoekExit(f"Either `lon` and/or `lat` variable not found the dataset."
+                            f" Valid `lon` name {VARIABLE_NAME_MAPPING['lon']}, Valid `lat` name {VARIABLE_NAME_MAPPING['lon']}")
+
+    print('Loading files ... [Done]')
 
     print('Computing navigation ...', end='\r')
     compute_speed_and_course(dataset=dataset, window=window)

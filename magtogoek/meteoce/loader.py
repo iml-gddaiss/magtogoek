@@ -24,7 +24,9 @@ from magtogoek.meteoce.viking_dat_reader import RawVikingDatReader, VikingData
 import numpy as np
 import xarray as xr
 from typing import *
+
 import magtogoek.logger as l
+from magtogoek.exceptions import MagtogoekExit
 from magtogoek.utils import format_filenames_for_print
 from magtogoek.tools import is_unique, nan_unique
 
@@ -60,8 +62,7 @@ def load_meteoce_data(
         dataset = load_viking_data(filenames=filenames, buoy_name=buoy_name)
     else:
         l.warning(f'Invalid data_format: {data_format}')
-        raise ValueError('Invalid data_format.') #FIXME MAGTOGOEK PROCESS ERROR EXIT
-
+        raise MagtogoekExit("Invalid meteoce data format. Exiting")
     l.log('Data Loaded.')
 
     return dataset
@@ -78,7 +79,7 @@ def load_viking_data(
 
     if isinstance(viking_data, Dict):
         l.warning(f'More than one buoy name was found in the file {filenames}.\n Buoy names fround: {list(viking_data.keys())} \n Specify a buoy_name\n Exiting')
-        raise ValueError(f'More than one buoy was found in the file {filenames}. Exiting') # SHOULD NOT BE HERE FIXME
+        raise MagtogoekExit(f'More than one buoy was found in the file {filenames}. Exiting')
 
     if buoy_name is not None and viking_data.buoy_name != buoy_name:
         l.log(f'Buoy Name found in files is different from the one provided.')

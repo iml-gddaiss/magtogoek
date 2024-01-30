@@ -11,7 +11,9 @@ import sys
 
 from typing import *
 from dataclasses import dataclass
+
 from magtogoek import SENSOR_TYPES, PLATFORM_TYPES, DEFAULT_PLATFORM_TYPE
+from magtogoek.exceptions import MagtogoekExit
 import magtogoek.logger as l
 from magtogoek.utils import dict2json, json2dict
 
@@ -167,12 +169,11 @@ def load_platform_metadata(platform_file: str, platform_id: str) -> PlatformMeta
     try:
         json_dict = json2dict(platform_file)
     except json.JSONDecodeError as err:
-        print(
+        raise MagtogoekExit(
             f"ERROR. Could not load platform file (json): {platform_file}. \n"
             f"Error: {err}.\n"
-            f"Aborting !"
+            f"Exiting"
         )
-        sys.exit()  # TODO this should not be here.
 
     if platform_id in json_dict:
 
@@ -192,11 +193,10 @@ def load_platform_metadata(platform_file: str, platform_id: str) -> PlatformMeta
         return platform_metadata
 
     else:
-        print(
+        raise MagtogoekExit(
             f"ERROR. `platform_id`: { platform_id} not found platform file: {platform_file}.\n"
-            f"Aborting !"
+            f"Exiting"
         )
-        sys.exit()  # TODO this should not be here.
 
 
 def _filter_for_dataclass(data_class: dataclass, raw_json_dict: dict):

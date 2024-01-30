@@ -32,6 +32,7 @@ from subprocess import run as subp_run
 import click
 
 from magtogoek import LOCAL_CONFIGURATION_PATH, DEFAULT_CONFIGURATION_PATH, LOCAL_CONFIG_EXISTS, VERSION, TERMINAL_WIDTH
+from magtogoek.exceptions import MagtogoekExit
 from magtogoek.app_options import general_options, adcp_options, add_options
 
 from magtogoek.utils import is_valid_filename, json2dict, resolve_relative_path
@@ -77,11 +78,11 @@ common_options = [
 
 
 def magtogoek(*args):
-    _magtogoek(*args)
-    #try:
-    #    _magtogoek(*args)
-    #except Exception as e:
-    #    click.secho(f'{e}', color='red', err=True)
+    try:
+        _magtogoek(*args)
+    except Exception as msg:
+        click.secho(f'{msg}\nAn Unexpected Error as Occured', color='red', err=True)
+        sys.exit()
 
 # --------------------------- #
 #      mtgk entry point       #
@@ -124,10 +125,6 @@ def init(info, repair, force):
               help="""Reload data from raw files (input files)""")
 def process(info, config_file: str, **options):
     """Process data by reading configfile"""
-    # This could be updated as a group with sensor specific command.
-    # Doing so would allow the user to pass config options. The load_configfile
-    # command is already able to take updated_params options and update de configfile.
-    # The same options (or nearly all the same) as for adcp_config could be use.
     from configparser import ParsingError
     from magtogoek.config_handler import load_configfile
 
@@ -138,8 +135,7 @@ def process(info, config_file: str, **options):
     try:
         configuration = load_configfile(config_file, cli_options=cli_options)
     except (ParsingError, UnicodeDecodeError):
-        print("Failed to open the given configfile.\n mtgk process aborted.")
-        sys.exit()
+        raise MagtogoekExit("Failed to open the given configfile. mtgk process aborted.")
 
     if configuration['HEADER']['process'] == "adcp":
         from magtogoek.adcp.process import process_adcp

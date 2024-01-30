@@ -43,9 +43,9 @@ import xarray as xr
 
 import gsw
 
-
 import magtogoek.logger as l
 
+from magtogoek.exceptions import MagtogoekExit
 from magtogoek.adcp.rti_reader import RtiReader
 from magtogoek.adcp.tools import dday_to_datetime64
 from magtogoek.utils import get_files_from_expression, format_filenames_for_print
@@ -59,14 +59,6 @@ RDI_SONAR = ["wh", "sv", "os", "sw_pd0"]
 RTI_SONAR = ["sw"]
 
 VEL_FILL_VALUE = -32768.0
-
-
-class FilesFormatError(Exception):
-    pass
-
-
-class InvalidSonarError(Exception):
-    pass
 
 
 def load_adcp_binary(
@@ -146,6 +138,7 @@ def load_adcp_binary(
     # ------------------------ #
     if sonar in RTI_SONAR:
         l.log(format_filenames_for_print("RTI ENS", filenames))
+
         data = RtiReader(filenames=filenames).read(
             start_index=leading_index, stop_index=trailing_index
         )
@@ -167,19 +160,14 @@ def load_adcp_binary(
                 start=leading_index, stop=trailing_index
             )
             if not data:
-                raise ValueError(
-                    "The sum of the trim values is greater than the number of ensemble."
-                )
+                raise MagtogoekExit("The sum of the trim values is greater than the number of ensemble. Exiting")
             data.vel = np.asarray(data.vel)
             if "vbvel" in data:
                 data.vbvel = np.asarray(data.vbvel)
             if "bt_vel" in data:
                 data.bt_vel = np.asarray(data.bt_vel)
         except RuntimeError:
-            print(
-                f"ERROR: The input_files are not in a RDI pd0 format. RDI sonar : {RDI_SONAR}"
-            )
-            sys.exit() # TODO this should not be here.
+            raise MagtogoekExit(f"ERROR: The input_files are not in a RDI pd0 format. RDI sonar : {RDI_SONAR}. Exiting")
         if leading_index is not None or trailing_index is not None:
             l.log(f"Time index cut: leading={0 if leading_index is None else leading_index}, "
                   f"trailing={0 if trailing_index is None else trailing_index}")
@@ -199,9 +187,7 @@ def load_adcp_binary(
             )
 
     else:
-        raise InvalidSonarError(
-            f"{sonar} is not a valid. Valid sonar: `os`, `wh`, `sv`, `sw`, `sw_pd0` "
-        )
+        raise MagtogoekExit(f"{sonar} is not a valid. Valid sonar:(`os`, `wh`, `sv`, `sw`, `sw_pd0`)")
 
     # -------------------- #
     # Compares orientation #

@@ -11,6 +11,7 @@ import xarray as xr
 import warnings
 
 from magtogoek import logger as l
+from magtogoek.exceptions import MagtogoekExit
 from magtogoek.sci_tools import cartesian2north_polar
 
 
@@ -252,7 +253,7 @@ def _xr_bin(dataset: tp.Union[xr.Dataset, xr.DataArray],
     Returns
     -------
     binned :
-        Dataset binned at `binc` along `dim`.
+        Dataset binned at `bin` along `dim`.
 
     """
     # Bin type management
@@ -420,9 +421,7 @@ def get_datetime_and_count(trim_arg: tp.Union[str, int]):
             try:
                 return pd.Timestamp(trim_arg), None
             except ValueError:
-                print("Bad datetime format for trim. Use YYYY-MM-DDTHH:MM:SS.ssss")
-                print("Process aborted")
-                sys.exit()
+                raise MagtogoekExit("Invalid datetime format from trim. Required format: YYYY-MM-DDTHH:MM:SS.ssss. Exiting")
         else:
             return None, int(trim_arg)
     else:

@@ -14,6 +14,7 @@ from pathlib import Path
 
 from magtogoek import TERMINAL_WIDTH, DEFAULT_PLATFORM_TYPE
 from magtogoek import logger as l
+from magtogoek.exceptions import MagtogoekExit
 from magtogoek.attributes_formatter import compute_global_attrs
 from magtogoek.navigation import load_navigation
 from magtogoek.platforms import PlatformMetadata, load_platform_metadata
@@ -148,13 +149,9 @@ class BaseProcessConfig:
             if Path(self.platform_file).is_file():
                 self.platform_metadata = load_platform_metadata(self.platform_file, self.platform_id)
             else:
-                print( # This should not happen since it check when loading the config file.
-                    f"platform_file, {self.platform_file}, not found\n"
-                    f"Aborting"
-                )
-                sys.exit()
-            self.platform_type = self.platform_metadata.platform.platform_type
+                raise MagtogoekExit(f"platform_file, {self.platform_file}, not found. Exiting")
 
+            self.platform_type = self.platform_metadata.platform.platform_type
         else:
             self.platform_metadata = None
 
