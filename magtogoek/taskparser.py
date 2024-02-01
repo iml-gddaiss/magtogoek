@@ -162,23 +162,23 @@ class TaskParserError(SystemExit):
                        f"received `{self.value}`."
         if self.error == "nargs":
             self.msg = f"`{self.section}/{self.option}` expected "
-            if self.option_info.nargs:
-                self.msg = f"`{self.option_info.nargs}` "
+            if self.option_info.nargs is not None:
+                self.msg += f"`{self.option_info.nargs}` "
             else:
                 if self.option_info.nargs_min is not None:
                     self.msg += f"a minimum of `{self.option_info.nargs_min}` "
                     if self.option_info.nargs_max:
                         self.msg += "and "
-                if self.option_info.nargs_max:
+                if self.option_info.nargs_max is not None:
                     self.msg += f"a maximum of `{self.option_info.nargs_max}` "
             self.msg += f"values, but received `{len(self.value)}`."
         if self.error == "range":
             self.msg = f"`{self.section}/{self.option}` expected a value "
             if self.option_info.value_min is not None:
                 self.msg += f">= than `{self.option_info.value_min}` "
-                if self.option_info.value_max:
+                if self.option_info.value_max is not None:
                     self.msg += "and "
-            if self.option_info.value_max:
+            if self.option_info.value_max is not None:
                 self.msg += f"<= than `{self.option_info.value_max}` "
             self.msg += f", but received a value of `{self.value}`."
         if self.error == "choice":
