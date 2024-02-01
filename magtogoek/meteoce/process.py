@@ -26,10 +26,8 @@ Notes
     are average over ~ 1 minutes, we need at least ~1 minutes average values from the gps.who C<e
 
 """
-import sys
 
-import gsw
-import numpy as np
+
 import xarray as xr
 from typing import *
 
@@ -46,7 +44,7 @@ from magtogoek.platforms import PlatformMetadata
 from magtogoek.wps.sci_tools import compute_in_situ_density, dissolved_oxygen_ml_per_L_to_umol_per_L, dissolved_oxygen_umol_per_L_to_umol_per_kg
 
 from magtogoek.meteoce.loader import load_meteoce_data
-from magtogoek.meteoce.correction import wps_data_correction, apply_magnetic_correction, apply_motion_correction
+from magtogoek.meteoce.correction import apply_sensors_corrections, apply_magnetic_correction, apply_motion_correction
 from magtogoek.meteoce.quality_control import meteoce_quality_control, no_meteoce_quality_control
 from magtogoek.meteoce.plots import make_meteoce_figure
 from magtogoek.meteoce.odf_exporter import make_odf
@@ -60,7 +58,9 @@ l.get_logger("meteoce_processing")
 
 STANDARD_GLOBAL_ATTRIBUTES = {"featureType": "timeSeriesProfile"}
 
-VARIABLES_TO_DROP = ['ph_temperature', 'pres'] # 'magnetic_declination' can be added in _set_magnetic_declination
+VARIABLES_TO_DROP = ['ph_temperature']
+# The following variables can be added to the VARIABLES_TO_DROP list during processing.
+# 'pres', 'raw_dissolved_oxygen' 'magnetic_declination'
 
 GLOBAL_ATTRS_TO_DROP = [
 ]
@@ -101,6 +101,9 @@ P01_CODES_MAP = {
     'density_QC': "SIGTEQ01_QC",
     'dissolved_oxygen': "DOXYUZ01",
     'dissolved_oxygen_QC': "DOXYUZ01_QC",
+    # Notes Valued are updated if and when Winkler correction is carried out
+    # 'dissolved_oxygen': "DOXYCZ01"
+    # 'dissolved_oxygen': "DOXYCZ01_QC"
     'ph': "PHXXZZXX",
     'ph_QC': "PHXXZZXX_QC",
     'par': "PFDPAR01",
@@ -288,6 +291,9 @@ class ProcessConfig(BaseProcessConfig):
         self.variables_to_drop = VARIABLES_TO_DROP
         self.global_attributes_to_drop = GLOBAL_ATTRS_TO_DROP
         self.p01_codes_map = P01_CODES_MAP
+        # Notes dissolved_oxygen code is updated if and when Winkler correction is carried out
+        # 'dissolved_oxygen': "DOXYCZ01"
+        # 'dissolved_oxygen': "DOXYCZ01_QC"
 
         self.sensors_to_instrument_id = {
             'adcp': self.adcp_id,
@@ -369,13 +375,11 @@ def _process_meteoce_data(pconfig: ProcessConfig):
 
     l.section("Meteoce data correction")
 
-    _compute_pressure_at_sampling_depth(dataset, pconfig) # pressure (water pressure) is required for some wps correction
-
     apply_magnetic_correction(dataset, pconfig)
 
     apply_motion_correction(dataset, pconfig)
 
-    wps_data_correction(dataset, pconfig)
+    apply_sensors_corrections(dataset, pconfig)
 
     # --------------- #
     # METEOCE COMPUTE #
@@ -385,7 +389,6 @@ def _process_meteoce_data(pconfig: ProcessConfig):
 
     if 'density' not in dataset or pconfig.recompute_density is True:
         _compute_ctd_potential_density(dataset, pconfig)
-
 
     # --------------- #
     # QUALITY CONTROL #
@@ -497,34 +500,14 @@ def _load_viking_data(pconfig: ProcessConfig):
         write_netcdf_raw(dataset=dataset, pconfig=pconfig)
 
 
-    start_time, start_trim = get_datetime_and_count(pconfig.leading_trim)
-    end_time, end_trim = get_datetime_and_count(pconfig.trailing_trim)
+    start_time, leading_trim = get_datetime_and_count(pconfig.leading_trim)
+    end_time, trailing_trim = get_datetime_and_count(pconfig.trailing_trim)
+
+    dataset = cut_index(dataset=dataset, dim='time', start_index=leading_trim, end_index=trailing_trim)
 
     dataset = cut_times(dataset, start_time, end_time)
 
-    dataset = cut_index(dataset=dataset, dim='time', start_trim=start_trim, end_trim=end_trim)
-
     return dataset
-
-
-def _compute_pressure_at_sampling_depth(dataset: xr.Dataset, pconfig: ProcessConfig):
-    """FIXME maybe add loggings ?"""
-    if "lat" in dataset.variables:
-        latitude = dataset.lat.data
-    elif isinstance(pconfig.platform_metadata.platform.latitude, (int, float)):
-        latitude = str(pconfig.platform_metadata.platform.latitude)
-    else:
-        latitude = 0
-
-    if 'atm_pressure' in dataset.variables:
-        pres = dataset.atm_pressure.pint.quantify().pint.to('dbar').pint.dequantify().values - 10.1325
-    else:
-        pres = np.zeros(dataset.time.shape)
-
-    if pconfig.sampling_depth is not None:
-        pres += gsw.p_from_z(z=-pconfig.sampling_depth, lat=latitude)
-
-    dataset['pres'] = (['time'], pres, {"units": "dbar"})
 
 
 def _compute_ctd_potential_density(dataset: xr.Dataset, pconfig: ProcessConfig):

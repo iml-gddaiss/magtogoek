@@ -4,11 +4,14 @@ Made by jeromejguay
 
 This module contains general mathematical and scientific functions.
 """
+from typing import List
+
 import numpy as np
 import typing as tp
 
 import pandas as pd
 import pygeodesy.errors
+import xarray as xr
 from nptyping import NDArray
 from pygeodesy.ellipsoidalVincenty import LatLon
 
@@ -266,3 +269,59 @@ def data_spike_detection(data: np.ndarray, threshold: float, window: int = 3):
     spikes = np.abs(data - data_rolled) >= threshold
 
     return spikes
+
+
+def time_drift_correction(
+        data: np.ndarray,
+        data_time: pd.DatetimeIndex,
+        drift: float,
+        start_time: List[str] = None
+) -> np.ndarray:
+    """Apply a linear correction for drift over time.
+
+    Subtracts the drift from the data as a linear regression
+
+    drift_array[0] = 0 and drift_array[-1] = drift
+
+    ```
+    data_corrected(time) = data(time) - drift_array(time)
+    ```
+
+    Parameters
+    ----------
+    data :
+    data_time :
+    drift :
+        Total drift. Amount of drift by the end of the time series.
+    start_time : (Optional) TimeStamp %Y-%m-%dT%H:%M:%S
+        Timestamp that the drift started. If not provided, the correction will start at
+        the initial time (time[0]).
+
+    Returns
+    -------
+    Corrected data
+    """
+
+    drift = [0, drift]
+    drift_time = data_time[[0,-1]]
+
+    if start_time is not None:
+        drift_time[0] = start_time
+
+    _data = xr.DataArray(data, coords={'time': data_time})
+    _drift = xr.DataArray(drift, coords={'time': drift_time})
+
+    _drift_correction = _drift.interp(time=_data.time, kwargs={'fill_value': 0}).data
+
+    return data - _drift_correction
+
+
+def in_situ_sample_correction(data: np.ndarray, slope: float, offset: float) -> np.ndarray:
+    """Apply a linear correction using pre-computed linear regression coefficient. fixme TEST
+
+    ```
+    data_corr = slope * data + offset
+    ```
+    """
+
+    return slope * data + offset

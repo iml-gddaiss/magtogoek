@@ -507,7 +507,7 @@ def cut_times(
     return dataset
 
 def cut_index(
-        dataset: xr.Dataset, dim: str, start_trim:int = None, end_trim: int = None
+        dataset: xr.Dataset, dim: str, start_index:int = None, end_index: int = None
 ) -> xr.Dataset:
     """
     Return a dataset with data cut along dims.
@@ -516,32 +516,35 @@ def cut_index(
     ----------
     dataset :
     dim :
-    start_trim : Number of point removed from the start.
-    end_trim : Number of point removed from the end
+    start_index : Number of point removed from the start.
+    end_index : Number of point removed from the end
 
     Returns
     -------
     dataset with index cut.
 
     """
-    if start_trim is None and end_trim is None:
+    if start_index is None and end_index is None:
         return dataset
 
+    stop_index = None
     total_trim = 0
     msg = []
 
 
-    if start_trim is not None:
-        total_trim += start_trim
-        msg.append(f"start_index: {start_trim}")
+    if start_index is not None:
+        total_trim += start_index
+        msg.append(f"from the start: `{start_index}`")
 
-    if end_trim is not None:
-        total_trim += end_trim
-        msg.append(f"end_index: {end_trim}")
+    if end_index is not None:
+        total_trim += end_index
+        stop_index = dataset.dims[dim] - end_index if end_index is not None else None
+        msg.append(f"from the end end: `{end_index}`")
 
     if total_trim < dataset.dims[dim]:
-        l.log('Index slicing: ' + ', '.join(msg) + '.')
-        dataset = dataset.sel({dim: slice(start_trim, dataset.dims[dim] - end_trim)})
+        l.log('Number of points removed ' + ', '.join(msg) + '.')
+
+        dataset = dataset.isel({dim: slice(start_index, stop_index)})
     else:
         l.warning("Trimming indices out of bounds. Index slicing aborted.")
 
