@@ -205,38 +205,38 @@ class ProcessConfig(BaseProcessConfig):
     dissolved_oxygen_pressure_correction: bool = None
     dissolved_oxygen_salinity_correction: bool = None
 
-    # WPS sample and drift correction
+    # WPS calibration and drift correction
     salinity_drift: List[float] = None
     salinity_drift_start_time: List[str] = None
-    salinity_sample_correction: List[float] = None  # a*x + b
+    salinity_calibration_correction: List[float] = None  # a*x + b
 
     temperature_drift: List[float] = None
     temperature_drift_start_time: List[str] = None
-    temperature_sample_correction: List[float] = None
+    temperature_calibration_correction: List[float] = None
 
     dissolved_oxygen_drift: List[float] = None
     dissolved_oxygen_drift_start_time: List[str] = None
-    dissolved_oxygen_sample_correction: List[float] = None
+    dissolved_oxygen_calibration_correction: List[float] = None
 
     co2w_drift: List[float] = None
     co2w_drift_start_time: List[str] = None
-    co2w_sample_correction: List[float] = None
+    co2w_calibration_correction: List[float] = None
 
     ph_drift: List[float] = None
     ph_drift_start_time: List[str] = None
-    ph_sample_correction: List[float] = None
+    ph_calibration_correction: List[float] = None
 
     scattering_drift: List[float] = None
     scattering_drift_start_time: List[str] = None
-    scattering_sample_correction: List[float] = None
+    scattering_calibration_correction: List[float] = None
 
     chlorophyll_drift: List[float] = None
     chlorophyll_drift_start_time: List[str] = None
-    chlorophyll_sample_correction: List[float] = None
+    chlorophyll_calibration_correction: List[float] = None
 
     fdom_drift: List[float] = None
     fdom_drift_start_time: List[str] = None
-    fdom_sample_correction: List[float] = None
+    fdom_calibration_correction: List[float] = None
 
     salinity_spike_threshold: float = None
     salinity_spike_window: int = None

@@ -386,7 +386,7 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
         for var in ["salinity", "temperature", "dissolved_oxygen", "co2w", "ph", "scattering", "chlorophyll", "fdom"]:
             tparser.add_option(section, f'{var}_drift', dtypes=["float"], default="", comments="Total drift")
             tparser.add_option(section, f'{var}_drift_start_time', dtypes=["str"], is_time_stamp=True, default="", comments="Format: %Y-%m-%dT%H:%M:%S")
-            tparser.add_option(section, f'{var}_sample_correction', dtypes=["float"], nargs=2, default="", comments="Linear regression coefficients: A, B | [Corrected_Data] = A * [Data] + B")
+            tparser.add_option(section, f'{var}_calibration_correction', dtypes=["float"], nargs=2, default="", comments="Linear regression coefficients: A, B | [Corrected_Data] = A * [Data] + B")
 
         section = "METEOCE_QUALITY_CONTROL"
         tparser.add_option(section, "absolute_outlier", dtypes=["bool"], default=True, null_value=False)

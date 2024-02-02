@@ -14,7 +14,7 @@ from typing import List, TYPE_CHECKING
 from magtogoek import logger as l
 from magtogoek.process_common import add_correction_attributes_to_dataarray
 from magtogoek.sci_tools import rotate_heading, xy_vector_magnetic_correction, \
-    north_polar2cartesian, cartesian2north_polar, time_drift_correction, in_situ_sample_correction
+    north_polar2cartesian, cartesian2north_polar, time_drift_correction, data_calibration_correction
 from magtogoek.wps.correction import rinko_raw_measurement_from_dissolved_oxygen, dissolved_oxygen_from_rinko_raw_measurement
 from magtogoek.wps.sci_tools import dissolved_oxygen_correction_for_salinity_SCOR_WG_142, \
     dissolved_oxygen_correction_for_pressure_JAC, pH_correction_for_salinity
@@ -34,7 +34,7 @@ DRIFT_VARIABLES: List[str] = [
 ]
 
 
-IN_SITU_VARIABLES: List[str] = [
+CALIBRATION_VARIABLES: List[str] = [
     'dissolved_oxygen',
     'co2w',
     'ph',
@@ -81,6 +81,7 @@ def apply_magnetic_correction(dataset: xr.Dataset, pconfig: "ProcessConfig"):
     if pconfig.magnetic_declination is not None:
         _adcp_magnetic_correction(dataset=dataset, pconfig=pconfig)
 
+
 def apply_sensors_corrections(dataset: xr.Dataset, pconfig: "ProcessConfig"):
 
     if "dissolved_oxygen" in dataset and pconfig.dissolved_oxygen_winkler_correction is True:
@@ -90,8 +91,8 @@ def apply_sensors_corrections(dataset: xr.Dataset, pconfig: "ProcessConfig"):
         if pconfig.__getattribute__("temperature_drift") is not None:
             _time_drift_correction(dataset=dataset, variable="temperature", pconfig=pconfig)
 
-        if pconfig.__getattribute__("temperature_sample_correction") is not None:
-            _in_situ_sample_correction(dataset=dataset, variable="temperature", pconfig=pconfig)
+        if pconfig.__getattribute__("temperature_calibration_correction") is not None:
+            _data_calibration_correction(dataset=dataset, variable="temperature", pconfig=pconfig)
 
     if "raw_dissolved_oxygen" in dataset:
         _compute_dissolved_oxygen_from_raw(dataset=dataset, pconfig=pconfig)
@@ -100,8 +101,8 @@ def apply_sensors_corrections(dataset: xr.Dataset, pconfig: "ProcessConfig"):
         if pconfig.__getattribute__("salinity_drift") is not None:
             _time_drift_correction(dataset=dataset, variable="temperature", pconfig=pconfig)
 
-        if pconfig.__getattribute__("salinity_sample_correction") is not None:
-            _in_situ_sample_correction(dataset=dataset, variable="salinity", pconfig=pconfig)
+        if pconfig.__getattribute__("salinity_calibration_correction") is not None:
+            _data_calibration_correction(dataset=dataset, variable="salinity", pconfig=pconfig)
 
     if "dissolved_oxygen" in dataset:
         if pconfig.dissolved_oxygen_salinity_correction:
@@ -118,9 +119,9 @@ def apply_sensors_corrections(dataset: xr.Dataset, pconfig: "ProcessConfig"):
         if pconfig.__getattribute__(variable + "_drift") is not None:
             _time_drift_correction(dataset=dataset,variable=variable,pconfig=pconfig)
 
-    for variable in set(IN_SITU_VARIABLES) & set(dataset.variables):
-        if pconfig.__getattribute__(variable + "_sample_correction") is not None:
-            _in_situ_sample_correction(dataset=dataset, variable=variable, pconfig=pconfig)
+    for variable in set(CALIBRATION_VARIABLES) & set(dataset.variables):
+        if pconfig.__getattribute__(variable + "_calibration_correction") is not None:
+            _data_calibration_correction(dataset=dataset, variable=variable, pconfig=pconfig)
 
 
 def _wind_motion_correction(dataset:xr.Dataset):
@@ -134,8 +135,6 @@ def _wind_motion_correction(dataset:xr.Dataset):
     wind_x' = wind_x + u_ship
     wind_y' = wind_y + v_ship
     ```
-
-
     """
     if all(v in dataset for v in ("u_ship", "v_ship")):
         l.log("Wind motion correction was carried out with gps data.")
@@ -179,7 +178,6 @@ def _set_magnetic_correction_to_apply(dataset: xr.Dataset, pconfig: "ProcessConf
     For `Metis` data, the correction takes into account the one already carried out by the buoy
     controller.
     """
-
 
     if pconfig.data_format == "viking":
         if isinstance(pconfig.magnetic_declination, (int, float)):
@@ -234,33 +232,29 @@ def _adcp_magnetic_correction(dataset: xr.Dataset, pconfig: "ProcessConfig"):
             dataset[variable].attrs['corrections'] += 'Corrected for magnetic declination.\n'
 
 
-
-
-
 def _correct_ph_for_salinity(dataset: xr.Dataset, pconfig: "ProcessConfig"):
-    """Ph correction for salinity.
+    """pH correction for salinity.
 
-    ph_temperature (temperature is used to find the voltage measured by the probe, but the CTD
+    ph_temperature is used to find the voltage measured by the probe, but the CTD
     temperature is used to find the ph.
-
-    #Todo Make a test.
-
-    Notes
-    -----
-    The algorithm used were not tested (As of December 6 2022)
     """
     required_variables = ['ph_temperature', 'temperature', 'salinity']
     if pconfig.ph_salinity_coeffs is not None:
         if all((var in dataset for var in required_variables)):
             [psal, k0, k2] = pconfig.ph_salinity_coeffs
-            ph = pH_correction_for_salinity(temperature=dataset.temperature.data,
-                                            salinity=dataset.salinity.data,
-                                            ph_temperature=dataset.ph_temperature.data,
-                                            cal_psal=psal, k0=k0, k2=k2)
+            ph = pH_correction_for_salinity(
+                ph=dataset.ph.data,
+                temperature=dataset.temperature.data,
+                salinity=dataset.salinity.data,
+                ph_temperature=dataset.ph_temperature.data,
+                cal_psal=psal,
+                k0=k0,
+                k2=k2
+            )
             dataset['ph'].values = ph
             add_correction_attributes_to_dataarray(dataset['ph'])
             dataset['ph'].attrs['corrections'] += 'ph values corrected using in-situ salinity.\n'
-            l.log('pH correction for in-situ salinity was carried out')
+            l.log('pH correction using in-situ salinity was carried out')
         else:
             l.warning(f'pH correction aborted. Missing one or more variables in {required_variables}.')
     else:
@@ -359,6 +353,7 @@ def _compute_pressure_at_sampling_depth(dataset: xr.Dataset, pconfig: "ProcessCo
 
     pconfig.variables_to_drop.append('pres')
 
+
 def _time_drift_correction(dataset: xr.Dataset, variable: str, pconfig: "ProcessConfig"):
     """Apply `magtogoek.wps.correction.time_drift_correction`
     """
@@ -380,101 +375,20 @@ def _time_drift_correction(dataset: xr.Dataset, variable: str, pconfig: "Process
 
 def _in_situ_sample_correction(dataset: xr.Dataset, variable: str, pconfig: "ProcessConfig"):
     """Apply `magtogoek.wps.correction.in_situ_sample_correction`
+def _data_calibration_correction(dataset: xr.Dataset, variable: str, pconfig: "ProcessConfig"):
+    """Apply `magtogoek.sci_tools.data_calibration_correction`
     """
-    if len(pconfig.__dict__[variable + "_sample_correction"]) == 2:
-        slope = pconfig.__dict__[variable + "_sample_correction"][0]
-        offset = pconfig.__dict__[variable + "_sample_correction"][1]
+    if len(pconfig.__dict__[variable + "_calibration_correction"]) == 2:
+        slope = pconfig.__dict__[variable + "_calibration_correction"][0]
+        offset = pconfig.__dict__[variable + "_calibration_correction"][1]
 
-        dataset[variable].data = in_situ_sample_correction(
+        dataset[variable].data = data_calibration_correction(
             data=dataset[variable].values,
             slope=slope,
             offset=offset
         )
-        l.log(f'In situ sample correction applied to {variable}. Slope: {slope}, Offset: {offset}.')
+        l.log(f'Calibration correction applied to {variable}. Slope: {slope}, Offset: {offset}.')
         add_correction_attributes_to_dataarray(dataset[variable])
-        dataset[variable].attrs['corrections'] += "Correction applied with in-situ sample.\n"
+        dataset[variable].attrs['corrections'] += "Calibration correction.\n"
     else:
-        l.warning(f"In-Situ sample correction for {variable} failed. Requires 2 coefficients (slope, offset).")
-
-# needs to be updated
-# def wps_data_correction(
-#         dataset: xr.Dataset,
-#         pconfig: "ProcessConfig"
-# ):
-#     """
-#     Function that calls all the wps (Water Property Sensor) data corrections.
-#
-#     pconfig.p01_codes_map values can be modified when certain corrections are carried out.
-#
-#     Notes
-#     -----
-#     Could be moved to magtogoek.wps in the future.
-#     """
-#
-#     if 'dissolved_oxygen' in dataset.variables:
-#         _dissolved_oxygen_corrections(dataset, pconfig)  # for Winkler recompute with drift corrected temperature ?
-#
-#     if 'ph' in dataset.variables:
-#         if pconfig.ph_salinity_correction is True:
-#             _correct_ph_for_salinity(dataset, pconfig)
-#
-#     for variable in set(VARIABLES_TO_CORRECT_FOR_DRIFT_AND_IN_SITU).intersection(set(dataset.variables)):
-#         add_correction_attributes_to_dataarray(dataset[variable])
-#         if pconfig.__getattribute__(variable + "_drift") is not None:
-#             _time_drift_correction(dataset, variable, pconfig)
-#
-#         if pconfig.__getattribute__(variable + "_sample_correction") is not None:
-#             _in_situ_sample_correction(dataset, variable, pconfig)
-
-
-# def _dissolved_oxygen_corrections(dataset: xr.Dataset, pconfig: "ProcessConfig"):
-#     """
-#     Calls:
-#             _dissolved_oxygen_winkler_correction
-#
-#             _dissolved_oxygen_salinity_correction
-#
-#             _dissolved_oxygen_pressure_correction
-#
-#     """
-#     if pconfig.dissolved_oxygen_winkler_correction:
-#         _dissolved_oxygen_winkler_correction(dataset, pconfig)
-#     if pconfig.dissolved_oxygen_salinity_correction:
-#         _dissolved_oxygen_salinity_correction(dataset)
-#     if pconfig.dissolved_oxygen_pressure_correction:
-#         _dissolved_oxygen_pressure_correction(dataset)
-
-# def _dissolved_oxygen_winkler_correction(dataset: xr.Dataset, pconfig: "ProcessConfig"):
-#     """
-#     If the correction can be made, the p01_code_map for dissolved_oxygen is updated.
-#     """
-#     rinko_num_coeffs = 6
-#     winkler_num_coeffs = 2
-#     _required_variables = ['temperature']
-#     if all(var in dataset.variables for var in _required_variables):
-#         if len(pconfig.dissolved_oxygen_rinko_coeffs) == rinko_num_coeffs:
-#             if len(pconfig.dissolved_oxygen_winkler_coeffs) == winkler_num_coeffs:
-#                 dataset['dissolved_oxygen'] = dissolved_oxygen_correction_winkler(
-#                     dataset['dissolved_oxygen'].data, dataset['temperature'].data,
-#                     rinko_coeffs=pconfig.dissolved_oxygen_rinko_coeffs, winkler_coeffs=pconfig.dissolved_oxygen_winkler_coeffs
-#                 )
-#                 l.log(f"Dissolved oxygen Winkler correction was carried out.")
-#                 pconfig.p01_codes_map.update({'dissolved_oxygen': "DOXYCZ01", 'dissolved_oxygen_QC': "DOXYCZ01_QC"})
-#                 add_correction_attributes_to_dataarray(dataset['dissolved_oxygen'])
-#                 dataset['dissolved_oxygen'].attrs["corrections"] += 'Winkler correction carried out.\n'
-#                 dataset['dissolved_oxygen'].attrs["rinko_coefficients"] = pconfig.dissolved_oxygen_rinko_coeffs
-#                 dataset['dissolved_oxygen'].attrs["winkler_coefficients"] = pconfig.dissolved_oxygen_winkler_coeffs
-#             else:
-#                 l.warning(
-#                     f'Winkler dissolved oxygen correction aborted. Wrong number of Winkler coefficient. Expected {winkler_num_coeffs}.'
-#                 )
-#         else:
-#             l.warning(
-#                 f'Winkler dissolved oxygen correction aborted. Wrong number of Rinko coefficient. Expected {rinko_num_coeffs}.'
-#             )
-#     else:
-#         l.warning(
-#             f'Winkler dissolved oxygen correction aborted. Temperature data missing.'
-#         )
-#
-
+        l.warning(f"Calibration correction for {variable} failed. Requires 2 coefficients (slope, offset).")

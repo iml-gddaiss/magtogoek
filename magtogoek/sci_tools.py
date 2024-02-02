@@ -316,11 +316,11 @@ def time_drift_correction(
     return data - _drift_correction
 
 
-def in_situ_sample_correction(data: np.ndarray, slope: float, offset: float) -> np.ndarray:
-    """Apply a linear correction using pre-computed linear regression coefficient. fixme TEST
+def data_calibration_correction(data: np.ndarray, slope: float, offset: float) -> np.ndarray:
+    """Apply a linear correction using linear regression coefficient.
 
     ```
-    data_corr = slope * data + offset
+    data_calibrated = slope * data + offset
     ```
     """
 
