@@ -500,6 +500,7 @@ def _load_adcp_data(pconfig: ProcessConfig) -> xr.Dataset:
     """
     if netcdf_raw_exist(pconfig) and pconfig.from_raw is not True:
         dataset = load_netcdf_raw(pconfig)
+        l.log(f"Data loaded from {pconfig.netcdf_raw_path}.")
     else:
         dataset = load_adcp_binary(
             filenames=pconfig.input_files,

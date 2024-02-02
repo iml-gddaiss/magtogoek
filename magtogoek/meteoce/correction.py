@@ -267,11 +267,11 @@ def _compute_raw_dissolved_oxygen(dataset: xr.Dataset, pconfig: "ProcessConfig")
     if all(var in dataset.variables for var in _required_variables):
         if len(pconfig.dissolved_oxygen_rinko_coeffs) == 6:
             if len(pconfig.dissolved_oxygen_winkler_coeffs) == 2:
-                dataset['raw_dissolved_oxygen'] = rinko_raw_measurement_from_dissolved_oxygen(
+                dataset['raw_dissolved_oxygen'] = (['time'], rinko_raw_measurement_from_dissolved_oxygen(
                     dissolved_oxygen=dataset.dissolved_oxygen.values,
                     temperature=dataset.temperature.values,
                     coeffs=pconfig.dissolved_oxygen_rinko_coeffs
-                )
+                ))
                 pconfig.variables_to_drop.append('raw_dissolved_oxygen')
             else:
                 l.warning(f'Winkler dissolved oxygen correction aborted. Wrong number of Winkler coefficient. Expected 2.')
@@ -286,7 +286,7 @@ def _compute_dissolved_oxygen_from_raw(dataset: xr.Dataset, pconfig: "ProcessCon
     coeffs = [i for i in pconfig.dissolved_oxygen_rinko_coeffs]
     coeffs[1:3] = pconfig.dissolved_oxygen_winkler_coeffs
 
-    dataset['dissolved_oxygen'] = dissolved_oxygen_from_rinko_raw_measurement(
+    dataset['dissolved_oxygen'].values = dissolved_oxygen_from_rinko_raw_measurement(
         raw=dataset.raw_dissolved_oxygen.values,
         temperature=dataset.temperature.values,
         coeffs=coeffs
@@ -373,8 +373,6 @@ def _time_drift_correction(dataset: xr.Dataset, variable: str, pconfig: "Process
         l.warning(f'Time drift correction for {variable} failed. Error: {msg}.')
 
 
-def _in_situ_sample_correction(dataset: xr.Dataset, variable: str, pconfig: "ProcessConfig"):
-    """Apply `magtogoek.wps.correction.in_situ_sample_correction`
 def _data_calibration_correction(dataset: xr.Dataset, variable: str, pconfig: "ProcessConfig"):
     """Apply `magtogoek.sci_tools.data_calibration_correction`
     """

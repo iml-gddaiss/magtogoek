@@ -489,6 +489,7 @@ def _process_meteoce_data(pconfig: ProcessConfig):
 def _load_viking_data(pconfig: ProcessConfig):
     if netcdf_raw_exist(pconfig) and pconfig.from_raw is not True:
         dataset = load_netcdf_raw(pconfig)
+        l.log(f"Data loaded from {pconfig.netcdf_raw_path}.")
     else:
         dataset = load_meteoce_data(
             filenames=pconfig.input_files,

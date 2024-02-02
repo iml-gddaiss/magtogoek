@@ -463,9 +463,7 @@ def netcdf_raw_exist(pconfig: BaseProcessConfig):
 
 
 def load_netcdf_raw(pconfig: BaseProcessConfig) -> xr.Dataset:
-    l.section("Loading data")
     netcdf_raw_path = Path(pconfig.netcdf_raw_path).with_suffix('.nc')
-    l.log(f"Data loaded from {netcdf_raw_path}.")
     return xr.open_dataset(netcdf_raw_path)
 
 
