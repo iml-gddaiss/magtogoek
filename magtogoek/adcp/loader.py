@@ -66,8 +66,8 @@ def load_adcp_binary(
     sonar: str,
     yearbase: int = None,
     orientation: str = None,
-    leading_index: int = None,
-    trailing_index: int = None,
+    start_trim: int = None,
+    end_trim: int = None,
     sensor_depth: float = None,
     bad_pressure: bool = False,
     start_time: str = None,
@@ -76,7 +76,7 @@ def load_adcp_binary(
 ) -> xr.Dataset:
     """Load RDI and RTI adcp data.
 
-    Return a dataset with the ADCP data loaded. For RDI FIXME pycurrents...
+    Return a dataset with the ADCP data loaded.
 
     Notes:
     -----
@@ -94,9 +94,9 @@ def load_adcp_binary(
     orientation: Optional
         Adcp orientation. Either `up` or `down`. Will overwrite the value
         of the binary file.
-    leading_index: Optional
+    start_trim: Optional
         Number of ensemble to cut from the start.
-    trailing_index: Optional
+    end_trim: Optional
         Number of ensemble to cut from the end.
     sensor_depth: Optional
         If provided, the adcp depth (meter) will be adjusted so that its median equal `sensor_depth`.
@@ -140,7 +140,7 @@ def load_adcp_binary(
         l.log(format_filenames_for_print("RTI ENS", filenames))
 
         data = RtiReader(filenames=filenames).read(
-            start_index=leading_index, stop_index=trailing_index
+            start_trim=start_trim, end_trim=end_trim
         )
         if magnetic_declination_preset is not None:
             data.FL['EV'] = magnetic_declination_preset * 100
@@ -152,12 +152,9 @@ def load_adcp_binary(
         else:
             l.log(format_filenames_for_print("RDI pd0", filenames))
 
-        if trailing_index:
-            trailing_index *= -1
-
         try:
             data = Multiread(fnames=filenames, sonar=sonar, yearbase=yearbase).read(
-                start=leading_index, stop=trailing_index
+                start=start_trim, stop=-end_trim if end_trim else None
             )
             if not data:
                 raise MagtogoekExit("The sum of the trim values is greater than the number of ensemble. Exiting")
@@ -168,17 +165,15 @@ def load_adcp_binary(
                 data.bt_vel = np.asarray(data.bt_vel)
         except RuntimeError:
             raise MagtogoekExit(f"ERROR: The input_files are not in a RDI pd0 format. RDI sonar : {RDI_SONAR}. Exiting")
-        if leading_index is not None or trailing_index is not None:
-            l.log(f"Time index cut: leading={0 if leading_index is None else leading_index}, "
-                  f"trailing={0 if trailing_index is None else trailing_index}")
+
         # Reading the files FixedLeaders to check for invalid config.
         # noinspection PyTupleAssignmentBalance
         data.sysconfig["up"], invalid_config_count = check_pd0_fixed_leader(
             filenames=filenames,
             sonar=sonar,
             yearbase=yearbase,
-            leading_index=leading_index,
-            trailing_index=trailing_index,
+            start_trim=start_trim,
+            end_trim=end_trim,
         )
 
         if invalid_config_count:
@@ -188,6 +183,10 @@ def load_adcp_binary(
 
     else:
         raise MagtogoekExit(f"{sonar} is not a valid. Valid sonar:(`os`, `wh`, `sv`, `sw`, `sw_pd0`)")
+
+    if start_trim is not None or end_trim is not None:
+        l.log(f"Number of points removed from the start: `{start_trim or 0}`, from the end: `{end_trim or 0}`")
+
 
     # -------------------- #
     # Compares orientation #
@@ -478,80 +477,12 @@ def load_adcp_binary(
     return dataset
 
 
-# def coordsystem2earth(data: Bunch, orientation: str):
-#     """Transforms beam and xyz coordinates to enu coordinates
-#
-#     NOTE: not properly tested. But it should work.
-#
-#     Replace the values of data.vel, data.bt_vel with East, North and Up velocities
-#     and the velocity error for 4 beams ADCP. UHDAS transform functions are used to
-#     transform for beam coordinates and xyz to east-north-up (enu). These function
-#     can use a three-beam solution by faking a fourth beam.
-#
-#     Also change the values of of `coordinates` in data.trans.
-#
-#     beam coordinates : Velocity measured along beam axis.
-#     xyz coordinates : Velocity in a cartesian coordinate system in the ADCP frame of reference.
-#     enu coordinates : East North Up measured using the heading, pitch, roll of the ADCP.
-#
-#     Parameters
-#     ----------
-#     data:
-#         pycurrents.adcp.rdiraw.Bunche object containing: vel[time, depth, beams], bt_vel[time, beams],
-#         heading, roll, pitch sysconfig.convex, sysconfig.angle  and trans.coordsystem.
-#
-#     orientation:
-#         adcp orientation. Either `up` or `down`.
-#     Notes
-#     -----
-#     Move the prints outside
-#     """
-#
-#     if data.trans.coordsystem not in ["beam", "xyz"]:
-#         l.log(
-#             f"Coordsystem value of {data.sysconfig.coordsystem} not recognized. Conversion to enu not available."
-#         )
-#
-#     beam_pattern = "convex" if data.sysconfig["convex"] else "concave"
-#
-#     xyze, bt_xyze = data.vel, data.bt_vel
-#
-#     if data.trans.coordsystem == "beam":
-#         if data.sysconfig.angle:
-#             trans = transform.Transform(
-#                 angle=data.sysconfig.angle, geometry=beam_pattern
-#             )
-#             xyze = trans.beam_to_xyz(data.vel)
-#             bt_xyze = trans.beam_to_xyz(data.bt_vel)
-#         else:
-#             l.log("Beam angle missing. Could not convert from beam coordinate.")
-#
-#     if (data.heading == 0).all() or (data.roll == 0).all() or (data.pitch == 0).all():
-#         data.trans["coordsystem"] = "xyz"
-#
-#         for i in range(4):
-#             data.vel[:, :, i] = np.round(xyze[:, :, i], decimals=3)
-#             data.bt_vel[:, i] = np.round(bt_xyze[:, i], decimals=3)
-#     else:
-#         enu = transform.rdi_xyz_enu(
-#             xyze, data.heading, data.pitch, data.roll, orientation=orientation,
-#         )
-#         bt_enu = transform.rdi_xyz_enu(
-#             bt_xyze, data.heading, data.pitch, data.roll, orientation=orientation,
-#         )
-#         data.trans["coordsystem"] = "earth"
-#
-#         for i in range(4):
-#             data.vel[:, :, i] = np.round(enu[:, :, i], decimals=3)
-#             data.bt_vel[:, i] = np.round(bt_enu[:, i], decimals=3)
-
-
 def check_pd0_fixed_leader(
     filenames: tp.Union[str, tp.List[str]],
     sonar: str,
     yearbase: int = None,
-    leading_index: int = None,
-    trailing_index: int = None,
+    start_trim: int = None,
+    end_trim: int = None,
 ) -> tp.Tuple[bool, int]:
     """Read Teledyne RDI binary FixedLeader.
     Returns the most common orientation and flag for an invalid config.
@@ -568,8 +499,10 @@ def check_pd0_fixed_leader(
         ('nb', 'bb', 'wh', 'sv', or 'os')
     yearbase: Optional
         start year of the sampling.
-    leading_index:  Optional
-    trailing_index:  Optional
+    start_trim:  Optional
+        Number of ensemble to cut from the start.
+    end_trim:  Optional
+        Number of ensemble to cut from the end.
 
     Returns
     -------
@@ -604,11 +537,11 @@ def check_pd0_fixed_leader(
     bad_config_value = 2 ** 16 - 1
     _up = int('10000000', 2)
 
-    orientations = fixed_leader["SysCfg"][leading_index:trailing_index] & _up
+    orientations = fixed_leader["SysCfg"][start_trim:-end_trim if end_trim else None] & _up
     upward_looking = np.mean(orientations) > 63
 
     invalid_config_count = np.sum(
-        (fixed_leader["SysCfg"][leading_index:trailing_index] == bad_config_value)
+        (fixed_leader["SysCfg"][start_trim:-end_trim if end_trim else None] == bad_config_value)
     )
 
     return upward_looking, invalid_config_count

@@ -80,9 +80,8 @@ common_options = [
 def magtogoek(*args):
     try:
         _magtogoek(*args)
-    except Exception as msg:
-        click.secho(f'{msg}\nAn Unexpected Error as Occured', color='red', err=True)
-        sys.exit()
+    except Exception as err:
+        click.secho(f'{err}\nAn Unexpected Error as occurred', color='red', err=True)
 
 # --------------------------- #
 #      mtgk entry point       #

@@ -399,35 +399,6 @@ def _prepare_flags_for_regrid(flags: tp.Union[np.ndarray, xr.DataArray]) -> tp.U
     return (flags < 9)*5 + (flags < 3)*3 + (flags==9)*9
 
 
-def get_datetime_and_count(trim_arg: tp.Union[str, int]):
-    """Get datetime and count from trim_arg.
-
-    If `trim_arg` is None, returns (None, None)
-    If 'T' in trim_arg, it is a datetime and  returns (Timestamp(trim_arg), None)
-    Else It returns a count returns (None, int(trim_arg))
-
-    Returns:
-    --------
-    Timestamp:
-        None or pandas.Timestamp
-    count:
-        None or int
-
-    """
-    if trim_arg:
-        if isinstance(trim_arg, int):
-            return None, trim_arg
-        elif not trim_arg.isdecimal():
-            try:
-                return pd.Timestamp(trim_arg), None
-            except ValueError:
-                raise MagtogoekExit("Invalid datetime format from trim. Required format: YYYY-MM-DDTHH:MM:SS.ssss. Exiting")
-        else:
-            return None, int(trim_arg)
-    else:
-        return None, None
-
-
 def cut_bin_depths(
         dataset: xr.Dataset, depth_range: tp.Union[int, float, list] = None
 ) -> xr.Dataset:
@@ -468,7 +439,7 @@ def cut_bin_depths(
 
 
 def cut_times(
-        dataset: xr.Dataset, start_time: pd.Timestamp = None, end_time: pd.Timestamp = None
+        dataset: xr.Dataset, start_time: str = None, end_time: pd.Timestamp = None
 ) -> xr.Dataset:
     """
     Return a dataset with time cut if they are not outside the dataset time span.
@@ -488,15 +459,15 @@ def cut_times(
     msg = []
     out_off_bound_time = False
     if start_time is not None:
-        if start_time > dataset.time.max():
+        if pd.Timestamp(start_time) > dataset.time.max():
             out_off_bound_time = True
         else:
-            msg.append(f"Start={start_time.strftime('%Y-%m-%dT%H:%M:%S')} [UTC]")
+            msg.append(f"Start={start_time} [UTC]") #.strftime('%Y-%m-%dT%H:%M:%S')
     if end_time is not None:
-        if end_time < dataset.time.min():
+        if pd.Timestamp(end_time) < dataset.time.min():
             out_off_bound_time = True
         else:
-            msg.append(f"end={end_time.strftime('%Y-%m-%dT%H:%M:%S')}  [UTC]")
+            msg.append(f"end={end_time} [UTC]") #.strftime('%Y-%m-%dT%H:%M:%S')
     if out_off_bound_time is True:
         l.warning("Trimming datetimes out of bounds. Time slicing aborted.")
     else:
@@ -534,15 +505,13 @@ def cut_index(
 
     if start_index is not None:
         total_trim += start_index
-        msg.append(f"from the start: `{start_index}`")
 
     if end_index is not None:
         total_trim += end_index
         stop_index = dataset.dims[dim] - end_index if end_index is not None else None
-        msg.append(f"from the end end: `{end_index}`")
 
     if total_trim < dataset.dims[dim]:
-        l.log('Number of points removed ' + ', '.join(msg) + '.')
+        l.log(f"Number of points removed from the start: `{start_index or 0}`, from the end: `{end_index or 0}`")
 
         dataset = dataset.isel({dim: slice(start_index, stop_index)})
     else:

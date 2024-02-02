@@ -48,8 +48,9 @@ FIXME SOURCE : moored adcp ?
 """
 
 
-import numpy as np
 import typing as tp
+
+import numpy as np
 import xarray as xr
 
 import magtogoek.logger as l
@@ -67,7 +68,7 @@ from magtogoek.process_common import BaseProcessConfig, resolve_output_paths, ad
     add_processing_timestamp, clean_dataset_for_nc_output, format_data_encoding, add_navigation, add_platform_metadata_to_dataset
 from magtogoek.tools import (
     regrid_dataset, _prepare_flags_for_regrid, _new_flags_bin_regrid,
-    _new_flags_interp_regrid, get_datetime_and_count, cut_bin_depths, cut_times)
+    _new_flags_interp_regrid, cut_bin_depths, cut_times)
 
 l.get_logger('adcp_processing')
 
@@ -339,11 +340,8 @@ def _process_adcp_data(pconfig: ProcessConfig):
     # ----------------- #
     # LOADING ADCP DATA #
     # ----------------- #
-    if netcdf_raw_exist(pconfig) and pconfig.from_raw is not True:
-        dataset = load_netcdf_raw(pconfig)
-    else:
-        dataset = _load_adcp_data(pconfig)
-        write_netcdf_raw(dataset=dataset,pconfig=pconfig)
+
+    dataset = _load_adcp_data(pconfig)
 
     # ----------------------------------------- #
     # ADDING THE NAVIGATION DATA TO THE DATASET #
@@ -500,9 +498,6 @@ def _load_adcp_data(pconfig: ProcessConfig) -> xr.Dataset:
     Load and trim the adcp data into a xarray.Dataset.
     Drops bottom track data if `keep_bt` is False.
     """
-    start_time, leading_index = get_datetime_and_count(pconfig.leading_trim)
-    end_time, trailing_index = get_datetime_and_count(pconfig.trailing_trim)
-
     if netcdf_raw_exist(pconfig) and pconfig.from_raw is not True:
         dataset = load_netcdf_raw(pconfig)
     else:
@@ -510,8 +505,8 @@ def _load_adcp_data(pconfig: ProcessConfig) -> xr.Dataset:
             filenames=pconfig.input_files,
             yearbase=pconfig.yearbase,
             sonar=pconfig.sonar,
-            leading_index=leading_index,
-            trailing_index=trailing_index,
+            start_trim=pconfig.start_trim_index,
+            end_trim=pconfig.end_trim_index,
             orientation=pconfig.adcp_orientation,
             sensor_depth=pconfig.sensor_depth,
             bad_pressure=pconfig.bad_pressure,
@@ -524,7 +519,7 @@ def _load_adcp_data(pconfig: ProcessConfig) -> xr.Dataset:
 
     dataset = cut_bin_depths(dataset, pconfig.depth_range)
 
-    dataset = cut_times(dataset, start_time, end_time)
+    dataset = cut_times(dataset, pconfig.start_trim_time, pconfig.end_trim_time)
 
     l.log(
         (

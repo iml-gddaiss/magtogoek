@@ -84,9 +84,10 @@ class BaseProcessConfig:
     odf_output: tp.Union[str, bool] = None
 
     navigation_file: str = None
-
-    leading_trim: tp.Union[int, str] = None
-    trailing_trim: tp.Union[int, str] = None
+    start_trim_time: str = None
+    end_trim_time: str = None
+    start_trim_index: int = None
+    end_trim_index: int = None
     merge_output_files: bool = None
     use_bodc_name: bool = None
     force_platform_metadata: bool = None

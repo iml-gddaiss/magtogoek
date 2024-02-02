@@ -5,9 +5,6 @@ Made by: jeromejguay
 This script has to functions to process and quick process meteoce buoy data.
 These functions are called by the app command `process` and `quick meteoce`.
 
-TODO:
--Specify the depth of the adcp first bin ? config file ?
-
 Notes
 -----
 
@@ -27,13 +24,14 @@ Notes
 
 """
 
-
-import xarray as xr
 from typing import *
+
+import numpy as np
+import xarray as xr
 
 from magtogoek import logger as l
 
-from magtogoek.tools import cut_index, cut_times, get_datetime_and_count
+from magtogoek.tools import cut_index, cut_times
 from magtogoek.process_common import BaseProcessConfig, resolve_output_paths, add_global_attributes, write_log, \
     write_netcdf, netcdf_raw_exist, load_netcdf_raw, write_netcdf_raw, \
     add_processing_timestamp, clean_dataset_for_nc_output, format_data_encoding, add_navigation, \
@@ -499,13 +497,17 @@ def _load_viking_data(pconfig: ProcessConfig):
         )
         write_netcdf_raw(dataset=dataset, pconfig=pconfig)
 
+    dataset = cut_index(dataset=dataset, dim='time', start_index=pconfig.start_trim_index, end_index=pconfig.end_trim_index)
 
-    start_time, leading_trim = get_datetime_and_count(pconfig.leading_trim)
-    end_time, trailing_trim = get_datetime_and_count(pconfig.trailing_trim)
+    dataset = cut_times(dataset, pconfig.start_trim_time, pconfig.end_trim_time)
 
-    dataset = cut_index(dataset=dataset, dim='time', start_index=leading_trim, end_index=trailing_trim)
-
-    dataset = cut_times(dataset, start_time, end_time)
+    l.log(
+        (
+                f"Ensemble counts : {len(dataset.time.data)}, "
+                + f"Start time : {np.datetime_as_string(dataset.time.min().data, unit='s')}, "
+                + f"End time : {np.datetime_as_string(dataset.time.max().data, unit='s')}"
+        )
+    )
 
     return dataset
 

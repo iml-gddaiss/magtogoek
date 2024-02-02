@@ -21,8 +21,8 @@ If bodc_name False, generic variable names are used.
 
 """
 import getpass
-from typing import Dict, List, Union, Optional
-from magtogoek import SENSOR_TYPES, PROCESSES, REPOSITORY_ADDRESS
+from typing import Dict, List, Union, Optional, Tuple
+from magtogoek import PROCESSES, REPOSITORY_ADDRESS
 from magtogoek.taskparser import TaskParser
 from datetime import datetime
 from pathlib import Path
@@ -197,11 +197,17 @@ def version_control(config_dict: Dict, version: int):
         config_dict['HEADER']['process'] = config_dict['HEADER'].pop('sensor_type')
 
     process = config_dict['HEADER']['process']
+
     if process == "adcp":
         if version == 0:
             config_dict['ADCP_PROCESSING']['adcp_id'] = config_dict['ADCP_PROCESSING'].pop('sensor_id')
             config_dict["ADCP_OUTPUT"]['use_bodc_name'] = config_dict["ADCP_OUTPUT"].pop('bodc_name')
 
+            config_dict['ADCP_PROCESSING']['start_trim_time'], config_dict['ADCP_PROCESSING']['start_trim_index'] \
+                = _unpack_trim_args(config_dict['ADCP_PROCESSING'].pop('leading_trim'))
+
+            config_dict['ADCP_PROCESSING']['end_trim_time'], config_dict['ADCP_PROCESSING']['end_trim_index'] \
+                = _unpack_trim_args(config_dict['ADCP_PROCESSING'].pop('trailing_trim'))
 
 def get_config_taskparser(process: Optional[str] = None, version: Optional[int] = None):
     if version is None:
@@ -278,8 +284,10 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
     if version > 0:
         section = "PROCESSING"
         tparser.add_option(section, "navigation_file", dtypes=["str"], default="", is_file=True)
-        tparser.add_option(section, "leading_trim", dtypes=["int", "str"], default="", is_time_stamp=True, comments="Int or TimeStamp. Format: %Y-%m-%dT%H:%M:%S")
-        tparser.add_option(section, "trailing_trim", dtypes=["int", "str"], default="", is_time_stamp=True, comments="Int or TimeStamp. Format: %Y-%m-%dT%H:%M:%S")
+        tparser.add_option(section, "start_trim_index", dtypes=["int"], default="", value_min=0, comments="Int. Number of point to remove from the start.")
+        tparser.add_option(section, "end_trim_index", dtypes=["int"], default="", value_min=0, comments="Int. Number of point to remove from the end.")
+        tparser.add_option(section, "start_trim_time", dtypes=["str"], default="", is_time_stamp=True, comments="TimeStamp. Format: %Y-%m-%dT%H:%M:%S")
+        tparser.add_option(section, "end_trim_time", dtypes=["str"], default="", is_time_stamp=True, comments="TimeStamp. Format: %Y-%m-%dT%H:%M:%S")
         tparser.add_option(section, "quality_control", dtypes=["bool"], default=True, null_value=False)
 
     if process == 'adcp':
@@ -296,8 +304,8 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
 
         if version == 0:
             tparser.add_option(section, "navigation_file", dtypes=["str"], default="", is_file=True)
-            tparser.add_option(section, "leading_trim", dtypes=["int", "str"], default="", is_time_stamp=True)
-            tparser.add_option(section, "trailing_trim", dtypes=["int", "str"], default="", is_time_stamp=True)
+            tparser.add_option(section, "leading_trim", dtypes=["int", "str"], value_min=0, default="", is_time_stamp=True)
+            tparser.add_option(section, "trailing_trim", dtypes=["int", "str"], value_min=0, default="", is_time_stamp=True)
         tparser.add_option(section, "sensor_depth", dtypes=["float"], default="")
         tparser.add_option(section, "depth_range", dtypes=["float"], nargs_min=0, nargs_max=2)
         tparser.add_option(section, "bad_pressure", dtypes=["bool"], default=False, null_value=False)
@@ -397,6 +405,27 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
 
 
     return tparser
+
+def _unpack_trim_args(trim: Union[str, int]) -> Tuple[Optional[str], Optional[int]]:
+    """Unpack _trim parameter into .
+
+    Use to convert Version=0 configuration leading_trim and trailing_trim
+    to Version>0 configuration `<start/end>_time_trim` and `<start/end>_index_trim`.
+
+    If `trim` is None:
+        return (None, None)
+    Elif `trim` is instance int:
+        return (None, trim)
+    Else:
+        return (trim, None)
+
+    """
+    if trim is None:
+        return None, None
+    elif isinstance(trim, int):
+        return None, trim
+    else:
+        return trim, None
 
 
 if __name__ == "__main__":

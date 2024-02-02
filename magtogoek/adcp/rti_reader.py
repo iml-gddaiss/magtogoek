@@ -117,8 +117,8 @@ class RtiReader:
         """
         self.filenames = get_files_from_expression(filenames)
 
-        self.start_index = None
-        self.stop_index = None
+        self.start_trim = None
+        self.end_trim = None
 
         self.files_ens_count = None
         self.files_start_stop_index = None
@@ -148,33 +148,30 @@ class RtiReader:
             print("Beam angle:", _beam_angle(first_ens.EnsembleData.SerialNumber))
             print("Frequency:", int(first_ens.SystemSetup.WpSystemFreqHz), "hz")
 
-    def read(self, start_index: int = None, stop_index: int = None) -> Bunch:
+    def read(self, start_trim: int = None, end_trim: int = None) -> Bunch:
         """Return a Bunch object with the read data.
 
         Parameters
         -----------
-        start_index :
-           Trim leading chunks by start_index.
-
-        stop_index :
-           Trim trailing chunks by stop_index.
-
+        start_trim: Optional
+            Number of ensemble to cut from the start.
+        end_trim: Optional
+            Number of ensemble to cut from the end.
         Returns
         --------
             data
-        TODO add inline comments
         """
-        if start_index:
-            if start_index < 0:
-                raise ValueError("Start index must be positive integer.")
+        if start_trim is not None:
+            if start_trim < 0:
+                raise ValueError("Start_trim must be positive integer.")
             else:
-                self.start_index = int(start_index)
+                self.start_trim = int(start_trim)
 
-        if stop_index:
-            if stop_index < 0:
-                raise ValueError("Stop index must be positive integer.")
+        if end_trim is not None:
+            if end_trim < 0:
+                raise ValueError("end_trim must be positive integer.")
             else:
-                self.stop_index = int(stop_index)
+                self.end_trim = int(end_trim)
 
         self.get_files_ens_count()
         self.drop_empty_files()
@@ -182,16 +179,16 @@ class RtiReader:
         if len(self.filenames) == 0:
             raise ValueError("No file left to read. ")
 
-        if self.start_index:
-            if np.sum(self.files_ens_count) < self.start_index:
-                raise ValueError("Start_index is greater than the number of ensemble.")
-        if self.stop_index:
-            if np.sum(self.files_ens_count) < self.stop_index:
-                raise ValueError("Stop_index is greater than the number of ensemble")
-        if self.start_index and self.stop_index:
-            if np.sum(self.files_ens_count) <= self.start_index + self.stop_index:
+        if self.start_trim:
+            if np.sum(self.files_ens_count) < self.start_trim:
+                raise ValueError("start_trim is greater than the number of ensemble.")
+        if self.end_trim:
+            if np.sum(self.files_ens_count) < self.end_trim:
+                raise ValueError("end_trim is greater than the number of ensemble")
+        if self.start_trim and self.end_trim:
+            if np.sum(self.files_ens_count) <= self.start_trim + self.end_trim:
                 raise ValueError(
-                    "Start_index + stop_index is greater than the number of ensemble"
+                    "start_trim + end_trim is greater than the number of ensemble"
                 )
 
         self.get_files_start_stop_index()
@@ -253,9 +250,9 @@ class RtiReader:
         start_index, stop_index = None, None
         start_file, stop_file = None, None
 
-        if self.start_index:
+        if self.start_trim:
             # finds the first files with enough ens and the start index
-            diff_start = cumsum - self.start_index
+            diff_start = cumsum - self.start_trim
             start_index = counts[diff_start > 0][0] - diff_start[diff_start > 0][0]
             start_file = np.array(self.filenames)[diff_start > 0][0]
             # remove files with less leading ens than start_index
@@ -264,9 +261,9 @@ class RtiReader:
             counts = counts[diff_start > 0]
             self.files_ens_count = np.array(counts)
 
-        if self.stop_index:
+        if self.end_trim:
             # finds the first files with enough ens and the start index
-            diff_stop = counts[::-1].cumsum()[::-1] - self.stop_index#reverses array before and after cumsum
+            diff_stop = counts[::-1].cumsum()[::-1] - self.end_trim#reverses array before and after cumsum
             stop_index = diff_stop[diff_stop > 0][-1]
             stop_file = np.array(self.filenames)[diff_stop > 0][-1]
             # keep files with more trailing ens than stop_index

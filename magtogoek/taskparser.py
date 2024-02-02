@@ -117,7 +117,7 @@ class OptionInfos:
         if self.value_min is not None or self.value_max is not None:
             if 'int' not in self.dtypes and 'float' not in self.dtypes:
                 raise ValueError('value_min and value_max can only be used for int or float.')
-        if self.default is not None:
+        if isinstance(self.default, (int, float)):
             if self.value_min is not None:
                 if self.default > self.value_max:
                     raise ValueError('default value must be <= value_max.')
