@@ -230,7 +230,7 @@ class RtiReader:
             self.files_ens_count.append(count)
 
     def drop_empty_files(self):
-        """Drop the files with 0 ensemble from self.filenames"""
+        """Drop the files with 0 ensemble from self.filenames."""
         counts = np.array(self.files_ens_count)
         for filename in np.array(self.filenames)[counts == 0]:
             print(f"No data found in {filename}. File dropped")
