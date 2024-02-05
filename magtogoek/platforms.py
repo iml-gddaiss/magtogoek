@@ -16,6 +16,8 @@ from magtogoek import SENSOR_TYPES, PLATFORM_TYPES, DEFAULT_PLATFORM_TYPE
 from magtogoek.exceptions import MagtogoekExit
 import magtogoek.logger as l
 from magtogoek.utils import dict2json, json2dict
+from pygeodesy.dms import parseDMS
+from pygeodesy.errors import ParseError
 
 
 def make_platform_template(filename):
@@ -60,8 +62,8 @@ class Platform:
     platform_name: str = None
     platform_model: str = None
     sounding: str = None
-    longitude: float = None
-    latitude: float = None
+    longitude: [str, float] = None
+    latitude: [str, float] = None
     description: str = None
     chief_scientist: str = None
 
@@ -74,8 +76,15 @@ class Platform:
 
         if key in ["longitude", "latitude"]:
             if not isinstance(value, (float, int)) and value is not None:
-                l.warning(f"Invalid platform {key} in the platform file. {key} must be either and Int or Float. Latitude set to {None}")
-                self.__setattr__(key, None)
+                if isinstance(value, str):
+                    try:
+                        self.__setattr__(key, round(parseDMS(value),6))
+                    except ParseError:
+                        l.warning(f"Invalid platform {key} in the platform file. Formatted {key} string: 'DD°MM\'SS.ssss\"")
+                        self.__setattr__(key, None)
+                else:
+                    l.warning(f"Invalid platform {key} in the platform file. {key} must be either a decimal or a formatted {key} string ('DD°MM\'SS.ssss\")")
+                    self.__setattr__(key, None)
 
 
 @dataclass

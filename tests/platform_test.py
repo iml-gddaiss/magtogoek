@@ -1,10 +1,12 @@
+import pytest
 from magtogoek.platforms import load_platform_metadata
 
-FILENAME = "files/platform_test/test_platforms.json"
+LOAD_FILE = "files/platform_test/test_platforms.json"
+LON_LAT_PARSING_FILE = "files/platform_test/test_lon_lat_parsing.json"
 
 
 def test_load_platform_metadata():
-    platform_metadata = load_platform_metadata(platform_file=FILENAME, platform_id="IML6_2017")
+    platform_metadata = load_platform_metadata(platform_file=LOAD_FILE, platform_id="IML6_2017")
 
     assert platform_metadata.platform.platform_name == "IML-6"
     assert platform_metadata.platform.platform_type == "buoy"
@@ -43,3 +45,19 @@ def test_load_platform_metadata():
     assert platform_metadata.instruments["ADCP_01"].sensors["temperature"].calibration.archiving_units == "calibration_arch_units"
     assert platform_metadata.instruments["ADCP_01"].sensors["temperature"].calibration.conversion_factor == "calibration_conv_facto"
     assert platform_metadata.instruments["ADCP_01"].sensors["temperature"].calibration.comments == "calibration_comments"
+
+@pytest.mark.parametrize(
+    "platform_id, longitude, latitude",
+    [
+        ("p1", 60.5555, -50.555555),
+        ("p2", 60.555555, 50.555555),
+        ("p3", -60.555555, -50.555555),
+        ("p4", None , None)
+    ]
+)
+def test_platform_lon_lat_parsing(platform_id, longitude, latitude):
+
+    platform_metadata = load_platform_metadata(platform_file=LON_LAT_PARSING_FILE, platform_id=platform_id)
+
+    assert platform_metadata.platform.longitude == longitude
+    assert platform_metadata.platform.latitude == latitude
