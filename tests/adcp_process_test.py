@@ -12,7 +12,11 @@ from magtogoek.adcp.process import process_adcp
 TIMESTAMP = pd.Timestamp.now().strftime("%Y-%m-%d")
 
 CONFIG_FILENAME = "files/process_test/adcp_iml4_2017.ini"
-PROCESS_OUTPUT_FILES = ["files/process_test/iml4_2017_sw.nc", "files/process_test/iml4_2017_sw.log"]
+PROCESS_OUTPUT_FILES = [
+    "files/process_test/iml4_2017_sw_raw.nc",
+    "files/process_test/iml4_2017_sw.nc",
+    "files/process_test/iml4_2017_sw.log"
+]
 
 PLATFORM_FILE = "files/process_test/iml_platforms.json"
 RAW_ADCP_FILE = "data/raw_adcp_data/iml6_2017_wh.000"

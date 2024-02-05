@@ -578,9 +578,7 @@ def _quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
 
 
 def _set_xducer_depth_as_sensor_depth(dataset: xr.Dataset):
-    """
-    FIXME: sensor_depth will not be added to the variable since it looks for <instrument_id>_sensor_depth
-    Set xducer_depth value to dataset attributes sensor_depth
+    """Set xducer_depth value to dataset global attributes sensor_depth
     """
     if "xducer_depth" in dataset.attrs:  # OCEAN SURVEYOR
         dataset.attrs["sensor_depth"] = dataset.attrs["xducer_depth"]
