@@ -42,11 +42,12 @@ def _add_buoy_specs() -> dict:
 
 def _add_instrument() -> dict:
     instrument = InstrumentMetadata()
-    instrument.sensors = dict(__generic_sensor_id__=_add_sensor())
+    instrument.sensors = dict(__sensor_name__=_add_sensor())
     return {k: v for k, v in instrument.__dict__.items()}
 
 
 def _add_sensor() -> dict:
+    """Only for ODF (?) Fixme"""
     sensor = SensorMetadata()
     sensor.calibration = _add_calibration()
     return {k: v for k, v in sensor.__dict__.items()}

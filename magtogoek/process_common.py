@@ -42,6 +42,7 @@ TIME_ENCODING = {
     "units": "seconds since 1970-1-1 00:00:00Z",
     "calendar": "gregorian",
     "_FillValue": None,
+    "dtype": "i4"
 }
 TIME_STRING_ENCODING = {"dtype": "S1"}
 DEPTH_ENCODING = {

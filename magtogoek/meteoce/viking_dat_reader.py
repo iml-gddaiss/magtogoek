@@ -169,6 +169,7 @@ Notes
 
 """
 
+import sys
 import re
 import struct
 from datetime import datetime, timedelta
@@ -444,7 +445,7 @@ buoys:\n"""
             print(f'File read: {_count}/{_num_of_files}', end='\r')
             with open(_filename) as f:
                 data_received = f.read()
-                decoded_data += _decode_transmitted_data(data_received=data_received, century=century)
+                decoded_data += _decode_transmitted_data(filename=_filename, data_received=data_received, century=century)
             _count += 1
         print(f'File read: {_count}/{_num_of_files}')
 
@@ -507,7 +508,7 @@ buoys:\n"""
         return buoy_info
 
 
-def _decode_transmitted_data(data_received: str, century: int = 21) -> list:
+def _decode_transmitted_data(filename:str, data_received: str, century: int = 21) -> list:
     """ Decode the data received.
 
     Parse through the data and iter over each block between the tags [NOM] and [FIN].
@@ -534,44 +535,54 @@ def _decode_transmitted_data(data_received: str, century: int = 21) -> list:
         for data_sequence in DATA_TAG_REGEX.finditer(data_block.group(1)):
             tag = data_sequence.group(1)
             data = data_sequence.group(2)
-            if tag == "NOM":
-                decoded_block.update(_decode_NOM(data, century=century))
-            elif tag == "COMP":
-                decoded_block["comp"] = _decode_COMP(data)
-            elif tag == "Triplet":
-                decoded_block["triplet"] = _decode_Triplet(data, century=century)
-            elif tag == "Par_digi":
-                decoded_block["par_digi"] = _decode_Par_digi(data, century=century)
-            elif tag == "SUNA":
-                decoded_block['suna'] = _decode_SUNA(data)
-            elif tag == "GPS":
-                decoded_block["gps"] = _decode_GPS(data, century=century)
-            elif tag == "CTD":
-                decoded_block["ctd"] = _decode_CTD(data)
-            elif tag == "CTDO":
-                decoded_block["ctdo"] = _decode_CTDO(data)
-            elif tag == "RTI":
-                decoded_block["rti"] = _decode_RTI(data)
-            elif tag == "RDI":
-                decoded_block["rdi"] = _decode_RDI(data, century=century)
-            elif tag == "WAVE_M":
-                decoded_block["wave_m"] = _decode_WAVE_M(data)
-            elif tag == "WAVE_S":
-                decoded_block["wave_s"] = _decode_WAVE_S(data)
-            elif tag == "WXT520":
-                wxt520.update(_decode_WXT520(data))
-            elif tag == "WMT700":
-                decoded_block["wmt700"] = _decode_WMT700(data)
-            elif tag == "WpH":
-                decoded_block["wph"] = _decode_WpH(data)
-            elif tag == "CO2_W":
-                decoded_block["co2_w"] = _decode_CO2_W(data)
-            elif tag == "CO2_A":
-                decoded_block["co2_a"] = _decode_CO2_A(data)
-            elif tag == "Debit":
-                decoded_block["debit"] = _decode_Debit(data)
-            elif tag == 'MO':
-                decoded_block["mo"] = _decode_MO(data)
+            try:
+                if tag == "NOM":
+                    decoded_block.update(_decode_NOM(data, century=century))
+                elif tag == "COMP":
+                    decoded_block["comp"] = _decode_COMP(data)
+                elif tag == "Triplet":
+                    decoded_block["triplet"] = _decode_Triplet(data, century=century)
+                elif tag == "Par_digi":
+                    decoded_block["par_digi"] = _decode_Par_digi(data, century=century)
+                elif tag == "SUNA":
+                    decoded_block['suna'] = _decode_SUNA(data)
+                elif tag == "GPS":
+                    decoded_block["gps"] = _decode_GPS(data, century=century)
+                elif tag == "CTD":
+                    decoded_block["ctd"] = _decode_CTD(data)
+                elif tag == "CTDO":
+                    decoded_block["ctdo"] = _decode_CTDO(data)
+                elif tag == "RTI":
+                    decoded_block["rti"] = _decode_RTI(data)
+                elif tag == "RDI":
+                    decoded_block["rdi"] = _decode_RDI(data, century=century)
+                elif tag == "WAVE_M":
+                    decoded_block["wave_m"] = _decode_WAVE_M(data)
+                elif tag == "WAVE_S":
+                    decoded_block["wave_s"] = _decode_WAVE_S(data)
+                elif tag == "WXT520":
+                    wxt520.update(_decode_WXT520(data))
+                elif tag == "WMT700":
+                    decoded_block["wmt700"] = _decode_WMT700(data)
+                elif tag == "WpH":
+                    decoded_block["wph"] = _decode_WpH(data)
+                elif tag == "CO2_W":
+                    decoded_block["co2_w"] = _decode_CO2_W(data)
+                elif tag == "CO2_A":
+                    decoded_block["co2_a"] = _decode_CO2_A(data)
+                elif tag == "Debit":
+                    decoded_block["debit"] = _decode_Debit(data)
+                elif tag == 'MO':
+                    decoded_block["mo"] = _decode_MO(data)
+
+            except (TypeError, ValueError, KeyError, AttributeError) as err:
+                print(f'\n\n>>>> Error decoding data in file: {filename}')
+                print(f'\n>>>> Error:\n {err}')
+                print('\n>>>> Block:')
+                print(f'{data_block.group(1)}')
+                print(f'\n>>>> Tag:\n {tag}')
+                print(f'\n>>>> Data:\n {data}')
+                sys.exit()
 
         if bool(wxt520.keys()) is True:
             decoded_block["wxt520"] = wxt520
@@ -707,7 +718,10 @@ def _decode_GPS(data: str, century: int) -> Optional[dict]:
 
 def _decode_CTD(data: str) -> Optional[dict]:
     """"""
-    data = data.strip('\n').replace(' ', '').split(',')
+    for s in ('\n', ','):
+        data = data.strip(s)
+    data = data.replace(' ', '').split(',')
+
     if len(data) != 4:
         return None
     return {'temperature': _safe_float(data[0]),
@@ -718,7 +732,10 @@ def _decode_CTD(data: str) -> Optional[dict]:
 
 def _decode_CTDO(data: str) -> Optional[dict]:
     """No test string in files."""
-    data = data.strip('\n').replace(' ', '').split(',')
+    for s in ('\n', ','):
+        data = data.strip(s)
+    data = data.replace(' ', '').split(',')
+
     if len(data) != 4:
         return None
     return {'temperature': _safe_float(data[0]),
@@ -764,6 +781,8 @@ def _decode_RTI(data: str) -> Optional[dict]:
 def _decode_RDI(data: str, century: int) -> Optional[dict]:
     data = data.strip('\n').split(',')
     if len(data) != 3:
+        return None
+    if data[2] == "No Valid Speed":
         return None
     enu_mms = tuple(struct.unpack('hhhh', bytes.fromhex(data[2])))
     return {'time': _make_timestamp(str(century - 1) + data[1][4:6], data[1][2:4],
@@ -891,12 +910,20 @@ def _decode_MO(data: str) -> dict:
 
     if adcp_model == 'RDI':
         _d = data[97: 113]
+
+        if len(_d) != 118:
+            return None
+
         if '#' in _d:
             enu_mms = [float(np.nan)] * 4
         else:
             enu_mms = list(struct.unpack('hhhh', bytes.fromhex(_d)))
     else:
         _d = data[97: 109]
+
+        if len(_d) != 116:
+            return  None
+
         if '#' in _d:
             enu_mms = [float(np.nan)] * 4
         else:
@@ -969,40 +996,12 @@ def _make_timestamp(Y: str, M: str, D: str, h: str, m: str, s: str) -> str:
     return str(NAN_FILL_VALUE) if "#" in time else time
 
 
-##### FIXME TEST FUNCTION #####
-def single_test():
-    return RawVikingDatReader().read('/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat')
-
-
-def multiple_test():
-    return RawVikingDatReader().read('/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_[0-9]*.dat')
-
-
-def main():
-    viking_data = single_test()['pmza_riki']
-    return viking_data
-
-
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
-    # viking_data = main()
-    #_path = "/home/jeromejguay/ImlSpace/Data/IML4_2019_meteoce/dat/*.dat"
-    _path = '/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat'
-    #_path = '/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat'
+
+    _path = '/home/jeromejguay/ImlSpace/Data/pmza_2022/raw/IML-11/*.dat'
+
     bd = RawVikingDatReader().read(_path)
 
-    #v_data = buoys_data['pmza_riki']
-
-    # plt.figure()
-    # plt.plot(v_data.ctd['salinity'], label='tag')
-    # plt.plot(v_data.mo['salinity'], '--', label='mo')
-    # plt.legend()
-    # plt.show()
-
-    # plt.figure()
-    # plt.plot(v_data.triplet['calculated_value_1'], label='tag')
-    # #plt.plot(v_data.mo['triplet_700'], '--', label='mo')
-    # plt.legend()
-    # plt.show()
 

@@ -235,27 +235,26 @@ def _propagate_flag(dataset: xr.Dataset, use_atm_pressure: bool = False):
     """
 
     flag_propagation_rules = {
-        'density': ['temperature', 'salinity', 'density'],
-        'dissolved_oxygen': ['temperature', 'salinity', 'dissolved_oxygen'],
-        'ph': ['temperature', 'salinity', 'ph'],
+        'density_QC': ['temperature_QC', 'salinity_QC', 'density_QC'],
+        'dissolved_oxygen_QC': ['temperature_QC', 'salinity_QC', 'dissolved_oxygen_QC'],
+        'ph_QC': ['temperature_QC', 'salinity_QC', 'ph_QC'],
         }
 
     if use_atm_pressure is True:
-        flag_propagation_rules['density'].append('atm_pressure')
-        flag_propagation_rules['dissolved_oxygen'].append('atm_pressure')
+        flag_propagation_rules['density_QC'].append('atm_pressure_QC')
+        flag_propagation_rules['dissolved_oxygen_QC'].append('atm_pressure_QC')
 
-    for variable in set(dataset.keys()).intersection(set(flag_propagation_rules.keys())):
-        flags_parameters = [
-            dataset[_var + '_QC'].data for _var in flag_propagation_rules[variable]
-        ]
+    for variable in set(dataset.variables) & set(flag_propagation_rules.keys()):
 
-        dataset[variable + "_QC"].data = merge_flags(flags_arrays=flags_parameters)
+        qc_variables = [dataset[_var].data for _var in set(flag_propagation_rules[variable]) & set(dataset.variables)]
+
+        dataset[variable].data = merge_flags(flags_arrays=qc_variables)
 
         propagation_comment = f'Flags propagation {flag_propagation_rules[variable]} -> {variable}.'
 
         l.log(propagation_comment)
 
-        dataset[variable + "_QC"].attrs['quality_test'] += propagation_comment + "\n"
+        dataset[variable].attrs['quality_test'] += propagation_comment + "\n"
 
 
 def _print_percent_of_good_values(dataset: xr.Dataset):
