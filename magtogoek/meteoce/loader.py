@@ -20,7 +20,6 @@ Notes
     Wind direction max is the max value (angle) not the direction of wind gust.
 """
 
-from magtogoek.meteoce.viking_dat_reader import RawVikingDatReader, VikingData
 import numpy as np
 import xarray as xr
 from typing import *
@@ -30,10 +29,13 @@ from magtogoek.exceptions import MagtogoekExit
 from magtogoek.utils import format_filenames_for_print
 from magtogoek.tools import is_unique, nan_unique
 
+from magtogoek.meteoce.viking_dat_reader import RawVikingDatReader, VikingData
+from magtogoek.meteoce.mitis_dat_reader import RawMitisDatReader, MitisData
+
 import pint_xarray # pint_xarray modify the xr.Dataset Object
 
 
-KNOTS_TO_METER_PER_SECONDS = 1 / 1.944   # 1 kt = (1/1.944) m/s
+KNOTS_TO_METER_PER_SECONDS = 0.5144444444 # mps/knots
 MILLIMETER_TO_METER = 1 / 1000
 CENTIMETER_TO_METER = 1 / 100
 
@@ -56,13 +58,23 @@ def load_meteoce_data(
     -------
 
     """
-    l.section('Loading meteoce data')
+    l.section('Loading meteoce data', t=True)
+
+    l.log(format_filenames_for_print('raw_data', filenames))
 
     if data_format == "viking":
         dataset = load_viking_data(filenames=filenames, buoy_name=buoy_name)
+    elif data_format == "mitis":
+        dataset = load_mitis_data(filenames=filenames, buoy_name=buoy_name)
     else:
         l.warning(f'Invalid data_format: {data_format}')
         raise MagtogoekExit("Invalid meteoce data format. Exiting")
+
+    if is_unique(dataset['magnetic_declination']):
+        dataset.attrs["magnetic_declination"] = nan_unique(dataset['magnetic_declination'])[0]
+        dataset.attrs["magnetic_declination_units"] = "degree east"
+        dataset = dataset.drop_vars('magnetic_declination')
+
     l.log('Data Loaded.')
 
     return dataset
@@ -73,13 +85,13 @@ def load_viking_data(
         buoy_name: str = None,
         ) -> xr.Dataset:
 
-    l.log(format_filenames_for_print('raw_data', filenames))
-
     viking_data = RawVikingDatReader().read(filenames)
 
     if isinstance(viking_data, Dict):
-        l.warning(f'More than one buoy name was found in the file {filenames}.\n Buoy names fround: {list(viking_data.keys())} \n Specify a buoy_name\n Exiting')
-        raise MagtogoekExit(f'More than one buoy was found in the file {filenames}. Exiting')
+        l.warning(f'More than one buoy name was found in the file {filenames}.\n'
+                  f' Buoy names fround: {list(viking_data.keys())}\n'
+                  f' Specify a buoy_name\n Exiting')
+        raise MagtogoekExit(f'More than one buoy (buoy_name) was found in the file {filenames}. Exiting')
 
     if buoy_name is not None and viking_data.buoy_name != buoy_name:
         l.log(f'Buoy Name found in files is different from the one provided.')
@@ -99,13 +111,6 @@ def load_viking_data(
     dataset = xr.Dataset(meteoce_data, coords=coords, attrs=global_attrs)
 
     dataset = _average_duplicates(dataset, 'time')
-
-    if is_unique(dataset['magnetic_declination']):
-        dataset.attrs["magnetic_declination"] = nan_unique(dataset['magnetic_declination'])[0]
-        dataset.attrs["magnetic_declination_units"] = "degree east"
-        dataset = dataset.drop_vars('magnetic_declination')
-
-    dataset.attrs['logbook'] = l.logbook
 
     return dataset
 
@@ -201,7 +206,7 @@ def _load_viking_meteoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[
         data.update(
             {
                 'ph': (viking_data.wph['ext_ph'], {**_attrs, **{"units": "NBS_scale"}}),
-                'ph_temperature': (viking_data.wph['ph_temperature'], _attrs)}
+                'ph_temperature': (viking_data.wph['ph_temperature'], {**_attrs, **{"units": "degree_C"}})}
         )
         l.log('Wph data loaded.')
 
@@ -284,21 +289,140 @@ def _load_viking_meteoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[
             l.log('Rdi data loaded.')
 
         if viking_data.rti is not None:
-
-            # NOTES should be added as a global attributes by the user
-            # _bin = viking_data.rti['bin'][~viking_data.rti['bin'].mask]
-            # _bin_position_cm = viking_data.rti['position_cm'][~viking_data.rti['position_cm'].mask] * CENTIMETER_TO_METER
-            #
-            # _bin = np.nanmean(_bin)
-            # _bin_position_cm = np.round(np.nanmean(_bin_position_cm), 2)
-            #_attrs = {'bin': _bin, 'bin_position_cm': _bin_position_cm}
-            #global_attrs.update({'adcp_bin': _bin, 'adcp_bin_position_cm': _bin_position_cm})
-
             for _name in ['u', 'v', 'w', 'e']:
                 data[_name] = (viking_data.rti[_name] * MILLIMETER_TO_METER, {"units": "m/s"})
             l.log('Rti data loaded.')
 
     return data, global_attrs
+
+
+
+
+def load_mitis_data(
+        filenames: Union[str, List[str]],
+        buoy_name: str = None,
+) -> xr.Dataset:
+
+    mitis_data = RawMitisDatReader().read(filenames)
+
+    if isinstance(mitis_data, Dict):
+        l.warning(f'More than one buoy name was found in the file {filenames}.\n'
+                  f' Buoy names fround: {list(mitis_data.keys())}\n'
+                  f' Specify a buoy_name\n Exiting')
+        raise MagtogoekExit(f'More than one buoy (buoy_name) was found in the file {filenames}. Exiting')
+
+    if buoy_name is not None and mitis_data.buoy_name != buoy_name:
+        l.log(f'Buoy Name found in files is different from the one provided.')
+
+    meteoce_data, global_attrs = _load_mitis_meteoce_data(mitis_data)
+
+    coords = {'time': np.asarray(mitis_data.time)}
+
+    dataset = xr.Dataset(meteoce_data, coords=coords, attrs=global_attrs)
+
+    return dataset
+
+
+
+def _load_mitis_meteoce_data(mitis_data: MitisData) -> Tuple[Dict[str, Tuple[np.ma.MaskedArray, dict]], Dict]:
+    global_attrs = {}
+    data = {
+        'lon': (mitis_data.init['longitude'], {}),
+        'lat': (mitis_data.init['latitude'], {}),
+        'speed': (mitis_data.init['sog'] * KNOTS_TO_METER_PER_SECONDS, {}),
+        'course': (mitis_data.init['cog'], {}),
+        'magnetic_declination': (mitis_data.init['magnetic_declination'], {}),
+        'heading': (mitis_data.init['heading'], {}),
+        'pitch': (mitis_data.init['pitch'], {}),
+        'roll': (mitis_data.init['roll'], {}),
+            }
+
+    if mitis_data.eco1 is not None:
+        data.update(
+            {
+                'scattering': (mitis_data.eco1['scattering'], {"units": "/m", "wavelength": "700nm"}),
+                'chlorophyll': (mitis_data.eco1['chlorophyll'], {"units": "mg/m**3", "wavelength": "695nm"}), # ug/L -> mg/m**3
+                'fdom': (mitis_data.eco1['fdom'], {"units": "ppb", "wavelength": "460nm"})# ppb
+            }
+        )
+        l.log('Eco1 data loaded.')
+
+    if mitis_data.ctd is not None:
+        data.update(
+            {'temperature': (mitis_data.ctd['temperature'], {"units": "degree_C"}),
+             'conductivity': (mitis_data.ctd['conductivity'], {'units': 'S/m'}),
+             'salinity': (mitis_data.ctd['salinity'], {'units': 'PSU'}),
+             'density': (mitis_data.ctd['density'], {'units': 'kg/m**3'})
+             }
+        )
+        l.log('ctd data loaded.')
+
+    if mitis_data.ph is not None:
+        data.update({'ph': (mitis_data.ph['ext_ph'], {"units": "NBS_scale"})})
+        l.log('pH data loaded.')
+
+    if mitis_data.no2 is not None:
+        l.log('NO2 not implemented yet data loaded. ') # FIXME
+        pass
+
+    if mitis_data.wind is not None:
+        data.update(
+            {
+
+                'wind_speed': (np.round(mitis_data.wind['wind_spd_ave'] * KNOTS_TO_METER_PER_SECONDS, 3), {'units': 'm/s'}),
+                'wind_direction': (mitis_data.wind['wind_dir_ave'], {}),
+                'wind_gust': (np.round(mitis_data.wind['wind_spd_max'] * KNOTS_TO_METER_PER_SECONDS, 3), {'units': 'm/s'}),
+            }
+        )
+        #fixme add attrs for the instrument used.
+        l.log('Wind Data Loaded')
+
+    if mitis_data.atms is not None:
+        data.update(
+            {
+                'atm_temperature': (mitis_data.atms['air_temperature'], {"units": "degree_C"}),
+                'atm_humidity': (mitis_data.atms['air_humidity'], {"units": "percent"}),
+                'atm_pressure': (mitis_data.atms['air_pressure'], {"units": "mbar"}),
+             }
+        )
+        l.log('Atmospheric Data Loaded')
+
+    if mitis_data.wave is not None:
+        data.update(
+            {
+                'wave_mean_height': (mitis_data.wave['hm0'], {}), #CHECK IF THIS IS OK FIXME
+                'wave_maximal_height': (mitis_data.wave['hmax'], {}),
+                'wave_period': (mitis_data.wave['period'], {})
+             }
+        )
+        l.log("Wave Data Loaded")
+
+    if mitis_data.adcp is not None:
+        data.update(
+            {
+                'u': (mitis_data.adcp['u'] * MILLIMETER_TO_METER, {"units": "m/s"}),
+                'v': (mitis_data.adcp['v'] * MILLIMETER_TO_METER, {"units": "m/s"}),
+                'w': (mitis_data.adcp['w'] * MILLIMETER_TO_METER, {"units": "m/s"}),
+                'e': (mitis_data.adcp['e'] * MILLIMETER_TO_METER, {"units": "m/s"}),
+            }
+        )
+        l.log('ADCP Data Loaded')
+
+
+    if mitis_data.pco2 is not None:
+        data.update(
+            {
+                'co2_a': (mitis_data.pco2['gas_pressure_air'] * mitis_data.pco2['co2_air'] / 1e6, {}),
+                'co2_w': (mitis_data.pco2['gas_pressure_water'] * mitis_data.pco2['co2_water'] / 1e6, {})
+             }
+        )
+        l.log('PCO2 Data Loaded')
+
+    for key, value in data.items():
+        data[key] = (['time'], value[0], value[1])
+
+    return data, global_attrs
+
 
 
 def _fill_data(data: Dict[str, Tuple[np.ma.MaskedArray, dict]]) -> Dict[str, Tuple[List[str], np.ndarray, dict]]:
@@ -334,13 +458,5 @@ def _average_duplicates(dataset: xr.Dataset, coord: str) -> xr.Dataset:
 
 
 if __name__ == "__main__":
-    #vr = RawVikingDatReader()
-    #_buoys_data = vr.read(['/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat'])
-
-    #v_data = _buoys_data['pmza_riki']
-
-    #ds = load_meteoce_data(['/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat'])
-    #ds.to_netcdf('/home/jeromejguay/ImlSpace/Data/iml4_2021/meteoce_riki_2021.nc')
-
-    # ds = xr.open_dataset('/home/jeromejguay/ImlSpace/Data/iml4_2021/meteoce_riki_2021.nc')
-    pass
+    filename = "/home/jeromejguay/ImlSpace/Projects/mitis-buoy-controller/tests/PMZA-RIKI_FileTAGS.dat"
+    ds = load_meteoce_data(filenames=filename, data_format='mitis')

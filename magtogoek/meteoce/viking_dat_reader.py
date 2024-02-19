@@ -252,6 +252,8 @@ class VikingData:
         self.latitude: Union[list, np.ma.MaskedArray] = []
         self.longitude: Union[list, np.ma.MaskedArray] = []
 
+        self.tags = tuple(t for t in DATA_TAG)
+
         self.comp: dict = {key: [] for key in TAG_VARS['COMP_KEYS']}
         self.triplet: dict = {key: [] for key in TAG_VARS['TRIPLET_KEYS']}
         self.par_digi: dict = {key: [] for key in TAG_VARS['PAR_DIGI_KEYS']}
@@ -273,12 +275,13 @@ class VikingData:
         self.mo: dict = {key: [] for key in TAG_VARS['MO_KEYS']}
 
     def __repr__(self):
-        repr = f"""{self.__class__} 
-buoy_name: {self.buoy_name}
-firmware: {self.firmware}
-controller_sn: {self.controller_sn}
-data: (length: {len(self)})  
-"""
+        repr = (
+            f"{self.__class__}"
+            f"buoy_name: {self.buoy_name}"
+            f"firmware: {self.firmware}"
+            f"controller_sn: {self.controller_sn}"
+            f"data: (length: {len(self)})"
+        )
         for tag in self.tags:
             if self.__dict__[tag] is not None:
                 repr += f"  {tag}: (" + ", ".join(list(self.__dict__[tag].keys())) + ")\n"
@@ -288,11 +291,6 @@ data: (length: {len(self)})
 
     def __len__(self):
         return len(self.time)
-
-    @property
-    def tags(self):
-        return DATA_TAG
-
 
     def reformat(self):
         self._squeeze_empty_tag()
@@ -405,7 +403,7 @@ def _set_wmt_fill_value_to_nan(wmt_data: dict):
         values[mask] = NAN_FILL_VALUE
 
 
-class RawVikingDatReader():
+class RawVikingDatReader:
     """Use to read RAW dat files from viking buoy.
     The data are puts in VikingData object and are accessible as attributes."
 
@@ -445,7 +443,7 @@ buoys:\n"""
             print(f'File read: {_count}/{_num_of_files}', end='\r')
             with open(_filename) as f:
                 data_received = f.read()
-                decoded_data += _decode_transmitted_data(filename=_filename, data_received=data_received, century=century)
+                decoded_data += _unpack_data_from_tag_strings(filename=_filename, data_received=data_received, century=century)
             _count += 1
         print(f'File read: {_count}/{_num_of_files}')
 
@@ -470,7 +468,6 @@ buoys:\n"""
         _count = 0
         _num_of_bloc = len(decoded_data)
         for data_block in decoded_data:
-            print(f'Data Chuck loaded: {_count}/{_num_of_bloc}', end='\r')
             buoy_data = self._buoys_data[data_block['buoy_name']]
 
             buoy_data.time.append(data_block['time'])
@@ -486,7 +483,8 @@ buoys:\n"""
                     for key in tag_data.keys():
                         tag_data[key].append(data_block[tag][key])
             _count += 1
-        print(f'Data Chuck loaded: {_count}/{_num_of_bloc}')
+            print(f'Data Ensemble loaded: {_count}/{_num_of_bloc}', end='\r')
+        print(f'Data Ensemble loaded: {_count}/{_num_of_bloc}')
 
         for viking_data in self._buoys_data.values():
             viking_data.reformat()
@@ -508,7 +506,7 @@ buoys:\n"""
         return buoy_info
 
 
-def _decode_transmitted_data(filename:str, data_received: str, century: int = 21) -> list:
+def _unpack_data_from_tag_strings(filename:str, data_received: str, century: int = 21) -> list:
     """ Decode the data received.
 
     Parse through the data and iter over each block between the tags [NOM] and [FIN].
@@ -974,26 +972,9 @@ def _safe_float(value: str, ) -> Union[float]:
         return float(NAN_FILL_VALUE)
 
 
-# def _safe_int(value: str) -> Union[int]: everything is loaded in float
-#     return NAN_FILL_VALUE if '#' in value else int(value)
-
-
-def _compass_tilt_correction(hsin, hcos, pitch: float, roll: float):
-    """
-    x: sum of the sin
-    y: sum of the cos
-
-    Xh = X*cos(tilt) + Y*sin(roll)*sin(pitch)
-    Yh = Y*cos(roll)
-    """
-    hsin_c = hsin*cos(pitch) + hcos*sin(roll)*sin(pitch)
-    hcos_c = hcos*cos(roll)
-    return hsin_c, hcos_c
-
-
 def _make_timestamp(Y: str, M: str, D: str, h: str, m: str, s: str) -> str:
     time = Y + "-" + M + "-" + D + "T" + h + ":" + m + ":" + s
-    return str(NAN_FILL_VALUE) if "#" in time else time
+    return 'NaT' if "#" in time else time
 
 
 if __name__ == "__main__":
