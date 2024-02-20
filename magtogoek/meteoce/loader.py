@@ -26,7 +26,7 @@ from typing import *
 
 import magtogoek.logger as l
 from magtogoek.exceptions import MagtogoekExit
-from magtogoek.utils import format_filenames_for_print
+from magtogoek.utils import get_files_from_expression, format_filenames_for_print
 from magtogoek.tools import is_unique, nan_unique
 
 from magtogoek.meteoce.viking_dat_reader import RawVikingDatReader, VikingData
@@ -60,15 +60,41 @@ def load_meteoce_data(
     """
     l.section('Loading meteoce data', t=True)
 
+    filenames = get_files_from_expression(filenames)
+
     l.log(format_filenames_for_print('raw_data', filenames))
 
     if data_format == "viking":
-        dataset = load_viking_data(filenames=filenames, buoy_name=buoy_name)
+        buoy_data = RawVikingDatReader().read(filenames)
     elif data_format == "mitis":
-        dataset = load_mitis_data(filenames=filenames, buoy_name=buoy_name)
+        buoy_data = RawMitisDatReader().read(filenames)
     else:
         l.warning(f'Invalid data_format: {data_format}')
         raise MagtogoekExit("Invalid meteoce data format. Exiting")
+
+    if isinstance(buoy_data, Dict):
+        l.warning(f'More than one buoy name was found in the file {filenames}.\n'
+                  f' Buoy names fround: {list(buoy_data.keys())}\n'
+                  f' Specify a buoy_name\n Exiting')
+        raise MagtogoekExit(f'More than one buoy (buoy_name) was found in the file {filenames}. Exiting')
+
+    if buoy_name is not None and buoy_data.buoy_name != buoy_name:
+        l.log(f'Buoy Name found in files is different from the one provided.')
+
+    if data_format == "viking":
+        meteoce_data, global_attrs = _load_viking_meteoce_data(buoy_data)
+        buoy_data = RawVikingDatReader().read(filenames)
+    else: #if data_format == "mitis": # not required. Also remove a variable reference warning.
+        meteoce_data, global_attrs = _load_mitis_meteoce_data(buoy_data)
+
+    _add_time_coords(meteoce_data)
+
+    coords = {'time': np.asarray(buoy_data.time)}
+
+    dataset = xr.Dataset(meteoce_data, coords=coords, attrs=global_attrs)
+
+    if data_format == "viking":
+        dataset = _average_duplicates(dataset, 'time')
 
     if is_unique(dataset['magnetic_declination']):
         dataset.attrs["magnetic_declination"] = nan_unique(dataset['magnetic_declination'])[0]
@@ -80,39 +106,33 @@ def load_meteoce_data(
     return dataset
 
 
-def load_viking_data(
-        filenames: Union[str, List[str]],
-        buoy_name: str = None,
-        ) -> xr.Dataset:
-
-    viking_data = RawVikingDatReader().read(filenames)
-
-    if isinstance(viking_data, Dict):
-        l.warning(f'More than one buoy name was found in the file {filenames}.\n'
-                  f' Buoy names fround: {list(viking_data.keys())}\n'
-                  f' Specify a buoy_name\n Exiting')
-        raise MagtogoekExit(f'More than one buoy (buoy_name) was found in the file {filenames}. Exiting')
-
-    if buoy_name is not None and viking_data.buoy_name != buoy_name:
-        l.log(f'Buoy Name found in files is different from the one provided.')
-
-    meteoce_data, global_attrs = _load_viking_meteoce_data(viking_data)
-
-    meteoce_data = _fill_data(meteoce_data)
-
-    coords = {'time': np.asarray(viking_data.time)}
-
-    global_attrs.update({
-        'platform': viking_data.buoy_name,
-        'buoy_controller_firmware_version': viking_data.firmware,
-        'buoy_controller_serial_number': list(set(viking_data.controller_sn))
-    })
-
-    dataset = xr.Dataset(meteoce_data, coords=coords, attrs=global_attrs)
-
-    dataset = _average_duplicates(dataset, 'time')
-
-    return dataset
+# def load_viking_data(
+#         filenames: Union[str, List[str]],
+#         buoy_name: str = None,
+#         ) -> xr.Dataset:
+#
+#     viking_data = RawVikingDatReader().read(filenames)
+#
+#     if isinstance(viking_data, Dict):
+#         l.warning(f'More than one buoy name was found in the file {filenames}.\n'
+#                   f' Buoy names fround: {list(viking_data.keys())}\n'
+#                   f' Specify a buoy_name\n Exiting')
+#         raise MagtogoekExit(f'More than one buoy (buoy_name) was found in the file {filenames}. Exiting')
+#
+#     if buoy_name is not None and viking_data.buoy_name != buoy_name:
+#         l.log(f'Buoy Name found in files is different from the one provided.')
+#
+#     meteoce_data, global_attrs = _load_viking_meteoce_data(viking_data)
+#
+#     _add_time_coords(meteoce_data)
+#
+#     coords = {'time': np.asarray(viking_data.time)}
+#
+#     dataset = xr.Dataset(meteoce_data, coords=coords, attrs=global_attrs)
+#
+#     dataset = _average_duplicates(dataset, 'time')
+#
+#     return dataset
 
 
 def _load_viking_meteoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[np.ma.MaskedArray, dict]], Dict]:
@@ -127,7 +147,12 @@ def _load_viking_meteoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[
         {variable_name: str -> (data: np.ma.MaskedArray, attributes: Dict)}
 
     """
-    global_attrs = {}
+    global_attrs = {
+        'platform': viking_data.buoy_name,
+        'buoy_controller_firmware_version': viking_data.firmware,
+        'buoy_controller_serial_number': list(set(viking_data.controller_sn))
+    }
+
     data = {'lon': (viking_data.longitude, {}),
              'lat': (viking_data.latitude, {}),
              }
@@ -293,34 +318,38 @@ def _load_viking_meteoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[
                 data[_name] = (viking_data.rti[_name] * MILLIMETER_TO_METER, {"units": "m/s"})
             l.log('Rti data loaded.')
 
+    data = _fill_data(data)
+
     return data, global_attrs
 
 
 
 
-def load_mitis_data(
-        filenames: Union[str, List[str]],
-        buoy_name: str = None,
-) -> xr.Dataset:
-
-    mitis_data = RawMitisDatReader().read(filenames)
-
-    if isinstance(mitis_data, Dict):
-        l.warning(f'More than one buoy name was found in the file {filenames}.\n'
-                  f' Buoy names fround: {list(mitis_data.keys())}\n'
-                  f' Specify a buoy_name\n Exiting')
-        raise MagtogoekExit(f'More than one buoy (buoy_name) was found in the file {filenames}. Exiting')
-
-    if buoy_name is not None and mitis_data.buoy_name != buoy_name:
-        l.log(f'Buoy Name found in files is different from the one provided.')
-
-    meteoce_data, global_attrs = _load_mitis_meteoce_data(mitis_data)
-
-    coords = {'time': np.asarray(mitis_data.time)}
-
-    dataset = xr.Dataset(meteoce_data, coords=coords, attrs=global_attrs)
-
-    return dataset
+# def load_mitis_data(
+#         filenames: Union[str, List[str]],
+#         buoy_name: str = None,
+# ) -> xr.Dataset:
+#
+#     mitis_data = RawMitisDatReader().read(filenames)
+#
+#     if isinstance(mitis_data, Dict):
+#         l.warning(f'More than one buoy name was found in the file {filenames}.\n'
+#                   f' Buoy names fround: {list(mitis_data.keys())}\n'
+#                   f' Specify a buoy_name\n Exiting')
+#         raise MagtogoekExit(f'More than one buoy (buoy_name) was found in the file {filenames}. Exiting')
+#
+#     if buoy_name is not None and mitis_data.buoy_name != buoy_name:
+#         l.log(f'Buoy Name found in files is different from the one provided.')
+#
+#     meteoce_data, global_attrs = _load_mitis_meteoce_data(mitis_data)
+#
+#     _add_time_coords(meteoce_data)
+#
+#     coords = {'time': np.asarray(mitis_data.time)}
+#
+#     dataset = xr.Dataset(meteoce_data, coords=coords, attrs=global_attrs)
+#
+#     return dataset
 
 
 
@@ -418,11 +447,13 @@ def _load_mitis_meteoce_data(mitis_data: MitisData) -> Tuple[Dict[str, Tuple[np.
         )
         l.log('PCO2 Data Loaded')
 
-    for key, value in data.items():
-        data[key] = (['time'], value[0], value[1])
-
     return data, global_attrs
 
+
+def _add_time_coords(data: Dict[str, Tuple[np.ndarray, Dict]]) -> Dict[str, Tuple[List[str], np.ndarray, dict]]:
+    """Add the time coords according to the Xarray data format."""
+    for var, (_data, _attrs) in data.items():
+        data[var] = (['time'], _data, _attrs)
 
 
 def _fill_data(data: Dict[str, Tuple[np.ma.MaskedArray, dict]]) -> Dict[str, Tuple[List[str], np.ndarray, dict]]:
@@ -433,23 +464,24 @@ def _fill_data(data: Dict[str, Tuple[np.ma.MaskedArray, dict]]) -> Dict[str, Tup
 
     See magtogoek.meteoce.viking_dat_reader.py for the filled value.
     """
-    _data = {}
-    for key, item in data.items():
-        _data[key] = (['time'], item[0].filled(), item[1])
+    for var, (_data, _attrs) in data.items():
+        data[var] = (_data.filled(), _attrs)
 
     l.log('Missing data filled.')
-
-    return _data
 
 
 def _average_duplicates(dataset: xr.Dataset, coord: str) -> xr.Dataset:
     """Average data_array values of duplicates time coords index.
     """
 
+    # average any duplicate value along coord by groupping according to coord value.
     df = dataset.to_dataframe()
     df = df.groupby(coord).mean(numeric_only=False)
 
+    # get the subset of the dataset with all unique coord value.
     _dataset = dataset[{coord: np.unique(dataset[coord], return_index=True)[1]}]
+
+    # replace values by the averaged (if duplicated coord index) values.
     for var in _dataset.keys():
         _dataset[var].values[:] = df[var][:]
 

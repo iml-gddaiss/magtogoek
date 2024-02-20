@@ -107,15 +107,17 @@ MITIS_FLOAT_VARIABLES = {
 NAN_FILL_VALUE = np.nan
 
 class MitisData:
-    """Object to store Mitis data. """
+    """Object to store Mitis data.
+    Data are store under the tag attribute e.g. self.init, selft. power ... etc.
+    """
 
     def __init__(self, buoy_name: str):
-        self.buoy_name: str = buoy_name
+        self.buoy_name: str = buoy_name # required (same as for viking_dat_reader.VikingData)
 
         self.tags = tuple(t for t in MITIS_VARIABLES)
 
         # coords
-        self.time: Union[list, np.ndarray] = []
+        self.time: Union[list, np.ndarray] = [] # required (same as for viking_dat_reader.VikingData)
 
         self.init = {key: [] for key in MITIS_VARIABLES['init']}
         self.power = {key: [] for key in MITIS_VARIABLES['power']}
