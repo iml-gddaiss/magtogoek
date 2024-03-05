@@ -73,8 +73,8 @@ P01_CODES_MAP = {
     "wind_direction_QC": "EWDASS01_QC",
     "wind_gust": "EGTSSS01",
     "wind_gust_QC": "EGTSSS01_QC",
-    "wind_gust_direction": "EGTDSS01",         # Not in Viking Data
-    "wind_gust_direction_QC": "EGTDSS01_QC",   # Not in Viking Data
+    #"wind_gust_direction": "EGTDSS01",         # Not loaded yet.
+    #"wind_gust_direction_QC": "EGTDSS01_QC",   # Not loaded yet.
     'atm_temperature': "CTMPZZ01",
     'atm_temperature_QC': "CTMPZZ01_QC",
     'atm_humidity': "CRELZZ01",
@@ -100,8 +100,9 @@ P01_CODES_MAP = {
     'dissolved_oxygen': "DOXYUZ01",
     'dissolved_oxygen_QC': "DOXYUZ01_QC",
     # Notes Valued are updated if and when Winkler correction is carried out
-    # 'dissolved_oxygen': "DOXYCZ01"
-    # 'dissolved_oxygen': "DOXYCZ01_QC"
+        # Winkler values are the following
+        # 'dissolved_oxygen': "DOXYCZ01"
+        # 'dissolved_oxygen': "DOXYCZ01_QC"
     'ph': "PHXXZZXX",
     'ph_QC': "PHXXZZXX_QC",
     'par': "PFDPAR01",
@@ -112,6 +113,7 @@ P01_CODES_MAP = {
     'chlorophyll_QC': "CPHLPR01_QC",
     'fdom': "CCOMD002",
     'fdom_QC': "CCOMD002_QC",
+    'nitrate': "NTRZZZXX", # Unsure about the units
     'co2_a': "ACO2XXXX",
     'co2_a_QC': "ACO2XXXX_QC",
     'co2_w': "PCO2XXXX",
@@ -757,80 +759,3 @@ def _write_odf(dataset: xr.Dataset, pconfig: ProcessConfig):
         use_bodc_name=pconfig.use_bodc_name,
         output_path=pconfig.odf_path,
     )
-
-
-if __name__ == "__main__":
-    import getpass
-    import pandas as pd
-
-    import matplotlib
-    matplotlib.use('Qt5Agg')
-    import matplotlib.pyplot as plt
-
-    file_path = '/home/jeromejguay/ImlSpace/Data/iml4_2021/dat/PMZA-RIKI_RAW_all.dat'
-    out_path = '/home/jeromejguay/ImlSpace/Data/iml4_2021/meteoc_riki_2021.nc'
-    _config = dict(
-        HEADER=dict(
-            process="meteoce",
-        ),
-        INPUT=dict(
-            input_files=file_path,
-            platform_file=None,
-            platform_id=None
-        ),
-        OUTPUT=dict(
-            netcdf_output=out_path,
-            odf_output=True,
-            merge_output_files=True,
-            bodc_name=True, # NOT WORKING FIXME
-            force_platform_metadata=None,
-            odf_data=False,
-            make_figures=True,
-            make_log=False
-        ),
-        CRUISE=dict(
-            country_institute_code="",
-            organization="",
-            chief_scientist="",
-            start_date="",
-            end_date="",
-            cruise_number="BOUEE2021",
-            cruise_name="",
-            cruise_description="",
-            event_number="RIMOUSKI",
-            event_qualifier1="IML4",
-            event_comments=""
-        ),
-        NETCDF_CF=dict(
-            date_created=pd.Timestamp.now().strftime("%Y-%m-%d"),
-            publisher_name=getpass.getuser(),
-            source='viking_buoy'
-        ),
-        PROCESSING=dict(
-            navigation_file=None,
-            leading_trim=None,
-            trailing_trim=None,
-            quality_control=True,
-        ),
-
-        METEOCE_PROCESSING=dict(
-            buoy_name="PMZA-RIKI",
-            data_format="viking",
-            magnetic_declination=0,
-            magnetic_declination_preset=None,
-        ),
-        WPS_PROCESSING=dict(),
-        ADCP_PROCESSING=dict(),
-        METEOCE_QUALITY_CONTROL=dict(),
-        ADCP_QUALITY_CONTROL=dict(
-            horizontal_velocity_threshold=2,
-            vertical_velocity_threshold=1,
-            error_velocity_threshold=1,
-            roll_threshold=10,
-            pitch_threshold=10,
-        )
-    )
-
-    process_meteoce(_config)
-
-    ds = xr.open_dataset(out_path)

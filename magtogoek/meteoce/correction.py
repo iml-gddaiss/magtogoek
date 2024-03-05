@@ -78,7 +78,7 @@ def apply_magnetic_correction(dataset: xr.Dataset, pconfig: "ProcessConfig"):
             dataset[variable].attrs['corrections'] += 'Corrected for magnetic declination.\n'
             l.log(f"{variable} transformed to true north.")
 
-    if pconfig.magnetic_declination is not None:
+    if pconfig.magnetic_declination is not None: # ADCP is corrected by the instrument. Set the adcp_magnetic_declination_preset if a magnetic_declination value is used.
         _adcp_magnetic_correction(dataset=dataset, pconfig=pconfig)
 
 
@@ -113,7 +113,10 @@ def apply_sensors_corrections(dataset: xr.Dataset, pconfig: "ProcessConfig"):
             _dissolved_oxygen_pressure_correction(dataset=dataset)
 
     if "ph" in dataset and pconfig.ph_salinity_correction is True:
-             _correct_ph_for_salinity(dataset=dataset, pconfig=pconfig)
+        if pconfig.data_format == 'mitis':
+            l.warning("pH Salinity correction skipped. pH values from Mitis Buoy are already corrected.")
+        else:
+            _correct_ph_for_salinity(dataset=dataset, pconfig=pconfig)
 
     for variable in set(DRIFT_VARIABLES) & set(dataset.variables):
         if pconfig.__getattribute__(variable + "_drift") is not None:
@@ -175,7 +178,7 @@ def _set_magnetic_correction_to_apply(dataset: xr.Dataset, pconfig: "ProcessConf
 
     Either from the GPS (dataset variable) or the ProcessConfig.magnetic_declination .
 
-    For `Metis` data, the correction takes into account the one already carried out by the buoy
+    For `mitis` data, the correction takes into account the one already carried out by the buoy
     controller.
     """
 
@@ -196,7 +199,7 @@ def _set_magnetic_correction_to_apply(dataset: xr.Dataset, pconfig: "ProcessConf
             else:
                 l.warning('Unable to carry magnetic declination correction. No magnetic declination value found.')
 
-    elif pconfig.data_format == "metis":
+    elif pconfig.data_format == "mitis":
         if isinstance(pconfig.magnetic_declination, (int, float)):
             if 'magnetic_declination' in dataset.variables:
                 pconfig.magnetic_correction_to_apply = pconfig.magnetic_declination - dataset['magnetic_declination']

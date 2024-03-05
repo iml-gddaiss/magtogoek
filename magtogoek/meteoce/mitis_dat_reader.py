@@ -8,22 +8,23 @@ Tag Example:
 [ECO1]0.008505,1.737,5.708
 [CTD]22.1686,4e-05,0.0108,-2.2537
 [PH]NAN,NAN,1,6.8176,6.8225
-[NO2]0,NAN,0,NAN,0,NAN
+[NO3]0,NAN,0,NAN,
 [WIND]7,20.77,205.78,220.72,0,0.2,0.49
 [ATMS]22.7,28.8,1024,30.415,0,0,0
 [WAVE]2024-02-08,23:15:00,0,0,0,0
 [ADCP]NA,NA,NAN,NAN,NAN,NAN
+[WNCH] Mission Completed
 [END]
 
 
 Tag Structure:
 
-[INIT]Buoy_Name,Date,Time,Latitude,Longitude,Heading,Pitch,Roll,COG,SOG,Magnetic_Variation,Water_Detection_Main
+[INIT]Buoy_Name,Date,Time,Latitude,Longitude,Heading,Pitch,Roll,Pitch_Std,Roll_Std,COG,SOG,Magnetic_Variation,Water_Detection_Main
 [POWR]VBatt1,ABatt1,VBatt2,ABatt2,VSolar,ASolar,AMain,ATurbine,AWinch,PM_RH,Relay_State
 [ECO1]Scattering,Chlorophyll,FDOM
 [CTD]Temperature,Conductivity,Salinity,Density
 [PH]Ext_pH_Calc,Int_pH_Calc,Error_Flag,Ext_pH,Int_pH
-[NO2]Dark_Nitrate,Light_Nitrate,Dark_Nitrogen_in_Nitrate,Light_Nitrogen_in_Nitrate,Dark_Bromide,Light_Bromide
+[NO3]SUNA_Nitrate, SUNA_Nitrogen, SUNA_Bromide, SUNA_RMSE
 [Wind]Source,Wind_Dir_Min,Wind_Dir_Ave,Wind_Dir_Max,Wind_Spd_Min,Wind_Spd_Ave,Wind_Spd_Max
                 Source: 7: wmt700, 5: wxt536
 [ATMS]Air_Temp,Air_Humidity,Air_Pressure,PAR,Rain_Total,Rain_Duration,Rain_Intensity
@@ -55,12 +56,13 @@ from magtogoek.utils import get_files_from_expression
 
 
 DAT_FILE_DATA_STRUCTURE = {
-    'init': ['buoy_name', 'date', 'time', 'latitude', 'longitude', 'heading', 'pitch', 'roll', 'cog', 'sog', 'magnetic_declination', 'water_detection'],
+    'init': ['buoy_name', 'date', 'time', 'latitude', 'longitude', 'heading', 'pitch', 'roll',  'pitch_std', 'roll_std',
+             'cog', 'sog', 'magnetic_declination', 'water_detection'],
     'powr': ['volt_batt_1', 'amp_batt_1', 'volt_batt_2', 'amp_batt_2', 'volt_solar', 'amp_solar', 'amp_main', 'amp_turbine', 'amp_winch', 'pm_rh', 'relay_state'],
     'eco1': ['scattering', 'chlorophyll', 'fdom'],
     'ctd': ['temperature', 'conductivity', 'salinity', 'density'],
     'ph': ['ext_ph_calc', 'int_ph_calc', 'error_flag', 'ext_ph', 'int_ph'],
-    'no2': ['dark_nitrate', 'light_nitrate', 'dark_nitrogen_in_nitrate', 'light_nitrogen_in_nitrate', 'dark_bromide', 'light_bromide'],
+    'no3': ['nitrate', 'nitrogen', 'bromide', 'rmse'],
     'wind': ['source', 'wind_dir_min', 'wind_dir_ave', 'wind_dir_max', 'wind_spd_min', 'wind_spd_ave', 'wind_spd_max'],
     'atms': ['air_temperature', 'air_humidity', 'air_pressure', 'par', 'rain_total', 'rain_duration', 'rain_intensity'],
     'wave': ['date', 'time', 'period', 'hm0', 'h13', 'hmax'],
@@ -75,33 +77,35 @@ DATA_TAG_REGEX = re.compile(rf"\[({'|'.join(INSTRUMENTS_TAG)})]((?:(?!\[).)*)", 
 
 
 MITIS_VARIABLES = {
-    'init': ['buoy_name', 'time', 'latitude', 'longitude', 'heading', 'pitch', 'roll', 'cog', 'sog', 'magnetic_declination', 'water_detection'],
-    'power': ['volt_batt_1', 'amp_batt_1', 'volt_batt_2', 'amp_batt_2', 'volt_solar', 'amp_solar', 'amp_main', 'amp_turbine', 'amp_winch', 'pm_rh', 'relay_state'],
+    'init': ['buoy_name', 'time', 'latitude', 'longitude', 'heading', 'pitch', 'roll', 'pitch_std', 'roll_std',
+             'cog', 'sog', 'magnetic_declination', 'water_detection'],
+    'powr': ['volt_batt_1', 'amp_batt_1', 'volt_batt_2', 'amp_batt_2', 'volt_solar', 'amp_solar', 'amp_main', 'amp_turbine', 'amp_winch', 'pm_rh', 'relay_state'],
     'eco1': ['scattering', 'chlorophyll', 'fdom'],
     'ctd': ['temperature', 'conductivity', 'salinity', 'density'],
     'ph': ['ext_ph_calc', 'int_ph_calc', 'error_flag', 'ext_ph', 'int_ph'],
-    'no2': ['dark_nitrate', 'light_nitrate', 'dark_nitrogen_in_nitrate', 'light_nitrogen_in_nitrate', 'dark_bromide', 'light_bromide'],
+    'no3': ['nitrate', 'nitrogen', 'bromide', 'rmse'],
     'wind': ['source', 'wind_dir_min', 'wind_dir_ave', 'wind_dir_max', 'wind_spd_min', 'wind_spd_ave', 'wind_spd_max'],
     'atms': ['air_temperature', 'air_humidity', 'air_pressure', 'par', 'rain_total', 'rain_duration', 'rain_intensity'],
     'wave': ['time', 'period', 'hm0', 'h13', 'hmax'],
     'adcp': ['time', 'u', 'v', 'w', 'e'],
     'pco2': ['co2_air', 'co2_water', 'gas_pressure_air', 'gas_pressure_water', 'air_humidity'],
-    'winch': ['message']
+    'wnch': ['message']
 }
 
 MITIS_FLOAT_VARIABLES = {
-    'init': ['latitude', 'longitude', 'heading', 'pitch', 'roll', 'cog', 'sog', 'magnetic_declination', 'water_detection'],
-    'power': ['volt_batt_1', 'amp_batt_1', 'volt_batt_2', 'amp_batt_2', 'volt_solar', 'amp_solar', 'amp_main', 'amp_turbine', 'amp_winch'],
+    'init': ['latitude', 'longitude', 'heading', 'pitch', 'roll', 'pitch_std', 'roll_std',
+             'cog', 'sog', 'magnetic_declination', 'water_detection'],
+    'powr': ['volt_batt_1', 'amp_batt_1', 'volt_batt_2', 'amp_batt_2', 'volt_solar', 'amp_solar', 'amp_main', 'amp_turbine', 'amp_winch'],
     'eco1': ['scattering', 'chlorophyll', 'fdom'],
     'ctd': ['temperature', 'conductivity', 'salinity', 'density'],
     'ph': ['ext_ph_calc', 'int_ph_calc', 'error_flag', 'ext_ph', 'int_ph'],
-    'no2': ['dark_nitrate', 'light_nitrate', 'dark_nitrogen_in_nitrate', 'light_nitrogen_in_nitrate', 'dark_bromide', 'light_bromide'],
+    'no3': ['nitrate', 'nitrogen', 'bromide', 'rmse'],
     'wind': ['wind_dir_min', 'wind_dir_ave', 'wind_dir_max', 'wind_spd_min', 'wind_spd_ave', 'wind_spd_max'],
     'atms': ['air_temperature', 'air_humidity', 'air_pressure', 'par', 'rain_total', 'rain_duration', 'rain_intensity'],
     'wave': ['period', 'hm0', 'h13', 'hmax'],
     'adcp': ['u', 'v', 'w', 'e'],
     'pco2': ['co2_air', 'co2_water', 'gas_pressure_air', 'gas_pressure_water', 'air_humidity'],
-    'winch': []
+    'wnch': []
 }
 
 NAN_FILL_VALUE = np.nan
@@ -120,17 +124,17 @@ class MitisData:
         self.time: Union[list, np.ndarray] = [] # required (same as for viking_dat_reader.VikingData)
 
         self.init = {key: [] for key in MITIS_VARIABLES['init']}
-        self.power = {key: [] for key in MITIS_VARIABLES['power']}
+        self.powr = {key: [] for key in MITIS_VARIABLES['powr']}
         self.eco1 = {key: [] for key in MITIS_VARIABLES['eco1']}
         self.ctd = {key: [] for key in MITIS_VARIABLES['ctd']}
         self.ph = {key: [] for key in MITIS_VARIABLES['ph']}
-        self.no2 = {key: [] for key in MITIS_VARIABLES['no2']}
+        self.no3 = {key: [] for key in MITIS_VARIABLES['no3']}
         self.wind = {key: [] for key in MITIS_VARIABLES['wind']}
         self.atms = {key: [] for key in MITIS_VARIABLES['atms']}
         self.wave = {key: [] for key in MITIS_VARIABLES['wave']}
         self.adcp = {key: [] for key in MITIS_VARIABLES['adcp']}
         self.pco2 = {key: [] for key in MITIS_VARIABLES['pco2']}
-        self.winch = {key: [] for key in MITIS_VARIABLES['winch']}
+        self.wnch = {key: [] for key in MITIS_VARIABLES['wnch']}
 
     def __repr__(self):
         repr = (
@@ -261,7 +265,6 @@ def _unpack_data_from_tag_string(data: str) -> Dict[str, Dict[str, str]]:
 
         unpacked_data[tag] = {key: value for key, value in zip(DAT_FILE_DATA_STRUCTURE[tag], data)}
 
-
     for tag in ['init', 'wave', 'adcp']:
         if tag in unpacked_data:
             _time = unpacked_data[tag].pop('time')
@@ -300,5 +303,6 @@ def _degree_minute_to_degree_decimal(value: str) -> float:
 
 
 if __name__ == '__main__':
-    filename = "/home/jeromejguay/ImlSpace/Projects/mitis-buoy-controller/tests/PMZA-RIKI_FileTAGS.dat"
+    #filename = "/home/jeromejguay/ImlSpace/Projects/mitis-buoy-controller/tests/PMZA-RIKI_FileTAGS.dat"
+    filename = "/home/jeromejguay/ImlSpace/Projects/magtogoek/tests/data/mitis_raw/PMZA-RIKI_FileTAGS.dat"
     md = RawMitisDatReader().read(filenames=filename)

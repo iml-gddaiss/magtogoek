@@ -927,5 +927,13 @@
         "sdn_parameter_name": "Direction (from) of waves (wind sea) on the water body",
         "sdn_uom_urn": "SDN:P06:UABB",
         "sdn_uom_name": "Degrees True"
+    },
+    "NTRZZZXX": {
+        "units": "umol/L",
+        "long_name": "nitrate",
+        "sdn_parameter_urn": "SDN:P01::NTRZZZXX",
+        "sdn_parameter_name": "Concentration of nitrate+nitrite {NO3+NO2} per unit volume of the water body [unknown phase]",
+        "sdn_uom_urn": "SDN:P06:UPOX",
+        "sdn_uom_name": "Micromoles per litre"
     }
 }

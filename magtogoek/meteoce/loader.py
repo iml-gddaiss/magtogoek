@@ -361,10 +361,12 @@ def _load_mitis_meteoce_data(mitis_data: MitisData) -> Tuple[Dict[str, Tuple[np.
         'speed': (mitis_data.init['sog'] * KNOTS_TO_METER_PER_SECONDS, {}),
         'course': (mitis_data.init['cog'], {}),
         'magnetic_declination': (mitis_data.init['magnetic_declination'], {}),
-        'heading': (mitis_data.init['heading'], {}),
+        'heading': (mitis_data.init['heading'], {'corrections':'Corrected for magnetic declination at sampling.\n'}),
         'pitch': (mitis_data.init['pitch'], {}),
-        'roll': (mitis_data.init['roll'], {}),
-            }
+        'roll_': (mitis_data.init['roll'], {}),
+        'pitch_std': (mitis_data.init['pitch_std'], {}),
+        'roll_std': (mitis_data.init['roll_std'], {})
+        }
 
     if mitis_data.eco1 is not None:
         data.update(
@@ -387,19 +389,26 @@ def _load_mitis_meteoce_data(mitis_data: MitisData) -> Tuple[Dict[str, Tuple[np.
         l.log('ctd data loaded.')
 
     if mitis_data.ph is not None:
-        data.update({'ph': (mitis_data.ph['ext_ph'], {"units": "NBS_scale"})})
+        _ph_attrs ={
+            "units": "NBS_scale",
+            'corrections': 'pH values corrected at sampling using in-situ salinity.\n'
+        }
+        data.update({
+            'ph': (mitis_data.ph['ext_ph'], _ph_attrs)
+        })
         l.log('pH data loaded.')
 
-    if mitis_data.no2 is not None:
-        l.log('NO2 not implemented yet data loaded. ') # FIXME
-        pass
+    # Nitrate Data are not loaded since the correction algorithm are not yet implemented.
+    # if mitis_data.no3 is not None:
+    #     l.log('NO3 not implemented yet data loaded. ')
+    #     pass
 
     if mitis_data.wind is not None:
         data.update(
             {
 
                 'wind_speed': (np.round(mitis_data.wind['wind_spd_ave'] * KNOTS_TO_METER_PER_SECONDS, 3), {'units': 'm/s'}),
-                'wind_direction': (mitis_data.wind['wind_dir_ave'], {}),
+                'wind_direction': (mitis_data.wind['wind_dir_ave'], {'corrections':'Corrected for magnetic declination at sampling.\n'}),
                 'wind_gust': (np.round(mitis_data.wind['wind_spd_max'] * KNOTS_TO_METER_PER_SECONDS, 3), {'units': 'm/s'}),
             }
         )
@@ -490,5 +499,6 @@ def _average_duplicates(dataset: xr.Dataset, coord: str) -> xr.Dataset:
 
 
 if __name__ == "__main__":
-    filename = "/home/jeromejguay/ImlSpace/Projects/mitis-buoy-controller/tests/PMZA-RIKI_FileTAGS.dat"
+    #filename = "/home/jeromejguay/ImlSpace/Projects/mitis-buoy-controller/tests/PMZA-RIKI_FileTAGS.dat"
+    filename = "/home/jeromejguay/ImlSpace/Projects/magtogoek/tests/data/mitis_raw/PMZA-RIKI_FileTAGS.dat"
     ds = load_meteoce_data(filenames=filename, data_format='mitis')
