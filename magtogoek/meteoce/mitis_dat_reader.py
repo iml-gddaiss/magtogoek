@@ -108,6 +108,7 @@ MITIS_FLOAT_VARIABLES = {
     'wnch': []
 }
 
+NAT_FILL_VALUE = "NaT"
 NAN_FILL_VALUE = np.nan
 
 class MitisData:
@@ -171,7 +172,6 @@ class MitisData:
                         _dtype = 'float'
                     else:
                         _dtype = 'str'
-
                     self.__dict__[tag][variable] = np.array(self.__dict__[tag][variable], dtype=_dtype)
 
 
@@ -244,7 +244,10 @@ class RawMitisDatReader:
                         buoy_data.__dict__[tag][key].append(_data[tag][key])
                 else:
                     for key in MITIS_VARIABLES[tag]:
-                        buoy_data.__dict__[tag][key].append(NAN_FILL_VALUE)
+                        if key == "time":
+                            buoy_data.__dict__[tag][key].append(NAT_FILL_VALUE)
+                        else:
+                            buoy_data.__dict__[tag][key].append(NAN_FILL_VALUE)
 
             _ensemble_count += 1
         print(f'Data Ensemble loaded: {_ensemble_count}/{_number_of_ensemble}', end='\r')
@@ -280,7 +283,9 @@ def _unpack_data_from_tag_string(data: str) -> Dict[str, Dict[str, str]]:
 
 def _make_timestamp(date: str, time: str) -> str:
     _time = f'{date}T{time}'
-    return 'NaT' if "NA" in _time else _time
+    if "NA" in _time: # Fixme maybe remove after fixing 2023 dat?
+        return "NaT"                    # Fixme maybe remove after fixing 2023 dat?
+    return _time
 
 def _degree_minute_to_degree_decimal(value: str) -> float:
     """
@@ -304,5 +309,6 @@ def _degree_minute_to_degree_decimal(value: str) -> float:
 
 if __name__ == '__main__':
     #filename = "/home/jeromejguay/ImlSpace/Projects/mitis-buoy-controller/tests/PMZA-RIKI_FileTAGS.dat"
-    filename = "/home/jeromejguay/ImlSpace/Projects/magtogoek/tests/data/mitis_raw/PMZA-RIKI_FileTAGS.dat"
+    #filename = "/home/jeromejguay/ImlSpace/Projects/magtogoek/tests/data/mitis_raw/PMZA-RIKI_FileTAGS.dat"
+    filename = "/home/jeromejguay/ImlSpace/Data/pmza_2023/IML-4/PMZA-RIKI_FileTAGS_2023.dat"
     md = RawMitisDatReader().read(filenames=filename)
