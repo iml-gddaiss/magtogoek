@@ -323,36 +323,6 @@ def _load_viking_meteoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[
     return data, global_attrs
 
 
-
-
-# def load_mitis_data(
-#         filenames: Union[str, List[str]],
-#         buoy_name: str = None,
-# ) -> xr.Dataset:
-#
-#     mitis_data = RawMitisDatReader().read(filenames)
-#
-#     if isinstance(mitis_data, Dict):
-#         l.warning(f'More than one buoy name was found in the file {filenames}.\n'
-#                   f' Buoy names fround: {list(mitis_data.keys())}\n'
-#                   f' Specify a buoy_name\n Exiting')
-#         raise MagtogoekExit(f'More than one buoy (buoy_name) was found in the file {filenames}. Exiting')
-#
-#     if buoy_name is not None and mitis_data.buoy_name != buoy_name:
-#         l.log(f'Buoy Name found in files is different from the one provided.')
-#
-#     meteoce_data, global_attrs = _load_mitis_meteoce_data(mitis_data)
-#
-#     _add_time_coords(meteoce_data)
-#
-#     coords = {'time': np.asarray(mitis_data.time)}
-#
-#     dataset = xr.Dataset(meteoce_data, coords=coords, attrs=global_attrs)
-#
-#     return dataset
-
-
-
 def _load_mitis_meteoce_data(mitis_data: MitisData) -> Tuple[Dict[str, Tuple[np.ma.MaskedArray, dict]], Dict]:
     global_attrs = {}
     data = {
@@ -398,17 +368,21 @@ def _load_mitis_meteoce_data(mitis_data: MitisData) -> Tuple[Dict[str, Tuple[np.
         })
         l.log('pH data loaded.')
 
-    # Nitrate Data are not loaded since the correction algorithm are not yet implemented.
     # if mitis_data.no3 is not None:
-    #     l.log('NO3 not implemented yet data loaded. ')
-    #     pass
+      # Nitrate Data are not loaded since the correction algorithm are not yet implemented.
 
     if mitis_data.wind is not None:
-        # _source= [] #FIXME
-        # if "7" in mitis_data.wind['source']:
-        #     _source.append("wmt700")
-        # elif "5" in mitis_data.wind['source']:
-        #     _source.append("wxt536")
+        mitis_data.wind['source'][:100] = '5'
+        mitis_data.wind['source'][112:140] = 'nan'
+        _s, _c = np.unique(mitis_data.wind['source'], return_counts=True)
+        _counts = {k: round(100 * v/len(mitis_data.wind['source']),2) for k, v in zip(_s, _c)}
+
+        if '5' in _counts and '7' in _counts: # 'nan could also be there a source. Meaning no data was sampled.
+            _msg = f"Wind data were sampled by both the wmt700 ({_counts['7']}%), wxt536 ({_counts['5']}%)"
+            if 'nan' in _s:
+                _msg += f" (missing: {_counts['nan']}%)"
+            l.warning(_msg +'.')
+
         data.update(
             {
                 'wind_speed': (np.round(mitis_data.wind['wind_spd_ave'] * KNOTS_TO_METER_PER_SECONDS, 3), {'units': 'm/s'}),
