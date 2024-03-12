@@ -293,7 +293,7 @@ def adcp_quality_control(
         vb_flag = vertical_beam_test(dataset, amp_th, corr_th, pg_th)
 
         add_ancillary_QC_variable_to_dataset(dataset=dataset, variable='vb_vel', default_flag=1)
-        # FIXME ------------------
+        # FIXME ------------------ (March 2023 I forgot what was the problem)
         add_flags_values(dataset["vb_vel_QC"].data, vb_flag * 3)
         dataset["vb_vel_QC"].attrs["quality_test"] = (
             f"amplitude_threshold: {amp_th}\n" * ("vb_amp" in dataset)
