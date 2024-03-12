@@ -165,7 +165,7 @@ SPIKE_QC_VARIABLES = [
 class ProcessConfig(BaseProcessConfig):
     # PROCESSING
     buoy_name: str = None
-    data_format: str = None  # [viking_dat, ]
+    data_format: str = None  # [viking, mitis]
     sampling_depth: float = None  # Used for computation *(density) and for EVENT HEADER IN METEOCE
 
     ##### ID #####

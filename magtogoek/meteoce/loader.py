@@ -380,10 +380,10 @@ def _load_mitis_meteoce_data(mitis_data: MitisData) -> Tuple[Dict[str, Tuple[np.
 
     if mitis_data.ctd is not None:
         data.update(
-            {'temperature': (mitis_data.ctd['temperature'], {"units": "degree_C"}),
-             'conductivity': (mitis_data.ctd['conductivity'], {'units': 'S/m'}),
-             'salinity': (mitis_data.ctd['salinity'], {'units': 'PSU'}),
-             'density': (mitis_data.ctd['density'], {'units': 'kg/m**3'})
+                {'temperature': (mitis_data.ctd['temperature'], {"units": "degree_C"}),
+                 'conductivity': (mitis_data.ctd['conductivity'], {'units': 'S/m'}),
+                 'salinity': (mitis_data.ctd['salinity'], {'units': 'PSU'}),
+                 'density': (mitis_data.ctd['density'], {'units': 'kg/m**3'})
              }
         )
         l.log('ctd data loaded.')
@@ -404,15 +404,19 @@ def _load_mitis_meteoce_data(mitis_data: MitisData) -> Tuple[Dict[str, Tuple[np.
     #     pass
 
     if mitis_data.wind is not None:
+        # _source= [] #FIXME
+        # if "7" in mitis_data.wind['source']:
+        #     _source.append("wmt700")
+        # elif "5" in mitis_data.wind['source']:
+        #     _source.append("wxt536")
         data.update(
             {
-
                 'wind_speed': (np.round(mitis_data.wind['wind_spd_ave'] * KNOTS_TO_METER_PER_SECONDS, 3), {'units': 'm/s'}),
                 'wind_direction': (mitis_data.wind['wind_dir_ave'], {'corrections':'Corrected for magnetic declination at sampling.\n'}),
                 'wind_gust': (np.round(mitis_data.wind['wind_spd_max'] * KNOTS_TO_METER_PER_SECONDS, 3), {'units': 'm/s'}),
             }
         )
-        #fixme add attrs for the instrument used.
+
         l.log('Wind Data Loaded')
 
     if mitis_data.atms is not None:
@@ -500,5 +504,6 @@ def _average_duplicates(dataset: xr.Dataset, coord: str) -> xr.Dataset:
 
 if __name__ == "__main__":
     #filename = "/home/jeromejguay/ImlSpace/Projects/mitis-buoy-controller/tests/PMZA-RIKI_FileTAGS.dat"
-    filename = "/home/jeromejguay/ImlSpace/Projects/magtogoek/tests/data/mitis_raw/PMZA-RIKI_FileTAGS.dat"
+    #filename = "/home/jeromejguay/ImlSpace/Projects/magtogoek/tests/data/mitis_raw/PMZA-RIKI_FileTAGS.dat"
+    filename = "/home/jeromejguay/ImlSpace/Data/pmza_2023/IML-4/PMZA-RIKI_FileTAGS_2023.dat"
     ds = load_meteoce_data(filenames=filename, data_format='mitis')
