@@ -60,8 +60,7 @@ VARIABLES_TO_DROP = ['ph_temperature']
 # The following variables can be added to the VARIABLES_TO_DROP list during processing.
 # 'pres', 'raw_dissolved_oxygen' 'magnetic_declination'
 
-GLOBAL_ATTRS_TO_DROP = [
-]
+GLOBAL_ATTRS_TO_DROP = ['ph_iscorrected']
 
 
 # This mapping can be changed by the meteoce.corrections modules.
