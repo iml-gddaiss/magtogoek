@@ -352,8 +352,6 @@ def _load_mitis_meteoce_data(mitis_data: MitisData) -> Tuple[Dict[str, Tuple[np.
       # Nitrate Data are not loaded since the correction algorithm are not yet implemented.
 
     if mitis_data.wind is not None:
-        mitis_data.wind['source'][:100] = '5'
-        mitis_data.wind['source'][112:140] = 'nan'
         _s, _c = np.unique(mitis_data.wind['source'], return_counts=True)
         _counts = {k: round(100 * v/len(mitis_data.wind['source']),2) for k, v in zip(_s, _c)}
 
