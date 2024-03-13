@@ -106,35 +106,6 @@ def load_meteoce_data(
     return dataset
 
 
-# def load_viking_data(
-#         filenames: Union[str, List[str]],
-#         buoy_name: str = None,
-#         ) -> xr.Dataset:
-#
-#     viking_data = RawVikingDatReader().read(filenames)
-#
-#     if isinstance(viking_data, Dict):
-#         l.warning(f'More than one buoy name was found in the file {filenames}.\n'
-#                   f' Buoy names fround: {list(viking_data.keys())}\n'
-#                   f' Specify a buoy_name\n Exiting')
-#         raise MagtogoekExit(f'More than one buoy (buoy_name) was found in the file {filenames}. Exiting')
-#
-#     if buoy_name is not None and viking_data.buoy_name != buoy_name:
-#         l.log(f'Buoy Name found in files is different from the one provided.')
-#
-#     meteoce_data, global_attrs = _load_viking_meteoce_data(viking_data)
-#
-#     _add_time_coords(meteoce_data)
-#
-#     coords = {'time': np.asarray(viking_data.time)}
-#
-#     dataset = xr.Dataset(meteoce_data, coords=coords, attrs=global_attrs)
-#
-#     dataset = _average_duplicates(dataset, 'time')
-#
-#     return dataset
-
-
 def _load_viking_meteoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[np.ma.MaskedArray, dict]], Dict]:
     """
 
@@ -230,7 +201,7 @@ def _load_viking_meteoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[
         global_attrs.update({'ph_serial_number': _serial_number, 'ph_model': _model})
         data.update(
             {
-                'ph': (viking_data.wph['ext_ph'], {**_attrs, **{"units": "NBS_scale"}}),
+                'ph': (viking_data.wph['ext_ph'], {**_attrs, **{"units": "NBS_scale", "corrected": False}}),
                 'ph_temperature': (viking_data.wph['ph_temperature'], {**_attrs, **{"units": "degree_C"}})}
         )
         l.log('Wph data loaded.')
@@ -362,13 +333,21 @@ def _load_mitis_meteoce_data(mitis_data: MitisData) -> Tuple[Dict[str, Tuple[np.
 
     if mitis_data.ph is not None:
         _ph_attrs ={
-            "units": "NBS_scale",
-            'corrections': 'pH values corrected at sampling using in-situ salinity.\n'
+            'units': 'NBS_scale',
+            'corrections': 'pH values were computed using in-situ salinity (at sampling).\n'
         }
-        data.update({
-            'ph': (mitis_data.ph['ext_ph'], _ph_attrs)
-        })
-        l.log('pH data loaded.')
+        if any(np.isfinite(mitis_data.ph['ext_ph_calc'])):
+            data.update({
+                'ph': (mitis_data.ph['ext_ph_calc'], _ph_attrs)
+            })
+            data['ph'][1]['corrected'] = True
+        else:
+            data.update({
+                'ph': (mitis_data.ph['ext_ph'], _ph_attrs)
+            })
+            data['ph'][1]['corrected'] = False
+            l.warning("pH values were not computed using-situ salinity (at sampling).")
+        l.log('pH data loaded')
 
     # if mitis_data.no3 is not None:
       # Nitrate Data are not loaded since the correction algorithm are not yet implemented.

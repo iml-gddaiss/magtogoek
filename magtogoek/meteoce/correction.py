@@ -113,9 +113,7 @@ def apply_sensors_corrections(dataset: xr.Dataset, pconfig: "ProcessConfig"):
             _dissolved_oxygen_pressure_correction(dataset=dataset)
 
     if "ph" in dataset and pconfig.ph_salinity_correction is True:
-        if pconfig.data_format == 'mitis':
-            l.warning("pH Salinity correction skipped. pH values from Mitis Buoy are already corrected.")
-        else:
+        if not dataset.ph.attrs.pop('corrected'):
             _correct_ph_for_salinity(dataset=dataset, pconfig=pconfig)
 
     for variable in set(DRIFT_VARIABLES) & set(dataset.variables):
