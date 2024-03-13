@@ -6,7 +6,7 @@ import pytest
 import pandas as pd
 
 from magtogoek.utils import json2dict
-from magtogoek.config_handler import load_configfile, cli_options_to_config
+from magtogoek.process_configurations import load_configfile, cli_options_to_config
 from magtogoek.adcp.process import process_adcp
 
 TIMESTAMP = pd.Timestamp.now().strftime("%Y-%m-%d")

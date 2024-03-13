@@ -126,7 +126,7 @@ def init(info, repair, force):
 def process(info, config_file: str, **options):
     """Process data by reading configfile"""
     from configparser import ParsingError
-    from magtogoek.config_handler import load_configfile
+    from magtogoek.process_configurations import load_configfile
 
     cli_options = {}
     if options['mk_fig'] is not None:
@@ -208,7 +208,7 @@ def config_adcp(
     """Command to make an adcp config files. The [OPTIONS] can be added
     before or after the [config_name]."""
 
-    from magtogoek.config_handler import write_configfile
+    from magtogoek.process_configurations import write_configfile
 
     _print_passed_options(options)
     config_name = is_valid_filename(config_name, ext=".ini")
@@ -230,7 +230,7 @@ def config_meteoce(
     """Command to make a meteoce config files. The [OPTIONS] can be added
     before or after the [config_name]."""
 
-    from magtogoek.config_handler import write_configfile
+    from magtogoek.process_configurations import write_configfile
 
     _print_passed_options(options)
     config_name = is_valid_filename(config_name, ext=".ini")
@@ -295,7 +295,7 @@ def config_list_outlier_regions(ctx, info, **options):
 def quick_adcp(ctx, info, input_files: tuple, sonar: str, yearbase: int, **options: dict):
     """Command to quickly process adcp files. The [OPTIONS] can be added
     before or after the [inputs_files]."""
-    from magtogoek.config_handler import cli_options_to_config
+    from magtogoek.process_configurations import cli_options_to_config
     from magtogoek.adcp.process import process_adcp
     options.update({"input_files": input_files, "process": "adcp", "yearbase": yearbase, "sonar": sonar})
     _print_passed_options(options)

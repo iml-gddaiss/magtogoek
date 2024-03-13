@@ -114,10 +114,10 @@ P01_CODES_MAP = {
     'fdom': "CCOMD002",
     'fdom_QC': "CCOMD002_QC",
     'nitrate': "NTRZZZXX", # Unsure about the units
-    'co2_a': "ACO2XXXX",
-    'co2_a_QC': "ACO2XXXX_QC",
-    'co2_w': "PCO2XXXX",
-    'co2_w_QC': "PCO2XXXX_QC",
+    'co2_air': "ACO2XXXX",
+    'co2_air_QC': "ACO2XXXX_QC",
+    'co2_water': "PCO2XXXX",
+    'co2_water_QC': "PCO2XXXX_QC",
     'u': "LCEWAP01",
     'u_QC': "LCEWAP01_QC",
     'v': "LCNSAP01",
@@ -148,8 +148,7 @@ SENSORS_TO_VARIABLES_MAP = {
     "ph": ['ph'],
     'par': ['par'],
     'triplet': ['scattering', 'chlorophyll', 'fdom'],
-    'co2w': ['co2_w'],
-    'co2a': ['co2_a'],
+    'pco2': ['co2_air', 'co2_water'],
     'wave': ['wave_mean_height', 'wave_maximal_height', 'wave_period'],
     'wind': ["wind_speed", "wind_direction", "wind_gust"],
     'meteo': ['atm_temperature', 'atm_humidity', 'atm_pressure']
@@ -158,7 +157,7 @@ SENSORS_TO_VARIABLES_MAP = {
 
 # If modified, carry the modification to `meteoce.process.ProcessConfig` and to `config_handler.py`.
 SPIKE_QC_VARIABLES = [
-    "salinity", "temperature", "dissolved_oxygen", "co2w", "ph", "scattering", "chlorophyll", "fdom"
+    "salinity", "temperature", "dissolved_oxygen", "co2_water", "ph", "scattering", "chlorophyll", "fdom"
 ]
 
 
@@ -177,8 +176,7 @@ class ProcessConfig(BaseProcessConfig):
     ph_id: str = None
     par_id: str = None
     triplet_id: str = None
-    co2w_id: str = None
-    co2a_id: str = None
+    pco2_id: str = None
     wave_id: str = None
     wind_id: str = None
     meteo_id: str = None
@@ -220,9 +218,9 @@ class ProcessConfig(BaseProcessConfig):
     dissolved_oxygen_drift_start_time: List[str] = None
     dissolved_oxygen_calibration_correction: List[float] = None
 
-    co2w_drift: List[float] = None
-    co2w_drift_start_time: List[str] = None
-    co2w_calibration_correction: List[float] = None
+    co2_water_drift: List[float] = None
+    co2_water_drift_start_time: List[str] = None
+    co2_water_calibration_correction: List[float] = None
 
     ph_drift: List[float] = None
     ph_drift_start_time: List[str] = None
@@ -249,8 +247,8 @@ class ProcessConfig(BaseProcessConfig):
     dissolved_oxygen_spike_threshold: float = None
     dissolved_oxygen_spike_window: int = None
 
-    co2w_spike_threshold: float = None
-    co2w_spike_window: int = None
+    co2_water_spike_threshold: float = None
+    co2_water_spike_window: int = None
 
     ph_spike_threshold: float = None
     ph_spike_window: int = None
@@ -304,8 +302,7 @@ class ProcessConfig(BaseProcessConfig):
             "ph": self.ph_id,
             'par': self.par_id,
             'triplet': self.triplet_id,
-            'co2w': self.co2w_id,
-            'co2a': self.co2a_id,
+            'pco2': self.pco2_id,
             'wave': self.wave_id,
             'wind': self.wind_id,
             'meteo': self.meteo_id

@@ -61,8 +61,8 @@ VARIABLES_WITH_QC = { # 1: QC(default flag = 1) , 0: No Qc (default flag = 0)
     'scattering': 0,
     'chlorophyll': 0,
     'fdom': 0,
-    'co2_a': 0,
-    'co2_w': 0
+    'co2_air': 0,
+    'co2_water': 0
     }
 
 QC_VARIABLES = [k for k, v in VARIABLES_WITH_QC.items() if v == 1]

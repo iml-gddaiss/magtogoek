@@ -14,5 +14,5 @@ SENSOR_TYPES =[
     'ph',  # pH
     'par',  # Photo-Active Radiation
     'triplet',  # Eco-Triplet Chloro, FDOM Fluorescence
-    'co2w',  # co2 water
+    'pco2',  # co2 water
 ]

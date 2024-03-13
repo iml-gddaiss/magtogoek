@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 # 'salinity' and 'temperature' corrections are carried out separately
 DRIFT_VARIABLES: List[str] = [
     'dissolved_oxygen',
-    'co2w',
+    'co2_water',
     'ph',
     'fluorescence',
     'chlorophyll',
@@ -36,7 +36,7 @@ DRIFT_VARIABLES: List[str] = [
 
 CALIBRATION_VARIABLES: List[str] = [
     'dissolved_oxygen',
-    'co2w',
+    'co2_water',
     'ph',
     'fluorescence',
     'chlorophyll',

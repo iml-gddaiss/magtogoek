@@ -2,7 +2,7 @@
 Sub-Package for meteoce data processing.
 """
 SENSOR_TYPES = [
-    'co2a',  # co2 atm
+    'pco2',  # co2 atm
     'wave',
     'meteo',  # atm_{humidity, temperature, pressure}
     'wind',
@@ -33,8 +33,8 @@ GENERIC_PARAMETERS = [
     'scattering',
     'chlorophyll',
     'fdom',
-    'co2_a',
-    'co2_w',
+    'co2_air',
+    'co2_water',
     'u',
     'v',
     'w',

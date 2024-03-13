@@ -357,8 +357,7 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
         tparser.add_option(section, "ph_id", dtypes=["str"], default=None)
         tparser.add_option(section, "par_id", dtypes=["str"], default=None)
         tparser.add_option(section, "triplet_id", dtypes=["str"], default=None)
-        tparser.add_option(section, "co2w_id", dtypes=["str"], default=None)
-        tparser.add_option(section, "co2a_id", dtypes=["str"], default=None)
+        tparser.add_option(section, "pco2_id", dtypes=["str"], default=None)
         tparser.add_option(section, "wave_id", dtypes=["str"], default=None)
         tparser.add_option(section, "wind_id", dtypes=["str"], default=None)
         tparser.add_option(section, "meteo_id", dtypes=["str"], default=None)
@@ -383,7 +382,7 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
         tparser.add_option(section, "dissolved_oxygen_pressure_correction", dtypes=["bool"], default=True, null_value=False)
         tparser.add_option(section, "dissolved_oxygen_salinity_correction", dtypes=["bool"], default=True, null_value=False)
 
-        for var in ["salinity", "temperature", "dissolved_oxygen", "co2w", "ph", "scattering", "chlorophyll", "fdom"]:
+        for var in ["salinity", "temperature", "dissolved_oxygen", "co2_water", "ph", "scattering", "chlorophyll", "fdom"]:
             tparser.add_option(section, f'{var}_drift', dtypes=["float"], default="", comments="Total drift")
             tparser.add_option(section, f'{var}_drift_start_time', dtypes=["str"], is_time_stamp=True, default="", comments="Format: %Y-%m-%dT%H:%M:%S")
             tparser.add_option(section, f'{var}_calibration_correction', dtypes=["float"], nargs=2, default="", comments="Linear regression coefficients: A, B | [Corrected_Data] = A * [Data] + B")
@@ -393,7 +392,7 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
         tparser.add_option(section, "regional_outlier", dtypes=["str"], default="", comments="Name of the region defined in the `impossible_parameters_values.json`")
         tparser.add_option(section, "propagate_flags", dtypes=["bool"], default=True, null_value=False)
 
-        for var in ["salinity", "temperature", "dissolved_oxygen", "co2w", "ph", "scattering", "chlorophyll", "fdom"]:
+        for var in ["salinity", "temperature", "dissolved_oxygen", "co2_water", "ph", "scattering", "chlorophyll", "fdom"]:
             tparser.add_option(section, f'{var}_spike_threshold', dtypes=["float"], default=None)
             tparser.add_option(section, f'{var}_spike_window', dtypes=["int"], default=3, comments="Window size")
 

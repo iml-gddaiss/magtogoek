@@ -261,11 +261,13 @@ def _load_viking_meteoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[
         l.log('Par Digi data loaded.')
 
     if viking_data.co2_a is not None: # co2 partial pressure = (ppm / 1e6)* cell gas pressure
-        data.update({'co2_a': (viking_data.co2_a['cell_gas_pressure_mbar'] * viking_data.co2_a['co2_ppm'] / 1e6, {})})
+        data.update({'co2_air': (viking_data.co2_a['cell_gas_pressure_mbar'] * viking_data.co2_a['co2_ppm'] / 1e6,
+                                 {'units': 'uatm'})})
         l.log('Co2_a data loaded.')
 
     if viking_data.co2_w is not None: # co2 partial pressure = (ppm / 1e6)* cell gas pressure
-        data.update({'co2_w': (viking_data.co2_w['cell_gas_pressure_mbar'] * viking_data.co2_w['co2_ppm'] / 1e6, {})})
+        data.update({'co2_water': (viking_data.co2_w['cell_gas_pressure_mbar'] * viking_data.co2_w['co2_ppm'] / 1e6,
+                                   {'units': 'uatm'})})
         l.log('Co2_w data loaded.')
 
     if viking_data.wave_m is not None:
@@ -428,8 +430,10 @@ def _load_mitis_meteoce_data(mitis_data: MitisData) -> Tuple[Dict[str, Tuple[np.
     if mitis_data.pco2 is not None:
         data.update(
             {
-                'co2_a': (mitis_data.pco2['gas_pressure_air'] * mitis_data.pco2['co2_air'] / 1e6, {}),
-                'co2_w': (mitis_data.pco2['gas_pressure_water'] * mitis_data.pco2['co2_water'] / 1e6, {})
+                'co2_air': (mitis_data.pco2['gas_pressure_air'] * mitis_data.pco2['co2_ppm_air'] / 1e6,
+                            {{'units': 'uatm'}}),
+                'co2_water': (mitis_data.pco2['gas_pressure_water'] * mitis_data.pco2['co2_ppm_water'] / 1e6,
+                              {{'units': 'uatm'}})
              }
         )
         l.log('PCO2 Data Loaded')

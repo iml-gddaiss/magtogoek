@@ -1,5 +1,5 @@
 import pytest
-from magtogoek.config_handler import load_configfile
+from magtogoek.process_configurations import load_configfile
 from magtogoek.taskparser import TaskParserError
 
 

@@ -234,7 +234,7 @@ TAG_VARS = dict(
     VEMCO_KEYS=['time', 'protocol', 'serial_number'],
     MO_KEYS=['adcp_model', 'wind_speed', 'wind_direction', 'air_temperature', 'air_humidity',
             'atm_pressure','temperature', 'salinity', 'triplet_700', 'triplet_695', 'triplet_460',
-            'par', 'co2_w', 'co2_a', 'ph', 'wave_period', 'wave_average_height', 'wave_maximal_height',
+            'par', 'co2_ppm_water', 'co2_ppm_air', 'ph', 'wave_period', 'wave_average_height', 'wave_maximal_height',
             'power_voltage', 'solar_charging', 'wind_charging', 'power_consumption', 'pitch', 'roll',
             'water_flow', 'heading', 'speed', 'course', 'rain', 'u', 'v', 'w', 'e']
 )
@@ -941,8 +941,8 @@ def _decode_MO(data: str) -> dict:
         'triplet_695': _safe_float(data[32:36])*10**(_safe_float(data[36:38])-3),#_safe_float()(data[32:36]) * 10 ** (-_safe_float()(data[36:38]) - 3),
         'triplet_460': _safe_float(data[38:42])*10**(_safe_float(data[42:44])-3),#_safe_float()(data[38:42]) * 10 ** (-_safe_float()(data[42:44]) - 3),
         'par': _safe_float(data[44:48]),
-        'co2_w': _safe_float(data[48:53]) / 10,
-        'co2_a': _safe_float(data[53:58]) / 10,
+        'co2_ppm_water': _safe_float(data[48:53]) / 10,
+        'co2_ppm_air': _safe_float(data[53:58]) / 10,
         'ph': _safe_float(data[58:63]) / 10000,
         'wave_period': _safe_float(data[63:66]) / 10,
         'wave_average_height': _safe_float(data[66:68]) / 10,

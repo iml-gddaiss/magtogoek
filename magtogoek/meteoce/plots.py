@@ -66,7 +66,7 @@ def make_meteoce_figure(
         'ph': ['ph'],
         'par': ['par'],
         'triplet': ['scattering', 'chlorophyll', 'fdom'],
-        'co2': ['co2_a', 'co2_w']
+        'pco2': ['co2_air', 'co2_water']
     }
 
     # polar_histogram_vars = {
