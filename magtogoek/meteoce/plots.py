@@ -65,7 +65,7 @@ def make_meteoce_figure(
         'ctdo': ['temperature', 'conductivity', 'salinity', 'density', 'dissolved_oxygen'],
         'ph': ['ph'],
         'par': ['par'],
-        'triplet': ['scattering', 'chlorophyll', 'fdom'],
+        'eco': ['scattering', 'chlorophyll', 'fdom'],
         'pco2': ['co2_air', 'co2_water']
     }
 

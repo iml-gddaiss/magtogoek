@@ -13,6 +13,6 @@ SENSOR_TYPES =[
     'nitrate', # e.g. SUNA
     'ph',  # pH
     'par',  # Photo-Active Radiation
-    'triplet',  # Eco-Triplet Chloro, FDOM Fluorescence
+    'eco',  # Eco-Triplet Chloro, FDOM Fluorescence
     'pco2',  # co2 water
 ]

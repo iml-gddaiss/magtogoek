@@ -356,7 +356,7 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
         tparser.add_option(section, "ctdo_id", dtypes=["str"], default=None)
         tparser.add_option(section, "ph_id", dtypes=["str"], default=None)
         tparser.add_option(section, "par_id", dtypes=["str"], default=None)
-        tparser.add_option(section, "triplet_id", dtypes=["str"], default=None)
+        tparser.add_option(section, "eco_id", dtypes=["str"], default=None)
         tparser.add_option(section, "pco2_id", dtypes=["str"], default=None)
         tparser.add_option(section, "wave_id", dtypes=["str"], default=None)
         tparser.add_option(section, "wind_id", dtypes=["str"], default=None)

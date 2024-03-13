@@ -147,7 +147,7 @@ SENSORS_TO_VARIABLES_MAP = {
     # 'nitrate': [],  # Not implemented yet.
     "ph": ['ph'],
     'par': ['par'],
-    'triplet': ['scattering', 'chlorophyll', 'fdom'],
+    'eco': ['scattering', 'chlorophyll', 'fdom'],
     'pco2': ['co2_air', 'co2_water'],
     'wave': ['wave_mean_height', 'wave_maximal_height', 'wave_period'],
     'wind': ["wind_speed", "wind_direction", "wind_gust"],
@@ -175,7 +175,7 @@ class ProcessConfig(BaseProcessConfig):
     # nitrate_id: str = None # Not implemented yet.
     ph_id: str = None
     par_id: str = None
-    triplet_id: str = None
+    eco_id: str = None
     pco2_id: str = None
     wave_id: str = None
     wind_id: str = None
@@ -301,7 +301,7 @@ class ProcessConfig(BaseProcessConfig):
             # 'nitrate': None,      # Not implemented yet.
             "ph": self.ph_id,
             'par': self.par_id,
-            'triplet': self.triplet_id,
+            'eco': self.eco_id,
             'pco2': self.pco2_id,
             'wave': self.wave_id,
             'wind': self.wind_id,

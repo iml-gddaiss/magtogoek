@@ -248,7 +248,7 @@ def _load_viking_meteoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[
                 'fdom': (viking_data.triplet['fdom_calculated'], {**_attrs, **{"units": "ppb", "wavelength": "460nm"}}) #ppb
             }
         )
-        l.log('Triplet data loaded.')
+        l.log('Eco-Triplet data loaded.')
 
     if viking_data.par_digi is not None:
         _serial_number = viking_data.par_digi['serial_number'][~viking_data.par_digi['serial_number'].mask][0]
