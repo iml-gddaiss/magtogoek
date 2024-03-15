@@ -39,18 +39,16 @@ from magtogoek.process_common import BaseProcessConfig, resolve_output_paths, ad
 from magtogoek.attributes_formatter import format_variables_names_and_attributes
 from magtogoek.platforms import PlatformMetadata
 
-from magtogoek.wps.sci_tools import compute_in_situ_density, dissolved_oxygen_ml_per_L_to_umol_per_L, dissolved_oxygen_umol_per_L_to_umol_per_kg
+from magtogoek.wps.sci_tools import dissolved_oxygen_ml_per_L_to_umol_per_L, dissolved_oxygen_umol_per_L_to_umol_per_kg
 
 from magtogoek.meteoce.loader import load_meteoce_data
-from magtogoek.meteoce.correction import apply_sensors_corrections, apply_magnetic_correction, apply_motion_correction
+from magtogoek.meteoce.correction import apply_sensors_corrections, apply_magnetic_correction, apply_motion_correction, \
+    _compute_ctd_potential_density, _recompute_speed_course, _compute_uv_ship
 from magtogoek.meteoce.quality_control import meteoce_quality_control, no_meteoce_quality_control
 from magtogoek.meteoce.plots import make_meteoce_figure
 from magtogoek.meteoce.odf_exporter import make_odf
 
 from magtogoek.adcp.quality_control import adcp_quality_control, no_adcp_quality_control
-
-from magtogoek.navigation import compute_speed_and_course, compute_uv_ship
-
 
 l.get_logger("meteoce_processing")
 
@@ -406,7 +404,7 @@ def _process_meteoce_data(pconfig: ProcessConfig):
     _add_platform_instrument_metadata_to_dataset(dataset, pconfig)
 
     if pconfig.sampling_depth is not None:
-        dataset.attrs['sampling_depth_m'] = pconfig.sampling_depth # used for ODF and remove from netcdf output.
+        dataset.attrs['sampling_depth_m'] = pconfig.sampling_depth # used for ODF. Is removed from netcdf output.
     # <<<<
 
     # ------------- #
@@ -509,79 +507,6 @@ def _load_viking_data(pconfig: ProcessConfig):
     )
 
     return dataset
-
-
-def _compute_ctd_potential_density(dataset: xr.Dataset, pconfig: ProcessConfig):
-    """Compute potential density as sigma_t:= Density(S,T,P) - 1000
-
-    Density computed using TEOS-10 polynomial (Roquet et al., 2015)
-
-    """
-
-    required_variables = ['temperature', 'salinity']
-    if all((var in dataset for var in required_variables)):
-        _log_msg = 'Potential density computed using TEOS-10 polynomial. Absolute Salinity, Conservative Temperature'
-
-        if "lon" in dataset.variables:
-            longitude = dataset.lon.data
-        elif isinstance(pconfig.platform_metadata.platform.latitude, (int, float)):
-            longitude = pconfig.platform_metadata.platform.latitude
-            _log_msg += f', longitude = {longitude}'
-        else:
-            longitude = 0
-            _log_msg += ', longitude = 0'
-
-        if "lat" in dataset.variables:
-            latitude = dataset.lat.data
-        elif isinstance(pconfig.platform_metadata.platform.latitude, (int, float)):
-            latitude = pconfig.platform_metadata.platform.latitude
-            _log_msg += f', latitude = {latitude}'
-        else:
-            latitude = 0
-            _log_msg += ', latitude = 0'
-
-        if 'pres' in dataset.variables:
-            pres = dataset.pres.values
-        else:
-            pres = 0
-            _log_msg += f', pressure = 0'
-
-        density = compute_in_situ_density(
-            temperature=dataset.temperature.data,
-            salinity=dataset.salinity.data,
-            pres=pres,
-            latitude=latitude,
-            longitude=longitude
-        )
-
-        dataset['density'] = (['time'], density - 1000)
-
-        l.log(_log_msg + '.')
-    else:
-        l.warning(f'Potential density computation aborted. One of more variables in {required_variables} was missing.')
-
-
-def _recompute_speed_course(dataset: xr.Dataset):
-    if all(v in dataset for v in ['lon', 'lat']):
-        l.log('Platform `speed` and `course` computed from longitude and latitude data.')
-        compute_speed_and_course(dataset=dataset)
-    else:
-        l.warning("Could not compute `speed` and `course`. `lon`/`lat` data not found.")
-
-
-def _compute_uv_ship(dataset: xr.Dataset):
-    if all(x in dataset for x in ('speed', 'course')):
-        l.log('Platform `u_ship`, `v_ship` computed from speed and course data.')
-        compute_uv_ship(dataset=dataset)
-
-    elif all(v in dataset for v in ['lon', 'lat']):
-        l.log('Platform velocities (u_ship, v_ship) computed from longitude and latitude data.')
-        compute_speed_and_course(dataset=dataset)
-        compute_uv_ship(dataset=dataset)
-
-    else:
-        l.warning("Could not compute `u_ship` and `v_ship`. GPS data not found.")
-
 
 
 def _quality_control(dataset: xr.Dataset, pconfig: ProcessConfig) -> xr.Dataset:

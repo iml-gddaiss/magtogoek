@@ -2,15 +2,12 @@
 Date: February 2023
 Made by jeromejguay
 
-Module that contains function for meteoce data quality control.
+Module that contains functions for meteoce data quality control.
 
 
 Notes
 -----
     + Absolute outliers get a flag of 4
-
-
-   Tests return `True` where cells fail a test.
 
    SeaDataNet Quality Control Flags Value
    * 0: no_quality_control
@@ -112,28 +109,8 @@ def meteoce_quality_control(
 
     regional_outlier
     absolute_outlier
-
     propagate_flags
-
-
-    Notes
-    -----
-       Tests return `True` where cells fail a test.
-
-       SeaDataNet Quality Control Flags Value
-       * 0: no_quality_control
-       * 1: good_value
-       * 2: probably_good_value
-       * 3: probably_bad_value
-           - Unusual data value, inconsistent with real phenomena.
-       * 4: bad_value
-           - Obviously erroneous data value.
-       * 5: changed_value
-       * 6: value_below_detection
-       * 7: value_in_excess
-       * 8: interpolated_value
-       * 9: missing_value
-
+    spike_tests
 
     """
     l.section("Meteoce Quality Control")
@@ -155,7 +132,7 @@ def meteoce_quality_control(
     _flag_missing_values(dataset)
 
     if propagate_flags is True:
-        _propagate_flag(dataset, use_atm_pressure=True)
+        _propagate_flag(dataset)
 
     _print_percent_of_good_values(dataset)
 
@@ -218,20 +195,19 @@ def _flag_missing_values(dataset: xr.Dataset):
         add_flags_values(dataset[variable + "_QC"].data, find_missing_values(dataset[variable].values) * 9)
 
 
-def _propagate_flag(dataset: xr.Dataset, use_atm_pressure: bool = False):
-    """ Maybe move to wps
+def _propagate_flag(dataset: xr.Dataset):
+    """
+    Propagation Rules
+    -----------------
+        Pressure -> Depth
+        Depth, Temperature, Salinity -> Density
+        Pressure, Temperature, Salinity -> Dissolved Oxygen
+        Temperature, Salinity -> pH
 
     Parameters
     ----------
-    dataset :
+    dataset
 
-    use_atm_pressure :
-        if True, atm_pressure flag will be used instead of pres for propagation. (surface data).
-
-    Pressure -> Depth
-    Depth, Temperature, Salinity -> Density
-    Pressure, Temperature, Salinity -> Dissolved Oxygen
-    Temperature, Salinity -> pH
     """
 
     flag_propagation_rules = {
@@ -240,9 +216,6 @@ def _propagate_flag(dataset: xr.Dataset, use_atm_pressure: bool = False):
         'ph_QC': ['temperature_QC', 'salinity_QC', 'ph_QC'],
         }
 
-    if use_atm_pressure is True:
-        flag_propagation_rules['density_QC'].append('atm_pressure_QC')
-        flag_propagation_rules['dissolved_oxygen_QC'].append('atm_pressure_QC')
 
     for variable in set(dataset.variables) & set(flag_propagation_rules.keys()):
 

@@ -12,12 +12,13 @@ import xarray as xr
 from typing import List, TYPE_CHECKING
 
 from magtogoek import logger as l
+from magtogoek.navigation import compute_speed_and_course, compute_uv_ship
 from magtogoek.process_common import add_correction_attributes_to_dataarray
 from magtogoek.sci_tools import rotate_heading, xy_vector_magnetic_correction, \
     north_polar2cartesian, cartesian2north_polar, time_drift_correction, data_calibration_correction
 from magtogoek.wps.correction import rinko_raw_measurement_from_dissolved_oxygen, dissolved_oxygen_from_rinko_raw_measurement
 from magtogoek.wps.sci_tools import dissolved_oxygen_correction_for_salinity_SCOR_WG_142, \
-    dissolved_oxygen_correction_for_pressure_JAC, pH_correction_for_salinity
+    dissolved_oxygen_correction_for_pressure_JAC, pH_correction_for_salinity, compute_in_situ_density
 
 if TYPE_CHECKING:
     from magtogoek.meteoce.process import ProcessConfig
@@ -108,9 +109,7 @@ def apply_sensors_corrections(dataset: xr.Dataset, pconfig: "ProcessConfig"):
         if pconfig.dissolved_oxygen_salinity_correction:
             _dissolved_oxygen_salinity_correction(dataset=dataset)
         if pconfig.dissolved_oxygen_pressure_correction:
-            if 'pres' not in dataset:
-                _compute_pressure_at_sampling_depth(dataset=dataset, pconfig=pconfig)
-            _dissolved_oxygen_pressure_correction(dataset=dataset)
+            _dissolved_oxygen_pressure_correction(dataset=dataset, pconfig=pconfig)
 
     if "ph" in dataset and pconfig.ph_salinity_correction is True:
         if dataset.attrs.pop('ph_iscorrected') == 0:
@@ -317,42 +316,41 @@ def _dissolved_oxygen_salinity_correction(dataset: xr.Dataset):
         l.warning(f'Dissolved oxygen correction for salinity aborted. `temperature` and/or `salinity` not found.')
 
 
-def _dissolved_oxygen_pressure_correction(dataset: xr.Dataset):
+def _dissolved_oxygen_pressure_correction(dataset: xr.Dataset, pconfig: "ProcessConfig"):
     """Apply `magtogoek.wps.correction.dissolved_oxygen_correction_for_pressure_JAC`
 
     """
-    if all(var in dataset.variables for var in ['pres']):
-        dataset.dissolved_oxygen.values = dissolved_oxygen_correction_for_pressure_JAC(
-            dissolved_oxygen=dataset.dissolved_oxygen.values,
-            pressure=dataset['pres'].values
-        )
-        l.log(f'Dissolved oxygen correction for pressure was carried out.')
-        add_correction_attributes_to_dataarray(dataset['dissolved_oxygen'])
-        dataset['dissolved_oxygen'].attrs["corrections"] += 'Pressure correction carried out.\n'
+    if 'pres' not in dataset:
+        pres = _compute_pressure_at_sampling_depth(dataset=dataset, pconfig=pconfig)
+        l.log(f'Dissolved oxygen correction for pressure using a depth of {pconfig.sampling_depth or 0} m')
     else:
-        l.warning(f'Dissolved oxygen correction for pressure aborted. `pres` missing.')
+        pres = dataset['pres'].values
+
+    dataset.dissolved_oxygen.values = dissolved_oxygen_correction_for_pressure_JAC(
+        dissolved_oxygen=dataset.dissolved_oxygen.values,
+        pressure=pres
+    )
+    l.log(f'Dissolved oxygen correction for pressure was carried out.')
+    add_correction_attributes_to_dataarray(dataset['dissolved_oxygen'])
+    dataset['dissolved_oxygen'].attrs["corrections"] += 'Pressure correction carried out.\n'
 
 
 def _compute_pressure_at_sampling_depth(dataset: xr.Dataset, pconfig: "ProcessConfig"):
-    """FIXME maybe add loggings ?"""
+    """
+    Uses latitude (`lat`) in data if available and `pconfig.sampling_depth` from config if available.
+    """
+    if pconfig.sampling_depth is None:
+        return 0
+
     if "lat" in dataset.variables:
         latitude = dataset.lat.data
     elif isinstance(pconfig.platform_metadata.platform.latitude, (int, float)):
-        latitude = str(pconfig.platform_metadata.platform.latitude)
+        latitude = pconfig.platform_metadata.platform.latitude
     else:
         latitude = 0
 
-    if 'atm_pressure' in dataset.variables:
-        pres = dataset.atm_pressure.pint.quantify().pint.to('dbar').pint.dequantify().values - 10.1325
-    else:
-        pres = np.zeros(dataset.time.shape)
+    return gsw.p_from_z(z=-pconfig.sampling_depth, lat=latitude)
 
-    if pconfig.sampling_depth is not None:
-        pres += gsw.p_from_z(z=-pconfig.sampling_depth, lat=latitude)
-
-    dataset['pres'] = (['time'], pres, {"units": "dbar"})
-
-    pconfig.variables_to_drop.append('pres')
 
 
 def _time_drift_correction(dataset: xr.Dataset, variable: str, pconfig: "ProcessConfig"):
@@ -391,3 +389,80 @@ def _data_calibration_correction(dataset: xr.Dataset, variable: str, pconfig: "P
         dataset[variable].attrs['corrections'] += "Calibration correction.\n"
     else:
         l.warning(f"Calibration correction for {variable} failed. Requires 2 coefficients (slope, offset).")
+
+
+def _compute_ctd_potential_density(dataset: xr.Dataset, pconfig: "ProcessConfig"):
+    """Compute potential density as sigma_t:= Density(S,T,P) - 1000
+
+    Density computed using TEOS-10 polynomial (Roquet et al., 2015)
+
+    """
+
+    required_variables = ['temperature', 'salinity']
+    if all((var in dataset for var in required_variables)):
+        _log_msg = 'Potential density computed using TEOS-10 polynomial (absolute salinity and conservative temperature'
+
+        if "lon" in dataset.variables:
+            longitude = dataset.lon.data
+            _log_msg += f', longitude'
+        else:
+            if isinstance(pconfig.platform_metadata.platform.latitude, (int, float)):
+                longitude = pconfig.platform_metadata.platform.latitude
+            else:
+                longitude = 0
+            _log_msg += f', longitude = {longitude}'
+
+        if "lat" in dataset.variables:
+            latitude = dataset.lat.data
+            _log_msg += f', latitude'
+        else:
+            if isinstance(pconfig.platform_metadata.platform.latitude, (int, float)):
+                latitude = pconfig.platform_metadata.platform.latitude
+
+            else:
+                latitude = 0
+            _log_msg += f', latitude = {latitude}'
+
+        if 'pres' in dataset.variables:
+            pres = dataset.pres.values
+            _log_msg += f', pressure'
+        else:
+            pres = _compute_pressure_at_sampling_depth(dataset=dataset, pconfig=pconfig)
+            _log_msg += f', pressure at depth = {pconfig.sampling_depth or 0} m'
+
+
+        density = compute_in_situ_density(
+            temperature=dataset.temperature.data,
+            salinity=dataset.salinity.data,
+            pres=pres,
+            latitude=latitude,
+            longitude=longitude
+        )
+
+        dataset['density'] = (['time'], density - 1000)
+
+        l.log(_log_msg + ').')
+    else:
+        l.warning(f'Potential density computation aborted. One of more variables in {required_variables} was missing.')
+
+
+def _recompute_speed_course(dataset: xr.Dataset):
+    if all(v in dataset for v in ['lon', 'lat']):
+        l.log('Platform `speed` and `course` computed from longitude and latitude data.')
+        compute_speed_and_course(dataset=dataset)
+    else:
+        l.warning("Could not compute `speed` and `course`. `lon`/`lat` data not found.")
+
+
+def _compute_uv_ship(dataset: xr.Dataset):
+    if all(x in dataset for x in ('speed', 'course')):
+        l.log('Platform `u_ship`, `v_ship` computed from speed and course data.')
+        compute_uv_ship(dataset=dataset)
+
+    elif all(v in dataset for v in ['lon', 'lat']):
+        l.log('Platform velocities (u_ship, v_ship) computed from longitude and latitude data.')
+        compute_speed_and_course(dataset=dataset)
+        compute_uv_ship(dataset=dataset)
+
+    else:
+        l.warning("Could not compute `u_ship` and `v_ship`. GPS data not found.")
