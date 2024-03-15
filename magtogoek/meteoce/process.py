@@ -58,7 +58,7 @@ VARIABLES_TO_DROP = ['ph_temperature']
 # The following variables can be added to the VARIABLES_TO_DROP list during processing.
 # 'pres', 'raw_dissolved_oxygen' 'magnetic_declination'
 
-GLOBAL_ATTRS_TO_DROP = ['ph_iscorrected']
+GLOBAL_ATTRS_TO_DROP = []
 
 
 # This mapping can be changed by the meteoce.corrections modules.
@@ -151,11 +151,6 @@ SENSORS_TO_VARIABLES_MAP = {
     'meteo': ['atm_temperature', 'atm_humidity', 'atm_pressure']
 }
 
-
-# If modified, carry the modification to `meteoce.process.ProcessConfig` and to `config_handler.py`.
-SPIKE_QC_VARIABLES = [
-    "salinity", "temperature", "dissolved_oxygen", "co2_water", "ph", "scattering", "chlorophyll", "fdom"
-]
 
 
 class ProcessConfig(BaseProcessConfig):
@@ -279,9 +274,13 @@ class ProcessConfig(BaseProcessConfig):
     adcp_roll_threshold: float = None
 
 
+    # Processing Flag
+    ph_is_corrected: bool = False
+
+
     def __init__(self, config_dict: dict = None):
         super().__init__(config_dict)
-        self.platform_type = "buoy"  # This needs to be buoy
+        self.platform_type = "buoy"  # This needs to be "buoy"
         self.sensors_to_variables_map = SENSORS_TO_VARIABLES_MAP
         self.variables_to_drop = VARIABLES_TO_DROP
         self.global_attributes_to_drop = GLOBAL_ATTRS_TO_DROP
@@ -345,7 +344,7 @@ def _process_meteoce_data(pconfig: ProcessConfig):
     # ------------------- #
     # LOADING VIKING DATA #
     # ------------------- #
-    dataset = _load_viking_data(pconfig)
+    dataset = _load_meteoce_data(pconfig)
 
     # ----------------------------------------- #
     # ADDING THE NAVIGATION DATA TO THE DATASET #
@@ -482,7 +481,7 @@ def _process_meteoce_data(pconfig: ProcessConfig):
         write_log(pconfig)
 
 
-def _load_viking_data(pconfig: ProcessConfig):
+def _load_meteoce_data(pconfig: ProcessConfig):
     if netcdf_raw_exist(pconfig) and pconfig.from_raw is not True:
         dataset = load_netcdf_raw(pconfig)
         l.log(f"Data loaded from {pconfig.netcdf_raw_path}.")
@@ -506,6 +505,9 @@ def _load_viking_data(pconfig: ProcessConfig):
         )
     )
 
+    if 'ph' in dataset:
+        pconfig.ph_is_corrected = bool(dataset.attrs.pop('is_corrected'))
+
     return dataset
 
 
@@ -515,30 +517,12 @@ def _quality_control(dataset: xr.Dataset, pconfig: ProcessConfig) -> xr.Dataset:
     Or call the qc function from viking_quality_control. ??
     """
     if pconfig.quality_control is True:
-        _meteoce_quality_control(dataset, pconfig)
+        meteoce_quality_control(dataset, pconfig=pconfig)
         _adcp_quality_control(dataset, pconfig)
     else:
         no_meteoce_quality_control(dataset)
         no_adcp_quality_control(dataset, velocity_only=True)
 
-    return dataset
-
-
-def _meteoce_quality_control(dataset: xr.Dataset, pconfig: ProcessConfig):
-    """fixme"""
-    spike_tests = {
-        var: {
-            'threshold': pconfig.__getattribute__(var + "_spike_threshold"),
-            'window': pconfig.__getattribute__(var + "_spike_window")}
-        for var in SPIKE_QC_VARIABLES
-    }
-    dataset = meteoce_quality_control(
-        dataset,
-        regional_outlier=pconfig.regional_outlier,
-        absolute_outlier=pconfig.absolute_outlier,
-        propagate_flags=pconfig.propagate_flags,
-        spike_tests = spike_tests
-    )
     return dataset
 
 

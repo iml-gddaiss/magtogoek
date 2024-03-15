@@ -198,7 +198,7 @@ def _load_viking_meteoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[
         _serial_number = viking_data.wph['serial_number'][~viking_data.wph['serial_number'].mask][0]
         _model = viking_data.wph['model'][~viking_data.wph['model'].mask][0]
         _attrs = {'serial_number': _serial_number, 'model': _model}
-        global_attrs.update({'ph_serial_number': _serial_number, 'ph_model': _model, 'ph_iscorrected': 0})
+        global_attrs.update({'ph_serial_number': _serial_number, 'ph_model': _model, 'is_corrected': 0})
         data.update(
             {
                 'ph': (viking_data.wph['ext_ph'], {**_attrs, **{"units": "NBS_scale"}}),
@@ -338,13 +338,13 @@ def _load_mitis_meteoce_data(mitis_data: MitisData) -> Tuple[Dict[str, Tuple[np.
                 'corrections': 'pH values were computed using in-situ salinity (at sampling).\n'
             }
             data.update({'ph': (mitis_data.ph['ext_ph_calc'], _ph_attrs)})
-            global_attrs['ph_iscorrected'] = 1
+            global_attrs['is_corrected'] = 1
         else:
             _ph_attrs = {
                 'units': 'NBS_scale'
             }
             data.update({'ph': (mitis_data.ph['ext_ph'], _ph_attrs)})
-            global_attrs['ph_iscorrected'] = 0
+            global_attrs['is_corrected'] = 0
             l.warning("pH values were not computed using-situ salinity (at sampling).")
         l.log('pH data loaded')
 

@@ -27,13 +27,22 @@ Notes
 """
 import numpy as np
 import xarray as xr
-from typing import List, Dict
+from typing import List, Dict, TYPE_CHECKING
 
 from magtogoek import logger as l
 from magtogoek.quality_control_common import IMPOSSIBLE_PARAMETERS_VALUES, values_outliers_detection, \
     add_ancillary_QC_variable_to_dataset, add_flags_values, merge_flags, \
     find_missing_values, data_spike_detection_tests
 from magtogoek.process_common import FLAG_ATTRIBUTES
+
+if TYPE_CHECKING:
+    from magtogoek.meteoce.process import ProcessConfig
+
+
+# If modified, carry the modification to `meteoce.process.ProcessConfig` and to `config_handler.py`.
+SPIKE_QC_VARIABLES = [
+    "salinity", "temperature", "dissolved_oxygen", "co2_water", "ph", "scattering", "chlorophyll", "fdom"
+]
 
 
 VARIABLES_WITH_QC = { # 1: QC(default flag = 1) , 0: No Qc (default flag = 0)
@@ -85,54 +94,28 @@ def no_meteoce_quality_control(dataset: xr.Dataset):
     dataset.attrs["quality_comments"] = "No quality control."
 
 
-def meteoce_quality_control(
-        dataset: xr.Dataset,
-
-        regional_outlier: str = None,
-        absolute_outlier: bool = True,
-        propagate_flags: bool = True,
-        spike_tests: Dict = None
-):
-    """
-
-    Flag propagation:
-
-    Pressure -> Depth |
-    Depth, Temperature, Salinity -> Density
-    Pressure, Temperature, Salinity -> Dissolved Oxygen
-    Temperature, Salinity -> pH
-
-
-    Parameters
-    ----------
-    dataset
-
-    regional_outlier
-    absolute_outlier
-    propagate_flags
-    spike_tests
-
-    """
+def meteoce_quality_control(dataset: xr.Dataset, pconfig: "ProcessConfig"):
     l.section("Meteoce Quality Control")
 
     _add_ancillary_variables_to_dataset(dataset, variables=QC_VARIABLES, default_flag=1)
     _add_ancillary_variables_to_dataset(dataset, variables=NO_QC_VARIABLES, default_flag=0)
 
-    if regional_outlier is not None:
-        if regional_outlier in IMPOSSIBLE_PARAMETERS_VALUES:
-            _impossible_values_tests(dataset, region=regional_outlier, flag=3)
+    if pconfig.regional_outlier is not None:
+        if pconfig.regional_outlier in IMPOSSIBLE_PARAMETERS_VALUES:
+            _impossible_values_tests(dataset, region=pconfig.regional_outlier, flag=3)
         else:
-            l.warning(f'Region {regional_outlier} not found in the impossible parameters values file {IMPOSSIBLE_PARAMETERS_VALUES}')
+            l.warning(f'Region {pconfig.regional_outlier} not found in the impossible parameters values file {IMPOSSIBLE_PARAMETERS_VALUES}')
 
-    if absolute_outlier is True:
+    if pconfig.absolute_outlier is True:
         _impossible_values_tests(dataset, region='global', flag=4)
 
-    _spike_detection_tests(dataset, spike_tests)
+
+    _spike_detection_tests(dataset, pconfig=pconfig)
 
     _flag_missing_values(dataset)
 
-    if propagate_flags is True:
-        _propagate_flag(dataset)
+    if pconfig.propagate_flags is True:
+        _propagate_flag(dataset, pconfig=pconfig)
 
     _print_percent_of_good_values(dataset)
 
@@ -178,7 +161,13 @@ def _impossible_values_tests(dataset: xr.Dataset, region: str, flag: int):
         dataset[variable+"_QC"].attrs['quality_test'] += test_comment + "\n"
 
 
-def _spike_detection_tests(dataset: xr.Dataset, spike_tests: Dict[str, List[float]]):
+def _spike_detection_tests(dataset: xr.Dataset, pconfig: "ProcessConfig"):
+    spike_tests = {
+        var: {
+            'threshold': pconfig.__getattribute__(var + "_spike_threshold"),
+            'window': pconfig.__getattribute__(var + "_spike_window")}
+        for var in SPIKE_QC_VARIABLES
+    }
     for var in set(dataset.variables) & set(spike_tests.keys()):
         if spike_tests[var]['threshold'] is not None:
             data_spike_detection_tests(
@@ -195,7 +184,7 @@ def _flag_missing_values(dataset: xr.Dataset):
         add_flags_values(dataset[variable + "_QC"].data, find_missing_values(dataset[variable].values) * 9)
 
 
-def _propagate_flag(dataset: xr.Dataset):
+def _propagate_flag(dataset: xr.Dataset, pconfig: "ProcessConfig"):
     """
     Propagation Rules
     -----------------
@@ -213,8 +202,10 @@ def _propagate_flag(dataset: xr.Dataset):
     flag_propagation_rules = {
         'density_QC': ['temperature_QC', 'salinity_QC', 'density_QC'],
         'dissolved_oxygen_QC': ['temperature_QC', 'salinity_QC', 'dissolved_oxygen_QC'],
-        'ph_QC': ['temperature_QC', 'salinity_QC', 'ph_QC'],
         }
+
+    if pconfig.ph_is_corrected is True:
+        flag_propagation_rules['ph_QC'] = ['temperature_QC', 'salinity_QC', 'ph_QC']
 
 
     for variable in set(dataset.variables) & set(flag_propagation_rules.keys()):

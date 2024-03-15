@@ -112,7 +112,7 @@ def apply_sensors_corrections(dataset: xr.Dataset, pconfig: "ProcessConfig"):
             _dissolved_oxygen_pressure_correction(dataset=dataset, pconfig=pconfig)
 
     if "ph" in dataset and pconfig.ph_salinity_correction is True:
-        if dataset.attrs.pop('ph_iscorrected') == 0:
+        if pconfig.ph_is_corrected is False:
             _correct_ph_for_salinity(dataset=dataset, pconfig=pconfig)
 
     for variable in set(DRIFT_VARIABLES) & set(dataset.variables):
