@@ -39,6 +39,9 @@ KNOTS_TO_METER_PER_SECONDS = 0.5144444444 # mps/knots
 MILLIMETER_TO_METER = 1 / 1000
 CENTIMETER_TO_METER = 1 / 100
 
+RTI_FILL_VALUE = 88888
+RDI_FILL_VALUE = -32768.0
+
 
 def load_metoce_data(
         filenames: Union[str, List[str]],
@@ -266,6 +269,7 @@ def _load_viking_metoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[n
         _adcp_data = dict()
         # load RDI data
         for _name in ['u', 'v', 'w', 'e']:
+            viking_data.rdi[_name][viking_data.rdi[_name] == RDI_FILL_VALUE] = np.nan
             _adcp_data[_name] = viking_data.rdi[_name]
 
         rti_mask = np.isfinite(viking_data.rti['u'])
@@ -275,6 +279,7 @@ def _load_viking_metoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[n
             l.warning('Merging RDI and RTI data')
             # load RTI data
             for _name in ['u', 'v', 'w', 'e']:
+                viking_data.rti[_name][viking_data.rti[_name] == RTI_FILL_VALUE] = np.nan
                 _adcp_data[_name][rti_mask] = viking_data.rti[_name][rti_mask]
 
         else:
@@ -282,17 +287,19 @@ def _load_viking_metoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[n
 
 
         for _name in ['u', 'v', 'w', 'e']:
-            data[_name] = (_adcp_data[_name] * MILLIMETER_TO_METER, {"units": "m/s"})
+            data[_name] = (_adcp_data[_name] * MILLIMETER_TO_METER, {"units": "m/s"}) #rounded to mm.
 
     else:
         if viking_data.rdi is not None:
             for _name in ['u', 'v', 'w', 'e']:
-                data[_name] = (viking_data.rdi[_name] * MILLIMETER_TO_METER, {"units": "m/s"})
+                viking_data.rdi[_name][viking_data.rdi[_name] == RDI_FILL_VALUE] = np.nan
+                data[_name] = (viking_data.rdi[_name] * MILLIMETER_TO_METER, {"units": "m/s"}) #rounded to mm.
             l.log('Rdi data loaded.')
 
         if viking_data.rti is not None:
             for _name in ['u', 'v', 'w', 'e']:
-                data[_name] = (viking_data.rti[_name] * MILLIMETER_TO_METER, {"units": "m/s"})
+                viking_data.rti[_name][viking_data.rti[_name] == RTI_FILL_VALUE] = np.nan
+                data[_name] = (viking_data.rti[_name] * MILLIMETER_TO_METER, {"units": "m/s"}) #rounded to mm.
             l.log('Rti data loaded.')
 
     #data = _fill_data(data)
