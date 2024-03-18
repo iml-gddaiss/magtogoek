@@ -2,8 +2,8 @@
 Date: July 2022
 Made by: jeromejguay
 
-This script has to functions to process and quick process meteoce buoy data.
-These functions are called by the app command `process` and `quick meteoce`.
+This script has to functions to process and quick process metoce buoy data.
+These functions are called by the app command `process` and `quick metoce`.
 
 Notes
 -----
@@ -41,16 +41,16 @@ from magtogoek.platforms import PlatformMetadata
 
 from magtogoek.wps.sci_tools import dissolved_oxygen_ml_per_L_to_umol_per_L, dissolved_oxygen_umol_per_L_to_umol_per_kg
 
-from magtogoek.meteoce.loader import load_meteoce_data
-from magtogoek.meteoce.correction import apply_sensors_corrections, apply_magnetic_correction, apply_motion_correction, \
+from magtogoek.metoce.loader import load_metoce_data
+from magtogoek.metoce.correction import apply_sensors_corrections, apply_magnetic_correction, apply_motion_correction, \
     _compute_ctd_potential_density, _recompute_speed_course, _compute_uv_ship
-from magtogoek.meteoce.quality_control import meteoce_quality_control, no_meteoce_quality_control
-from magtogoek.meteoce.plots import make_meteoce_figure
-from magtogoek.meteoce.odf_exporter import make_odf
+from magtogoek.metoce.quality_control import metoce_quality_control, no_metoce_quality_control
+from magtogoek.metoce.plots import make_metoce_figure
+from magtogoek.metoce.odf_exporter import make_odf
 
 from magtogoek.adcp.quality_control import adcp_quality_control, no_adcp_quality_control
 
-l.get_logger("meteoce_processing")
+l.get_logger("metoce_processing")
 
 STANDARD_GLOBAL_ATTRIBUTES = {"featureType": "timeSeriesProfile"}
 
@@ -61,7 +61,7 @@ VARIABLES_TO_DROP = ['ph_temperature']
 GLOBAL_ATTRS_TO_DROP = []
 
 
-# This mapping can be changed by the meteoce.corrections modules.
+# This mapping can be changed by the metoce.corrections modules.
 P01_CODES_MAP = {
     'time': "ELTMEP01",
     "wind_speed": "EWSBSS01",
@@ -157,7 +157,7 @@ class ProcessConfig(BaseProcessConfig):
     # PROCESSING
     buoy_name: str = None
     data_format: str = None  # [viking, mitis]
-    sampling_depth: float = None  # Used for computation *(density) and for EVENT HEADER IN METEOCE
+    sampling_depth: float = None  # Used for computation *(density) and for EVENT HEADER IN METOCE
 
     ##### ID #####
     adcp_id: str = None
@@ -259,7 +259,7 @@ class ProcessConfig(BaseProcessConfig):
 
     ##### QUALITY_CONTROL #####
 
-    # meteoce
+    # metoce
     quality_control: bool = None
     propagate_flags: bool = True
 
@@ -309,8 +309,8 @@ class ProcessConfig(BaseProcessConfig):
         self.magnetic_correction_to_apply: float = None
 
 
-def process_meteoce(config: dict, drop_empty_attrs: bool = False,
-                    headless: bool = False, from_raw: bool = False):
+def process_metoce(config: dict, drop_empty_attrs: bool = False,
+                   headless: bool = False, from_raw: bool = False):
     """Process Viking data with parameters from a config file.
 
     call process_common.process
@@ -335,16 +335,16 @@ def process_meteoce(config: dict, drop_empty_attrs: bool = False,
     pconfig.headless = headless
     pconfig.from_raw = from_raw
 
-    _process_meteoce_data(pconfig)
+    _process_metoce_data(pconfig)
 
 
 @resolve_output_paths
-def _process_meteoce_data(pconfig: ProcessConfig):
+def _process_metoce_data(pconfig: ProcessConfig):
 
     # ------------------- #
     # LOADING VIKING DATA #
     # ------------------- #
-    dataset = _load_meteoce_data(pconfig)
+    dataset = _load_metoce_data(pconfig)
 
     # ----------------------------------------- #
     # ADDING THE NAVIGATION DATA TO THE DATASET #
@@ -363,10 +363,10 @@ def _process_meteoce_data(pconfig: ProcessConfig):
         _compute_uv_ship(dataset=dataset)
 
     # ------------------- #
-    # METEOCE CORRECTION  #
+    # METOCE CORRECTION  #
     # ------------------- #
 
-    l.section("Meteoce data correction")
+    l.section("Metoce data correction")
 
     apply_magnetic_correction(dataset, pconfig)
 
@@ -375,10 +375,10 @@ def _process_meteoce_data(pconfig: ProcessConfig):
     apply_sensors_corrections(dataset, pconfig)
 
     # --------------- #
-    # METEOCE COMPUTE #
+    # METOCE COMPUTE #
     # --------------- #
 
-    l.section("Meteoce data computation.")
+    l.section("Metoce data computation.")
 
     if 'density' not in dataset or pconfig.recompute_density is True:
         _compute_ctd_potential_density(dataset, pconfig)
@@ -399,7 +399,7 @@ def _process_meteoce_data(pconfig: ProcessConfig):
 
     add_platform_metadata_to_dataset(dataset=dataset, pconfig=pconfig)
 
-    # >>>> METEOCE SPECIFIC
+    # >>>> METOCE SPECIFIC
     _add_platform_instrument_metadata_to_dataset(dataset, pconfig)
 
     if pconfig.sampling_depth is not None:
@@ -424,7 +424,7 @@ def _process_meteoce_data(pconfig: ProcessConfig):
         p01_codes_map=pconfig.p01_codes_map,
         cf_profile_id='time'
     )
-    # >>>> METEOCE SPECIFIC
+    # >>>> METOCE SPECIFIC
     _add_platform_instrument_metadata_to_variables(dataset, pconfig)
     # <<<<
 
@@ -435,7 +435,7 @@ def _process_meteoce_data(pconfig: ProcessConfig):
     if pconfig.figures_output is True:
         #if plot_against_raw ... (add to pconfig comon)
         dataset_raw=load_netcdf_raw(pconfig).sel(time=slice(dataset.time[0], dataset.time[-1]))
-        make_meteoce_figure(
+        make_metoce_figure(
             dataset,
             save_path=pconfig.figures_path,
             show_fig=not pconfig.headless,
@@ -481,12 +481,12 @@ def _process_meteoce_data(pconfig: ProcessConfig):
         write_log(pconfig)
 
 
-def _load_meteoce_data(pconfig: ProcessConfig):
+def _load_metoce_data(pconfig: ProcessConfig):
     if netcdf_raw_exist(pconfig) and pconfig.from_raw is not True:
         dataset = load_netcdf_raw(pconfig)
         l.log(f"Data loaded from {pconfig.netcdf_raw_path}.")
     else:
-        dataset = load_meteoce_data(
+        dataset = load_metoce_data(
             filenames=pconfig.input_files,
             buoy_name=pconfig.buoy_name,
             data_format=pconfig.data_format,
@@ -517,10 +517,10 @@ def _quality_control(dataset: xr.Dataset, pconfig: ProcessConfig) -> xr.Dataset:
     Or call the qc function from viking_quality_control. ??
     """
     if pconfig.quality_control is True:
-        meteoce_quality_control(dataset, pconfig=pconfig)
+        metoce_quality_control(dataset, pconfig=pconfig)
         _adcp_quality_control(dataset, pconfig)
     else:
-        no_meteoce_quality_control(dataset)
+        no_metoce_quality_control(dataset)
         no_adcp_quality_control(dataset, velocity_only=True)
 
     return dataset

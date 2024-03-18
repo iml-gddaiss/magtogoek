@@ -29,8 +29,8 @@ from magtogoek.exceptions import MagtogoekExit
 from magtogoek.utils import get_files_from_expression, format_filenames_for_print
 from magtogoek.tools import is_unique, nan_unique
 
-from magtogoek.meteoce.viking_dat_reader import RawVikingDatReader, VikingData
-from magtogoek.meteoce.mitis_dat_reader import RawMitisDatReader, MitisData
+from magtogoek.metoce.viking_dat_reader import RawVikingDatReader, VikingData
+from magtogoek.metoce.mitis_dat_reader import RawMitisDatReader, MitisData
 
 import pint_xarray # pint_xarray modify the xr.Dataset Object
 
@@ -40,7 +40,7 @@ MILLIMETER_TO_METER = 1 / 1000
 CENTIMETER_TO_METER = 1 / 100
 
 
-def load_meteoce_data(
+def load_metoce_data(
         filenames: Union[str, List[str]],
         buoy_name: str = None,
         data_format: str = 'viking',
@@ -58,7 +58,7 @@ def load_meteoce_data(
     -------
 
     """
-    l.section('Loading meteoce data', t=True)
+    l.section('Loading metoce data', t=True)
 
     filenames = get_files_from_expression(filenames)
 
@@ -70,7 +70,7 @@ def load_meteoce_data(
         buoy_data = RawMitisDatReader().read(filenames)
     else:
         l.warning(f'Invalid data_format: {data_format}')
-        raise MagtogoekExit("Invalid meteoce data format. Exiting")
+        raise MagtogoekExit("Invalid metoce data format. Exiting")
 
     if isinstance(buoy_data, Dict):
         l.warning(f'More than one buoy name was found in the file {filenames}.\n'
@@ -82,16 +82,16 @@ def load_meteoce_data(
         l.log(f'Buoy Name found in files is different from the one provided.')
 
     if data_format == "viking":
-        meteoce_data, global_attrs = _load_viking_meteoce_data(buoy_data)
+        metoce_data, global_attrs = _load_viking_metoce_data(buoy_data)
         buoy_data = RawVikingDatReader().read(filenames)
     else: #if data_format == "mitis": # not required. Also remove a variable reference warning.
-        meteoce_data, global_attrs = _load_mitis_meteoce_data(buoy_data)
+        metoce_data, global_attrs = _load_mitis_metoce_data(buoy_data)
 
-    _add_time_coords(meteoce_data)
+    _add_time_coords(metoce_data)
 
     coords = {'time': np.asarray(buoy_data.time)}
 
-    dataset = xr.Dataset(meteoce_data, coords=coords, attrs=global_attrs)
+    dataset = xr.Dataset(metoce_data, coords=coords, attrs=global_attrs)
 
     if data_format == "viking":
         dataset = _average_duplicates(dataset, 'time')
@@ -106,7 +106,7 @@ def load_meteoce_data(
     return dataset
 
 
-def _load_viking_meteoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[np.ma.MaskedArray, dict]], Dict]:
+def _load_viking_metoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[np.ma.MaskedArray, dict]], Dict]:
     """
 
     Parameters
@@ -296,7 +296,7 @@ def _load_viking_meteoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[
     return data, global_attrs
 
 
-def _load_mitis_meteoce_data(mitis_data: MitisData) -> Tuple[Dict[str, Tuple[np.ma.MaskedArray, dict]], Dict]:
+def _load_mitis_metoce_data(mitis_data: MitisData) -> Tuple[Dict[str, Tuple[np.ma.MaskedArray, dict]], Dict]:
     global_attrs = {}
     data = {
         'lon': (mitis_data.init['longitude'], {}),
@@ -429,7 +429,7 @@ def _fill_data(data: Dict[str, Tuple[np.ma.MaskedArray, dict]]) -> Dict[str, Tup
 
     Should be np.nan or 'nan'.
 
-    See magtogoek.meteoce.viking_dat_reader.py for the filled value.
+    See magtogoek.metoce.viking_dat_reader.py for the filled value.
     """
     for var, (_data, _attrs) in data.items():
         data[var] = (_data.filled(), _attrs)
@@ -460,4 +460,4 @@ if __name__ == "__main__":
     #filename = "/home/jeromejguay/ImlSpace/Projects/mitis-buoy-controller/tests/PMZA-RIKI_FileTAGS.dat"
     #filename = "/home/jeromejguay/ImlSpace/Projects/magtogoek/tests/data/mitis_raw/PMZA-RIKI_FileTAGS.dat"
     filename = "/home/jeromejguay/ImlSpace/Data/pmza_2023/IML-4/PMZA-RIKI_FileTAGS_2023.dat"
-    ds = load_meteoce_data(filenames=filename, data_format='mitis')
+    ds = load_metoce_data(filenames=filename, data_format='mitis')

@@ -2,7 +2,7 @@
 Date: February 2023
 Made by jeromejguay
 
-Module containing the correction functions for meteoce data processing.
+Module containing the correction functions for metoce data processing.
 
 import gsw
 """
@@ -21,7 +21,7 @@ from magtogoek.wps.sci_tools import dissolved_oxygen_correction_for_salinity_SCO
     dissolved_oxygen_correction_for_pressure_JAC, pH_correction_for_salinity, compute_in_situ_density
 
 if TYPE_CHECKING:
-    from magtogoek.meteoce.process import ProcessConfig
+    from magtogoek.metoce.process import ProcessConfig
 
 
 # 'salinity' and 'temperature' corrections are carried out separately
@@ -56,7 +56,7 @@ def apply_motion_correction(dataset: xr.Dataset, pconfig: "ProcessConfig"):
 
 
 def apply_magnetic_correction(dataset: xr.Dataset, pconfig: "ProcessConfig"):
-    """Carry magnetic declination correction for meteoce variables
+    """Carry magnetic declination correction for metoce variables
 
     [-180, 180]: heading
     [0, 360 ]: wind_direction, wave_direction

@@ -37,7 +37,6 @@ CONFIG_TO_CLI_MAPS = {
         'quality_control': "qc",
         'make_figures': "mk_fig",
         'make_log': "mk_log",
-        'odf_data': "odf_dtype",
         'use_bodc_name': "bodc_name"
     },
     'adcp': {
@@ -47,7 +46,7 @@ CONFIG_TO_CLI_MAPS = {
         'drop_amplitude': "drop_amp",
         'coord_transform': "ct"
     },
-    'meteoce': {
+    'metoce': {
         # TODO
     }
 }
@@ -238,8 +237,6 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
     tparser.add_option(section, "force_platform_metadata", dtypes=["bool"], default=False, null_value=False)
     tparser.add_option(section, "use_bodc_name", dtypes=["bool"], default=True, null_value=False)
     tparser.add_option(section, "merge_output_files", dtypes=["bool"], default=True, null_value=False)
-    tparser.add_option(section, "odf_data", dtypes=["str"], default="both", choice=["vel", "anc", "both"],
-                       comments='One of [vel, anc, both,].')
 
     section = "NETCDF_CF"
     tparser.add_option(section, "Conventions", dtypes=["str"], default="CF 1.8")
@@ -341,13 +338,11 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
             tparser.add_option(section, "force_platform_metadata", dtypes=["bool"], default=False, null_value=False)
             tparser.add_option(section, "merge_output_files", dtypes=["bool"], default=True, null_value=False)
             tparser.add_option(section, "bodc_name", dtypes=["bool"], default=True, null_value=False)
-            tparser.add_option(section, "odf_data", dtypes=["str"], default="both", choice=["vel", "anc", "both"],
-                               comments='One of [vel, anc, both,].')
             tparser.add_option(section, "make_figures", dtypes=["bool", "str"], default=True, null_value=False)
             tparser.add_option(section, "make_log", dtypes=["bool"], default=True, null_value=False)
 
-    elif process == "meteoce":
-        section = "METEOCE_PROCESSING"
+    elif process == "metoce":
+        section = "METOCE_PROCESSING"
         tparser.add_option(section, "data_format", dtypes=["str"], default="viking", choice=['viking', 'mitis'])
         tparser.add_option(section, "buoy_name", dtypes=["str"],  comments='Name of the buoy in the raw file.', is_required=False)
         tparser.add_option(section, "sampling_depth", dtypes=["float"], default="Use for water sensor data corrections/computations (oxygen, density).")
@@ -370,7 +365,7 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
         tparser.add_option(section, "adcp_magnetic_declination_preset", dtypes=["float"], default=None, comments="Found in the ADCP configuration file. (Used for RTI)")
 
 
-        section = "METEOCE_CORRECTION"
+        section = "METOCE_CORRECTION"
         tparser.add_option(section, "adcp_motion_correction", dtypes=["bool"], default=False, null_value=False)
         tparser.add_option(section, "wind_motion_correction", dtypes=["bool"], default=False, null_value=False)
 
@@ -387,7 +382,7 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
             tparser.add_option(section, f'{var}_drift_start_time', dtypes=["str"], is_time_stamp=True, default="", comments="Format: %Y-%m-%dT%H:%M:%S")
             tparser.add_option(section, f'{var}_calibration_correction', dtypes=["float"], nargs=2, default="", comments="Linear regression coefficients: A, B | [Corrected_Data] = A * [Data] + B")
 
-        section = "METEOCE_QUALITY_CONTROL"
+        section = "METOCE_QUALITY_CONTROL"
         tparser.add_option(section, "absolute_outlier", dtypes=["bool"], default=True, null_value=False)
         tparser.add_option(section, "regional_outlier", dtypes=["str"], default="", comments="Name of the region defined in the `impossible_parameters_values.json`")
         tparser.add_option(section, "propagate_flags", dtypes=["bool"], default=True, null_value=False)

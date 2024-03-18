@@ -23,7 +23,7 @@ def _map_gen_to_bodc(varnames: Union[List[str], Tuple[str, ...]], varname_map: D
     return [varname_map[varname] for varname in varnames if (varname in varname_map)]
 
 
-def make_meteoce_figure(
+def make_metoce_figure(
         dataset: xr.Dataset,
         single: bool = False,
         save_path: str = None,

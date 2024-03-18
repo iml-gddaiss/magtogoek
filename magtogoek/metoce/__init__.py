@@ -1,5 +1,5 @@
 """
-Sub-Package for meteoce data processing.
+Sub-Package for metoce data processing.
 """
 SENSOR_TYPES = [
     'pco2',  # co2 atm

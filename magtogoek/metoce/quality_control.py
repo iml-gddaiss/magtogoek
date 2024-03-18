@@ -2,7 +2,7 @@
 Date: February 2023
 Made by jeromejguay
 
-Module that contains functions for meteoce data quality control.
+Module that contains functions for metoce data quality control.
 
 
 Notes
@@ -36,10 +36,10 @@ from magtogoek.quality_control_common import IMPOSSIBLE_PARAMETERS_VALUES, value
 from magtogoek.process_common import FLAG_ATTRIBUTES
 
 if TYPE_CHECKING:
-    from magtogoek.meteoce.process import ProcessConfig
+    from magtogoek.metoce.process import ProcessConfig
 
 
-# If modified, carry the modification to `meteoce.process.ProcessConfig` and to `config_handler.py`.
+# If modified, carry the modification to `metoce.process.ProcessConfig` and to `config_handler.py`.
 SPIKE_QC_VARIABLES = [
     "salinity", "temperature", "dissolved_oxygen", "co2_water", "ph", "scattering", "chlorophyll", "fdom"
 ]
@@ -77,14 +77,14 @@ QC_VARIABLES = [k for k, v in VARIABLES_WITH_QC.items() if v == 1]
 NO_QC_VARIABLES = [k for k, v in VARIABLES_WITH_QC.items() if v == 0]
 
 
-def no_meteoce_quality_control(dataset: xr.Dataset):
+def no_metoce_quality_control(dataset: xr.Dataset):
     """
     Notes
     -----
         SeaDataNet Quality Control Flags Value
         * 0: no_quality_control
     """
-    l.section("Meteoce Quality Control")
+    l.section("Metoce Quality Control")
 
     l.log("No quality control carried out")
 
@@ -94,8 +94,8 @@ def no_meteoce_quality_control(dataset: xr.Dataset):
     dataset.attrs["quality_comments"] = "No quality control."
 
 
-def meteoce_quality_control(dataset: xr.Dataset, pconfig: "ProcessConfig"):
-    l.section("Meteoce Quality Control")
+def metoce_quality_control(dataset: xr.Dataset, pconfig: "ProcessConfig"):
+    l.section("Metoce Quality Control")
 
     _add_ancillary_variables_to_dataset(dataset, variables=QC_VARIABLES, default_flag=1)
     _add_ancillary_variables_to_dataset(dataset, variables=NO_QC_VARIABLES, default_flag=0)
@@ -119,7 +119,7 @@ def meteoce_quality_control(dataset: xr.Dataset, pconfig: "ProcessConfig"):
 
     _print_percent_of_good_values(dataset)
 
-    dataset.attrs["quality_comments"] = l.logbook.split("[Meteoce Quality Control]\n")[1]
+    dataset.attrs["quality_comments"] = l.logbook.split("[Metoce Quality Control]\n")[1]
     dataset.attrs.update(FLAG_ATTRIBUTES)
 
 
@@ -179,7 +179,7 @@ def _spike_detection_tests(dataset: xr.Dataset, pconfig: "ProcessConfig"):
 
 
 def _flag_missing_values(dataset: xr.Dataset):
-    """Flag missing values for all meteoce variables."""
+    """Flag missing values for all metoce variables."""
     for variable in set(dataset.variables).intersection(set(VARIABLES_WITH_QC.keys())):
         add_flags_values(dataset[variable + "_QC"].data, find_missing_values(dataset[variable].values) * 9)
 
