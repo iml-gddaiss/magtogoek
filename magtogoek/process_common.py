@@ -464,11 +464,18 @@ def netcdf_raw_exist(pconfig: BaseProcessConfig):
 
 def load_netcdf_raw(pconfig: BaseProcessConfig) -> xr.Dataset:
     netcdf_raw_path = Path(pconfig.netcdf_raw_path).with_suffix('.nc')
-    return xr.open_dataset(netcdf_raw_path)
+    dataset = xr.open_dataset(netcdf_raw_path)
+
+    l.append_to_logbook(dataset.attrs.pop('history'))
+
+    return dataset
 
 
 def write_netcdf_raw(dataset: xr.Dataset, pconfig: BaseProcessConfig):
     netcdf_raw_path = Path(pconfig.netcdf_raw_path).with_suffix('.nc')
+
+    dataset.attrs['history'] = l.logbook
+
     dataset.to_netcdf(netcdf_raw_path)
     dataset.close()
     l.log(f"netcdf raw file made -> {netcdf_raw_path}")
