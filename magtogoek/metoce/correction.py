@@ -174,7 +174,7 @@ def _set_magnetic_correction_to_apply(dataset: xr.Dataset, pconfig: "ProcessConf
 
     Either from the GPS (dataset variable) or the ProcessConfig.magnetic_declination .
 
-    For `mitis` data, the correction takes into account the one already carried out by the buoy
+    For `metis` data, the correction takes into account the one already carried out by the buoy
     controller.
     """
 
@@ -195,7 +195,7 @@ def _set_magnetic_correction_to_apply(dataset: xr.Dataset, pconfig: "ProcessConf
             else:
                 l.warning('Unable to carry magnetic declination correction. No magnetic declination value found.')
 
-    elif pconfig.data_format == "mitis":
+    elif pconfig.data_format == "metis":
         if isinstance(pconfig.magnetic_declination, (int, float)):
             if 'magnetic_declination' in dataset.variables:
                 pconfig.magnetic_correction_to_apply = pconfig.magnetic_declination - dataset['magnetic_declination']

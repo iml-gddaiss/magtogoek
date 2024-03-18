@@ -22,7 +22,7 @@ UNITS_MAP = {
              }
 
 def winch_reader(files: Union[str, List[str]]):
-    """Made for 2024 Mitis Winch Files format.
+    """Made for 2024 Metis Winch Files format.
     """
     datasets = []
     for fn in get_files_from_expression(files):

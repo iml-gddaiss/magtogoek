@@ -343,7 +343,7 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
 
     elif process == "metoce":
         section = "METOCE_PROCESSING"
-        tparser.add_option(section, "data_format", dtypes=["str"], default="viking", choice=['viking', 'mitis'])
+        tparser.add_option(section, "data_format", dtypes=["str"], default="viking", choice=['viking', 'metis'])
         tparser.add_option(section, "buoy_name", dtypes=["str"],  comments='Name of the buoy in the raw file.', is_required=False)
         tparser.add_option(section, "sampling_depth", dtypes=["float"], default="Use for water sensor data corrections/computations (oxygen, density).")
         tparser.add_option(section, "adcp_id", dtypes=["str"], default=None)

@@ -157,7 +157,7 @@ SENSORS_TO_VARIABLES_MAP = {
 class ProcessConfig(BaseProcessConfig):
     # PROCESSING
     buoy_name: str = None
-    data_format: str = None  # [viking, mitis]
+    data_format: str = None  # [viking, metis]
     sampling_depth: float = None  # Used for computation *(density) and for EVENT HEADER IN METOCE
 
     ##### ID #####
