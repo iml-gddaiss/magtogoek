@@ -12,7 +12,6 @@ import xarray as xr
 from typing import List, TYPE_CHECKING
 
 from magtogoek import logger as l
-from magtogoek.navigation import compute_speed_and_course, compute_uv_ship
 from magtogoek.process_common import add_correction_attributes_to_dataarray
 from magtogoek.sci_tools import rotate_heading, xy_vector_magnetic_correction, \
     north_polar2cartesian, cartesian2north_polar, time_drift_correction, data_calibration_correction
@@ -163,10 +162,10 @@ def _wind_motion_correction(dataset:xr.Dataset):
 
 def _adcp_motion_correction(dataset: xr.Dataset):
     l.log("Adcp motion correction was carried out with gps data.")
-    _msg = "Motion correction was carried out with gps data"
+    _msg = "Motion correction was carried out with gps data. Data rounded to mm precision (3 decimal places)."
     if all(f"{v}_ship" in dataset for v in ["u", "v"]):
         for field in ["u", "v"]:
-            dataset[field] += dataset[field + "_ship"]
+            dataset[field] += np.round(dataset[field + "_ship"], 3) # rounding to millimeter. (ADCP precision)
             add_correction_attributes_to_dataarray(dataset[field])
 
 
@@ -391,7 +390,7 @@ def _data_calibration_correction(dataset: xr.Dataset, variable: str, pconfig: "P
         l.warning(f"Calibration correction for {variable} failed. Requires 2 coefficients (slope, offset).")
 
 
-def _compute_ctd_potential_density(dataset: xr.Dataset, pconfig: "ProcessConfig"):
+def compute_ctd_potential_density(dataset: xr.Dataset, pconfig: "ProcessConfig"):
     """Compute potential density as sigma_t:= Density(S,T,P) - 1000
 
     Density computed using TEOS-10 polynomial (Roquet et al., 2015)
@@ -446,23 +445,3 @@ def _compute_ctd_potential_density(dataset: xr.Dataset, pconfig: "ProcessConfig"
         l.warning(f'Potential density computation aborted. One of more variables in {required_variables} was missing.')
 
 
-def _recompute_speed_course(dataset: xr.Dataset):
-    if all(v in dataset for v in ['lon', 'lat']):
-        l.log('Platform `speed` and `course` computed from longitude and latitude data.')
-        compute_speed_and_course(dataset=dataset)
-    else:
-        l.warning("Could not compute `speed` and `course`. `lon`/`lat` data not found.")
-
-
-def _compute_uv_ship(dataset: xr.Dataset):
-    if all(x in dataset for x in ('speed', 'course')):
-        l.log('Platform `u_ship`, `v_ship` computed from speed and course data.')
-        compute_uv_ship(dataset=dataset)
-
-    elif all(v in dataset for v in ['lon', 'lat']):
-        l.log('Platform velocities (u_ship, v_ship) computed from longitude and latitude data.')
-        compute_speed_and_course(dataset=dataset)
-        compute_uv_ship(dataset=dataset)
-
-    else:
-        l.warning("Could not compute `u_ship` and `v_ship`. GPS data not found.")
