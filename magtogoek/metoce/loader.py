@@ -83,7 +83,6 @@ def load_metoce_data(
 
     if data_format == "viking":
         metoce_data, global_attrs = _load_viking_metoce_data(buoy_data)
-        buoy_data = RawVikingDatReader().read(filenames)
     else: #if data_format == "mitis": # not required. Also remove a variable reference warning.
         metoce_data, global_attrs = _load_mitis_metoce_data(buoy_data)
 
@@ -195,8 +194,9 @@ def _load_viking_metoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[n
         l.log('Ctdo data loaded.')
 
     if viking_data.wph is not None:
-        _serial_number = viking_data.wph['serial_number'][~viking_data.wph['serial_number'].mask][0]
-        _model = viking_data.wph['model'][~viking_data.wph['model'].mask][0]
+        mask = np.isfinite(viking_data.wph['ext_ph'])
+        _serial_number = viking_data.wph['serial_number'][mask][0]
+        _model = viking_data.wph['model'][mask][0]
         _attrs = {'serial_number': _serial_number, 'model': _model}
         global_attrs.update({'ph_serial_number': _serial_number, 'ph_model': _model, 'is_corrected': 0})
         data.update(
@@ -207,8 +207,9 @@ def _load_viking_metoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[n
         l.log('Wph data loaded.')
 
     if viking_data.triplet is not None:
-        _serial_number = viking_data.triplet['serial_number'][~viking_data.triplet['serial_number'].mask][0]
-        _model = viking_data.triplet['model_number'][~viking_data.triplet['model_number'].mask][0]
+        mask = np.isfinite(viking_data.triplet['scatter_calculated'])
+        _serial_number = viking_data.triplet['serial_number'][mask][0]
+        _model = viking_data.triplet['model_number'][mask][0]
         _attrs = {'serial_number': _serial_number, 'model': _model}
         global_attrs.update({'triplet_serial_number': _serial_number, 'triplet_model': _model})
 
@@ -222,13 +223,14 @@ def _load_viking_metoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[n
         l.log('Eco-Triplet data loaded.')
 
     if viking_data.par_digi is not None:
-        _serial_number = viking_data.par_digi['serial_number'][~viking_data.par_digi['serial_number'].mask][0]
-        _model = viking_data.par_digi['model_number'][~viking_data.par_digi['model_number'].mask][0]
+        mask = np.isfinite(viking_data.par_digi['par'])
+        _serial_number = viking_data.par_digi['serial_number'][mask][0]
+        _model = viking_data.par_digi['model_number'][mask][0]
 
         _attrs = {'serial_number': _serial_number, 'model': _model}
         global_attrs.update({'par_serial_number': _serial_number, 'par_triplet_model': _model})
 
-        data['par'] = (viking_data.par_digi['PAR'], {**_attrs, **{"units": "umol/m**2/s"}})
+        data['par'] = (viking_data.par_digi['par'], {**_attrs, **{"units": "umol/m**2/s"}})
         l.log('Par Digi data loaded.')
 
     if viking_data.co2_a is not None: # co2 partial pressure = (ppm / 1e6)* cell gas pressure
@@ -266,18 +268,20 @@ def _load_viking_metoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[n
         for _name in ['u', 'v', 'w', 'e']:
             _adcp_data[_name] = viking_data.rdi[_name]
 
-        if not any(~viking_data.rti['u'].mask & ~viking_data.rdi['u'].mask):
+        rti_mask = np.isfinite(viking_data.rti['u'])
+        rdi_mask = np.isfinite(viking_data.rdi['u'])
+
+        if not any(rti_mask & rdi_mask):
             l.warning('Merging RDI and RTI data')
             # load RTI data
             for _name in ['u', 'v', 'w', 'e']:
-                _adcp_data[_name][~viking_data.rti[_name].mask] = viking_data.rti[_name][~viking_data.rti[_name].mask]
+                _adcp_data[_name][rti_mask] = viking_data.rti[_name][rti_mask]
 
         else:
             l.warning('There is a time overlap between RDI and RTI data. RTI data were discarded.')
 
 
         for _name in ['u', 'v', 'w', 'e']:
-            _adcp_data[_name].mask = viking_data.rti[_name].mask & viking_data.rdi[_name].mask
             data[_name] = (_adcp_data[_name] * MILLIMETER_TO_METER, {"units": "m/s"})
 
     else:
@@ -291,7 +295,7 @@ def _load_viking_metoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[n
                 data[_name] = (viking_data.rti[_name] * MILLIMETER_TO_METER, {"units": "m/s"})
             l.log('Rti data loaded.')
 
-    data = _fill_data(data)
+    #data = _fill_data(data)
 
     return data, global_attrs
 
@@ -423,18 +427,18 @@ def _add_time_coords(data: Dict[str, Tuple[np.ndarray, Dict]]) -> Dict[str, Tupl
         data[var] = (['time'], _data, _attrs)
 
 
-def _fill_data(data: Dict[str, Tuple[np.ma.MaskedArray, dict]]) -> Dict[str, Tuple[List[str], np.ndarray, dict]]:
-    """
-    Fill the masked_array missing values with the predefined np.ma.MaskedArray filled value.
-
-    Should be np.nan or 'nan'.
-
-    See magtogoek.metoce.viking_dat_reader.py for the filled value.
-    """
-    for var, (_data, _attrs) in data.items():
-        data[var] = (_data.filled(), _attrs)
-
-    l.log('Missing data filled.')
+# def _fill_data(data: Dict[str, Tuple[np.ma.MaskedArray, dict]]) -> Dict[str, Tuple[List[str], np.ndarray, dict]]:
+#     """
+#     Fill the masked_array missing values with the predefined np.ma.MaskedArray filled value.
+#
+#     Should be np.nan or 'nan'.
+#
+#     See magtogoek.metoce.viking_dat_reader.py for the filled value.
+#     """
+#     for var, (_data, _attrs) in data.items():
+#         data[var] = (_data.filled(), _attrs)
+#
+#     l.log('Missing data filled.')
 
 
 def _average_duplicates(dataset: xr.Dataset, coord: str) -> xr.Dataset:
