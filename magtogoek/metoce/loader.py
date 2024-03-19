@@ -36,8 +36,9 @@ import pint_xarray # pint_xarray modify the xr.Dataset Object
 
 
 KNOTS_TO_METER_PER_SECONDS = 0.5144444444 # mps/knots
-MILLIMETER_TO_METER = 1 / 1000
-CENTIMETER_TO_METER = 1 / 100
+MILLIMETER_TO_METER = 1 / 1000 # m / 1000 mmm
+CENTIMETER_TO_METER = 1 / 100  # m / 100 cm
+MILLIBAR_TO_ATMOSPHERE = 1 / 1013.25 # 1 atm / 1013.25 mbar
 
 RTI_FILL_VALUE = 88888
 RDI_FILL_VALUE = -32768.0
@@ -236,14 +237,14 @@ def _load_viking_metoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[n
         data['par'] = (viking_data.par_digi['par'], {**_attrs, **{"units": "umol/m**2/s"}})
         l.log('Par Digi data loaded.')
 
-    if viking_data.co2_a is not None: # co2 partial pressure = (ppm / 1e6)* cell gas pressure
-        data.update({'co2_air': (viking_data.co2_a['cell_gas_pressure_mbar'] * viking_data.co2_a['co2_ppm'] / 1e6,
-                                 {'units': 'uatm'})})
+    if viking_data.co2_a is not None:
+        _pco2_air = viking_data.co2_a['co2_ppm'] * viking_data.co2_a['cell_gas_pressure_mbar'] * MILLIBAR_TO_ATMOSPHERE
+        data.update({'pco2_air': (_pco2_air, {'units': 'uatm'})})
         l.log('Co2_a data loaded.')
 
-    if viking_data.co2_w is not None: # co2 partial pressure = (ppm / 1e6)* cell gas pressure
-        data.update({'co2_water': (viking_data.co2_w['cell_gas_pressure_mbar'] * viking_data.co2_w['co2_ppm'] / 1e6,
-                                   {'units': 'uatm'})})
+    if viking_data.co2_w is not None:
+        _pco2_water = viking_data.co2_w['co2_ppm'] * viking_data.co2_w['cell_gas_pressure_mbar'] * MILLIBAR_TO_ATMOSPHERE
+        data.update({'pco2_water': (_pco2_water, {'units': 'uatm'})})
         l.log('Co2_w data loaded.')
 
     if viking_data.wave_m is not None:
@@ -415,12 +416,12 @@ def _load_metis_metoce_data(metis_data: MetisData) -> Tuple[Dict[str, Tuple[np.m
 
 
     if metis_data.pco2 is not None:
+        _pco2_air = metis_data.pco2['co2_ppm_air'] * metis_data.pco2['gas_pressure_air_mbar'] * MILLIBAR_TO_ATMOSPHERE
+        _pco2_water = metis_data.pco2['co2_ppm_water'] * metis_data.pco2['gas_pressure_water_mbar'] * MILLIBAR_TO_ATMOSPHERE
         data.update(
             {
-                'co2_air': (metis_data.pco2['gas_pressure_air'] * metis_data.pco2['co2_ppm_air'] / 1e6,
-                            {'units': 'uatm'}),
-                'co2_water': (metis_data.pco2['gas_pressure_water'] * metis_data.pco2['co2_ppm_water'] / 1e6,
-                              {'units': 'uatm'})
+                'pco2_air': (_pco2_air, {'units': 'uatm'}),
+                'pco2_water': (_pco2_water, {'units': 'uatm'})
              }
         )
         l.log('PCO2 Data Loaded')
@@ -432,20 +433,6 @@ def _add_time_coords(data: Dict[str, Tuple[np.ndarray, Dict]]) -> Dict[str, Tupl
     """Add the time coords according to the Xarray data format."""
     for var, (_data, _attrs) in data.items():
         data[var] = (['time'], _data, _attrs)
-
-
-# def _fill_data(data: Dict[str, Tuple[np.ma.MaskedArray, dict]]) -> Dict[str, Tuple[List[str], np.ndarray, dict]]:
-#     """
-#     Fill the masked_array missing values with the predefined np.ma.MaskedArray filled value.
-#
-#     Should be np.nan or 'nan'.
-#
-#     See magtogoek.metoce.viking_dat_reader.py for the filled value.
-#     """
-#     for var, (_data, _attrs) in data.items():
-#         data[var] = (_data.filled(), _attrs)
-#
-#     l.log('Missing data filled.')
 
 
 def _average_duplicates(dataset: xr.Dataset, coord: str) -> xr.Dataset:

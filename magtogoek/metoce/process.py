@@ -112,10 +112,10 @@ P01_CODES_MAP = {
     'fdom': "CCOMD002",
     'fdom_QC': "CCOMD002_QC",
     'nitrate': "NTRZZZXX", # Unsure about the units
-    'co2_air': "ACO2XXXX",
-    'co2_air_QC': "ACO2XXXX_QC",
-    'co2_water': "PCO2XXXX",
-    'co2_water_QC': "PCO2XXXX_QC",
+    'pco2_air': "ACO2XXXX",
+    'pco2_air_QC': "ACO2XXXX_QC",
+    'pco2_water': "PCO2XXXX",
+    'pco2_water_QC': "PCO2XXXX_QC",
     'u': "LCEWAP01",
     'u_QC': "LCEWAP01_QC",
     'v': "LCNSAP01",
@@ -146,7 +146,7 @@ SENSORS_TO_VARIABLES_MAP = {
     "ph": ['ph'],
     'par': ['par'],
     'eco': ['scattering', 'chlorophyll', 'fdom'],
-    'pco2': ['co2_air', 'co2_water'],
+    'pco2': ['pco2_air', 'pco2_water'],
     'wave': ['wave_mean_height', 'wave_maximal_height', 'wave_period'],
     'wind': ["wind_speed", "wind_direction", "wind_gust"],
     'meteo': ['atm_temperature', 'atm_humidity', 'atm_pressure']
@@ -240,9 +240,6 @@ class ProcessConfig(BaseProcessConfig):
     dissolved_oxygen_spike_threshold: float = None
     dissolved_oxygen_spike_window: int = None
 
-    co2_water_spike_threshold: float = None
-    co2_water_spike_window: int = None
-
     ph_spike_threshold: float = None
     ph_spike_window: int = None
 
@@ -273,7 +270,6 @@ class ProcessConfig(BaseProcessConfig):
     adcp_error_velocity_threshold: float = None
     adcp_pitch_threshold: float = None
     adcp_roll_threshold: float = None
-
 
     # Processing Flag
     ph_is_corrected: bool = False

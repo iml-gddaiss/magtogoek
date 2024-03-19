@@ -67,7 +67,7 @@ DAT_FILE_DATA_STRUCTURE = {
     'atms': ['air_temperature', 'air_humidity', 'air_pressure', 'par', 'rain_total', 'rain_duration', 'rain_intensity'],
     'wave': ['date', 'time', 'period', 'hm0', 'h13', 'hmax'],
     'adcp': ['date', 'time', 'u', 'v', 'w', 'e'],
-    'pco2': ['co2_ppm_air', 'co2_ppm_water', 'gas_pressure_air', 'gas_pressure_water', 'air_humidity'],
+    'pco2': ['co2_ppm_air', 'co2_ppm_water', 'gas_pressure_air_mbar', 'gas_pressure_water_mbar', 'air_humidity'],
     'wnch': ['message']
 }
 
@@ -88,7 +88,7 @@ METIS_VARIABLES = {
     'atms': ['air_temperature', 'air_humidity', 'air_pressure', 'par', 'rain_total', 'rain_duration', 'rain_intensity'],
     'wave': ['time', 'period', 'hm0', 'h13', 'hmax'],
     'adcp': ['time', 'u', 'v', 'w', 'e'],
-    'pco2': ['co2_ppm_air', 'co2_ppm_water', 'gas_pressure_air', 'gas_pressure_water', 'air_humidity'],
+    'pco2': ['co2_ppm_air', 'co2_ppm_water', 'gas_pressure_air_mbar', 'gas_pressure_water_mbar', 'air_humidity'],
     'wnch': ['message']
 }
 
@@ -104,7 +104,7 @@ METIS_FLOAT_VARIABLES = {
     'atms': ['air_temperature', 'air_humidity', 'air_pressure', 'par', 'rain_total', 'rain_duration', 'rain_intensity'],
     'wave': ['period', 'hm0', 'h13', 'hmax'],
     'adcp': ['u', 'v', 'w', 'e'],
-    'pco2': ['co2_ppm_air', 'co2_ppm_water', 'gas_pressure_air', 'gas_pressure_water', 'air_humidity'],
+    'pco2': ['co2_ppm_air', 'co2_ppm_water', 'gas_pressure_air_mbar', 'gas_pressure_water_mbar', 'air_humidity'],
     'wnch': []
 }
 

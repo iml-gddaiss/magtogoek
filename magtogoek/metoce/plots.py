@@ -66,7 +66,7 @@ def make_metoce_figure(
         'ph': ['ph'],
         'par': ['par'],
         'eco': ['scattering', 'chlorophyll', 'fdom'],
-        'pco2': ['co2_air', 'co2_water']
+        'pco2': ['pco2_air', 'pco2_water']
     }
 
     # polar_histogram_vars = {

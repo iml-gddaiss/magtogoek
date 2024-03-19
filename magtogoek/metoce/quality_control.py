@@ -41,7 +41,7 @@ if TYPE_CHECKING:
 
 # If modified, carry the modification to `metoce.process.ProcessConfig` and to `config_handler.py`.
 SPIKE_QC_VARIABLES = [
-    "salinity", "temperature", "dissolved_oxygen", "co2_water", "ph", "scattering", "chlorophyll", "fdom"
+    "salinity", "temperature", "dissolved_oxygen", "ph", "scattering", "chlorophyll", "fdom"
 ]
 
 
@@ -64,11 +64,11 @@ VARIABLES_WITH_QC = { # 1: QC(default flag = 1) , 0: No Qc (default flag = 0)
     'dissolved_oxygen': 1,
     'ph': 1,
     'par': 0,
-    'scattering': 0,
-    'chlorophyll': 0,
-    'fdom': 0,
-    'co2_air': 0,
-    'co2_water': 0
+    'scattering': 1,
+    'chlorophyll': 1,
+    'fdom': 1,
+    'pco2_air': 0,
+    'pco2_water': 0
     }
 
 QC_VARIABLES = [k for k, v in VARIABLES_WITH_QC.items() if v == 1]
@@ -168,7 +168,7 @@ def _spike_detection_tests(dataset: xr.Dataset, pconfig: "ProcessConfig"):
             'window': pconfig.__getattribute__(var + "_spike_window")}
         for var in SPIKE_QC_VARIABLES
     }
-    for var in set(dataset.variables) & set(spike_tests.keys()):
+    for var in set(dataset.keys()) & set(spike_tests.keys()):
         if spike_tests[var]['threshold'] is not None:
             data_spike_detection_tests(
                 dataset=dataset,
@@ -180,7 +180,7 @@ def _spike_detection_tests(dataset: xr.Dataset, pconfig: "ProcessConfig"):
 
 def _flag_missing_values(dataset: xr.Dataset):
     """Flag missing values for all metoce variables."""
-    for variable in set(dataset.variables).intersection(set(VARIABLES_WITH_QC.keys())):
+    for variable in set(dataset.keys()).intersection(set(VARIABLES_WITH_QC.keys())):
         add_flags_values(dataset[variable + "_QC"].data, find_missing_values(dataset[variable].values) * 9)
 
 
@@ -208,7 +208,7 @@ def _propagate_flag(dataset: xr.Dataset, pconfig: "ProcessConfig"):
         flag_propagation_rules['ph_QC'] = ['temperature_QC', 'salinity_QC', 'ph_QC']
 
 
-    for variable in set(dataset.variables) & set(flag_propagation_rules.keys()):
+    for variable in set(dataset.keys()) & set(flag_propagation_rules.keys()):
 
         qc_variables = [dataset[_var].data for _var in set(flag_propagation_rules[variable]) & set(dataset.variables)]
 
