@@ -4,20 +4,17 @@
 from pathlib import Path
 from typing import List, Union, Dict, Tuple
 
-# import cmocean as cmo
-# import numpy as np
+
 import xarray as xr
 import matplotlib.pyplot as plt
 
-# from magtogoek.plot_utils import add_gridlines_to_subplot
-#from magtogoek.tools import round_up, filter_flagged_data
 from magtogoek.tools import get_flagged_data
+from magtogoek.metoce import FIGURES_VARIABLES
 
 FONT = {"family": "serif", "color": "darkred", "weight": "normal", "size": 12}
 BINARY_CMAP = plt.get_cmap("viridis_r", 2)
 
 plt.style.use("seaborn-dark-palette")
-
 
 def _map_gen_to_bodc(varnames: Union[List[str], Tuple[str, ...]], varname_map: Dict) -> List[str]:
     return [varname_map[varname] for varname in varnames if (varname in varname_map)]
@@ -25,6 +22,7 @@ def _map_gen_to_bodc(varnames: Union[List[str], Tuple[str, ...]], varname_map: D
 
 def make_metoce_figure(
         dataset: xr.Dataset,
+        variables_groupes: List[str] = None,
         single: bool = False,
         save_path: str = None,
         show_fig: bool = True,
@@ -37,6 +35,10 @@ def make_metoce_figure(
     Parameters
     ----------
     dataset: Dataset containing the processed data.
+    variables_groupes:
+        Which of the plot to make. One of:
+        ['gsp_position', 'gps_motion', 'compass', 'velocity', 'wind',
+         'meteo', 'wave', 'ctdo', 'ph', 'par', 'eco', 'pco2']
     single:
         If True, figures are plotted one at a time.
     save_path:
@@ -52,49 +54,17 @@ def make_metoce_figure(
     """
     figures = {}
 
-    # MAKE 2D HISTOGRAM FOR WIND and WAVE
-
-    plots_vars = {
-        'gsp_position': ['lon', 'lat'],
-        'gps_motion': ['speed', 'course', 'u_ship', 'v_ship'],
-        'compass': ['heading', 'roll_', 'pitch', 'roll_std', 'pitch_std'],
-        'velocity': ['u', 'v', 'w'],
-        'wind': ["wind_speed", "wind_direction", "wind_gust"],
-        'meteo': ['atm_temperature', 'atm_humidity', 'atm_pressure'],
-        'wave': ['wave_mean_height', 'wave_maximal_height', 'wave_period', 'wave_direction'],
-        'ctdo': ['temperature', 'conductivity', 'salinity', 'density', 'dissolved_oxygen'],
-        'ph': ['ph'],
-        'par': ['par'],
-        'eco': ['scattering', 'chlorophyll', 'fdom'],
-        'pco2': ['pco2_air', 'pco2_water']
-    }
-
-    # polar_histogram_vars = {
-    #     'wind_speed': 'wind_direction',
-    #     'wave_mean_height': 'wave_direction',
-    #     'wave_maximal_height': 'wave_direction',
-    #     'wave_period': 'wave_direction',
-    # }
-
     var_name_map = {}
     for var in dataset:
         if 'generic_name' in dataset[var].attrs:
             var_name_map[dataset[var].attrs['generic_name']] = var
 
-    for fig_name, variables in plots_vars.items():
+    for group, variables in FIGURES_VARIABLES.items():
+        if variables_groupes is not None and group not in variables_groupes:
+            continue
         _variables = _map_gen_to_bodc(variables, var_name_map)
         if any(x in dataset.variables for x in _variables):
-            figures[fig_name] = plot_sensor_data(dataset, _variables, dataset_raw, fig_name=fig_name)
-
-    # for variables in list(polar_histogram_vars.items()):
-    #     polar_histogram_vars.pop(variables[0])
-    #     _variables = map_varname(variables, var_name_map)
-    #     if len(_variables) == 2:
-    #         polar_histogram_vars[_variables[0]] = _variables[1]
-    #
-    # if polar_histogram_vars:
-    #     figures["wind_wave_polar_histograms"] = plot_wind_wave_polar_hist(dataset, variables=polar_histogram_vars, flag_thres = 2, nrows= 1, fig_name= "wind & wave polar histogram")
-
+            figures[group] = plot_sensor_data(dataset, _variables, dataset_raw, fig_name=group)
 
     if single is True and show_fig is True:
         for count, fig in enumerate(figures.values()):

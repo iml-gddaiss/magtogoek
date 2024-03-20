@@ -7,14 +7,10 @@ This module contains the entry point for magtogoek CLI app `mtgk`.
 Descriptions:
   FIXME
 
-Usage:
-    $ mtgk config [adcp, platform] [CONFIG_NAME] [OPTIONS]
-
-    $ mtgk process [CONFIG_FILE]
-
-    $ mtgk quick [adcp, ] [INPUT_FILES] [OPTIONS]
-
-    $ mtgk check [rti, ] [INPUT_FILES]
+Usage (use the helper to get more informations):
+    $ mtgk -h
+    or
+    $ mtgk --help
 
 Notes:
     Some module are imported by function since loading pandas, for example, is time consuming. Doing makes the
@@ -34,8 +30,9 @@ import click
 from magtogoek import LOCAL_CONFIGURATION_PATH, DEFAULT_CONFIGURATION_PATH, LOCAL_CONFIG_EXISTS, VERSION, TERMINAL_WIDTH
 from magtogoek.exceptions import MagtogoekExit
 from magtogoek.app_options import general_options, adcp_options, add_options
-
 from magtogoek.utils import is_valid_filename, json2dict, resolve_relative_path
+
+from magtogoek.metoce import FIGURES_VARIABLES as METOCE_FIGURES_VARIABLES
 
 
 LOGO_PATH = resolve_relative_path("static/logo.json", __file__)
@@ -403,6 +400,8 @@ def plot_adcp(ctx, info, input_file, **options):
 @add_options(common_options)
 @click.argument("input_file", metavar="[input_files]", nargs=1, type=click.Path(exists=True), required=True)
 @click.option("-s", "--save_fig", help="""Path to save figures to.""", type=click.Path(exists=True), default=None)
+@click.option("-v", "--vars", type=click.Choice(list(METOCE_FIGURES_VARIABLES.keys())), multiple=True,
+              help=f"""Specify which plot(s).""", default=None)
 @click.option("--headless", help="""If True, figures are displayed""", is_flag=True, default=False)
 @click.option("-r", "--plot-raw", help="""If True, data are plotted against raw data if available.""", is_flag=True, default=False)
 @click.pass_context
@@ -419,7 +418,8 @@ def plot_metoce(ctx, info, input_file, **options):
                 raw_dataset = xr.open_dataset(raw_data_path).sel(time=slice(dataset.time[0], dataset.time[-1]))
             else:
                 print(f"Raw data file not found ({raw_dataset}).")
-        make_metoce_figure(dataset, save_path=options['save_fig'], show_fig=not options['headless'], dataset_raw=raw_dataset)
+        make_metoce_figure(dataset, variables_groupes=options['vars'], save_path=options['save_fig'],
+                           show_fig=not options['headless'], dataset_raw=raw_dataset)
 
     except KeyError:
         print("Wrong format. The netcdf file is missing some attributes or doesn't have the expected variables name.")
