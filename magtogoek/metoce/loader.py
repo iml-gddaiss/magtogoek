@@ -238,13 +238,23 @@ def _load_viking_metoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[n
         l.log('Par Digi data loaded.')
 
     if viking_data.co2_a is not None:
-        _pco2_air = viking_data.co2_a['co2_ppm'] * viking_data.co2_a['cell_gas_pressure_mbar'] * MILLIBAR_TO_ATMOSPHERE
-        data.update({'pco2_air': (_pco2_air, {'units': 'uatm'})})
+        #_pco2_air = viking_data.co2_a['co2_ppm'] * viking_data.co2_a['cell_gas_pressure_mbar'] * MILLIBAR_TO_ATMOSPHERE
+        data.update({
+            #'pco2_air': (_pco2_air, {'units': 'uatm'}),
+            'co2_air': (viking_data.co2_a['co2_ppm'], {'units': 'ppm'}),
+            'co2_air_pressure': (viking_data.co2_a['cell_gas_pressure_mbar'], {'units': 'mbar'})
+        })
         l.log('Co2_a data loaded.')
 
     if viking_data.co2_w is not None:
-        _pco2_water = viking_data.co2_w['co2_ppm'] * viking_data.co2_w['cell_gas_pressure_mbar'] * MILLIBAR_TO_ATMOSPHERE
-        data.update({'pco2_water': (_pco2_water, {'units': 'uatm'})})
+        #_pco2_water = viking_data.co2_w['co2_ppm'] * viking_data.co2_w['cell_gas_pressure_mbar'] * MILLIBAR_TO_ATMOSPHERE
+        data.update(
+            {
+                #'pco2_water': (_pco2_water, {'units': 'uatm'}),
+                'co2_water': (viking_data.co2_w['co2_ppm'], {'units': 'ppm'}),
+                'co2_water_pressure': (viking_data.co2_w['cell_gas_pressure_mbar'], {'units': 'mbar'})
+            }
+        )
         l.log('Co2_w data loaded.')
 
     if viking_data.wave_m is not None:

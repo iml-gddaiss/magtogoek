@@ -16,6 +16,8 @@ import numpy as np
 import gsw
 from typing import Union, List
 
+CELCIUS_TO_KELVIN = 273.15
+
 GAS_CONSTANT = 8.31446261815324  # the constant in seabird docs differs 8.3144621 J/(K mol). Application Note 99
 FARADAY_CONSTANT = 96485.365
 
@@ -228,7 +230,7 @@ def compute_scaled_temperature(temperature: Union[float, np.ndarray]) -> Union[f
     -------
 
     """
-    return np.log((298.15 - temperature) / (273.15 + temperature))
+    return np.log((298.15 - temperature) / (CELCIUS_TO_KELVIN + temperature))
 
 
 def phINT_from_voltINT(temp: Union[float, np.ndarray], volt: Union[float, np.ndarray], k0: float, k2: float) -> Union[float, np.ndarray]:
@@ -407,7 +409,7 @@ def pHEXT_from_voltEXT(volt: Union[float, np.ndarray], temp: Union[float, np.nda
 
 
 def compute_s_nernst(temp:  Union[float, np.ndarray]) -> Union[float, np.ndarray]:
-    return GAS_CONSTANT * (temp + 273.15) * np.log(10) / FARADAY_CONSTANT
+    return GAS_CONSTANT * (temp + CELCIUS_TO_KELVIN) * np.log(10) / FARADAY_CONSTANT
 
 
 def total_chloride_in_seawater(psal: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
@@ -567,7 +569,7 @@ def acid_dissociation_constant_HSO4(temp: Union[float, np.ndarray], psal: Union[
 
     .. [2] Sea-Bird Scientific, Technical Note on Calculating pH, Application Note 99
     """
-    temp_k = temp + 273.15
+    temp_k = temp + CELCIUS_TO_KELVIN
     ionic_s = sample_ionic_strength(psal=psal)
     a0 = (-4276.1 / temp_k) + 141.328 - 23.093 * np.log(temp_k)
     a1 = ((-13856 / temp_k) + 324.57 - 47.986 * np.log(temp_k)) * np.sqrt(ionic_s)
@@ -600,7 +602,7 @@ def log_of_HCl_activity_as_temperature_and_pressure_function(psal: Union[float, 
    pres :
        pressure in dbar
    """
-    temp_k = 273.15 + temp
+    temp_k = temp + CELCIUS_TO_KELVIN
     log_t = log_of_HCl_activity_as_temperature_function(psal=psal, temp=temp)
     v_hcl = partial_molal_volume_hcl(temp=temp)
 
@@ -766,3 +768,35 @@ def pH_correction_for_salinity(
     ph = pHEXT_from_voltEXT(volt=volt, temp=temperature, psal=salinity, k0=k0, k2=k2)
 
     return ph
+
+
+def pco2_water_solubility_correction(pco2_water: np.array, salinity: np.ndarray, temperature: np.ndarray) -> np.ndarray:
+    """
+
+    ```Pro-Oceanus Documentation
+    a0 = -60.2409 + 93.4517 * (100/temperature) + 23.3585 * ln(temperature/100)
+    a1 = salinity * [0.023517-0.023656 * (temperature/100) + 0.0047036 * (temperature/100)^2]
+
+    k0 = exp(a0 + a1)
+
+    pCO2_water_corr = k0 * pCO2_water
+    ```
+
+    Parameters
+    ----------
+    pco2_water
+    salinity
+    temperature
+
+    Returns
+    -------
+    pco2_water_corr
+
+    """
+    temperature += CELCIUS_TO_KELVIN
+    a0 = -60.2409 + 93.4517 * (100 / temperature) + 23.3585 * np.log(temperature / 100)
+    a1 = salinity * (0.023517 - 0.023656 * (temperature / 100) + 0.0047036 * (temperature / 100) ** 2)
+
+    k0 = np.exp(a0 + a1)
+
+    return k0 * pco2_water

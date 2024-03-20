@@ -17,7 +17,8 @@ from magtogoek.sci_tools import rotate_heading, xy_vector_magnetic_correction, \
     north_polar2cartesian, cartesian2north_polar, time_drift_correction, data_calibration_correction
 from magtogoek.wps.correction import rinko_raw_measurement_from_dissolved_oxygen, dissolved_oxygen_from_rinko_raw_measurement
 from magtogoek.wps.sci_tools import dissolved_oxygen_correction_for_salinity_SCOR_WG_142, \
-    dissolved_oxygen_correction_for_pressure_JAC, pH_correction_for_salinity, compute_in_situ_density
+    dissolved_oxygen_correction_for_pressure_JAC, pH_correction_for_salinity, compute_in_situ_density, \
+    pco2_water_solubility_correction
 
 if TYPE_CHECKING:
     from magtogoek.metoce.process import ProcessConfig
@@ -112,6 +113,10 @@ def apply_sensors_corrections(dataset: xr.Dataset, pconfig: "ProcessConfig"):
         if pconfig.ph_is_corrected is False:
             _correct_ph_for_salinity(dataset=dataset, pconfig=pconfig)
 
+
+    if "pco2_water" in dataset and pconfig.pco2_water_solubility_correction:
+        _pco2_aq_solubility_correction(dataset=dataset)
+
     for variable in set(DRIFT_VARIABLES) & set(dataset.variables):
         if pconfig.__getattribute__(variable + "_drift") is not None:
             _time_drift_correction(dataset=dataset,variable=variable,pconfig=pconfig)
@@ -119,6 +124,8 @@ def apply_sensors_corrections(dataset: xr.Dataset, pconfig: "ProcessConfig"):
     for variable in set(CALIBRATION_VARIABLES) & set(dataset.variables):
         if pconfig.__getattribute__(variable + "_calibration_correction") is not None:
             _data_calibration_correction(dataset=dataset, variable=variable, pconfig=pconfig)
+
+
 
 
 def _wind_motion_correction(dataset:xr.Dataset):
@@ -443,3 +450,31 @@ def compute_ctd_potential_density(dataset: xr.Dataset, pconfig: "ProcessConfig")
         l.warning(f'Potential density computation aborted. One of more variables in {required_variables} was missing.')
 
 
+def compute_pco2(dataset: xr.Dataset):
+    #air
+    required_variables = ['co2_air', 'co2_air_pressure']
+    if all((var in dataset for var in required_variables)):
+        pass
+
+    # water
+    required_variables = ['co2_water', 'co2_water_pressure']
+    if all((var in dataset for var in required_variables)):
+        pass
+
+def _pco2_aq_solubility_correction(dataset: xr.Dataset):
+    required_variables = ['temperature', 'salinity']
+    if all((var in dataset for var in required_variables)):
+        # FIXME add flag propagation and corrections flag.
+        # co2_water_iscorrected
+        dataset['pco2_water'].data = pco2_water_solubility_correction(
+            pco2_water=dataset.pco2_water.values,
+            temperature=dataset.temperature.values,
+            salinity=dataset.salinity.values
+        )
+
+        l.log("pCO2 water solubility correction carried out.")
+        add_correction_attributes_to_dataarray(dataset['pco2_water'])
+        dataset['pco2_water'].attrs["corrections"] += 'Solubility correction carried out.\n'
+    else:
+        l.warning(
+            f'pco2_water solubility correction aborted. One of more variables in {required_variables} was missing.')

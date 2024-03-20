@@ -55,7 +55,10 @@ l.get_logger("metoce_processing")
 
 STANDARD_GLOBAL_ATTRIBUTES = {"featureType": "timeSeriesProfile"}
 
-VARIABLES_TO_DROP = ['ph_temperature']
+VARIABLES_TO_DROP = [
+    'ph_temperature',
+    'co2_air', 'co2_air_pressure', 'co2_water', 'co2_water_pressure',
+]
 # The following variables can be added to the VARIABLES_TO_DROP list during processing.
 # 'pres', 'raw_dissolved_oxygen' 'magnetic_declination'
 
@@ -186,6 +189,11 @@ class ProcessConfig(BaseProcessConfig):
     magnetic_declination: float = None
     adcp_motion_correction: bool = None
     wind_motion_correction: bool = None
+
+    #pco2
+
+    compute_pco2: bool = None # add to config FIXME
+    pco2_water_solubility_correction: bool = None # add to config FIXME
 
     # PH
     ph_salinity_correction: bool = None
@@ -379,6 +387,9 @@ def _process_metoce_data(pconfig: ProcessConfig):
 
     if 'density' not in dataset or pconfig.recompute_density is True:
         compute_ctd_potential_density(dataset, pconfig)
+
+    if 'pco2_water' not in dataset and pconfig.compute_pco2:
+
 
     # --------------- #
     # QUALITY CONTROL #
