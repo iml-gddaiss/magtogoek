@@ -381,7 +381,7 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
         tparser.add_option(section, "meteo_id", dtypes=["str"], default=None)
 
         tparser.add_option(section, "recompute_speed_course", dtypes=["bool"], default=False, null_value=False)
-        tparser.add_option(section, "compute_uv_ship", dtypes=["bool"], default=False, null_value=False)
+        tparser.add_option(section, "compute_uv_ship", dtypes=["bool"], default=True, null_value=False)
         tparser.add_option(section, "recompute_density", dtypes=["bool"], default=True, null_value=False)
 
         tparser.add_option(section, "magnetic_declination", dtypes=["float"], default=None, comments="If set, also se the adcp_magnetic_declination_preset since the ADCP already corrects it.")
@@ -389,8 +389,8 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
 
 
         section = "METOCE_CORRECTION"
-        tparser.add_option(section, "adcp_motion_correction", dtypes=["bool"], default=False, null_value=False)
-        tparser.add_option(section, "wind_motion_correction", dtypes=["bool"], default=False, null_value=False)
+        tparser.add_option(section, "adcp_motion_correction", dtypes=["bool"], default=True, null_value=False)
+        tparser.add_option(section, "wind_motion_correction", dtypes=["bool"], default=True, null_value=False)
 
         tparser.add_option(section, "ph_salinity_correction", dtypes=["bool"], default=True, null_value=False)
         tparser.add_option(section, 'ph_salinity_coeffs', dtypes=["float"], nargs=3, default="", comments="Calibration coefficient: [psal, k0, k2]")

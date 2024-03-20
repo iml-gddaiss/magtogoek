@@ -39,7 +39,7 @@ if TYPE_CHECKING:
     from magtogoek.metoce.process import ProcessConfig
 
 
-# If modified, carry the modification to `metoce.process.ProcessConfig` and to `config_handler.py`.
+# If modified, carry the modification to `metoce.process.ProcessConfig` and to `process_configurations.py`.
 SPIKE_QC_VARIABLES = [
     "salinity", "temperature", "dissolved_oxygen", "ph", "scattering", "chlorophyll", "fdom"
 ]

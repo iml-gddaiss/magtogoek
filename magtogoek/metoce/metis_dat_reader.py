@@ -307,6 +307,8 @@ def _degree_minute_to_degree_decimal(value: str) -> float:
          return 'NAN'
 
 
-if __name__ == '__main__':
-    filename = "/home/jeromejguay/ImlSpace/Data/pmza_2023/IML-4/PMZA-RIKI_FileTAGS_2023.dat"
-    md = RawMetisDatReader().read(filenames=filename)
+# if __name__ == '__main__':
+#     import matplotlib.pyplot as plt
+#
+#     filename = "/home/jeromejguay/ImlSpace/Data/pmza_2023/IML-4/PMZA-RIKI_FileTAGS.dat"
+#     md = RawMetisDatReader().read(filenames=filename)
