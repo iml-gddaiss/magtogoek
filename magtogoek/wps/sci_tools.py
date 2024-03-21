@@ -20,7 +20,7 @@ CELCIUS_TO_KELVIN = 273.15
 
 GAS_CONSTANT = 8.31446261815324  # the constant in seabird docs differs 8.3144621 J/(K mol). Application Note 99
 FARADAY_CONSTANT = 96485.365
-
+CO2_MOLAR_MASS = 0.044 # [kg/mol]
 
 def compute_in_situ_density(
         temperature: Union[float, np.ndarray],
@@ -59,7 +59,7 @@ def compute_in_situ_density(
     return gsw.rho(SA=absolute_salinity, CT=conservative_temperature, p=pres)
 
 
-def rinko_raw_measurement_from_dissolved_oxygen(
+def rinko_raw_data_from_dissolved_oxygen(
         dissolved_oxygen: Union[float, np.ndarray],
         temperature: Union[float, np.ndarray],
         coeffs: List[float],
@@ -163,6 +163,42 @@ def dissolved_oxygen_from_rinko_raw_measurement(
     return (A / B - 1) / C
 
 
+def dissolved_oxygen_correction_winkler(
+        dissolved_oxygen: np.ndarray,
+        temperature: np.ndarray,
+        rinko_coeffs: List[float],
+        winkler_coeffs: List[float],
+):
+    """
+    Sensor raw values are retro computed using the calibration coefficients [d0, d1, d2, c0, c1, c2],
+    and then the dissolved oxygen is re-computed using the Winkler coefficients [d1_w, d2_w] for [d1, d2].
+
+    Parameters
+    ----------
+    dissolved_oxygen :
+
+    temperature :
+
+    rinko_coeffs :
+        [d0, d1, d2, c0, c1, c2]
+    winkler_coeffs :
+        Winkler coefficients [d1_w, d2_w]
+
+    Returns
+    -------
+        Winkler corrected dissolved oxygen.
+
+    Notes
+    -----
+    Needs to be done on uncorrected data (in pressure or salinity).
+    """
+    raw = rinko_raw_data_from_dissolved_oxygen(dissolved_oxygen=dissolved_oxygen, temperature=temperature, coeffs=rinko_coeffs)
+
+    rinko_coeffs[1:3] = winkler_coeffs
+
+    return dissolved_oxygen_from_rinko_raw_measurement(raw=raw, temperature=temperature, coeffs=rinko_coeffs)
+
+
 def dissolved_oxygen_ml_per_L_to_umol_per_L(dissolved_oxygen: Union[float, np.ndarray], inverse=False) -> Union[float, np.ndarray]:
     """
     ```(García and Gordon, 1992)
@@ -215,7 +251,7 @@ def dissolved_oxygen_umol_per_L_to_umol_per_kg(dissolved_oxygen: Union[float, np
     return 1000 * dissolved_oxygen / density
 
 
-def compute_scaled_temperature(temperature: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+def _compute_scaled_temperature(temperature: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
     """
 
     ```
@@ -275,7 +311,7 @@ def phINT_from_voltINT(temp: Union[float, np.ndarray], volt: Union[float, np.nda
 
     """
 
-    s_nernst = compute_s_nernst(temp)
+    s_nernst = _compute_s_nernst(temp)
     return (volt - k0 - k2 * temp) / s_nernst
 
 
@@ -330,7 +366,7 @@ def voltEXT_from_pHEXT(ph: Union[float, np.ndarray], temp: Union[float, np.ndarr
 
     .. [2] Sea-Bird Scientific, Technical Note on Calculating pH, Application Note 99
     """
-    s_nernst = compute_s_nernst(temp)
+    s_nernst = _compute_s_nernst(temp)
     cl_t = total_chloride_in_seawater(psal=psal)
     log_y_hcl_t = log_of_HCl_activity_as_temperature_function(temp=temp, psal=psal)
     s_t = total_sulfate_in_seawater(psal=psal)
@@ -395,7 +431,7 @@ def pHEXT_from_voltEXT(volt: Union[float, np.ndarray], temp: Union[float, np.nda
     .. [2] Sea-Bird Scientific, Technical Note on Calculating pH, Application Note 99
 
     """
-    s_nernst = compute_s_nernst(temp)
+    s_nernst = _compute_s_nernst(temp)
     cl_t = total_chloride_in_seawater(psal=psal)
     log_y_hcl_t = log_of_HCl_activity_as_temperature_function(temp=temp, psal=psal)
     s_t = total_sulfate_in_seawater(psal=psal)
@@ -408,7 +444,7 @@ def pHEXT_from_voltEXT(volt: Union[float, np.ndarray], temp: Union[float, np.nda
             - np.log10((1000 - 1.005 * psal) / 1000))
 
 
-def compute_s_nernst(temp:  Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+def _compute_s_nernst(temp:  Union[float, np.ndarray]) -> Union[float, np.ndarray]:
     return GAS_CONSTANT * (temp + CELCIUS_TO_KELVIN) * np.log(10) / FARADAY_CONSTANT
 
 
@@ -669,7 +705,7 @@ def dissolved_oxygen_correction_for_salinity_SCOR_WG_142(dissolved_oxygen: np.nd
     b0, b1, b2, b3 = -6.24523e-3, -7.37614e-3, -1.03410e-2, -8.17083e-3
     c0 = -4.8868e-7
 
-    t_s = compute_scaled_temperature(temperature)
+    t_s = _compute_scaled_temperature(temperature)
 
     poly_a = a0 + a1*t_s + a2*t_s**2 + a3*t_s**3 + a4*t_s**4 + a5*t_s**5
     poly_b = b0 + b1*t_s + b2*t_s**2 + b3*t_s**3
@@ -769,28 +805,51 @@ def pH_correction_for_salinity(
 
     return ph
 
+def compute_pco2_air(co2: np.ndarray, pressure: np.ndarray) -> np.ndarray:
+    """
+    ```
+    pco2[uatm] = pressure[atm] * co2[ppm]
 
-def pco2_water_solubility_correction(pco2_water: np.array, salinity: np.ndarray, temperature: np.ndarray) -> np.ndarray:
+    co2: Concentration
+```
+
+    Parameters
+    ----------
+    co2:
+        Concentration in ppm.
+    pressure:
+        Gas Pressure in atm
+    Returns
+    -------
+
+    """
+    return co2 * pressure
+
+def compute_pco2_water(co2_water: np.array, salinity: np.ndarray, temperature: np.ndarray) -> np.ndarray:
     """
 
-    ```Pro-Oceanus Documentation
+    ```[Thermodynamics of the carbon dioxide system in the oceans. Frank J. Millero, 1994, Pergamon]
     a0 = -60.2409 + 93.4517 * (100/temperature) + 23.3585 * ln(temperature/100)
     a1 = salinity * [0.023517-0.023656 * (temperature/100) + 0.0047036 * (temperature/100)^2]
 
     k0 = exp(a0 + a1)
 
-    pCO2_water_corr = k0 * pCO2_water
+    pCO2_water = CO2_water[ppm] / (k0[mol*kg-1*atm-1] * mmCO2[kg/mol])
+
+    * temperate in kelvin
+    * k0 units are [mol*kg-1*atm-1]
+    * mmCO2: co2 molar mass = 0.044 [kg/mol]
     ```
 
     Parameters
     ----------
-    pco2_water
+    co2_water
     salinity
     temperature
 
     Returns
     -------
-    pco2_water_corr
+    pco2_water
 
     """
     temperature += CELCIUS_TO_KELVIN
@@ -799,4 +858,4 @@ def pco2_water_solubility_correction(pco2_water: np.array, salinity: np.ndarray,
 
     k0 = np.exp(a0 + a1)
 
-    return k0 * pco2_water
+    return co2_water / (k0 * CO2_MOLAR_MASS)

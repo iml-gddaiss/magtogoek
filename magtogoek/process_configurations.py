@@ -383,6 +383,8 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
         tparser.add_option(section, "recompute_speed_course", dtypes=["bool"], default=False, null_value=False)
         tparser.add_option(section, "compute_uv_ship", dtypes=["bool"], default=True, null_value=False)
         tparser.add_option(section, "recompute_density", dtypes=["bool"], default=True, null_value=False)
+        tparser.add_option(section, "compute_pco2", dtypes=['bool'], default=True, null_value=False)
+
 
         tparser.add_option(section, "magnetic_declination", dtypes=["float"], default=None, comments="If set, also se the adcp_magnetic_declination_preset since the ADCP already corrects it.")
         tparser.add_option(section, "adcp_magnetic_declination_preset", dtypes=["float"], default=None, comments="Found in the ADCP configuration file. (Used for RTI)")
