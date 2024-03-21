@@ -1,19 +1,24 @@
 """
 Metoce Data Computation.
 """
+from typing import TYPE_CHECKING
+
 import gsw
 import numpy as np
 import xarray as xr
 
 from magtogoek import logger as l
-from magtogoek.metoce.process import ProcessConfig
+
 from magtogoek.navigation import compute_speed_and_course, compute_uv_ship
 from magtogoek.process_common import add_correction_attributes_to_dataarray
 from magtogoek.wps.sci_tools import dissolved_oxygen_ml_per_L_to_umol_per_L, dissolved_oxygen_umol_per_L_to_umol_per_kg, \
     rinko_raw_data_from_dissolved_oxygen, dissolved_oxygen_from_rinko_raw_measurement, compute_in_situ_density, \
     compute_pco2_air, compute_pco2_water
 
-#dataset["u_ship"], dataset["v_ship"] = north_polar2cartesian(dataset.speed, dataset.course)
+if TYPE_CHECKING:
+    from magtogoek.metoce.process import ProcessConfig
+
+
 def compute_buoy_speed_and_course(dataset: xr.Dataset):
     if all(v in dataset for v in ['lon', 'lat']):
         l.log('Platform `speed` and `course` computed from longitude and latitude data.')
@@ -202,7 +207,7 @@ def convert_dissolved_oxygen_ml_per_L_to_umol_per_L(dataset: xr.Dataset):
         l.warning(
             f"Wrong dissolved oxygen units {dataset.dissolved_oxygen.attrs['units']} for conversion from [ml/L] to [umol/L].")
 
-
+# Not used. All oxygen data are loaded output in [umol/L]
 def convert_dissolved_oxygen_umol_per_L_to_umol_per_kg(dataset: xr.Dataset):
     if dataset.dissolved_oxygen.attrs['units'] == ['umol/L']:
         if 'density' in dataset.variables:
