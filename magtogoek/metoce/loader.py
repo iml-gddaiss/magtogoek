@@ -38,11 +38,9 @@ import pint_xarray # pint_xarray modify the xr.Dataset Object
 KNOTS_TO_METER_PER_SECONDS = 0.5144444444 # mps/knots
 MILLIMETER_TO_METER = 1 / 1000 # m / 1000 mmm
 CENTIMETER_TO_METER = 1 / 100  # m / 100 cm
-MILLIBAR_TO_ATMOSPHERE = 1 / 1013.25 # 1 atm / 1013.25 mbar
 
 RTI_FILL_VALUE = 88888
 RDI_FILL_VALUE = -32768.0
-
 
 def load_metoce_data(
         filenames: Union[str, List[str]],
@@ -238,21 +236,15 @@ def _load_viking_metoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[n
         l.log('Par Digi data loaded.')
 
     if viking_data.co2_a is not None:
-        #_pco2_air = viking_data.co2_a['co2_ppm'] * viking_data.co2_a['cell_gas_pressure_mbar'] * MILLIBAR_TO_ATMOSPHERE
         data.update({
-            #'pco2_air': (_pco2_air, {'units': 'uatm'}),
             'co2_air': (viking_data.co2_a['co2_ppm'], {'units': 'ppm'}),
-            'co2_air_pressure': (viking_data.co2_a['cell_gas_pressure_mbar'], {'units': 'mbar'})
         })
         l.log('Co2_a data loaded.')
 
     if viking_data.co2_w is not None:
-        #_pco2_water = viking_data.co2_w['co2_ppm'] * viking_data.co2_w['cell_gas_pressure_mbar'] * MILLIBAR_TO_ATMOSPHERE
         data.update(
             {
-                #'pco2_water': (_pco2_water, {'units': 'uatm'}),
                 'co2_water': (viking_data.co2_w['co2_ppm'], {'units': 'ppm'}),
-                'co2_water_pressure': (viking_data.co2_w['cell_gas_pressure_mbar'], {'units': 'mbar'})
             }
         )
         l.log('Co2_w data loaded.')
@@ -312,8 +304,6 @@ def _load_viking_metoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[n
                 viking_data.rti[_name][viking_data.rti[_name] == RTI_FILL_VALUE] = np.nan
                 data[_name] = (viking_data.rti[_name] * MILLIMETER_TO_METER, {"units": "m/s"}) #rounded to mm.
             l.log('Rti data loaded.')
-
-    #data = _fill_data(data)
 
     return data, global_attrs
 
@@ -426,12 +416,11 @@ def _load_metis_metoce_data(metis_data: MetisData) -> Tuple[Dict[str, Tuple[np.m
 
 
     if metis_data.pco2 is not None:
-        _pco2_air = metis_data.pco2['co2_ppm_air'] * metis_data.pco2['gas_pressure_air_mbar'] * MILLIBAR_TO_ATMOSPHERE
-        _pco2_water = metis_data.pco2['co2_ppm_water'] * metis_data.pco2['gas_pressure_water_mbar'] * MILLIBAR_TO_ATMOSPHERE
+
         data.update(
             {
-                'pco2_air': (_pco2_air, {'units': 'uatm'}),
-                'pco2_water': (_pco2_water, {'units': 'uatm'})
+                'co2_air': (metis_data.pco2['co2_ppm_air'], {'units': 'ppm'}),
+                'co2_water': (metis_data.pco2['co2_ppm_water'], {'units': 'ppm'}),
              }
         )
         l.log('PCO2 Data Loaded')
@@ -449,7 +438,7 @@ def _average_duplicates(dataset: xr.Dataset, coord: str) -> xr.Dataset:
     """Average data_array values of duplicates time coords index.
     """
 
-    # average any duplicate value along coord by groupping according to coord value.
+    # average any duplicate value along coord by grouping according to coord value.
     df = dataset.to_dataframe()
     df = df.groupby(coord).mean(numeric_only=False)
 

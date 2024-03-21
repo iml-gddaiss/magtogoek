@@ -16,7 +16,7 @@ import numpy as np
 import gsw
 from typing import Union, List
 
-CELCIUS_TO_KELVIN = 273.15
+CELSIUS_TO_KELVIN = 273.15
 
 GAS_CONSTANT = 8.31446261815324  # the constant in seabird docs differs 8.3144621 J/(K mol). Application Note 99
 FARADAY_CONSTANT = 96485.365
@@ -266,7 +266,7 @@ def _compute_scaled_temperature(temperature: Union[float, np.ndarray]) -> Union[
     -------
 
     """
-    return np.log((298.15 - temperature) / (CELCIUS_TO_KELVIN + temperature))
+    return np.log((298.15 - temperature) / (CELSIUS_TO_KELVIN + temperature))
 
 
 def phINT_from_voltINT(temp: Union[float, np.ndarray], volt: Union[float, np.ndarray], k0: float, k2: float) -> Union[float, np.ndarray]:
@@ -445,7 +445,7 @@ def pHEXT_from_voltEXT(volt: Union[float, np.ndarray], temp: Union[float, np.nda
 
 
 def _compute_s_nernst(temp:  Union[float, np.ndarray]) -> Union[float, np.ndarray]:
-    return GAS_CONSTANT * (temp + CELCIUS_TO_KELVIN) * np.log(10) / FARADAY_CONSTANT
+    return GAS_CONSTANT * (temp + CELSIUS_TO_KELVIN) * np.log(10) / FARADAY_CONSTANT
 
 
 def total_chloride_in_seawater(psal: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
@@ -605,7 +605,7 @@ def acid_dissociation_constant_HSO4(temp: Union[float, np.ndarray], psal: Union[
 
     .. [2] Sea-Bird Scientific, Technical Note on Calculating pH, Application Note 99
     """
-    temp_k = temp + CELCIUS_TO_KELVIN
+    temp_k = temp + CELSIUS_TO_KELVIN
     ionic_s = sample_ionic_strength(psal=psal)
     a0 = (-4276.1 / temp_k) + 141.328 - 23.093 * np.log(temp_k)
     a1 = ((-13856 / temp_k) + 324.57 - 47.986 * np.log(temp_k)) * np.sqrt(ionic_s)
@@ -638,7 +638,7 @@ def log_of_HCl_activity_as_temperature_and_pressure_function(psal: Union[float, 
    pres :
        pressure in dbar
    """
-    temp_k = temp + CELCIUS_TO_KELVIN
+    temp_k = temp + CELSIUS_TO_KELVIN
     log_t = log_of_HCl_activity_as_temperature_function(psal=psal, temp=temp)
     v_hcl = partial_molal_volume_hcl(temp=temp)
 
@@ -825,37 +825,69 @@ def compute_pco2_air(co2: np.ndarray, pressure: np.ndarray) -> np.ndarray:
     """
     return co2 * pressure
 
-def compute_pco2_water(co2_water: np.array, salinity: np.ndarray, temperature: np.ndarray) -> np.ndarray:
+def compute_pco2_water(xco2: np.array, salinity: np.ndarray, temperature: np.ndarray, pressure: np.ndarray) -> np.ndarray:
     """
 
-    ```[Thermodynamics of the carbon dioxide system in the oceans. Frank J. Millero, 1994, Pergamon]
-    a0 = -60.2409 + 93.4517 * (100/temperature) + 23.3585 * ln(temperature/100)
-    a1 = salinity * [0.023517-0.023656 * (temperature/100) + 0.0047036 * (temperature/100)^2]
-
-    k0 = exp(a0 + a1)
-
-    pCO2_water = CO2_water[ppm] / (k0[mol*kg-1*atm-1] * mmCO2[kg/mol])
-
-    * temperate in kelvin
-    * k0 units are [mol*kg-1*atm-1]
-    * mmCO2: co2 molar mass = 0.044 [kg/mol]
-    ```
 
     Parameters
     ----------
-    co2_water
-    salinity
-    temperature
+    xco2:
+        [ppm]
+    salinity:
+        [PSU]
+    temperature:
+        seawater temperature [celsius[
+    pressure:
+        atmospheric [atm]
 
     Returns
     -------
     pco2_water
 
     """
-    temperature += CELCIUS_TO_KELVIN
-    a0 = -60.2409 + 93.4517 * (100 / temperature) + 23.3585 * np.log(temperature / 100)
-    a1 = salinity * (0.023517 - 0.023656 * (temperature / 100) + 0.0047036 * (temperature / 100) ** 2)
 
-    k0 = np.exp(a0 + a1)
+    # this seems to be the fugacity factor
+    # temperature_K = temperature + CELSIUS_TO_KELVIN
+    # lnk0 = (
+    #         -60.2409
+    #         + 93.4517 * (100 / temperature_K)
+    #         + 23.3585 * np.log(temperature_K / 100)
+    #         + salinity * (0.023517 - 0.023656 * (temperature_K / 100) + 0.0047036 * (temperature_K / 100) ** 2)
+    # )
+    #k0 = np.exp(lnk0)
 
-    return co2_water / (k0 * CO2_MOLAR_MASS)
+    kvp = compute_co2_vapor_pressure_factor(salinity=salinity, temperature=temperature, pressure=pressure)
+
+    return xco2 * kvp
+
+
+
+def compute_co2_vapor_pressure_factor(salinity: np.ndarray, temperature: np.ndarray, pressure: np.ndarray) -> np.ndarray:
+    """
+
+    Parameters
+    ----------
+    salinity:
+        [PSU]
+    temperature:
+        seawater temperature [celsius[
+    pressure:
+        atmospheric [atm]
+
+    Returns
+    -------
+        vapor pressure factor
+
+    Source
+    ------
+    https://github.com/mvdh7/PyCO2SYS/blob/2705ff00ca5ddd47d0d7c905b9138d8ee3785563/PyCO2SYS/gas.py#L67
+
+    """
+    temperature_K = temperature + CELSIUS_TO_KELVIN
+    lnkvp = (
+        24.4543 - 67.4509 * (100 / temperature_K)
+        - 4.8489 * np.log(temperature_K/ 100)
+        - 0.000544 * salinity
+    )
+
+    return pressure - np.exp(lnkvp)
