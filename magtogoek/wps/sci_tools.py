@@ -836,7 +836,7 @@ def compute_pco2_water(xco2: np.array, salinity: np.ndarray, temperature: np.nda
     salinity:
         [PSU]
     temperature:
-        seawater temperature [celsius[
+        seawater temperature [Celsius]
     pressure:
         atmospheric [atm]
 
@@ -846,23 +846,15 @@ def compute_pco2_water(xco2: np.array, salinity: np.ndarray, temperature: np.nda
 
     """
 
-    # this seems to be the fugacity factor
-    # temperature_K = temperature + CELSIUS_TO_KELVIN
-    # lnk0 = (
-    #         -60.2409
-    #         + 93.4517 * (100 / temperature_K)
-    #         + 23.3585 * np.log(temperature_K / 100)
-    #         + salinity * (0.023517 - 0.023656 * (temperature_K / 100) + 0.0047036 * (temperature_K / 100) ** 2)
-    # )
-    #k0 = np.exp(lnk0)
+    # ProCO2 measure the `Wet` Concentration. If the `Dry` concentration was measure the pressure would need to be
+    # corrected for water vapor pressure e.i.
+    # pressure_corrected =  pressure - compute_seawater_vapor_pressure(salinity=salinity, temperature=temperature)
 
-    kvp = compute_co2_vapor_pressure_factor(salinity=salinity, temperature=temperature, pressure=pressure)
-
-    return xco2 * kvp
+    return xco2 * pressure
 
 
-
-def compute_co2_vapor_pressure_factor(salinity: np.ndarray, temperature: np.ndarray, pressure: np.ndarray) -> np.ndarray:
+# Not Used
+def compute_seawater_vapor_pressure(salinity: np.ndarray, temperature: np.ndarray) -> np.ndarray:
     """
 
     Parameters
@@ -870,24 +862,56 @@ def compute_co2_vapor_pressure_factor(salinity: np.ndarray, temperature: np.ndar
     salinity:
         [PSU]
     temperature:
-        seawater temperature [celsius[
-    pressure:
-        atmospheric [atm]
+        seawater temperature [Celsius]
 
     Returns
     -------
-        vapor pressure factor
+        seawater vapor pressure [atm]
 
-    Source
-    ------
-    https://github.com/mvdh7/PyCO2SYS/blob/2705ff00ca5ddd47d0d7c905b9138d8ee3785563/PyCO2SYS/gas.py#L67
+    References
+    ----------
+    .. [1] Weiss, R. F., & Price, B. A. (1980). Nitrous oxide solubility in water and seawater.
+            Marine Chemistry, 8(4), 347–359. doi:10.1016/0304-4203(80)90024-9
 
     """
-    temperature_K = temperature + CELSIUS_TO_KELVIN
-    lnkvp = (
-        24.4543 - 67.4509 * (100 / temperature_K)
-        - 4.8489 * np.log(temperature_K/ 100)
+    t_Kelvin = temperature + CELSIUS_TO_KELVIN
+    ln_kvp = (
+        24.4543 - 67.4509 * (100 / t_Kelvin)
+        - 4.8489 * np.log(t_Kelvin/ 100)
         - 0.000544 * salinity
     )
 
-    return pressure - np.exp(lnkvp)
+    return np.exp(ln_kvp)
+
+
+# Not Used
+def compute_co2_seawater_solubility_coefficient(salinity: np.ndarray, temperature: np.ndarray) -> np.ndarray:
+    """
+
+    Parameters
+    ----------
+    salinity:
+        [PSU]
+    temperature:
+        seawater temperature [Celsius]
+
+    Returns
+    -------
+        solubility coefficient [mol kg-1 atm-1]
+
+
+    References
+    ----------
+    .. [1] Weiss, R. F. (1974). . Carbon dioxide in water and seawater: the solubility of a non-ideal gas.
+            Marine Chemistry. 2:203-215. 10.1016/0304-4203(74)90015-2
+
+    """
+    t_Kelvin = temperature + CELSIUS_TO_KELVIN
+
+    ln_k0 = (
+        -60.2409 + 93.4517 * (100 / t_Kelvin) + 23.3585 * np.log(t_Kelvin / 100)
+        + salinity * (0.023517 - 0.023656 * (t_Kelvin / 100) + 0.0047036 * (t_Kelvin / 100) ** 2)
+    )
+
+    return np.exp(ln_k0)
+

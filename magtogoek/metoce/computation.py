@@ -153,46 +153,20 @@ def compute_potential_density(dataset: xr.Dataset, pconfig: "ProcessConfig"):
 
 
 def compute_air_and_water_pco2(dataset: xr.Dataset):
-    if 'pco2_air' not in dataset:
-        _compute_pco2_air(dataset=dataset)
+    """
+    partial_pressure [uatm] = concentration [ppm] * atmospheric pressure [atm]
 
-    if 'pco2_water' not in dataset:
-        _compute_pco2_water(dataset=dataset)
-
-
-def _compute_pco2_air(dataset: xr.Dataset):
-    required_variables = ['co2_air', 'atm_pressure']
-    if all((var in dataset for var in required_variables)):
-        _pressure = dataset[f'atm_pressure'].pint.quantify().pint.to('atm').pint.dequantify().values
-
-        _pco2 = compute_pco2_air(co2=dataset[f'co2_air'].values, pressure=_pressure)
-
-        dataset['pco2_air'] = (['time'], _pco2, {'units': 'uatm'})
-
-        l.log(f'pco2_air was computed.')
-    else:
-        l.warning(f'pco2 air computation aborted. One of more variables in {required_variables} was missing.')
-
-
-def _compute_pco2_water(dataset: xr.Dataset):
-    required_variables = ['co2_water', 'temperature', 'salinity', 'atm_pressure']
-    if all((var in dataset for var in required_variables)):
-        # FIXME add flag propagation and corrections flag.
-        _pressure = dataset[f'atm_pressure'].pint.quantify().pint.to('atm').pint.dequantify().values
-        _pco2 = compute_pco2_water(
-            xco2=dataset.co2_water.values,
-            temperature=dataset.temperature.values,
-            salinity=dataset.salinity.values,
-            pressure=_pressure
-        )
-
-        dataset['pco2_water'] = (['time'], _pco2, {'units': 'uatm'})
-
-        l.log('pco2_water was computed.')
-        add_correction_attributes_to_dataarray(dataset['pco2_water'])
-        dataset['pco2_water'].attrs["corrections"] += 'Solubility correction carried out.\n'
-    else:
-         l.warning(f'pco2 water computation aborted. One of more variables in {required_variables} was missing.')
+    """
+    for s in ('air', 'water'):
+        if f'pco2_{s}' not in dataset:
+            required_variables = [f'co2_{s}', 'atm_pressure']
+            if all((var in dataset for var in required_variables)):
+                # atmospheric pressure is in mbar
+                _pressure = dataset[f'atm_pressure'].pint.quantify().pint.to('atm').pint.dequantify().values
+                dataset[f'pco2_{s}'] = (['time'], dataset[f'co2_{s}'].values * _pressure, {'units': 'uatm'})
+                l.log(f'pco2_{s} was computed.')
+            else:
+                l.warning(f'pco2 {s} computation aborted. One of more variables in {required_variables} was missing.')
 
 
 # Not used. All oxygen data are loaded output in [umol/L]

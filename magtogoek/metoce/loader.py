@@ -236,17 +236,11 @@ def _load_viking_metoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[n
         l.log('Par Digi data loaded.')
 
     if viking_data.co2_a is not None:
-        data.update({
-            'co2_air': (viking_data.co2_a['co2_ppm'], {'units': 'ppm'}),
-        })
+        data.update({'co2_air': (viking_data.co2_a['co2_ppm'], {'units': 'ppm'})})
         l.log('Co2_a data loaded.')
 
     if viking_data.co2_w is not None:
-        data.update(
-            {
-                'co2_water': (viking_data.co2_w['co2_ppm'], {'units': 'ppm'}),
-            }
-        )
+        data.update({'co2_water': (viking_data.co2_w['co2_ppm'], {'units': 'ppm'})})
         l.log('Co2_w data loaded.')
 
     if viking_data.wave_m is not None:
