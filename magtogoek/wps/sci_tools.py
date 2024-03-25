@@ -15,12 +15,11 @@ Notes:
 import numpy as np
 import gsw
 from typing import Union, List
+from magtogoek.sci_tools import celsius_to_kelvin
 
-CELSIUS_TO_KELVIN = 273.15
 
 GAS_CONSTANT = 8.31446261815324  # the constant in seabird docs differs 8.3144621 J/(K mol). Application Note 99
 FARADAY_CONSTANT = 96485.365
-CO2_MOLAR_MASS = 0.044 # [kg/mol]
 
 def compute_in_situ_density(
         temperature: Union[float, np.ndarray],
@@ -266,10 +265,10 @@ def _compute_scaled_temperature(temperature: Union[float, np.ndarray]) -> Union[
     -------
 
     """
-    return np.log((298.15 - temperature) / (CELSIUS_TO_KELVIN + temperature))
+    return np.log((298.15 - temperature) / celsius_to_kelvin(temperature))
 
 
-def phINT_from_voltINT(temp: Union[float, np.ndarray], volt: Union[float, np.ndarray], k0: float, k2: float) -> Union[float, np.ndarray]:
+def phINT_from_voltINT(temperature: Union[float, np.ndarray], volt: Union[float, np.ndarray], k0: float, k2: float) -> Union[float, np.ndarray]:
     """Base on Seabird documentation
 
     ```(Martz et al. 2010)
@@ -288,7 +287,7 @@ def phINT_from_voltINT(temp: Union[float, np.ndarray], volt: Union[float, np.nda
 
     Parameters
     ----------
-    temp :
+    temperature :
         Temperature in Celsius.
     volt :
         Raw interior voltage.
@@ -311,11 +310,11 @@ def phINT_from_voltINT(temp: Union[float, np.ndarray], volt: Union[float, np.nda
 
     """
 
-    s_nernst = _compute_s_nernst(temp)
-    return (volt - k0 - k2 * temp) / s_nernst
+    s_nernst = _compute_s_nernst(temperature)
+    return (volt - k0 - k2 * temperature) / s_nernst
 
 
-def voltEXT_from_pHEXT(ph: Union[float, np.ndarray], temp: Union[float, np.ndarray], psal: float,
+def voltEXT_from_pHEXT(ph: Union[float, np.ndarray], temperature: Union[float, np.ndarray], psal: float,
                        k0: float, k2: float) -> Union[float, np.ndarray]:
     """Based on Seabird documentations
 
@@ -346,7 +345,7 @@ def voltEXT_from_pHEXT(ph: Union[float, np.ndarray], temp: Union[float, np.ndarr
     ----------
     ph :
         Exterior pH.
-    temp :
+    temperature :
         Temperature in Celsius.
     psal :
         Practical salinity.
@@ -366,20 +365,20 @@ def voltEXT_from_pHEXT(ph: Union[float, np.ndarray], temp: Union[float, np.ndarr
 
     .. [2] Sea-Bird Scientific, Technical Note on Calculating pH, Application Note 99
     """
-    s_nernst = _compute_s_nernst(temp)
+    s_nernst = _compute_s_nernst(temperature)
     cl_t = total_chloride_in_seawater(psal=psal)
-    log_y_hcl_t = log_of_HCl_activity_as_temperature_function(temp=temp, psal=psal)
+    log_y_hcl_t = log_of_HCl_activity_as_temperature_function(temperature=temperature, psal=psal)
     s_t = total_sulfate_in_seawater(psal=psal)
-    k_s = acid_dissociation_constant_HSO4(temp=temp, psal=psal)
+    k_s = acid_dissociation_constant_HSO4(temperature=temperature, psal=psal)
 
-    return k0 + k2 * temp + s_nernst * (ph
-                                        - np.log10(cl_t)
-                                        - 2 * log_y_hcl_t
-                                        + np.log10(1 + (s_t / k_s))
-                                        + np.log10((1000 - 1.005 * psal) / 1000))
+    return k0 + k2 * temperature + s_nernst * (ph
+                                               - np.log10(cl_t)
+                                               - 2 * log_y_hcl_t
+                                               + np.log10(1 + (s_t / k_s))
+                                               + np.log10((1000 - 1.005 * psal) / 1000))
 
 
-def pHEXT_from_voltEXT(volt: Union[float, np.ndarray], temp: Union[float, np.ndarray],
+def pHEXT_from_voltEXT(volt: Union[float, np.ndarray], temperature: Union[float, np.ndarray],
                        psal: Union[float, np.ndarray], k0: float, k2: float) -> Union[float, np.ndarray]:
     """Taken from Seabird documentations
 
@@ -410,7 +409,7 @@ def pHEXT_from_voltEXT(volt: Union[float, np.ndarray], temp: Union[float, np.nda
     ----------
     volt :
         Raw exterior voltage.
-    temp :
+    temperature :
         Temperature in Celsius.
     psal :
         Practical salinity.
@@ -431,21 +430,30 @@ def pHEXT_from_voltEXT(volt: Union[float, np.ndarray], temp: Union[float, np.nda
     .. [2] Sea-Bird Scientific, Technical Note on Calculating pH, Application Note 99
 
     """
-    s_nernst = _compute_s_nernst(temp)
+    s_nernst = _compute_s_nernst(temperature)
     cl_t = total_chloride_in_seawater(psal=psal)
-    log_y_hcl_t = log_of_HCl_activity_as_temperature_function(temp=temp, psal=psal)
+    log_y_hcl_t = log_of_HCl_activity_as_temperature_function(temperature=temperature, psal=psal)
     s_t = total_sulfate_in_seawater(psal=psal)
-    k_s = acid_dissociation_constant_HSO4(temp=temp, psal=psal)
+    k_s = acid_dissociation_constant_HSO4(temperature=temperature, psal=psal)
 
-    return ((volt - k0 - k2 * temp) / s_nernst
+    return ((volt - k0 - k2 * temperature) / s_nernst
             + np.log10(cl_t)
             + 2 * log_y_hcl_t
             - np.log10(1 + (s_t / k_s))
             - np.log10((1000 - 1.005 * psal) / 1000))
 
 
-def _compute_s_nernst(temp:  Union[float, np.ndarray]) -> Union[float, np.ndarray]:
-    return GAS_CONSTANT * (temp + CELSIUS_TO_KELVIN) * np.log(10) / FARADAY_CONSTANT
+def _compute_s_nernst(temperature:  Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+    """
+    ```
+    s_nernst = R * temperature_Kelvin * ln(10) / F
+    ```
+
+    R: Gas Constant -> 8.31446261815324
+    F: Faraday Constant -> 96485.365
+
+    """
+    return GAS_CONSTANT * celsius_to_kelvin(temperature) * np.log(10) / FARADAY_CONSTANT
 
 
 def total_chloride_in_seawater(psal: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
@@ -494,7 +502,7 @@ def sample_ionic_strength(psal: Union[float, np.ndarray]) -> Union[float, np.nda
     return (19.924 * psal) / (1000 - 1.005 * psal)
 
 
-def debye_huckel_HCl_activity_constant(temp: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+def debye_huckel_HCl_activity_constant(temperature: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
     """Taken from Seabird documentations
 
     ```(Khoo et al. 1977)
@@ -505,7 +513,7 @@ def debye_huckel_HCl_activity_constant(temp: Union[float, np.ndarray]) -> Union[
 
     Parameters
     ----------
-    temp :
+    temperature :
         temperature in Celsius
 
     References
@@ -515,10 +523,10 @@ def debye_huckel_HCl_activity_constant(temp: Union[float, np.ndarray]) -> Union[
 
     .. [2] Sea-Bird Scientific, Technical Note on Calculating pH, Application Note 99
     """
-    return 0.0000034286 * temp ** 2 + 0.00067524 * temp + 0.49172143
+    return 0.0000034286 * temperature ** 2 + 0.00067524 * temperature + 0.49172143
 
 
-def log_of_HCl_activity_as_temperature_function(temp: Union[float, np.ndarray], psal: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+def log_of_HCl_activity_as_temperature_function(temperature: Union[float, np.ndarray], psal: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
     """Taken from Seabird documentations
 
     ```(Khoo et al. 1977)
@@ -535,7 +543,7 @@ def log_of_HCl_activity_as_temperature_function(temp: Union[float, np.ndarray], 
     ----------
     psal :
         practical salinity
-    temp :
+    temperature :
         temperature in Celsius
 
     References
@@ -545,10 +553,10 @@ def log_of_HCl_activity_as_temperature_function(temp: Union[float, np.ndarray], 
 
     .. [2] Sea-Bird Scientific, Technical Note on Calculating pH, Application Note 99
     """
-    a_dh = debye_huckel_HCl_activity_constant(temp=temp)
+    a_dh = debye_huckel_HCl_activity_constant(temperature=temperature)
     ionic_s = sample_ionic_strength(psal=psal)
 
-    return -(a_dh * np.sqrt(ionic_s)) / (1 + 1.394 * np.sqrt(ionic_s)) + (0.08885 - 0.000111 * temp) * ionic_s
+    return -(a_dh * np.sqrt(ionic_s)) / (1 + 1.394 * np.sqrt(ionic_s)) + (0.08885 - 0.000111 * temperature) * ionic_s
 
 
 def total_sulfate_in_seawater(psal: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
@@ -575,7 +583,7 @@ def total_sulfate_in_seawater(psal: Union[float, np.ndarray]) -> Union[float, np
     return (0.1400 / 96.062) * (psal / 1.80655)
 
 
-def acid_dissociation_constant_HSO4(temp: Union[float, np.ndarray], psal: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+def acid_dissociation_constant_HSO4(temperature: Union[float, np.ndarray], psal: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
     """Taken from Seabird documentations
 
     ```(Dickson et al. 2007)
@@ -596,7 +604,7 @@ def acid_dissociation_constant_HSO4(temp: Union[float, np.ndarray], psal: Union[
     ----------
     psal :
         practical salinity
-    temp :
+    temperature :
         temperature in Celsius
 
     References
@@ -605,7 +613,7 @@ def acid_dissociation_constant_HSO4(temp: Union[float, np.ndarray], psal: Union[
 
     .. [2] Sea-Bird Scientific, Technical Note on Calculating pH, Application Note 99
     """
-    temp_k = temp + CELSIUS_TO_KELVIN
+    temp_k = celsius_to_kelvin(temperature)
     ionic_s = sample_ionic_strength(psal=psal)
     a0 = (-4276.1 / temp_k) + 141.328 - 23.093 * np.log(temp_k)
     a1 = ((-13856 / temp_k) + 324.57 - 47.986 * np.log(temp_k)) * np.sqrt(ionic_s)
@@ -617,7 +625,7 @@ def acid_dissociation_constant_HSO4(temp: Union[float, np.ndarray], psal: Union[
 
 
 def log_of_HCl_activity_as_temperature_and_pressure_function(psal: Union[float, np.ndarray],
-                                                             temp: Union[float, np.ndarray],
+                                                             temperature: Union[float, np.ndarray],
                                                              pres: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
     """(Khoo et al. 1977)
 
@@ -633,19 +641,19 @@ def log_of_HCl_activity_as_temperature_and_pressure_function(psal: Union[float, 
    ----------
    psal :
        practical salinity
-   temp :
+   temperature :
        temperature in Celsius
    pres :
        pressure in dbar
    """
-    temp_k = temp + CELSIUS_TO_KELVIN
-    log_t = log_of_HCl_activity_as_temperature_function(psal=psal, temp=temp)
-    v_hcl = partial_molal_volume_hcl(temp=temp)
+    temp_k = celsius_to_kelvin(temperature)
+    log_t = log_of_HCl_activity_as_temperature_function(psal=psal, temperature=temperature)
+    v_hcl = partial_molal_volume_hcl(temperature=temperature)
 
     return log_t + ((v_hcl * pres) / (10 * np.log(10) * GAS_CONSTANT * temp_k)) / 2
 
 
-def partial_molal_volume_hcl(temp: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+def partial_molal_volume_hcl(temperature: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
     """(Millero 1983)
 
    V_HCl = 17.85 + 0.1044 * t - 0.001316 * t**2
@@ -654,11 +662,11 @@ def partial_molal_volume_hcl(temp: Union[float, np.ndarray]) -> Union[float, np.
 
    Parameters
    ----------
-   temp :
+   temperature :
        temperature in Celsius
 
    """
-    return 17.85 + 0.1044 * temp - 0.001316 * temp ** 2
+    return 17.85 + 0.1044 * temperature - 0.001316 * temperature ** 2
 
 
 def dissolved_oxygen_correction_for_salinity_SCOR_WG_142(dissolved_oxygen: np.ndarray, salinity: np.ndarray, temperature: np.ndarray):
@@ -800,34 +808,60 @@ def pH_correction_for_salinity(
         Corrected pH
 
     """
-    volt = voltEXT_from_pHEXT(ph=ph, temp=ph_temperature, psal=cal_psal, k0=k0, k2=k2)
-    ph = pHEXT_from_voltEXT(volt=volt, temp=temperature, psal=salinity, k0=k0, k2=k2)
+    volt = voltEXT_from_pHEXT(ph=ph, temperature=ph_temperature, psal=cal_psal, k0=k0, k2=k2)
+    ph = pHEXT_from_voltEXT(volt=volt, temperature=temperature, psal=salinity, k0=k0, k2=k2)
 
     return ph
 
-def compute_pco2_air(co2: np.ndarray, pressure: np.ndarray) -> np.ndarray:
+def air_pco2_from_xco2(xco2: np.ndarray, atmospheric_pressure: np.ndarray) -> np.ndarray:
     """
     ```
-    pco2[uatm] = pressure[atm] * co2[ppm]
-
-    co2: Concentration
-```
+    pco2[uatm] = xco2[ppm] * pressure[atm]
+    ```
 
     Parameters
     ----------
-    co2:
-        Concentration in ppm.
-    pressure:
-        Gas Pressure in atm
+    xco2:
+        [ppm].
+    atmospheric_pressure:
+        [atm]
     Returns
     -------
+        pco2_air: [air]
+    """
+    return xco2 * atmospheric_pressure
+
+def water_pco2_from_wet_xco2(xco2: np.array, atmospheric_pressure: np.ndarray) -> np.ndarray:
+    """
+    ```
+    pco2[uatm] = xco2[ppm] * pressure[atm]
+    ```
+
+    Parameters
+    ----------
+    xco2:
+        [ppm]
+    atmospheric_pressure:
+        [atm]
+
+    Returns
+    -------
+        pco2_water: [uatm]
+
+    See Also
+    --------
+        water_pco2_from_dry_xco2: for dry xco2 measurements.
 
     """
-    return co2 * pressure
+    return xco2 * atmospheric_pressure
 
-def compute_pco2_water(xco2: np.array, salinity: np.ndarray, temperature: np.ndarray, pressure: np.ndarray) -> np.ndarray:
+def water_pco2_from_dry_xco2(
+        xco2: np.ndarray, atmospheric_pressure: np.ndarray, salinity: np.ndarray, temperature: np.ndarray
+) -> np.ndarray:
     """
-
+    ```
+    pco2[uatm] = xco2[ppm] * (pressure[atm] - seawater_vapor_pressure[atm])
+    ```
 
     Parameters
     ----------
@@ -836,33 +870,44 @@ def compute_pco2_water(xco2: np.array, salinity: np.ndarray, temperature: np.nda
     salinity:
         [PSU]
     temperature:
-        seawater temperature [Celsius]
-    pressure:
-        atmospheric [atm]
+        temperature [Celsius] at which xCO2 was measured.
+    atmospheric_pressure:
+        [atm]
 
     Returns
     -------
-    pco2_water
+        pco2_water
 
+    References
+    ----------
+    .. [1] Weiss, R., & Price, B. (1980). Nitrous Oxide Solubility in Water and Seawater. Marine Chemistry, 8, 347-359.
+            https://doi.org/10.1016/0304-4203(80)90024-9
+
+    See Also
+    --------
+        water_pco2_from_wet_xco2: for wet xco2 measurements.
     """
-
-    # ProCO2 measure the `Wet` Concentration. If the `Dry` concentration was measure the pressure would need to be
-    # corrected for water vapor pressure e.i.
-    # pressure_corrected =  pressure - compute_seawater_vapor_pressure(salinity=salinity, temperature=temperature)
-
-    return xco2 * pressure
-
+    return xco2 * (atmospheric_pressure - compute_seawater_vapor_pressure(salinity=salinity, temperature=temperature))
 
 # Not Used
 def compute_seawater_vapor_pressure(salinity: np.ndarray, temperature: np.ndarray) -> np.ndarray:
     """
+    ```
+    ln_kvp = (
+        24.4543 - 67.4509 * (100 / t_Kelvin)
+        - 4.8489 * np.log(t_Kelvin/ 100)
+        - 0.000544 * salinity
+    )
+
+    seawater_vapor_pressure = np.exp(ln_kvp)
+    ```
 
     Parameters
     ----------
     salinity:
         [PSU]
     temperature:
-        seawater temperature [Celsius]
+        temperature [Celsius]
 
     Returns
     -------
@@ -870,11 +915,11 @@ def compute_seawater_vapor_pressure(salinity: np.ndarray, temperature: np.ndarra
 
     References
     ----------
-    .. [1] Weiss, R. F., & Price, B. A. (1980). Nitrous oxide solubility in water and seawater.
-            Marine Chemistry, 8(4), 347–359. doi:10.1016/0304-4203(80)90024-9
+    .. [1] Weiss, R., & Price, B. (1980). Nitrous Oxide Solubility in Water and Seawater. Marine Chemistry, 8, 347-359.
+        https://doi.org/10.1016/0304-4203(80)90024-9
 
     """
-    t_Kelvin = temperature + CELSIUS_TO_KELVIN
+    t_Kelvin = celsius_to_kelvin(temperature)
     ln_kvp = (
         24.4543 - 67.4509 * (100 / t_Kelvin)
         - 4.8489 * np.log(t_Kelvin/ 100)
@@ -884,34 +929,36 @@ def compute_seawater_vapor_pressure(salinity: np.ndarray, temperature: np.ndarra
     return np.exp(ln_kvp)
 
 
-# Not Used
-def compute_co2_seawater_solubility_coefficient(salinity: np.ndarray, temperature: np.ndarray) -> np.ndarray:
-    """
+def water_pco2_temperature_compensation(
+        pco2_cell: np.ndarray, temperature_cell: np.ndarray, temperature_in_situ: np.ndarray
+) -> np.ndarray:
+
+    """pco2 values are compensated for the temperature difference between the seawater (in-situ) and the
+    seawater temperature in the measurement cell.
+
+
+    ```Taken from the R Package SeaCarb
+
+    pco2 = pco2_cell * exp(0.0423 * (temperature_in_situ - temperature_cell))
+    ```
 
     Parameters
     ----------
-    salinity:
-        [PSU]
-    temperature:
+    pco2_cell:
+        pco2 [ppm] as measured in the cell.
+    temperature_cell:
+        temperature [Celsius] at which xCO2 was measured.
+    temperature_in_situ:
         seawater temperature [Celsius]
-
-    Returns
-    -------
-        solubility coefficient [mol kg-1 atm-1]
 
 
     References
     ----------
-    .. [1] Weiss, R. F. (1974). . Carbon dioxide in water and seawater: the solubility of a non-ideal gas.
-            Marine Chemistry. 2:203-215. 10.1016/0304-4203(74)90015-2
-
+    .. [1] Pierrot D., Neill C., Sullivan K., Castle R., Wanninkhof R., LÃ¼ger H., Johannessen T., Olsen A.,
+            Feely R. A. and Cosca C. E., 2009. Recommendations for autonomous underway pCO2 measuring
+            systems and data-reduction routines. Deep-Sea Res. II 56, 512-522.
+    .. [2] Takahashi T., Williams R.T., and Ros D.L. (1982) Carbonate chemistry. GEOSECS Pacific Expedition, Volume 3,
+            Hydrographic Data 1973-1974, 77-83.
     """
-    t_Kelvin = temperature + CELSIUS_TO_KELVIN
 
-    ln_k0 = (
-        -60.2409 + 93.4517 * (100 / t_Kelvin) + 23.3585 * np.log(t_Kelvin / 100)
-        + salinity * (0.023517 - 0.023656 * (t_Kelvin / 100) + 0.0047036 * (t_Kelvin / 100) ** 2)
-    )
-
-    return np.exp(ln_k0)
-
+    return pco2_cell * np.exp(0.0423 * (temperature_in_situ - temperature_cell))

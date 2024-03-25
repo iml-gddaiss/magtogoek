@@ -12,7 +12,7 @@ from magtogoek.navigation import compute_speed_and_course, compute_uv_ship
 from magtogoek.process_common import add_correction_attributes_to_dataarray
 from magtogoek.wps.sci_tools import dissolved_oxygen_ml_per_L_to_umol_per_L, dissolved_oxygen_umol_per_L_to_umol_per_kg, \
     rinko_raw_data_from_dissolved_oxygen, dissolved_oxygen_from_rinko_raw_measurement, compute_in_situ_density, \
-    compute_pco2_air, compute_pco2_water
+    air_pco2_from_xco2, water_pco2_from_wet_xco2, water_pco2_temperature_compensation
 
 if TYPE_CHECKING:
     from magtogoek.metoce.process import ProcessConfig
@@ -81,7 +81,7 @@ def compute_dissolved_oxygen_from_raw(dataset: xr.Dataset, pconfig: "ProcessConf
 
 
 def compute_pressure_at_sampling_depth(dataset: xr.Dataset, pconfig: "ProcessConfig"):
-    """
+    """Compute pressure in [dbar].
     Uses latitude (`lat`) in data if available and `pconfig.sampling_depth` from config if available.
     """
     if pconfig.sampling_depth is None:
@@ -153,20 +153,41 @@ def compute_potential_density(dataset: xr.Dataset, pconfig: "ProcessConfig"):
 
 
 def compute_air_and_water_pco2(dataset: xr.Dataset):
-    """
-    partial_pressure [uatm] = concentration [ppm] * atmospheric pressure [atm]
+    if 'pco2_air' not in dataset:
+        _compute_air_pco2(dataset=dataset)
 
-    """
-    for s in ('air', 'water'):
-        if f'pco2_{s}' not in dataset:
-            required_variables = [f'co2_{s}', 'atm_pressure']
-            if all((var in dataset for var in required_variables)):
-                # atmospheric pressure is in mbar
-                _pressure = dataset[f'atm_pressure'].pint.quantify().pint.to('atm').pint.dequantify().values
-                dataset[f'pco2_{s}'] = (['time'], dataset[f'co2_{s}'].values * _pressure, {'units': 'uatm'})
-                l.log(f'pco2_{s} was computed.')
-            else:
-                l.warning(f'pco2 {s} computation aborted. One of more variables in {required_variables} was missing.')
+    if 'pco2_water' not in dataset:
+        _compute_water_pco2(dataset=dataset)
+
+
+def _compute_air_pco2(dataset: xr):
+    required_variables = [f'xco2_air', 'atm_pressure']
+    if all((var in dataset for var in required_variables)):
+        # atmospheric pressure is in mbar. Needs to be in atm.
+        _pressure = dataset[f'atm_pressure'].pint.quantify().pint.to('atm').pint.dequantify().values
+        pco2 = air_pco2_from_xco2(xco2 = dataset['xco2_air'].values, atmospheric_pressure=_pressure)
+        dataset[f'pco2_air'] = (['time'], pco2, {'units': 'uatm'})
+        l.log(f'pco2_air was computed.')
+    else:
+        l.warning(f'pco2_air computation aborted. One of more variables in {required_variables} was missing.')
+
+
+def _compute_water_pco2(dataset: xr):
+    required_variables = [f'xco2_water', 'atm_pressure', 'co2_water_cell_temperature', 'temperature']
+    if all((var in dataset for var in required_variables)):
+        # atmospheric pressure is in mbar. Needs to be in atm.
+        _pressure = dataset[f'atm_pressure'].pint.quantify().pint.to('atm').pint.dequantify().values
+        _pco2_cell = water_pco2_from_wet_xco2(xco2=dataset['xco2_water'].values, atmospheric_pressure=_pressure)
+        _pco2_compensated = water_pco2_temperature_compensation(
+            pco2_cell=_pco2_cell,
+            temperature_cell=dataset['co2_water_cell_temperature'].values,
+            temperature_in_situ=dataset['temperature'].values
+        )
+
+        dataset[f'pco2_water'] = (['time'], _pco2_compensated, {'units': 'uatm'})
+        l.log(f'pco2_water (temperature compensated) was computed.')
+    else:
+        l.warning(f'pco2_water computation aborted. One of more variables in {required_variables} was missing.')
 
 
 # Not used. All oxygen data are loaded output in [umol/L]
