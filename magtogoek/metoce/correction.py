@@ -111,7 +111,7 @@ def apply_sensors_corrections(dataset: xr.Dataset, pconfig: "ProcessConfig"):
 
     if "dissolved_oxygen" in dataset:
         if pconfig.dissolved_oxygen_salinity_correction is True:
-            _dissolved_oxygen_salinity_correction(dataset=dataset)
+            _dissolved_oxygen_salinity_correction(dataset=dataset, pconfig=pconfig)
         if pconfig.dissolved_oxygen_pressure_correction is True:
             _dissolved_oxygen_pressure_correction(dataset=dataset, pconfig=pconfig)
 
@@ -267,7 +267,7 @@ def _correct_ph_for_salinity(dataset: xr.Dataset, pconfig: "ProcessConfig"):
         l.warning(f'pH correction aborted. `ph_coeffs` were not provided.')
 
 
-def _dissolved_oxygen_salinity_correction(dataset: xr.Dataset):
+def _dissolved_oxygen_salinity_correction(dataset: xr.Dataset, pconfig: "ProcessConfig"):
     if all(var in dataset.variables for var in ['temperature', 'salinity']):
         dataset.dissolved_oxygen.values = dissolved_oxygen_correction_for_salinity_SCOR_WG_142(
             dissolved_oxygen=dataset.dissolbed_oxygen.data,
@@ -277,6 +277,7 @@ def _dissolved_oxygen_salinity_correction(dataset: xr.Dataset):
         l.log(f'Dissolved oxygen correction for salinity was carried out.')
         add_correction_attributes_to_dataarray(dataset['dissolved_oxygen'])
         dataset['dissolved_oxygen'].attrs["corrections"] += 'Salinity correction carried out.\n'
+        pconfig.dissolved_oxygen_is_corrected_for_salinity = True
     else:
         l.warning(f'Dissolved oxygen correction for salinity aborted. `temperature` and/or `salinity` not found.')
 

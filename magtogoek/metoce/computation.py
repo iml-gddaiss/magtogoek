@@ -180,6 +180,7 @@ def _compute_water_pco2(dataset: xr):
         _pco2 = water_pco2_from_wet_xco2(xco2=dataset['xco2_water'].values, atmospheric_pressure=_pressure)
 
         # Any correction to the partial pressure value could/should be done here.
+        # None seems to be needed for Pro-Oceanus.
 
         dataset[f'pco2_water'] = (['time'], _pco2, {'units': 'uatm'})
         l.log(f'pco2_water computed from atmospheric pressure and xco2 (water) concentrations ppm.')

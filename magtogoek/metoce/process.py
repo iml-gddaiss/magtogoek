@@ -276,7 +276,7 @@ class ProcessConfig(BaseProcessConfig):
 
     # Processing Flag
     ph_is_corrected: bool = False
-
+    dissolved_oxygen_is_corrected_for_salinity: bool = False
 
     def __init__(self, config_dict: dict = None):
         super().__init__(config_dict)
