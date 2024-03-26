@@ -202,6 +202,8 @@ def _propagate_flag(dataset: xr.Dataset, pconfig: "ProcessConfig"):
     flag_propagation_rules = {
         'density_QC': ['temperature_QC', 'salinity_QC', 'density_QC'],
         'dissolved_oxygen_QC': ['temperature_QC', 'salinity_QC', 'dissolved_oxygen_QC'],
+        'pco2_air_QC': ['atm_pressure_QC'],
+        'pco2_water_QC': ['atm_pressure_QC'],
         }
 
     if pconfig.ph_is_corrected is True:

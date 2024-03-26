@@ -889,7 +889,8 @@ def water_pco2_from_dry_xco2(
     """
     return xco2 * (atmospheric_pressure - compute_seawater_vapor_pressure(salinity=salinity, temperature=temperature))
 
-# Not Used
+
+# Not Used Pro-Oceanus xco2 values are measured wet at 100% humidity saturation
 def compute_seawater_vapor_pressure(salinity: np.ndarray, temperature: np.ndarray) -> np.ndarray:
     """
     ```
@@ -929,6 +930,7 @@ def compute_seawater_vapor_pressure(salinity: np.ndarray, temperature: np.ndarra
     return np.exp(ln_kvp)
 
 
+# Not used. Oceanus-Pro xco2 values seems to be already compensated ?
 def water_pco2_temperature_compensation(
         pco2_cell: np.ndarray, temperature_cell: np.ndarray, temperature_in_situ: np.ndarray
 ) -> np.ndarray:

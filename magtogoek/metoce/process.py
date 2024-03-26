@@ -56,8 +56,7 @@ STANDARD_GLOBAL_ATTRIBUTES = {"featureType": "timeSeriesProfile"}
 VARIABLES_TO_DROP = [
     'ph_temperature',
     'xco2_air',
-    'xco2_water',
-    'co2_water_cell_temperature'
+    'xco2_water'
 ]
 
 # The following variables can be added to the VARIABLES_TO_DROP list during processing.

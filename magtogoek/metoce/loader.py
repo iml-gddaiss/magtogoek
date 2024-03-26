@@ -236,13 +236,22 @@ def _load_viking_metoce_data(viking_data: VikingData) -> Tuple[Dict[str, Tuple[n
         l.log('Par Digi data loaded.')
 
     if viking_data.co2_a is not None:
-        data.update({'xco2_air': (viking_data.co2_a['co2_ppm'], {'units': 'ppm'})})
+        data.update({
+            'xco2_air': (viking_data.co2_a['co2_ppm'], {'units': 'ppm'}),
+            # 'co2_air_cell_temperature': (viking_data.co2_a['irga_temperature'], {'units': 'degree_C'}),
+            # 'co2_air_humidity': (viking_data.co2_a['cell_gas_pressure_mbar'], {'units': 'mbar'}),
+            # 'co2_air_humidity_temperature': (viking_data.co2_a['humidity_sensor_temperature'], {'units': 'degree_C'}),
+            # 'co2_air_cell_pressure': (viking_data.co2_a['cell_gas_pressure_mbar'], {'units': 'mbar'}),
+        })
         l.log('Co2_a data loaded.')
 
     if viking_data.co2_w is not None:
         data.update({
             'xco2_water': (viking_data.co2_w['co2_ppm'], {'units': 'ppm'}),
-            'co2_water_cell_temperature': (viking_data.co2_w['irga_temperature'], {'units': 'degree_C'})
+            # 'co2_water_cell_temperature': (viking_data.co2_w['irga_temperature'], {'units': 'degree_C'}),
+            # 'co2_water_humidity': (viking_data.co2_w['cell_gas_pressure_mbar'], {'units': 'mbar'}),
+            # 'co2_water_humidity_temperature': (viking_data.co2_w['humidity_sensor_temperature'], {'units': 'degree_C'}),
+            # 'co2_water_cell_pressure' : (viking_data.co2_w['cell_gas_pressure_mbar'], {'units': 'mbar'}),
         })
         l.log('Co2_w data loaded.')
 
@@ -418,7 +427,6 @@ def _load_metis_metoce_data(metis_data: MetisData) -> Tuple[Dict[str, Tuple[np.m
             {
                 'xco2_air': (metis_data.pco2['co2_ppm_air'], {'units': 'ppm'}),
                 'xco2_water': (metis_data.pco2['co2_ppm_water'], {'units': 'ppm'}),
-                'co2_water_cell_temperature': (metis_data.pco2['co2_irga_water'], {'units': 'degree_C'})
              }
         )
         l.log('PCO2 Data Loaded')

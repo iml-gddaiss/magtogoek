@@ -167,25 +167,23 @@ def _compute_air_pco2(dataset: xr):
         _pressure = dataset[f'atm_pressure'].pint.quantify().pint.to('atm').pint.dequantify().values
         pco2 = air_pco2_from_xco2(xco2 = dataset['xco2_air'].values, atmospheric_pressure=_pressure)
         dataset[f'pco2_air'] = (['time'], pco2, {'units': 'uatm'})
-        l.log(f'pco2_air was computed.')
+        l.log(f'pco2_air computed from atmospheric pressure and xco2 (air) concentrations ppm.')
     else:
         l.warning(f'pco2_air computation aborted. One of more variables in {required_variables} was missing.')
 
 
 def _compute_water_pco2(dataset: xr):
-    required_variables = [f'xco2_water', 'atm_pressure', 'co2_water_cell_temperature', 'temperature']
+    required_variables = [f'xco2_water', 'atm_pressure'] # maybe we need the cell pressure
     if all((var in dataset for var in required_variables)):
         # atmospheric pressure is in mbar. Needs to be in atm.
-        _pressure = dataset[f'atm_pressure'].pint.quantify().pint.to('atm').pint.dequantify().values
-        _pco2_cell = water_pco2_from_wet_xco2(xco2=dataset['xco2_water'].values, atmospheric_pressure=_pressure)
-        _pco2_compensated = water_pco2_temperature_compensation(
-            pco2_cell=_pco2_cell,
-            temperature_cell=dataset['co2_water_cell_temperature'].values,
-            temperature_in_situ=dataset['temperature'].values
-        )
+        _pressure = dataset['atm_pressure'].pint.quantify().pint.to('atm').pint.dequantify().values
+        _pco2 = water_pco2_from_wet_xco2(xco2=dataset['xco2_water'].values, atmospheric_pressure=_pressure)
 
-        dataset[f'pco2_water'] = (['time'], _pco2_compensated, {'units': 'uatm'})
-        l.log(f'pco2_water (temperature compensated) was computed.')
+        # Any correction to the partial pressure value could/should be done here.
+
+        dataset[f'pco2_water'] = (['time'], _pco2, {'units': 'uatm'})
+        l.log(f'pco2_water computed from atmospheric pressure and xco2 (water) concentrations ppm.')
+
     else:
         l.warning(f'pco2_water computation aborted. One of more variables in {required_variables} was missing.')
 

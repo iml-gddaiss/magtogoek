@@ -30,7 +30,7 @@ Tag Structure:
 [ATMS]Air_Temp,Air_Humidity,Air_Pressure,PAR,Rain_Total,Rain_Duration,Rain_Intensity
 [WAVE]Wave_Date,Wave_Time,Wave_Period,Wave_Hm0,Wave_H13,Wave_Hmax
 [ADCP]ADCPDate,ADCPTime,EW,NS,Vert,Err
-[PCO2]CO2_PPM_Air,CO2_PPM_Water,co2_irga_water
+[PCO2]CO2_PPM_Air,CO2_PPM_Water
 [WNCH]messages
     messages:
         Air temperature is too low
@@ -67,7 +67,7 @@ DAT_FILE_DATA_STRUCTURE = {
     'atms': ['air_temperature', 'air_humidity', 'air_pressure', 'par', 'rain_total', 'rain_duration', 'rain_intensity'],
     'wave': ['date', 'time', 'period', 'hm0', 'h13', 'hmax'],
     'adcp': ['date', 'time', 'u', 'v', 'w', 'e'],
-    'pco2': ['co2_ppm_air', 'co2_ppm_water', 'co2_irga_water'], # 'gas_pressure_air_mbar', 'gas_pressure_water_mbar', 'air_humidity'],
+    'pco2': ['co2_ppm_air', 'co2_ppm_water'],
     'wnch': ['message']
 }
 
@@ -88,7 +88,7 @@ METIS_VARIABLES = {
     'atms': ['air_temperature', 'air_humidity', 'air_pressure', 'par', 'rain_total', 'rain_duration', 'rain_intensity'],
     'wave': ['time', 'period', 'hm0', 'h13', 'hmax'],
     'adcp': ['time', 'u', 'v', 'w', 'e'],
-    'pco2': ['co2_ppm_air', 'co2_ppm_water', 'co2_irga_water'], # 'gas_pressure_air_mbar', 'gas_pressure_water_mbar', 'air_humidity'],
+    'pco2': ['co2_ppm_air', 'co2_ppm_water'],
     'wnch': ['message']
 }
 
@@ -104,7 +104,7 @@ METIS_FLOAT_VARIABLES = {
     'atms': ['air_temperature', 'air_humidity', 'air_pressure', 'par', 'rain_total', 'rain_duration', 'rain_intensity'],
     'wave': ['period', 'hm0', 'h13', 'hmax'],
     'adcp': ['u', 'v', 'w', 'e'],
-    'pco2': ['co2_ppm_air', 'co2_ppm_water', 'co2_irga_water'], #gas_pressure_air_mbar', 'gas_pressure_water_mbar', 'air_humidity'],
+    'pco2': ['co2_ppm_air', 'co2_ppm_water'],
     'wnch': []
 }
 
@@ -283,8 +283,8 @@ def _unpack_data_from_tag_string(data: str) -> Dict[str, Dict[str, str]]:
 
 def _make_timestamp(date: str, time: str) -> str:
     _time = f'{date}T{time}'
-    if "NA" in _time: # Fixme maybe remove after fixing 2023 dat?
-        return "NaT"                    # Fixme maybe remove after fixing 2023 dat?
+    if "NA" in _time:
+        return "NaT"
     return _time
 
 def _degree_minute_to_degree_decimal(value: str) -> float:
