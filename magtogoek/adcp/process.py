@@ -549,8 +549,8 @@ def _coordinate_system_transformation(dataset: xr.Dataset):
         l.log(f"Coordsystem value of {dataset.attrs['coord_system']} not recognized. "
               f"Conversion to enu not available.")
     else:
-        l.warning('Coordinate transformation methods from Pycurrents should work. '
-                  'But magtogoek implementation was not properly tested.')
+        l.warning('Coordinate transformation methods are taken from Pycurrents and seems to work. '
+                  'However, no rigorous testing was done.')
         dataset = coordsystem2earth(dataset)
     return dataset
 
