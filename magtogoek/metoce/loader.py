@@ -94,6 +94,8 @@ def load_metoce_data(
 
     dataset = xr.Dataset(metoce_data, coords=coords, attrs=global_attrs)
 
+    dataset = dataset.sortby('time')
+
     if data_format == "viking":
         dataset = _average_duplicates(dataset, 'time')
 
@@ -353,7 +355,7 @@ def _load_metis_metoce_data(metis_data: MetisData) -> Tuple[Dict[str, Tuple[np.m
         if any(np.isfinite(metis_data.ph['ext_ph_calc'])):
             _ph_attrs = {
                 'units': 'NBS_scale',
-                'corrections': 'pH values were computed using in-situ salinity (at sampling).\n'
+                'corrections': 'pH values were computed with the in-situ salinity (at sampling).\n'
             }
             data.update({'ph': (metis_data.ph['ext_ph_calc'], _ph_attrs)})
             global_attrs['is_corrected'] = 1
@@ -363,7 +365,7 @@ def _load_metis_metoce_data(metis_data: MetisData) -> Tuple[Dict[str, Tuple[np.m
             }
             data.update({'ph': (metis_data.ph['ext_ph'], _ph_attrs)})
             global_attrs['is_corrected'] = 0
-            l.warning("pH values were not computed using-situ salinity (at sampling).")
+            l.warning("pH values were not computed with the in-situ salinity (at sampling).")
         l.log('pH data loaded')
 
     # if metis_data.no3 is not None:
