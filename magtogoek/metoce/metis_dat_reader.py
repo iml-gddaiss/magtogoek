@@ -227,9 +227,9 @@ class RawMetisDatReader:
 
         buoy_names = set([_d['init']['buoy_name'] for _d in unpacked_data])
 
-        for key in buoy_names:
-            self._buoys_data[key] = MetisData(buoy_name=key)
-            self.__setattr__(key, self._buoys_data[key])
+        for _name in buoy_names:
+            self._buoys_data[_name] = MetisData(buoy_name=_name)
+            self.__setattr__(_name, self._buoys_data[_name])
 
         _ensemble_count = 0
         _number_of_ensemble = len(unpacked_data)
@@ -238,23 +238,38 @@ class RawMetisDatReader:
             buoy_data = self._buoys_data[_data['init']['buoy_name']]
             buoy_data.time.append(_data['init']['time'])
 
-            for tag in METIS_VARIABLES:
-                if tag in _data:
-                    for key in _data[tag]:
-                        buoy_data.__dict__[tag][key].append(_data[tag][key])
-                else:
-                    for key in METIS_VARIABLES[tag]:
-                        if key == "time":
-                            buoy_data.__dict__[tag][key].append(NAT_FILL_VALUE)
-                        else:
-                            buoy_data.__dict__[tag][key].append(NAN_FILL_VALUE)
+            _add_tag_data_to_buoy(buoy_data=buoy_data, data_dict=_data)
 
             _ensemble_count += 1
+
         print(f'Data Ensemble loaded: {_ensemble_count}/{_number_of_ensemble}', end='\r')
+        print('') # to go to the next line since the previous one had `\r`
 
         for metis_data in self._buoys_data.values():
             metis_data.drop_empty_tag()
             metis_data.to_numpy_array()
+
+
+def _add_tag_data_to_buoy(buoy_data: MetisData, data_dict: Dict[str, Dict[str, str]]):
+    for tag in METIS_VARIABLES:
+        if tag in data_dict:
+            for variable, value in data_dict[tag].items():
+                if variable in METIS_FLOAT_VARIABLES[tag]:
+                    value = _safe_float(value)
+                buoy_data.__dict__[tag][variable].append(value)
+        else:
+            for variable in METIS_VARIABLES[tag]:
+                if variable == "time":
+                    buoy_data.__dict__[tag][variable].append(NAT_FILL_VALUE)
+                else:
+                    buoy_data.__dict__[tag][variable].append(NAN_FILL_VALUE)
+
+
+def _safe_float(value: str) -> float:
+    try:
+        return float(value)
+    except ValueError:
+        return NAN_FILL_VALUE
 
 def _unpack_data_from_tag_string(data: str) -> Dict[str, Dict[str, str]]:
     """Unpack Metis Tag Data
