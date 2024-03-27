@@ -4,6 +4,7 @@ Metoce Data Computation.
 from typing import TYPE_CHECKING
 
 import gsw
+import numpy as np
 import xarray as xr
 
 from magtogoek import logger as l
@@ -108,26 +109,26 @@ def compute_potential_density(dataset: xr.Dataset, pconfig: "ProcessConfig"):
     if all((var in dataset for var in required_variables)):
         _log_msg = 'Potential density computed using TEOS-10 polynomial (absolute salinity and conservative temperature'
 
+        longitude = 0
+        latitude = 0
+
         if "lon" in dataset.variables:
-            longitude = dataset.lon.data
-            _log_msg += f', longitude'
+            _lon = np.round(dataset.lon.mean('time', skipna=True).data, 4)
         else:
-            if isinstance(pconfig.platform_metadata.platform.latitude, (int, float)):
-                longitude = pconfig.platform_metadata.platform.latitude
-            else:
-                longitude = 0
-            _log_msg += f', longitude = {longitude}'
+            if isinstance(pconfig.platform_metadata.platform.longitude, (int, float)):
+                longitude = pconfig.platform_metadata.platform.longitude
+        _log_msg += f', longitude = {longitude}'
+
 
         if "lat" in dataset.variables:
-            latitude = dataset.lat.data
-            _log_msg += f', latitude'
+            _lat = np.round(dataset.lat.mean('time', skipna=True).data, 4)
+            if np.isfinite(_lat):
+                latitude = _lat
         else:
             if isinstance(pconfig.platform_metadata.platform.latitude, (int, float)):
                 latitude = pconfig.platform_metadata.platform.latitude
+        _log_msg += f', latitude = {latitude}'
 
-            else:
-                latitude = 0
-            _log_msg += f', latitude = {latitude}'
 
         if 'pres' in dataset.variables:
             pres = dataset.pres.values
@@ -135,7 +136,6 @@ def compute_potential_density(dataset: xr.Dataset, pconfig: "ProcessConfig"):
         else:
             pres = compute_pressure_at_sampling_depth(dataset=dataset, pconfig=pconfig)
             _log_msg += f', pressure at depth = {pconfig.sampling_depth or 0} m'
-
 
         density = compute_in_situ_density(
             temperature=dataset.temperature.data,
