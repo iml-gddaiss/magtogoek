@@ -373,11 +373,11 @@ def _process_adcp_data(pconfig: ProcessConfig):
 
     # >>>> ADCP SPECIFIC
     if pconfig.magnetic_declination is not None:
-        if dataset.attrs['coord_system'] == 'earth':
-            apply_magnetic_correction(dataset, pconfig.magnetic_declination)
-        else:
-            l.warning('Correction for magnetic declination was not carried out since '
-                      'the velocity data are not in earth coordinates.')
+        #if dataset.attrs['coord_system'] == 'earth':
+        apply_magnetic_correction(dataset, pconfig.magnetic_declination)
+        #else:
+        #    l.warning('Correction for magnetic declination was not carried out since '
+        #              'the velocity data are not in earth coordinates.')
 
     # motion correction #
     if pconfig.motion_correction_mode in ["bt", "nav"]:

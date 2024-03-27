@@ -336,7 +336,7 @@ def get_config_taskparser(process: Optional[str] = None, version: Optional[int] 
         tparser.add_option(section, "time_step", dtypes=["float"], default="")
         tparser.add_option(section, "grid_depth", dtypes=["str"], default="", null_value=None, comments='Path to column grid file (m).', is_path=True)
         tparser.add_option(section, "grid_method", dtypes=["str"], default="interp", choice=["interp", "bin"], comments='One of [interp, bin].')
-        tparser.add_option(section, "coord_transform", dtypes=["bool"], default=True, null_value=False, comments="Won't do reverse transformation.")
+        tparser.add_option(section, "coord_transform", dtypes=["bool"], default=True, null_value=False, comments="Transforms to ENU (earth) if in Beam of XYZ.")
         tparser.add_option(section, "motion_correction_mode", dtypes=["str"], default="bt", choice=["bt", "nav", "off"], comments='One of [bt, nav, off].')
 
         section = "ADCP_QUALITY_CONTROL"
